@@ -1,5 +1,5 @@
 """
-Curve generation and export module.
+Curve generation, export, and modification module.
 """
 
 from ptpd_calibration.curves.generator import (
@@ -15,6 +15,29 @@ from ptpd_calibration.curves.export import (
     load_curve,
 )
 from ptpd_calibration.curves.analysis import CurveAnalyzer
+from ptpd_calibration.curves.parser import (
+    QuadProfile,
+    QuadFileParser,
+    ChannelCurve,
+    load_quad_file,
+    load_quad_string,
+)
+from ptpd_calibration.curves.modifier import (
+    CurveModifier,
+    CurveAdjustment,
+    AdjustmentType,
+    SmoothingMethod,
+    BlendMode,
+    adjust_curve,
+    smooth_curve,
+    blend_curves,
+)
+from ptpd_calibration.curves.ai_enhance import (
+    CurveAIEnhancer,
+    EnhancementGoal,
+    EnhancementResult,
+    enhance_curve,
+)
 
 __all__ = [
     # Generator
@@ -29,4 +52,24 @@ __all__ = [
     "load_curve",
     # Analysis
     "CurveAnalyzer",
+    # Parser
+    "QuadProfile",
+    "QuadFileParser",
+    "ChannelCurve",
+    "load_quad_file",
+    "load_quad_string",
+    # Modifier
+    "CurveModifier",
+    "CurveAdjustment",
+    "AdjustmentType",
+    "SmoothingMethod",
+    "BlendMode",
+    "adjust_curve",
+    "smooth_curve",
+    "blend_curves",
+    # AI Enhancement
+    "CurveAIEnhancer",
+    "EnhancementGoal",
+    "EnhancementResult",
+    "enhance_curve",
 ]

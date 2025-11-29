@@ -24,9 +24,19 @@ def create_app():
         )
 
     from ptpd_calibration.config import ExportFormat, TabletType
-    from ptpd_calibration.core.models import CalibrationRecord
+    from ptpd_calibration.core.models import CalibrationRecord, CurveData
     from ptpd_calibration.core.types import ChemistryType, ContrastAgent, CurveType, DeveloperType
-    from ptpd_calibration.curves import CurveGenerator, save_curve
+    from ptpd_calibration.curves import (
+        CurveGenerator,
+        save_curve,
+        load_quad_file,
+        load_quad_string,
+        CurveModifier,
+        SmoothingMethod,
+        BlendMode,
+        CurveAIEnhancer,
+        EnhancementGoal,
+    )
     from ptpd_calibration.detection import StepTabletReader
     from ptpd_calibration.ml import CalibrationDatabase
 
@@ -83,6 +93,45 @@ def create_app():
 
     class TroubleshootRequest(BaseModel):
         problem: str
+
+    class CurveModifyRequest(BaseModel):
+        input_values: list[float]
+        output_values: list[float]
+        name: str = "Modified Curve"
+        adjustment_type: str = "brightness"  # brightness, contrast, gamma, levels, highlights, shadows, midtones
+        amount: float = 0.0
+        # Additional parameters for specific adjustments
+        pivot: float = 0.5  # For contrast
+        black_point: float = 0.0  # For levels
+        white_point: float = 1.0  # For levels
+
+    class CurveSmoothRequest(BaseModel):
+        input_values: list[float]
+        output_values: list[float]
+        name: str = "Smoothed Curve"
+        method: str = "gaussian"  # gaussian, savgol, moving_average, spline
+        strength: float = 0.5
+        preserve_endpoints: bool = True
+
+    class CurveBlendRequest(BaseModel):
+        curve1_inputs: list[float]
+        curve1_outputs: list[float]
+        curve2_inputs: list[float]
+        curve2_outputs: list[float]
+        name: str = "Blended Curve"
+        mode: str = "weighted"  # average, weighted, multiply, screen, overlay, min, max
+        weight: float = 0.5
+
+    class CurveEnhanceRequest(BaseModel):
+        input_values: list[float]
+        output_values: list[float]
+        name: str = "Enhanced Curve"
+        goal: str = "linearization"  # linearization, maximize_range, smooth_gradation, highlight_detail, shadow_detail, neutral_midtones, print_stability
+        paper_type: Optional[str] = None
+        additional_context: Optional[str] = None
+
+    # Curve storage for session (in production, use database)
+    curve_storage: dict[str, CurveData] = {}
 
     # Routes
     @app.get("/")
@@ -193,6 +242,316 @@ def create_app():
             media_type="application/octet-stream",
             filename=f"{name}{ext}",
         )
+
+    @app.post("/api/curves/upload-quad")
+    async def upload_quad_file(
+        file: UploadFile = File(...),
+        channel: str = Form("K"),
+    ):
+        """
+        Upload and parse a QTR .quad file.
+
+        Returns the parsed profile with all channels and metadata.
+        """
+        # Save uploaded file
+        file_path = upload_dir / file.filename
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+
+        try:
+            # Parse the .quad file
+            profile = load_quad_file(file_path)
+
+            # Convert requested channel to CurveData and store
+            if channel.upper() in profile.channels:
+                curve_data = profile.to_curve_data(channel.upper())
+                curve_storage[str(curve_data.id)] = curve_data
+            else:
+                curve_data = None
+
+            return {
+                "success": True,
+                "profile_name": profile.profile_name,
+                "resolution": profile.resolution,
+                "ink_limit": profile.ink_limit,
+                "media_type": profile.media_type,
+                "all_channels": profile.all_channel_names,
+                "active_channels": profile.active_channels,
+                "curve_id": str(curve_data.id) if curve_data else None,
+                "curve_data": {
+                    "input_values": curve_data.input_values[:20] if curve_data else [],
+                    "output_values": curve_data.output_values[:20] if curve_data else [],
+                } if curve_data else None,
+                "summary": profile.summary(),
+            }
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        finally:
+            # Cleanup
+            if file_path.exists():
+                file_path.unlink()
+
+    @app.post("/api/curves/parse-quad")
+    async def parse_quad_content(
+        content: str = Form(...),
+        name: str = Form("Uploaded Profile"),
+        channel: str = Form("K"),
+    ):
+        """
+        Parse .quad content from a string (for pasting quad data directly).
+        """
+        try:
+            profile = load_quad_string(content, name)
+
+            # Convert requested channel to CurveData and store
+            if channel.upper() in profile.channels:
+                curve_data = profile.to_curve_data(channel.upper())
+                curve_storage[str(curve_data.id)] = curve_data
+            else:
+                curve_data = None
+
+            return {
+                "success": True,
+                "profile_name": profile.profile_name,
+                "active_channels": profile.active_channels,
+                "curve_id": str(curve_data.id) if curve_data else None,
+                "curve_data": {
+                    "input_values": curve_data.input_values if curve_data else [],
+                    "output_values": curve_data.output_values if curve_data else [],
+                } if curve_data else None,
+            }
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.post("/api/curves/modify")
+    async def modify_curve(request: CurveModifyRequest):
+        """
+        Apply modifications to a curve.
+
+        Supports: brightness, contrast, gamma, levels, highlights, shadows, midtones
+        """
+        try:
+            # Create CurveData from request
+            curve = CurveData(
+                name=request.name,
+                input_values=request.input_values,
+                output_values=request.output_values,
+            )
+
+            modifier = CurveModifier()
+            adjustment_type = request.adjustment_type.lower()
+
+            if adjustment_type == "brightness":
+                modified = modifier.adjust_brightness(curve, request.amount)
+            elif adjustment_type == "contrast":
+                modified = modifier.adjust_contrast(curve, request.amount, pivot=request.pivot)
+            elif adjustment_type == "gamma":
+                # For gamma, amount should be > 0; default to 1.0 + amount
+                gamma_value = max(0.1, 1.0 + request.amount) if request.amount != 0 else 1.0
+                modified = modifier.adjust_gamma(curve, gamma_value)
+            elif adjustment_type == "levels":
+                modified = modifier.adjust_levels(
+                    curve,
+                    black_point=request.black_point,
+                    white_point=request.white_point,
+                )
+            elif adjustment_type == "highlights":
+                modified = modifier.adjust_highlights(curve, request.amount)
+            elif adjustment_type == "shadows":
+                modified = modifier.adjust_shadows(curve, request.amount)
+            elif adjustment_type == "midtones":
+                modified = modifier.adjust_midtones(curve, request.amount)
+            else:
+                raise ValueError(f"Unknown adjustment type: {adjustment_type}")
+
+            # Store the modified curve
+            curve_storage[str(modified.id)] = modified
+
+            return {
+                "success": True,
+                "curve_id": str(modified.id),
+                "name": modified.name,
+                "adjustment_applied": adjustment_type,
+                "input_values": modified.input_values,
+                "output_values": modified.output_values,
+            }
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.post("/api/curves/smooth")
+    async def smooth_curve(request: CurveSmoothRequest):
+        """
+        Apply smoothing to a curve.
+
+        Supports: gaussian, savgol, moving_average, spline
+        """
+        try:
+            # Create CurveData from request
+            curve = CurveData(
+                name=request.name,
+                input_values=request.input_values,
+                output_values=request.output_values,
+            )
+
+            modifier = CurveModifier()
+            method = SmoothingMethod(request.method.lower())
+            smoothed = modifier.smooth(
+                curve,
+                method=method,
+                strength=request.strength,
+                preserve_endpoints=request.preserve_endpoints,
+            )
+
+            # Store the smoothed curve
+            curve_storage[str(smoothed.id)] = smoothed
+
+            return {
+                "success": True,
+                "curve_id": str(smoothed.id),
+                "name": smoothed.name,
+                "method_applied": request.method,
+                "input_values": smoothed.input_values,
+                "output_values": smoothed.output_values,
+            }
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.post("/api/curves/blend")
+    async def blend_curves(request: CurveBlendRequest):
+        """
+        Blend two curves together.
+
+        Supports: average, weighted, multiply, screen, overlay, min, max
+        """
+        try:
+            # Create CurveData from request
+            curve1 = CurveData(
+                name="Curve 1",
+                input_values=request.curve1_inputs,
+                output_values=request.curve1_outputs,
+            )
+            curve2 = CurveData(
+                name="Curve 2",
+                input_values=request.curve2_inputs,
+                output_values=request.curve2_outputs,
+            )
+
+            modifier = CurveModifier()
+            mode = BlendMode(request.mode.lower())
+            blended = modifier.blend(
+                curve1,
+                curve2,
+                mode=mode,
+                weight=request.weight,
+            )
+            blended.name = request.name
+
+            # Store the blended curve
+            curve_storage[str(blended.id)] = blended
+
+            return {
+                "success": True,
+                "curve_id": str(blended.id),
+                "name": blended.name,
+                "mode_applied": request.mode,
+                "input_values": blended.input_values,
+                "output_values": blended.output_values,
+            }
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.post("/api/curves/enhance")
+    async def enhance_curve_ai(request: CurveEnhanceRequest):
+        """
+        Apply AI-powered enhancement to a curve.
+
+        Uses LLM analysis to suggest and apply improvements based on the specified goal.
+        """
+        try:
+            # Create CurveData from request
+            curve = CurveData(
+                name=request.name,
+                input_values=request.input_values,
+                output_values=request.output_values,
+                paper_type=request.paper_type,
+            )
+
+            enhancer = CurveAIEnhancer()
+            goal = EnhancementGoal(request.goal.lower())
+
+            # Try LLM enhancement first, fall back to algorithmic
+            try:
+                result = await enhancer.enhance_with_llm(
+                    curve,
+                    goal=goal,
+                    additional_context=request.additional_context,
+                )
+            except Exception:
+                # Fall back to algorithmic enhancement
+                result = await enhancer.analyze_and_enhance(
+                    curve,
+                    goal=goal,
+                )
+
+            # Store the enhanced curve
+            curve_storage[str(result.enhanced_curve.id)] = result.enhanced_curve
+
+            return {
+                "success": True,
+                "curve_id": str(result.enhanced_curve.id),
+                "name": result.enhanced_curve.name,
+                "goal": result.goal.value,
+                "confidence": result.confidence,
+                "analysis": result.analysis,
+                "changes_made": result.changes_made,
+                "input_values": result.enhanced_curve.input_values,
+                "output_values": result.enhanced_curve.output_values,
+            }
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.get("/api/curves/{curve_id}")
+    async def get_stored_curve(curve_id: str):
+        """Get a stored curve by ID."""
+        curve = curve_storage.get(curve_id)
+        if not curve:
+            raise HTTPException(status_code=404, detail="Curve not found")
+
+        return {
+            "curve_id": str(curve.id),
+            "name": curve.name,
+            "curve_type": curve.curve_type.value if curve.curve_type else None,
+            "paper_type": curve.paper_type,
+            "input_values": curve.input_values,
+            "output_values": curve.output_values,
+            "notes": curve.notes,
+        }
+
+    @app.post("/api/curves/{curve_id}/enforce-monotonicity")
+    async def enforce_monotonicity(
+        curve_id: str,
+        direction: str = "increasing",
+    ):
+        """Enforce monotonicity on a stored curve."""
+        curve = curve_storage.get(curve_id)
+        if not curve:
+            raise HTTPException(status_code=404, detail="Curve not found")
+
+        try:
+            modifier = CurveModifier()
+            modified = modifier.enforce_monotonicity(curve, direction=direction)
+            curve_storage[str(modified.id)] = modified
+
+            return {
+                "success": True,
+                "curve_id": str(modified.id),
+                "name": modified.name,
+                "input_values": modified.input_values,
+                "output_values": modified.output_values,
+            }
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     @app.get("/api/calibrations")
     async def list_calibrations(
