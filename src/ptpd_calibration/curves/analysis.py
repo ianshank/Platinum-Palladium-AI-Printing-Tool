@@ -85,7 +85,7 @@ class CurveAnalyzer:
         is_monotonic = bool(np.all(diffs >= -0.001))  # Small tolerance
 
         # Find problem regions (large deviations)
-        threshold = 2 * rms_error
+        threshold = max(2 * rms_error, 1e-4)
         problem_mask = np.abs(errors) > threshold
         problem_regions = []
 

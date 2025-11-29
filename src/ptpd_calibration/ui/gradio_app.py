@@ -45,10 +45,6 @@ def create_gradio_app(share: bool = False):
     # Create the interface
     with gr.Blocks(
         title="Pt/Pd Calibration Studio",
-        theme=gr.themes.Soft(
-            primary_hue="amber",
-            secondary_hue="stone",
-        ),
     ) as app:
         gr.Markdown(
             """
@@ -964,17 +960,20 @@ def create_gradio_app(share: bool = False):
     return app
 
 
-def launch_ui(share: bool = False, port: int = 7860):
+def launch_ui(share: bool = False, port: int = 7860, server_name: str = "127.0.0.1"):
     """
     Launch the Gradio UI.
 
     Args:
         share: Whether to create a public share link.
         port: Port to run on.
+        server_name: Server name to bind to.
     """
     app = create_gradio_app(share=share)
-    app.launch(share=share, server_port=port)
+    app.launch(share=share, server_port=port, server_name=server_name)
 
 
 if __name__ == "__main__":
-    launch_ui()
+    import os
+    port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
+    launch_ui(port=port)

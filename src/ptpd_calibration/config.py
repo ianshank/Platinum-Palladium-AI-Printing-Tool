@@ -11,6 +11,9 @@ from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class LLMProvider(str, Enum):
@@ -150,6 +153,8 @@ class LLMSettings(BaseSettings):
     # Provider configuration
     provider: LLMProvider = Field(default=LLMProvider.ANTHROPIC)
     api_key: Optional[str] = Field(default=None)
+    anthropic_api_key: Optional[str] = Field(default=None)
+    openai_api_key: Optional[str] = Field(default=None)
 
     # Model selection
     anthropic_model: str = Field(default="claude-sonnet-4-20250514")

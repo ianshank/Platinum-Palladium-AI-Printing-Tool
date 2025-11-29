@@ -47,9 +47,10 @@ class AnthropicClient(LLMClient):
         """
         self.settings = settings or get_settings().llm
 
-        if not self.settings.api_key:
+        self.api_key = self.settings.anthropic_api_key or self.settings.api_key
+        if not self.api_key:
             raise ValueError(
-                "Anthropic API key required. Set PTPD_LLM_API_KEY environment variable."
+                "Anthropic API key required. Set PTPD_LLM_ANTHROPIC_API_KEY or PTPD_LLM_API_KEY environment variable."
             )
 
     async def complete(
@@ -67,7 +68,7 @@ class AnthropicClient(LLMClient):
                 "anthropic package required. Install with: pip install ptpd-calibration[llm]"
             )
 
-        client = anthropic.AsyncAnthropic(api_key=self.settings.api_key)
+        client = anthropic.AsyncAnthropic(api_key=self.api_key)
 
         response = await client.messages.create(
             model=self.settings.anthropic_model,
@@ -94,7 +95,7 @@ class AnthropicClient(LLMClient):
                 "anthropic package required. Install with: pip install ptpd-calibration[llm]"
             )
 
-        client = anthropic.AsyncAnthropic(api_key=self.settings.api_key)
+        client = anthropic.AsyncAnthropic(api_key=self.api_key)
 
         async with client.messages.stream(
             model=self.settings.anthropic_model,
@@ -119,9 +120,10 @@ class OpenAIClient(LLMClient):
         """
         self.settings = settings or get_settings().llm
 
-        if not self.settings.api_key:
+        self.api_key = self.settings.openai_api_key or self.settings.api_key
+        if not self.api_key:
             raise ValueError(
-                "OpenAI API key required. Set PTPD_LLM_API_KEY environment variable."
+                "OpenAI API key required. Set PTPD_LLM_OPENAI_API_KEY or PTPD_LLM_API_KEY environment variable."
             )
 
     async def complete(
@@ -139,7 +141,7 @@ class OpenAIClient(LLMClient):
                 "openai package required. Install with: pip install ptpd-calibration[llm]"
             )
 
-        client = AsyncOpenAI(api_key=self.settings.api_key)
+        client = AsyncOpenAI(api_key=self.api_key)
 
         # Prepend system message
         all_messages = []
@@ -171,7 +173,7 @@ class OpenAIClient(LLMClient):
                 "openai package required. Install with: pip install ptpd-calibration[llm]"
             )
 
-        client = AsyncOpenAI(api_key=self.settings.api_key)
+        client = AsyncOpenAI(api_key=self.api_key)
 
         # Prepend system message
         all_messages = []

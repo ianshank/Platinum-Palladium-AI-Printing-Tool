@@ -165,7 +165,7 @@ class CurveModifier:
         outputs = np.array(curve.output_values)
 
         # Apply gamma
-        outputs = np.power(outputs, 1.0 / gamma)
+        outputs = np.power(outputs, gamma)
 
         if self.preserve_endpoints:
             outputs[0] = curve.output_values[0]

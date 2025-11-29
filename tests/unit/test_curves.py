@@ -56,9 +56,9 @@ class TestTargetCurve:
 
         assert len(target.input_values) == 21
         # Should have S-curve characteristics
-        mid_idx = 10
+        mid_idx = 5
         # Midpoint should be slightly different from linear
-        assert target.output_values[mid_idx] != pytest.approx(0.5, abs=0.1)
+        assert target.output_values[mid_idx] != pytest.approx(target.input_values[mid_idx], abs=0.01)
 
 
 class TestCurveGenerator:

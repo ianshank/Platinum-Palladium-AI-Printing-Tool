@@ -28,7 +28,7 @@ class ChannelCurve:
     @property
     def as_normalized(self) -> tuple[list[float], list[float]]:
         """Get curve as normalized 0-1 input/output pairs."""
-        inputs = [i / 255.0 for i in range(len(self.values))]
+        inputs = [i / (len(self.values) - 1) if len(self.values) > 1 else 0.0 for i in range(len(self.values))]
         outputs = [v / 255.0 for v in self.values]
         return inputs, outputs
 
