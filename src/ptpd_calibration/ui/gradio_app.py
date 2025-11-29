@@ -3271,7 +3271,7 @@ def create_gradio_app(share: bool = False):
                         gr.Markdown("#### Browse Papers")
 
                         paper_list = gr.Dropdown(
-                            choices=[(p.name, p.name) for p in paper_db.get_all()],
+                            choices=[(p.name, p.name) for p in paper_db.list_papers()],
                             label="Select Paper",
                         )
 
