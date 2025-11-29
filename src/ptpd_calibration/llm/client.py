@@ -1,0 +1,212 @@
+"""
+LLM client implementations for different providers.
+"""
+
+import asyncio
+from abc import ABC, abstractmethod
+from typing import AsyncIterator, Optional
+
+from ptpd_calibration.config import LLMProvider, LLMSettings, get_settings
+
+
+class LLMClient(ABC):
+    """Abstract base class for LLM clients."""
+
+    @abstractmethod
+    async def complete(
+        self,
+        messages: list[dict],
+        system: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+    ) -> str:
+        """Generate a completion."""
+        pass
+
+    @abstractmethod
+    async def stream(
+        self,
+        messages: list[dict],
+        system: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+    ) -> AsyncIterator[str]:
+        """Stream a completion."""
+        pass
+
+
+class AnthropicClient(LLMClient):
+    """Client for Anthropic Claude API."""
+
+    def __init__(self, settings: Optional[LLMSettings] = None):
+        """
+        Initialize Anthropic client.
+
+        Args:
+            settings: LLM settings with API key.
+        """
+        self.settings = settings or get_settings().llm
+
+        if not self.settings.api_key:
+            raise ValueError(
+                "Anthropic API key required. Set PTPD_LLM_API_KEY environment variable."
+            )
+
+    async def complete(
+        self,
+        messages: list[dict],
+        system: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+    ) -> str:
+        """Generate completion using Anthropic API."""
+        try:
+            import anthropic
+        except ImportError:
+            raise ImportError(
+                "anthropic package required. Install with: pip install ptpd-calibration[llm]"
+            )
+
+        client = anthropic.AsyncAnthropic(api_key=self.settings.api_key)
+
+        response = await client.messages.create(
+            model=self.settings.anthropic_model,
+            max_tokens=max_tokens or self.settings.max_tokens,
+            system=system or "",
+            messages=messages,
+            temperature=temperature if temperature is not None else self.settings.temperature,
+        )
+
+        return response.content[0].text
+
+    async def stream(
+        self,
+        messages: list[dict],
+        system: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+    ) -> AsyncIterator[str]:
+        """Stream completion using Anthropic API."""
+        try:
+            import anthropic
+        except ImportError:
+            raise ImportError(
+                "anthropic package required. Install with: pip install ptpd-calibration[llm]"
+            )
+
+        client = anthropic.AsyncAnthropic(api_key=self.settings.api_key)
+
+        async with client.messages.stream(
+            model=self.settings.anthropic_model,
+            max_tokens=max_tokens or self.settings.max_tokens,
+            system=system or "",
+            messages=messages,
+            temperature=temperature if temperature is not None else self.settings.temperature,
+        ) as stream:
+            async for text in stream.text_stream:
+                yield text
+
+
+class OpenAIClient(LLMClient):
+    """Client for OpenAI API."""
+
+    def __init__(self, settings: Optional[LLMSettings] = None):
+        """
+        Initialize OpenAI client.
+
+        Args:
+            settings: LLM settings with API key.
+        """
+        self.settings = settings or get_settings().llm
+
+        if not self.settings.api_key:
+            raise ValueError(
+                "OpenAI API key required. Set PTPD_LLM_API_KEY environment variable."
+            )
+
+    async def complete(
+        self,
+        messages: list[dict],
+        system: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+    ) -> str:
+        """Generate completion using OpenAI API."""
+        try:
+            from openai import AsyncOpenAI
+        except ImportError:
+            raise ImportError(
+                "openai package required. Install with: pip install ptpd-calibration[llm]"
+            )
+
+        client = AsyncOpenAI(api_key=self.settings.api_key)
+
+        # Prepend system message
+        all_messages = []
+        if system:
+            all_messages.append({"role": "system", "content": system})
+        all_messages.extend(messages)
+
+        response = await client.chat.completions.create(
+            model=self.settings.openai_model,
+            max_tokens=max_tokens or self.settings.max_tokens,
+            messages=all_messages,
+            temperature=temperature if temperature is not None else self.settings.temperature,
+        )
+
+        return response.choices[0].message.content or ""
+
+    async def stream(
+        self,
+        messages: list[dict],
+        system: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+    ) -> AsyncIterator[str]:
+        """Stream completion using OpenAI API."""
+        try:
+            from openai import AsyncOpenAI
+        except ImportError:
+            raise ImportError(
+                "openai package required. Install with: pip install ptpd-calibration[llm]"
+            )
+
+        client = AsyncOpenAI(api_key=self.settings.api_key)
+
+        # Prepend system message
+        all_messages = []
+        if system:
+            all_messages.append({"role": "system", "content": system})
+        all_messages.extend(messages)
+
+        stream = await client.chat.completions.create(
+            model=self.settings.openai_model,
+            max_tokens=max_tokens or self.settings.max_tokens,
+            messages=all_messages,
+            temperature=temperature if temperature is not None else self.settings.temperature,
+            stream=True,
+        )
+
+        async for chunk in stream:
+            if chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+
+
+def create_client(settings: Optional[LLMSettings] = None) -> LLMClient:
+    """
+    Create an LLM client based on settings.
+
+    Args:
+        settings: LLM settings. Uses global settings if not provided.
+
+    Returns:
+        LLMClient instance for the configured provider.
+    """
+    settings = settings or get_settings().llm
+
+    if settings.provider == LLMProvider.ANTHROPIC:
+        return AnthropicClient(settings)
+    elif settings.provider == LLMProvider.OPENAI:
+        return OpenAIClient(settings)
+    else:
+        raise ValueError(f"Unsupported LLM provider: {settings.provider}")
