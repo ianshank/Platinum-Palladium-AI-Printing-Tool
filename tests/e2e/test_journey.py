@@ -1,6 +1,16 @@
+"""
+Browser-based E2E test using Playwright.
+
+This test requires Playwright to be installed. If not installed, it will be skipped.
+"""
+
 import pytest
-from playwright.sync_api import Page, expect
 from pathlib import Path
+
+# Skip this entire module if playwright is not installed
+pytest.importorskip("playwright", reason="Playwright not installed - skipping browser tests")
+
+from playwright.sync_api import Page, expect
 
 def test_full_calibration_flow(page: Page, app_url):
     """

@@ -9,9 +9,26 @@ An AI-powered calibration system for platinum/palladium alternative photographic
 
 ### Core Calibration
 - **Step Tablet Reading**: Automated detection and density extraction from scanned step tablets
+- **Step Wedge Analysis**: Comprehensive step wedge analysis with quality assessment
 - **Curve Generation**: Create linearization curves for digital negatives with multiple target options
+- **Auto-Linearization**: Multiple algorithms (spline, polynomial, iterative) for automatic curve generation
+- **Curve Editor**: Interactive curve editing with smoothing and AI enhancement
 - **Multi-Format Export**: Export to QuadTone RIP, Piezography, CSV, and JSON formats
 - **Scanner Calibration**: Profile your scanner for accurate measurements
+
+### Image Processing
+- **Image Preview**: Preview curve effects on images before processing
+- **Digital Negative Creation**: Create inverted negatives with curves applied
+- **Batch Processing**: Process multiple images with the same curve efficiently
+- **Histogram Analysis**: Zone-based tonal distribution analysis with clipping detection
+
+### Printing Tools
+- **Chemistry Calculator**: Calculate coating solutions based on Bostick-Sullivan formulas
+- **Exposure Calculator**: Industry-standard UV exposure calculations with test strip generator
+- **Zone System**: Ansel Adams zone analysis with development recommendations
+- **Soft Proofing**: Preview prints on different paper types with Dmax/Dmin simulation
+- **Paper Profiles Database**: Browse and manage paper profiles with recommended settings
+- **Print Session Log**: Track prints and build process knowledge over time
 
 ### Machine Learning
 - **Density Prediction**: ML models learn from your calibration history to predict results
@@ -236,7 +253,29 @@ src/ptpd_calibration/
 ├── curves/                 # Curve generation
 │   ├── generator.py        # Curve calculation
 │   ├── export.py           # Format export
-│   └── analysis.py         # Curve analysis
+│   ├── analysis.py         # Curve analysis
+│   ├── visualization.py    # Curve display & statistics
+│   ├── linearization.py    # Auto-linearization algorithms
+│   └── modifier.py         # Curve editing & smoothing
+├── imaging/                # Image processing
+│   ├── processor.py        # Digital negative creation
+│   └── histogram.py        # Histogram & zone analysis
+├── chemistry/              # Chemistry calculations
+│   └── calculator.py       # Coating recipe calculator
+├── exposure/               # Exposure tools
+│   └── calculator.py       # UV exposure calculator
+├── zones/                  # Zone System
+│   └── mapping.py          # Ansel Adams zone mapping
+├── proofing/               # Soft proofing
+│   └── simulation.py       # Print preview simulation
+├── papers/                 # Paper database
+│   └── profiles.py         # Paper profiles & settings
+├── session/                # Session management
+│   └── logger.py           # Print session logging
+├── batch/                  # Batch processing
+│   └── processor.py        # Multi-image processing
+├── analysis/               # Analysis tools
+│   └── wedge_analyzer.py   # Step wedge analysis
 ├── ml/                     # Machine learning
 │   ├── database.py         # Calibration storage
 │   ├── predictor.py        # ML prediction
@@ -254,7 +293,7 @@ src/ptpd_calibration/
 ├── api/                    # REST API
 │   └── server.py           # FastAPI server
 └── ui/                     # User interfaces
-    └── gradio_app.py       # Gradio UI
+    └── gradio_app.py       # Gradio UI (21 tabs)
 ```
 
 ## Supported Formats
