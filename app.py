@@ -5,13 +5,20 @@ This file launches the Gradio web UI for platinum/palladium print calibration.
 """
 
 import os
+import sys
+
+# Add src directory to Python path for module imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 # Set environment variables for Huggingface Spaces
 os.environ.setdefault("GRADIO_SERVER_NAME", "0.0.0.0")
 os.environ.setdefault("GRADIO_SERVER_PORT", "7860")
 
 # Import and launch the Gradio app
-from ptpd_calibration.ui.gradio_app import demo
+from ptpd_calibration.ui.gradio_app import create_gradio_app
+
+# Create the app
+demo = create_gradio_app()
 
 if __name__ == "__main__":
     demo.launch(
