@@ -2541,7 +2541,1099 @@ def create_gradio_app(share: bool = False):
                 )
 
             # ========================================
-            # TAB 13: About
+            # TAB 13: Batch Processing
+            # ========================================
+            with gr.TabItem("Batch Processing"):
+                gr.Markdown(
+                    """
+                    ### Batch Image Processing
+
+                    Process multiple images with the same calibration curve.
+                    Create digital negatives in batch for efficient workflow.
+                    """
+                )
+
+                from ptpd_calibration.batch import BatchProcessor, BatchSettings
+
+                batch_curve_state = gr.State(None)
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Source Files")
+                        batch_files_upload = gr.File(
+                            label="Upload Images",
+                            file_count="multiple",
+                            file_types=[".jpg", ".jpeg", ".png", ".tiff", ".tif"],
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Calibration Curve")
+
+                        batch_curve_file = gr.File(
+                            label="Upload Curve File (Optional)",
+                            file_types=[".quad", ".txt", ".csv", ".json"],
+                        )
+                        load_batch_curve_btn = gr.Button("Load Curve")
+                        batch_curve_info = gr.JSON(label="Loaded Curve")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Processing Options")
+
+                        batch_invert = gr.Checkbox(
+                            label="Invert Images (Create Negatives)",
+                            value=True,
+                        )
+                        batch_grayscale = gr.Checkbox(
+                            label="Convert to Grayscale",
+                            value=True,
+                        )
+                        batch_format = gr.Dropdown(
+                            choices=[
+                                ("TIFF", "tiff"),
+                                ("PNG", "png"),
+                                ("JPEG", "jpeg"),
+                                ("Same as Original", "original"),
+                            ],
+                            value="tiff",
+                            label="Output Format",
+                        )
+
+                        process_batch_btn = gr.Button("Process Batch", variant="primary")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Results")
+                        batch_progress = gr.Textbox(
+                            label="Progress",
+                            value="Ready to process",
+                            interactive=False,
+                        )
+                        batch_results = gr.JSON(label="Processing Results")
+                        batch_download = gr.File(label="Download Processed Files", file_count="multiple")
+
+                def load_batch_curve(file):
+                    """Load curve for batch processing."""
+                    if file is None:
+                        return None, {"status": "No curve loaded"}
+                    try:
+                        file_path = Path(file.name)
+                        suffix = file_path.suffix.lower()
+                        if suffix in [".quad", ".txt"]:
+                            profile = load_quad_file(file_path)
+                            curve = profile.to_curve_data("K")
+                        else:
+                            from ptpd_calibration.curves.export import load_curve
+                            curve = load_curve(file_path)
+                        return curve, {"name": curve.name, "points": len(curve.input_values)}
+                    except Exception as e:
+                        return None, {"error": str(e)}
+
+                def process_batch(files, curve, invert, grayscale, output_format):
+                    """Process batch of images."""
+                    if not files:
+                        return "No files to process", {}, None
+
+                    try:
+                        import tempfile
+                        import os
+                        processor = ImageProcessor()
+                        color_mode = ColorMode.GRAYSCALE if grayscale else ColorMode.PRESERVE
+
+                        results = []
+                        output_files = []
+                        temp_dir = tempfile.mkdtemp()
+
+                        for i, file in enumerate(files):
+                            try:
+                                result = processor.create_digital_negative(
+                                    file.name,
+                                    curve=curve,
+                                    invert=invert,
+                                    color_mode=color_mode,
+                                )
+
+                                # Export
+                                base_name = Path(file.name).stem
+                                ext_map = {"tiff": ".tiff", "png": ".png", "jpeg": ".jpg", "original": Path(file.name).suffix}
+                                ext = ext_map.get(output_format, ".tiff")
+                                out_path = os.path.join(temp_dir, f"{base_name}_processed{ext}")
+
+                                settings = ExportSettings(format=ImageFormat(output_format))
+                                processor.export(result, out_path, settings)
+
+                                output_files.append(out_path)
+                                results.append({"file": base_name, "status": "success"})
+                            except Exception as e:
+                                results.append({"file": Path(file.name).stem, "status": f"error: {str(e)}"})
+
+                        return f"Processed {len(output_files)} files", {"results": results}, output_files
+
+                    except Exception as e:
+                        return f"Error: {str(e)}", {"error": str(e)}, None
+
+                load_batch_curve_btn.click(
+                    load_batch_curve,
+                    inputs=[batch_curve_file],
+                    outputs=[batch_curve_state, batch_curve_info],
+                )
+
+                process_batch_btn.click(
+                    process_batch,
+                    inputs=[batch_files_upload, batch_curve_state, batch_invert, batch_grayscale, batch_format],
+                    outputs=[batch_progress, batch_results, batch_download],
+                )
+
+            # ========================================
+            # TAB 14: Histogram Analysis
+            # ========================================
+            with gr.TabItem("Histogram Analysis"):
+                gr.Markdown(
+                    """
+                    ### Image Histogram Analysis
+
+                    Analyze tonal distribution with zone-based visualization.
+                    Evaluate dynamic range, contrast, and clipping.
+                    """
+                )
+
+                from ptpd_calibration.imaging import HistogramAnalyzer, HistogramScale
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Upload Image")
+                        hist_image_upload = gr.Image(
+                            label="Image to Analyze",
+                            type="filepath",
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Display Options")
+
+                        hist_scale = gr.Dropdown(
+                            choices=[
+                                ("Linear", "linear"),
+                                ("Logarithmic", "logarithmic"),
+                            ],
+                            value="linear",
+                            label="Histogram Scale",
+                        )
+                        hist_show_zones = gr.Checkbox(
+                            label="Show Zone Boundaries",
+                            value=True,
+                        )
+                        hist_show_rgb = gr.Checkbox(
+                            label="Show RGB Channels",
+                            value=True,
+                        )
+
+                        analyze_hist_btn = gr.Button("Analyze Histogram", variant="primary")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Histogram Visualization")
+                        hist_plot = gr.Plot(label="Histogram")
+
+                        hist_stats = gr.JSON(label="Statistics")
+
+                        with gr.Accordion("Zone Reference", open=False):
+                            gr.Markdown(
+                                """
+                                **Ansel Adams Zone System:**
+                                - Zone 0: Pure black (no detail)
+                                - Zone I-II: Near black with texture
+                                - Zone III-IV: Dark shadows
+                                - Zone V: Middle gray (18%)
+                                - Zone VI-VII: Light tones
+                                - Zone VIII-IX: Bright highlights
+                                - Zone X: Pure white (paper)
+                                """
+                            )
+
+                def analyze_histogram(image_path, scale, show_zones, show_rgb):
+                    """Analyze image histogram."""
+                    if image_path is None:
+                        return None, {"error": "No image uploaded"}
+
+                    try:
+                        analyzer = HistogramAnalyzer()
+                        result = analyzer.analyze(image_path, include_rgb=show_rgb)
+
+                        fig = analyzer.create_histogram_plot(
+                            result,
+                            scale=HistogramScale(scale),
+                            show_zones=show_zones,
+                            show_rgb=show_rgb,
+                        )
+
+                        return fig, result.to_dict()
+                    except Exception as e:
+                        return None, {"error": str(e)}
+
+                analyze_hist_btn.click(
+                    analyze_histogram,
+                    inputs=[hist_image_upload, hist_scale, hist_show_zones, hist_show_rgb],
+                    outputs=[hist_plot, hist_stats],
+                )
+
+            # ========================================
+            # TAB 15: Exposure Calculator
+            # ========================================
+            with gr.TabItem("Exposure Calculator"):
+                gr.Markdown(
+                    """
+                    ### UV Exposure Calculator
+
+                    Calculate exposure times based on negative density, light source, and conditions.
+                    Uses industry-standard formulas for alternative printing processes.
+                    """
+                )
+
+                from ptpd_calibration.exposure import (
+                    ExposureCalculator,
+                    ExposureSettings,
+                    LightSource,
+                )
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Reference Exposure")
+
+                        base_exposure = gr.Number(
+                            label="Base Exposure (minutes)",
+                            value=10.0,
+                            minimum=0.5,
+                            maximum=60.0,
+                        )
+                        base_density = gr.Number(
+                            label="Base Negative Density",
+                            value=1.6,
+                            minimum=0.5,
+                            maximum=3.0,
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Current Negative")
+
+                        current_density = gr.Number(
+                            label="Negative Density Range",
+                            value=1.6,
+                            minimum=0.5,
+                            maximum=3.0,
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Light Source")
+
+                        light_source_select = gr.Dropdown(
+                            choices=[
+                                ("NuArc 26-1K Platemaker", "nuarc_26_1k"),
+                                ("NuArc FT40", "nuarc_ft40"),
+                                ("BL Fluorescent Tubes", "bl_fluorescent"),
+                                ("BLB Blacklight Tubes", "blb_fluorescent"),
+                                ("UV LED Array", "led_uv"),
+                                ("Metal Halide", "metal_halide"),
+                                ("Mercury Vapor", "mercury_vapor"),
+                                ("Direct Sunlight", "sunlight"),
+                            ],
+                            value="bl_fluorescent",
+                            label="Light Source Type",
+                        )
+
+                        distance_inches = gr.Number(
+                            label="Distance from Light (inches)",
+                            value=4.0,
+                            minimum=1.0,
+                            maximum=24.0,
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Chemistry")
+
+                        exp_platinum_ratio = gr.Slider(
+                            minimum=0,
+                            maximum=100,
+                            value=0,
+                            step=5,
+                            label="Platinum % (0 = all Pd)",
+                        )
+
+                        calculate_exposure_btn = gr.Button("Calculate Exposure", variant="primary")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Calculated Exposure")
+
+                        exposure_result_display = gr.Textbox(
+                            label="Recommended Exposure Time",
+                            interactive=False,
+                            lines=3,
+                        )
+
+                        exposure_details = gr.JSON(label="Exposure Calculation Details")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Test Strip Generator")
+
+                        test_center_exposure = gr.Number(
+                            label="Center Exposure (minutes)",
+                            value=10.0,
+                        )
+                        test_steps = gr.Slider(
+                            minimum=3,
+                            maximum=9,
+                            value=5,
+                            step=2,
+                            label="Number of Steps",
+                        )
+                        test_increment = gr.Slider(
+                            minimum=0.25,
+                            maximum=1.0,
+                            value=0.5,
+                            step=0.25,
+                            label="Increment (stops)",
+                        )
+
+                        generate_test_strip_btn = gr.Button("Generate Test Strip Times")
+                        test_strip_result = gr.JSON(label="Test Strip Exposures")
+
+                def calculate_exposure(base_exp, base_dens, curr_dens, light, dist, pt_ratio):
+                    """Calculate exposure time."""
+                    try:
+                        settings = ExposureSettings(
+                            base_exposure_minutes=float(base_exp),
+                            base_negative_density=float(base_dens),
+                            light_source=LightSource(light),
+                            base_distance_inches=4.0,
+                            platinum_ratio=pt_ratio / 100.0,
+                        )
+                        calc = ExposureCalculator(settings)
+                        result = calc.calculate(
+                            negative_density=float(curr_dens),
+                            distance_inches=float(dist),
+                        )
+
+                        display = f"Exposure Time: {result.format_time()}\n\n"
+                        display += f"Density adjustment: {result.density_adjustment:.2f}x\n"
+                        display += f"Light source: {result.light_source_adjustment:.2f}x\n"
+                        display += f"Distance: {result.distance_adjustment:.2f}x"
+
+                        return display, result.to_dict()
+                    except Exception as e:
+                        return f"Error: {str(e)}", {"error": str(e)}
+
+                def generate_test_strip(center, steps, increment):
+                    """Generate test strip times."""
+                    try:
+                        calc = ExposureCalculator()
+                        times = calc.calculate_test_strip(
+                            center_exposure=float(center),
+                            steps=int(steps),
+                            increment_stops=float(increment),
+                        )
+
+                        result = {
+                            "center_exposure": center,
+                            "increment_stops": increment,
+                            "times_minutes": [round(t, 2) for t in times],
+                            "times_formatted": [
+                                f"{int(t)}:{int((t % 1) * 60):02d}" for t in times
+                            ],
+                        }
+                        return result
+                    except Exception as e:
+                        return {"error": str(e)}
+
+                calculate_exposure_btn.click(
+                    calculate_exposure,
+                    inputs=[base_exposure, base_density, current_density, light_source_select, distance_inches, exp_platinum_ratio],
+                    outputs=[exposure_result_display, exposure_details],
+                )
+
+                generate_test_strip_btn.click(
+                    generate_test_strip,
+                    inputs=[test_center_exposure, test_steps, test_increment],
+                    outputs=[test_strip_result],
+                )
+
+            # ========================================
+            # TAB 16: Zone System
+            # ========================================
+            with gr.TabItem("Zone System"):
+                gr.Markdown(
+                    """
+                    ### Zone System Analysis
+
+                    Analyze images using Ansel Adams' Zone System methodology.
+                    Get exposure and development recommendations.
+                    """
+                )
+
+                from ptpd_calibration.zones import (
+                    ZoneMapper,
+                    ZoneMapping,
+                    Zone,
+                    ZONE_DESCRIPTIONS,
+                )
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Upload Image")
+                        zone_image_upload = gr.Image(
+                            label="Image to Analyze",
+                            type="filepath",
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Paper Characteristics")
+
+                        zone_dmax = gr.Number(
+                            label="Paper Dmax",
+                            value=1.6,
+                            minimum=1.0,
+                            maximum=2.5,
+                        )
+                        zone_dmin = gr.Number(
+                            label="Paper Dmin",
+                            value=0.08,
+                            minimum=0.0,
+                            maximum=0.3,
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Zone Placement (Optional)")
+
+                        placed_shadow = gr.Dropdown(
+                            choices=[("Auto", None)] + [(f"Zone {i}", i) for i in range(0, 5)],
+                            value=None,
+                            label="Place Shadows On",
+                        )
+                        placed_highlight = gr.Dropdown(
+                            choices=[("Auto", None)] + [(f"Zone {i}", i) for i in range(6, 11)],
+                            value=None,
+                            label="Place Highlights On",
+                        )
+
+                        analyze_zones_btn = gr.Button("Analyze Zones", variant="primary")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Zone Analysis Results")
+
+                        zone_plot = gr.Plot(label="Zone Visualization")
+                        zone_analysis_result = gr.JSON(label="Analysis")
+
+                        with gr.Accordion("Zone Reference", open=True):
+                            zone_ref_md = "**Zone Descriptions:**\n\n"
+                            for z, desc in ZONE_DESCRIPTIONS.items():
+                                zone_ref_md += f"- **Zone {z.value}**: {desc}\n"
+                            gr.Markdown(zone_ref_md)
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Development Recommendations")
+                        dev_recommendations = gr.Textbox(
+                            label="Development Adjustment",
+                            interactive=False,
+                            lines=4,
+                        )
+
+                def analyze_zones(image_path, dmax, dmin, shadow_zone, highlight_zone):
+                    """Analyze image zones."""
+                    if image_path is None:
+                        return None, {"error": "No image uploaded"}, ""
+
+                    try:
+                        import matplotlib.pyplot as plt
+
+                        mapping = ZoneMapping(paper_dmax=float(dmax), paper_dmin=float(dmin))
+                        mapper = ZoneMapper(mapping)
+
+                        analysis = mapper.analyze_image(
+                            Image.open(image_path),
+                            placed_shadow=shadow_zone,
+                            placed_highlight=highlight_zone,
+                        )
+
+                        # Create visualization
+                        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+                        # Zone histogram
+                        zones = list(range(11))
+                        pcts = [analysis.zone_histogram.get(Zone(z), 0) * 100 for z in zones]
+
+                        colors = [f"#{int(25.5 * z):02x}{int(25.5 * z):02x}{int(25.5 * z):02x}" for z in zones]
+                        ax1.bar(zones, pcts, color=colors, edgecolor="black")
+                        ax1.set_xlabel("Zone")
+                        ax1.set_ylabel("Percentage")
+                        ax1.set_title("Zone Distribution")
+                        ax1.set_xticks(zones)
+                        ax1.grid(True, alpha=0.3, axis="y")
+
+                        # Zone scale
+                        zone_scale = mapper.create_zone_scale(width=330, height=30)
+                        ax2.imshow(zone_scale, cmap="gray", aspect="auto")
+                        ax2.set_title("Zone Scale Reference")
+                        ax2.set_xticks(np.linspace(0, 330, 11))
+                        ax2.set_xticklabels([str(i) for i in range(11)])
+                        ax2.set_yticks([])
+
+                        plt.tight_layout()
+
+                        # Development recommendation
+                        dev_text = f"Development: {analysis.development_adjustment}\n\n"
+                        dev_text += "\n".join(analysis.notes)
+
+                        return fig, analysis.to_dict(), dev_text
+                    except Exception as e:
+                        return None, {"error": str(e)}, f"Error: {str(e)}"
+
+                analyze_zones_btn.click(
+                    analyze_zones,
+                    inputs=[zone_image_upload, zone_dmax, zone_dmin, placed_shadow, placed_highlight],
+                    outputs=[zone_plot, zone_analysis_result, dev_recommendations],
+                )
+
+            # ========================================
+            # TAB 17: Soft Proofing
+            # ========================================
+            with gr.TabItem("Soft Proofing"):
+                gr.Markdown(
+                    """
+                    ### Print Simulation (Soft Proofing)
+
+                    Preview how your image will look when printed on different papers.
+                    Simulates paper white point, Dmax, and metal tones.
+                    """
+                )
+
+                from ptpd_calibration.proofing import (
+                    SoftProofer,
+                    ProofSettings,
+                    PaperSimulation,
+                    PAPER_PRESETS,
+                )
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Upload Image")
+                        proof_image_upload = gr.Image(
+                            label="Image to Proof",
+                            type="filepath",
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Paper Selection")
+
+                        paper_preset_select = gr.Dropdown(
+                            choices=[
+                                ("Arches Platine", "arches_platine"),
+                                ("Bergger COT 320", "bergger_cot320"),
+                                ("Hahnemuhle Platinum Rag", "hahnemuhle_platinum"),
+                                ("Revere Platinum", "revere_platinum"),
+                                ("Stonehenge", "stonehenge"),
+                                ("Custom", "custom"),
+                            ],
+                            value="arches_platine",
+                            label="Paper Preset",
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Custom Settings")
+
+                        proof_dmax = gr.Slider(
+                            minimum=1.0,
+                            maximum=2.0,
+                            value=1.6,
+                            step=0.05,
+                            label="Paper Dmax",
+                        )
+                        proof_dmin = gr.Slider(
+                            minimum=0.0,
+                            maximum=0.2,
+                            value=0.07,
+                            step=0.01,
+                            label="Paper Dmin",
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Metal Mix")
+
+                        proof_platinum = gr.Slider(
+                            minimum=0,
+                            maximum=100,
+                            value=0,
+                            step=10,
+                            label="Platinum % (0 = warm Pd, 100 = cool Pt)",
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Simulation Options")
+
+                        proof_texture = gr.Checkbox(
+                            label="Simulate Paper Texture",
+                            value=False,
+                        )
+                        proof_brightness = gr.Slider(
+                            minimum=0.5,
+                            maximum=1.5,
+                            value=1.0,
+                            step=0.1,
+                            label="Viewing Brightness",
+                        )
+
+                        generate_proof_btn = gr.Button("Generate Soft Proof", variant="primary")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Soft Proof Preview")
+
+                        with gr.Row():
+                            original_proof_image = gr.Image(
+                                label="Original",
+                                interactive=False,
+                            )
+                            proofed_image = gr.Image(
+                                label="Simulated Print",
+                                interactive=False,
+                            )
+
+                        proof_info = gr.JSON(label="Proof Settings")
+
+                def on_paper_preset_change(preset):
+                    """Update settings when paper preset changes."""
+                    if preset == "custom":
+                        return gr.update(), gr.update()
+
+                    try:
+                        preset_enum = PaperSimulation(preset)
+                        if preset_enum in PAPER_PRESETS:
+                            data = PAPER_PRESETS[preset_enum]
+                            return data["dmax"], data["dmin"]
+                    except:
+                        pass
+                    return gr.update(), gr.update()
+
+                def generate_soft_proof(image_path, preset, dmax, dmin, pt_ratio, texture, brightness):
+                    """Generate soft proof."""
+                    if image_path is None:
+                        return None, None, {"error": "No image uploaded"}
+
+                    try:
+                        # Load and display original
+                        original = Image.open(image_path)
+                        original.thumbnail((600, 600), Image.Resampling.LANCZOS)
+
+                        # Create proof settings
+                        if preset != "custom":
+                            settings = ProofSettings.from_paper_preset(PaperSimulation(preset))
+                        else:
+                            settings = ProofSettings(
+                                paper_dmax=float(dmax),
+                                paper_dmin=float(dmin),
+                            )
+
+                        settings.platinum_ratio = pt_ratio / 100.0
+                        settings.add_paper_texture = texture
+                        settings.viewing_brightness = brightness
+
+                        # Generate proof
+                        proofer = SoftProofer(settings)
+                        result = proofer.proof(Image.open(image_path))
+
+                        return original, result.image, result.to_dict()
+                    except Exception as e:
+                        return None, None, {"error": str(e)}
+
+                paper_preset_select.change(
+                    on_paper_preset_change,
+                    inputs=[paper_preset_select],
+                    outputs=[proof_dmax, proof_dmin],
+                )
+
+                generate_proof_btn.click(
+                    generate_soft_proof,
+                    inputs=[proof_image_upload, paper_preset_select, proof_dmax, proof_dmin, proof_platinum, proof_texture, proof_brightness],
+                    outputs=[original_proof_image, proofed_image, proof_info],
+                )
+
+            # ========================================
+            # TAB 18: Paper Profiles
+            # ========================================
+            with gr.TabItem("Paper Profiles"):
+                gr.Markdown(
+                    """
+                    ### Paper Profiles Database
+
+                    Browse and manage paper profiles with recommended settings.
+                    """
+                )
+
+                from ptpd_calibration.papers import PaperDatabase, PaperProfile
+
+                paper_db = PaperDatabase()
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Browse Papers")
+
+                        paper_list = gr.Dropdown(
+                            choices=[(p.name, p.name) for p in paper_db.get_all()],
+                            label="Select Paper",
+                        )
+
+                        view_paper_btn = gr.Button("View Profile")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Add Custom Paper")
+
+                        new_paper_name = gr.Textbox(label="Paper Name")
+                        new_paper_mfr = gr.Textbox(label="Manufacturer")
+                        new_paper_weight = gr.Number(label="Weight (gsm)", value=300)
+                        new_paper_sizing = gr.Dropdown(
+                            choices=["internal", "external", "none", "unknown"],
+                            value="internal",
+                            label="Sizing Type",
+                        )
+                        new_paper_texture = gr.Dropdown(
+                            choices=["smooth", "medium", "rough"],
+                            value="medium",
+                            label="Texture",
+                        )
+
+                        add_paper_btn = gr.Button("Add Paper", variant="secondary")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Paper Profile")
+                        paper_profile_display = gr.JSON(label="Profile Details")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Recommended Papers for Pt/Pd")
+                        gr.Markdown(
+                            """
+                            **Top Choices:**
+                            - **Arches Platine** - Smooth, internally sized, excellent Dmax
+                            - **Bergger COT 320** - Heavy cotton, warm base
+                            - **Hahnemuhle Platinum Rag** - Bright white, very smooth
+                            - **Stonehenge** - Affordable, good results
+
+                            **Key Properties:**
+                            - Internal sizing preferred for even coating
+                            - Cotton or rag content for longevity
+                            - 250-320 gsm weight for minimal cockling
+                            """
+                        )
+
+                def view_paper_profile(paper_name):
+                    """View paper profile details."""
+                    if not paper_name:
+                        return {"error": "No paper selected"}
+                    try:
+                        profile = paper_db.get_by_name(paper_name)
+                        if profile:
+                            return profile.to_dict()
+                        return {"error": "Paper not found"}
+                    except Exception as e:
+                        return {"error": str(e)}
+
+                def add_custom_paper(name, mfr, weight, sizing, texture):
+                    """Add custom paper to database."""
+                    if not name:
+                        return {"error": "Paper name required"}
+                    try:
+                        from ptpd_calibration.papers.profiles import PaperCharacteristics, SizingType, TextureType
+                        profile = PaperProfile(
+                            name=name,
+                            manufacturer=mfr or "Custom",
+                            characteristics=PaperCharacteristics(
+                                weight_gsm=int(weight) if weight else 300,
+                                sizing=SizingType(sizing),
+                                texture=TextureType(texture),
+                            ),
+                        )
+                        paper_db.add_profile(profile)
+                        return {"status": "success", "profile": profile.to_dict()}
+                    except Exception as e:
+                        return {"error": str(e)}
+
+                view_paper_btn.click(
+                    view_paper_profile,
+                    inputs=[paper_list],
+                    outputs=[paper_profile_display],
+                )
+
+                add_paper_btn.click(
+                    add_custom_paper,
+                    inputs=[new_paper_name, new_paper_mfr, new_paper_weight, new_paper_sizing, new_paper_texture],
+                    outputs=[paper_profile_display],
+                )
+
+            # ========================================
+            # TAB 19: Auto-Linearization
+            # ========================================
+            with gr.TabItem("Auto-Linearization"):
+                gr.Markdown(
+                    """
+                    ### Auto-Linearization
+
+                    Automatically generate linearization curves from step wedge measurements.
+                    """
+                )
+
+                from ptpd_calibration.curves import (
+                    AutoLinearizer,
+                    LinearizationMethod,
+                    TargetResponse,
+                )
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Input Densities")
+
+                        linearize_densities = gr.Textbox(
+                            label="Measured Densities (comma-separated)",
+                            placeholder="0.08, 0.15, 0.28, 0.45, 0.68, 0.95, 1.25, 1.48, 1.60",
+                            lines=3,
+                        )
+
+                        linearize_name = gr.Textbox(
+                            label="Curve Name",
+                            value="Auto-Linearized",
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Method & Target")
+
+                        linearize_method = gr.Dropdown(
+                            choices=[
+                                ("Spline Fit (Recommended)", "spline_fit"),
+                                ("Direct Inversion", "direct_inversion"),
+                                ("Polynomial Fit", "polynomial_fit"),
+                                ("Iterative Refinement", "iterative"),
+                                ("Hybrid", "hybrid"),
+                            ],
+                            value="spline_fit",
+                            label="Linearization Method",
+                        )
+
+                        linearize_target = gr.Dropdown(
+                            choices=[
+                                ("Linear (Gamma 1.0)", "linear"),
+                                ("Gamma 1.8", "gamma_18"),
+                                ("Gamma 2.2 (sRGB)", "gamma_22"),
+                                ("Paper White Preserve", "paper_white"),
+                                ("Perceptual (L*)", "perceptual"),
+                            ],
+                            value="linear",
+                            label="Target Response",
+                        )
+
+                        linearize_smoothing = gr.Slider(
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.1,
+                            step=0.05,
+                            label="Smoothing Factor",
+                        )
+
+                        run_linearization_btn = gr.Button("Generate Curve", variant="primary")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Linearization Results")
+
+                        linearize_plot = gr.Plot(label="Linearization Curve")
+                        linearize_result = gr.JSON(label="Results")
+
+                        gr.Markdown("---")
+                        linearize_export_format = gr.Dropdown(
+                            choices=["qtr", "csv", "json"],
+                            value="qtr",
+                            label="Export Format",
+                        )
+                        export_linearize_btn = gr.Button("Export Curve")
+                        linearize_export_file = gr.File(label="Download")
+
+                linearize_curve_state = gr.State(None)
+
+                def run_linearization(densities_str, name, method, target, smoothing):
+                    """Run auto-linearization."""
+                    if not densities_str.strip():
+                        return None, None, {"error": "No densities provided"}
+
+                    try:
+                        import matplotlib.pyplot as plt
+
+                        densities = [float(d.strip()) for d in densities_str.split(",")]
+
+                        from ptpd_calibration.curves.linearization import LinearizationConfig
+                        config = LinearizationConfig(
+                            method=LinearizationMethod(method),
+                            target=TargetResponse(target),
+                            smoothing=smoothing,
+                        )
+
+                        linearizer = AutoLinearizer(config)
+                        result = linearizer.linearize(
+                            densities,
+                            curve_name=name,
+                            target=TargetResponse(target),
+                            method=LinearizationMethod(method),
+                        )
+
+                        # Create plot
+                        fig, ax = plt.subplots(figsize=(10, 6))
+
+                        ax.plot(
+                            result.curve.input_values,
+                            result.curve.output_values,
+                            "-",
+                            color="#8B4513",
+                            linewidth=2,
+                            label="Linearization Curve",
+                        )
+                        ax.plot([0, 1], [0, 1], "--", color="gray", alpha=0.5, label="Linear Reference")
+
+                        ax.set_xlabel("Input")
+                        ax.set_ylabel("Output")
+                        ax.set_title(f"Auto-Linearization: {name}")
+                        ax.legend()
+                        ax.grid(True, alpha=0.3)
+                        ax.set_xlim(0, 1)
+                        ax.set_ylim(0, 1)
+                        ax.set_facecolor("#FAF8F5")
+                        fig.patch.set_facecolor("#FAF8F5")
+
+                        return result.curve, fig, result.to_dict()
+                    except Exception as e:
+                        import traceback
+                        return None, None, {"error": str(e), "traceback": traceback.format_exc()}
+
+                def export_linearization_curve(curve, export_format):
+                    """Export linearization curve."""
+                    if curve is None:
+                        return None
+
+                    try:
+                        import tempfile
+                        ext_map = {"qtr": ".txt", "csv": ".csv", "json": ".json"}
+                        ext = ext_map.get(export_format, ".txt")
+
+                        safe_name = "".join(c for c in curve.name if c.isalnum() or c in " -_")[:30]
+                        temp_path = Path(tempfile.gettempdir()) / f"{safe_name}{ext}"
+
+                        save_curve(curve, temp_path, format=export_format)
+                        return str(temp_path)
+                    except Exception:
+                        return None
+
+                run_linearization_btn.click(
+                    run_linearization,
+                    inputs=[linearize_densities, linearize_name, linearize_method, linearize_target, linearize_smoothing],
+                    outputs=[linearize_curve_state, linearize_plot, linearize_result],
+                )
+
+                export_linearize_btn.click(
+                    export_linearization_curve,
+                    inputs=[linearize_curve_state, linearize_export_format],
+                    outputs=[linearize_export_file],
+                )
+
+            # ========================================
+            # TAB 20: Print Session Log
+            # ========================================
+            with gr.TabItem("Print Session Log"):
+                gr.Markdown(
+                    """
+                    ### Print Session Logging
+
+                    Track your prints and build process knowledge over time.
+                    """
+                )
+
+                from ptpd_calibration.session import SessionLogger, PrintSession, PrintRecord
+
+                session_logger = SessionLogger()
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### New Print Record")
+
+                        log_image_name = gr.Textbox(label="Image Name")
+                        log_paper = gr.Textbox(label="Paper Type", placeholder="Arches Platine")
+                        log_exposure = gr.Number(label="Exposure Time (minutes)", value=10.0)
+                        log_chemistry = gr.Textbox(
+                            label="Chemistry",
+                            placeholder="e.g., 10 drops Pd, 5 drops Na2",
+                        )
+                        log_notes = gr.Textbox(
+                            label="Notes",
+                            placeholder="Observations, adjustments...",
+                            lines=3,
+                        )
+                        log_rating = gr.Slider(
+                            minimum=1,
+                            maximum=5,
+                            value=3,
+                            step=1,
+                            label="Print Quality Rating",
+                        )
+
+                        add_log_btn = gr.Button("Add Print Record", variant="primary")
+                        log_status = gr.Textbox(label="Status", interactive=False)
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Session History")
+
+                        refresh_history_btn = gr.Button("Refresh History")
+                        session_history = gr.JSON(label="Recent Prints")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Statistics")
+                        session_stats = gr.JSON(label="Session Statistics")
+
+                def add_print_record(image_name, paper, exposure, chemistry, notes, rating):
+                    """Add a print record to the session log."""
+                    if not image_name:
+                        return "Error: Image name required", gr.update(), gr.update()
+
+                    try:
+                        from ptpd_calibration.session.logger import ChemistryUsed, PrintResult
+
+                        record = PrintRecord(
+                            image_name=image_name,
+                            paper_type=paper or "Unknown",
+                            exposure_time=float(exposure) if exposure else 0,
+                            chemistry=ChemistryUsed(description=chemistry or "Not specified"),
+                            notes=notes or "",
+                            result=PrintResult(
+                                quality_rating=int(rating),
+                                successful=rating >= 3,
+                            ),
+                        )
+
+                        session_logger.add_record(record)
+                        history = session_logger.get_recent_records(10)
+                        stats = session_logger.get_statistics()
+
+                        return "Record added successfully", [r.to_dict() for r in history], stats
+                    except Exception as e:
+                        return f"Error: {str(e)}", gr.update(), gr.update()
+
+                def refresh_session_history():
+                    """Refresh session history display."""
+                    try:
+                        history = session_logger.get_recent_records(10)
+                        stats = session_logger.get_statistics()
+                        return [r.to_dict() for r in history], stats
+                    except Exception as e:
+                        return {"error": str(e)}, {}
+
+                add_log_btn.click(
+                    add_print_record,
+                    inputs=[log_image_name, log_paper, log_exposure, log_chemistry, log_notes, log_rating],
+                    outputs=[log_status, session_history, session_stats],
+                )
+
+                refresh_history_btn.click(
+                    refresh_session_history,
+                    outputs=[session_history, session_stats],
+                )
+
+            # ========================================
+            # TAB 21: About
             # ========================================
             with gr.TabItem("About"):
                 gr.Markdown(
@@ -2550,19 +3642,35 @@ def create_gradio_app(share: bool = False):
 
                     An AI-powered calibration system for platinum/palladium printing.
 
-                    ### Features
+                    ### Core Features
 
                     - **Curve Display**: Upload and compare multiple curves with comprehensive statistics
                     - **Step Wedge Analysis**: Automatic step wedge detection, density extraction, and quality assessment
                     - **Step Tablet Analysis**: Upload scans and extract density measurements
                     - **Curve Generation**: Create linearization curves for digital negatives
                     - **Curve Editor**: Upload .quad files, modify curves, smooth curves, and apply AI-powered enhancements
-                    - **AI Enhancement**: Intelligent curve optimization
                     - **AI Assistant**: Get help from an AI expert in Pt/Pd printing
+
+                    ### Image Processing
+
                     - **Image Preview**: Upload an image, select a curve, and preview the output
-                    - **Digital Negative**: Create inverted negatives with curves applied, export in multiple formats
+                    - **Digital Negative**: Create inverted negatives with curves applied
                     - **Interactive Editor**: Create curves with numeric control points and presets
+                    - **Batch Processing**: Process multiple images with the same curve
+                    - **Histogram Analysis**: Analyze tonal distribution with zone-based visualization
+
+                    ### Printing Tools
+
                     - **Chemistry Calculator**: Calculate coating solution amounts for any print size
+                    - **Exposure Calculator**: Calculate UV exposure times based on density and light source
+                    - **Zone System**: Analyze images using Ansel Adams' Zone System methodology
+                    - **Soft Proofing**: Preview how prints will look on different papers
+                    - **Paper Profiles**: Browse and manage paper profiles database
+
+                    ### Advanced Features
+
+                    - **Auto-Linearization**: Automatically generate linearization curves from measurements
+                    - **Print Session Log**: Track prints and build process knowledge over time
                     - **Recipe Suggestions**: Get starting parameters for new papers
                     - **Troubleshooting**: Diagnose and fix common problems
 
