@@ -361,8 +361,11 @@ class AutoLinearizer:
                     kind="linear", fill_value="extrapolate"
                 )
                 notes.append("Linear interpolation (few data points)")
-        except Exception:
+        except Exception as e:
             # Fall back to linear interpolation
+            # Log the exception for debugging
+            import logging
+            logging.warning(f"Spline fit failed, falling back to linear: {e}")
             spline = interpolate.interp1d(
                 measured_norm, input_positions,
                 kind="linear", fill_value="extrapolate"
@@ -452,7 +455,7 @@ class AutoLinearizer:
             )
 
             # Compute error at measurement points
-            predicted = interp(input_positions)
+            # predicted = interp(input_positions)  # Unused
             measured_norm = (measured - measured.min()) / (measured.max() - measured.min() + 1e-10)
             error = target - measured_norm
 
@@ -495,10 +498,10 @@ class AutoLinearizer:
         current_y = curve[1].copy()
 
         for i in range(2):  # Fewer iterations for hybrid
-            interp = interpolate.interp1d(
-                curve[0], current_y,
-                kind="cubic", fill_value="extrapolate"
-            )
+            # interp = interpolate.interp1d(
+            #     curve[0], current_y,
+            #     kind="cubic", fill_value="extrapolate"
+            # )
 
             measured_norm = (measured - measured.min()) / (measured.max() - measured.min() + 1e-10)
             error = target - measured_norm

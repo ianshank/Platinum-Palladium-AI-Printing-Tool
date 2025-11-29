@@ -453,7 +453,9 @@ class PaperDatabase:
 
             for key, paper_data in data.items():
                 self._custom_papers[key] = PaperProfile.from_dict(paper_data)
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Failed to load custom papers: {e}")
             pass
 
     def _save_custom_papers(self) -> None:

@@ -41,7 +41,7 @@ class TestMetalMixRatios:
 
     def test_all_presets_defined(self):
         """All MetalMix values should have ratios defined."""
-        for mix in MetalMix:
+        for mix in list(MetalMix):
             assert mix in METAL_MIX_RATIOS
 
 

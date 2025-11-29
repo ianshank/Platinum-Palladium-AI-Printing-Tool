@@ -493,7 +493,7 @@ def run_all_demos():
 
     demos = [
         ("Step Tablet Reading", demo_step_tablet_reading),
-        ("Curve Generation", lambda: demo_curve_generation()),
+        ("Curve Generation", demo_curve_generation),
         ("Auto-Linearization", demo_auto_linearization),
         ("Chemistry Calculator", demo_chemistry_calculator),
         ("Exposure Calculator", demo_exposure_calculator),
@@ -507,9 +507,17 @@ def run_all_demos():
     ]
 
     results = {}
+    last_result = None
     for name, demo_func in demos:
         try:
-            result = demo_func()
+            if name == "Curve Generation" and last_result and hasattr(last_result, "extraction"):
+                result = demo_func(last_result)
+            else:
+                result = demo_func()
+            
+            if name == "Step Tablet Reading":
+                last_result = result
+                
             results[name] = "✓ Success"
         except Exception as e:
             results[name] = f"✗ Error: {e}"

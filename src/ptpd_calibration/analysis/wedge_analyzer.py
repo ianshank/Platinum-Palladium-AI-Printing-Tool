@@ -632,7 +632,9 @@ class StepWedgeAnalyzer:
 
             return curve
 
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to generate curve: {e}")
             return None
 
     def analyze_from_densities(

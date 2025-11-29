@@ -380,7 +380,7 @@ class TestAutoLinearizationJourney:
         linearizer = AutoLinearizer()
 
         # Step 3: Test different methods
-        for method in LinearizationMethod:
+        for method in list(LinearizationMethod):
             result = linearizer.linearize(
                 densities,
                 curve_name=f"Test {method.value}",

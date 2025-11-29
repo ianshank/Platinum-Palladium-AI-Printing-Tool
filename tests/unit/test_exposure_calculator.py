@@ -212,7 +212,7 @@ class TestExposureCalculator:
 
     def test_all_light_sources(self, calculator):
         """Test calculation with each light source."""
-        for source in LightSource:
+        for source in list(LightSource):
             result = calculator.calculate(
                 negative_density=1.6,
                 light_source=source,

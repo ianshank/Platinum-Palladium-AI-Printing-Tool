@@ -336,55 +336,40 @@ class TestImageProcessor:
         assert max(original.size) <= 50
         assert max(processed.size) <= 50
 
-    def test_export_to_file_png(self, processor, grayscale_image):
+    def test_export_to_file_png(self, processor, grayscale_image, tmp_path):
         """Export to PNG file."""
         result = processor.load_image(grayscale_image)
+        output_path = tmp_path / "test_output.png"
 
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            output_path = Path(f.name)
+        settings = ExportSettings(format=ImageFormat.PNG)
+        processor.export(result, output_path, settings)
 
-        try:
-            settings = ExportSettings(format=ImageFormat.PNG)
-            processor.export(result, output_path, settings)
+        assert output_path.exists()
+        # Verify it's a valid image
+        loaded = Image.open(output_path)
+        assert loaded.size == grayscale_image.size
 
-            assert output_path.exists()
-            # Verify it's a valid image
-            loaded = Image.open(output_path)
-            assert loaded.size == grayscale_image.size
-        finally:
-            output_path.unlink(missing_ok=True)
-
-    def test_export_to_file_jpeg(self, processor, rgb_image):
+    def test_export_to_file_jpeg(self, processor, rgb_image, tmp_path):
         """Export to JPEG file."""
         result = processor.load_image(rgb_image)
+        output_path = tmp_path / "test_output.jpg"
 
-        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
-            output_path = Path(f.name)
+        settings = ExportSettings(format=ImageFormat.JPEG, jpeg_quality=90)
+        processor.export(result, output_path, settings)
 
-        try:
-            settings = ExportSettings(format=ImageFormat.JPEG, jpeg_quality=90)
-            processor.export(result, output_path, settings)
+        assert output_path.exists()
+        loaded = Image.open(output_path)
+        assert loaded.size == rgb_image.size
 
-            assert output_path.exists()
-            loaded = Image.open(output_path)
-            assert loaded.size == rgb_image.size
-        finally:
-            output_path.unlink(missing_ok=True)
-
-    def test_export_to_file_tiff(self, processor, grayscale_image):
+    def test_export_to_file_tiff(self, processor, grayscale_image, tmp_path):
         """Export to TIFF file."""
         result = processor.load_image(grayscale_image)
+        output_path = tmp_path / "test_output.tiff"
 
-        with tempfile.NamedTemporaryFile(suffix=".tiff", delete=False) as f:
-            output_path = Path(f.name)
+        settings = ExportSettings(format=ImageFormat.TIFF)
+        processor.export(result, output_path, settings)
 
-        try:
-            settings = ExportSettings(format=ImageFormat.TIFF)
-            processor.export(result, output_path, settings)
-
-            assert output_path.exists()
-        finally:
-            output_path.unlink(missing_ok=True)
+        assert output_path.exists()
 
     def test_export_to_bytes(self, processor, grayscale_image):
         """Export to bytes."""

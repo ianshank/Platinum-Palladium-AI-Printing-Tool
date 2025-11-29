@@ -374,7 +374,9 @@ class SessionLogger:
                     "started_at": data.get("started_at"),
                     "total_prints": len(data.get("records", [])),
                 })
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Failed to list session {filepath}: {e}")
                 continue
 
         return sessions
@@ -414,7 +416,9 @@ class SessionLogger:
 
                     if len(records) >= limit:
                         return records
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Failed to search session {filepath}: {e}")
                 continue
 
         return records
@@ -453,7 +457,9 @@ class SessionLogger:
 
                     if record.exposure_time_minutes > 0:
                         stats[record.paper_type]["avg_exposure"].append(record.exposure_time_minutes)
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Failed to get stats for session {filepath}: {e}")
                 continue
 
         # Calculate averages

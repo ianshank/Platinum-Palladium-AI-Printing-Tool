@@ -181,7 +181,7 @@ def create_gradio_app(share: bool = False):
                             stats_output = gr.JSON(label="Statistics")
 
                         with gr.Row():
-                            comparison_output = gr.JSON(label="Comparison Metrics", visible=False)
+                            gr.JSON(label="Comparison Metrics", visible=False)
 
                 def load_curve_files(files, existing_curves, existing_names):
                     """Load curves from uploaded files."""
