@@ -59,6 +59,12 @@ def create_gradio_app(share: bool = False):
         MetalMix,
         METAL_MIX_RATIOS,
     )
+    from ptpd_calibration.imaging import (
+        ImageProcessor,
+        ImageFormat,
+        ExportSettings,
+    )
+    from ptpd_calibration.imaging.processor import ColorMode
 
     # Get settings for configuration-driven defaults
     settings = get_settings()
@@ -1476,7 +1482,693 @@ def create_gradio_app(share: bool = False):
                 )
 
             # ========================================
-            # TAB 8: Chemistry Calculator
+            # TAB 8: Image Preview
+            # ========================================
+            with gr.TabItem("Image Preview"):
+                gr.Markdown(
+                    """
+                    ### Curve Preview on Image
+
+                    Upload an image and select a curve to preview how the curve will affect your image.
+                    """
+                )
+
+                # State for preview
+                preview_curve_state = gr.State(None)
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Upload Image")
+                        preview_image_upload = gr.Image(
+                            label="Source Image",
+                            type="filepath",
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Select Curve")
+
+                        with gr.Tabs():
+                            with gr.TabItem("Upload Curve"):
+                                preview_curve_file = gr.File(
+                                    label="Upload Curve File",
+                                    file_types=[".quad", ".txt", ".csv", ".json"],
+                                )
+                                load_preview_curve_btn = gr.Button("Load Curve")
+
+                            with gr.TabItem("Enter Values"):
+                                preview_curve_values = gr.Textbox(
+                                    label="Curve Values (comma-separated, 0-1)",
+                                    placeholder="0.0, 0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 0.95, 1.0",
+                                    lines=2,
+                                )
+                                preview_curve_name_input = gr.Textbox(
+                                    label="Curve Name",
+                                    value="Custom Preview Curve",
+                                )
+                                load_custom_curve_btn = gr.Button("Load Values")
+
+                        preview_curve_info = gr.JSON(label="Loaded Curve")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Preview Options")
+
+                        preview_color_mode = gr.Dropdown(
+                            choices=[
+                                ("Preserve Original", "preserve"),
+                                ("Grayscale", "grayscale"),
+                                ("RGB", "rgb"),
+                            ],
+                            value="preserve",
+                            label="Color Mode",
+                        )
+
+                        generate_preview_btn = gr.Button("Generate Preview", variant="primary")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Before / After Comparison")
+
+                        with gr.Row():
+                            original_preview = gr.Image(
+                                label="Original",
+                                interactive=False,
+                            )
+                            processed_preview = gr.Image(
+                                label="With Curve Applied",
+                                interactive=False,
+                            )
+
+                        preview_info_display = gr.Textbox(
+                            label="Preview Info",
+                            interactive=False,
+                            lines=3,
+                        )
+
+                def load_curve_for_preview(file):
+                    """Load curve from file for preview."""
+                    if file is None:
+                        return None, {"error": "No file uploaded"}
+
+                    try:
+                        file_path = Path(file.name)
+                        suffix = file_path.suffix.lower()
+
+                        if suffix in [".quad", ".txt"]:
+                            profile = load_quad_file(file_path)
+                            curve = profile.to_curve_data("K")
+                        elif suffix == ".json":
+                            from ptpd_calibration.curves.export import load_curve
+                            curve = load_curve(file_path)
+                        elif suffix == ".csv":
+                            from ptpd_calibration.curves.export import load_curve
+                            curve = load_curve(file_path)
+                        else:
+                            return None, {"error": f"Unsupported format: {suffix}"}
+
+                        return curve, {
+                            "name": curve.name,
+                            "points": len(curve.input_values),
+                            "range": f"{min(curve.output_values):.3f} - {max(curve.output_values):.3f}",
+                        }
+                    except Exception as e:
+                        return None, {"error": str(e)}
+
+                def load_custom_curve_values(values_str, name):
+                    """Load curve from custom values."""
+                    if not values_str.strip():
+                        return None, {"error": "No values provided"}
+
+                    try:
+                        values = [float(v.strip()) for v in values_str.split(",")]
+                        inputs = [i / (len(values) - 1) for i in range(len(values))]
+
+                        curve = CurveData(
+                            name=name or "Custom Curve",
+                            input_values=inputs,
+                            output_values=values,
+                        )
+
+                        return curve, {
+                            "name": curve.name,
+                            "points": len(curve.input_values),
+                            "range": f"{min(values):.3f} - {max(values):.3f}",
+                        }
+                    except Exception as e:
+                        return None, {"error": str(e)}
+
+                def generate_image_preview(image_path, curve, color_mode_str):
+                    """Generate before/after preview."""
+                    if image_path is None:
+                        return None, None, "No image uploaded"
+
+                    if curve is None:
+                        return None, None, "No curve loaded"
+
+                    try:
+                        processor = ImageProcessor()
+                        color_mode = ColorMode(color_mode_str)
+
+                        # Generate preview
+                        original, processed = processor.preview_curve_effect(
+                            image_path,
+                            curve,
+                            color_mode=color_mode,
+                            thumbnail_size=(800, 800),
+                        )
+
+                        info = f"Curve: {curve.name}\nColor Mode: {color_mode_str}\nOriginal Size: {original.size}"
+
+                        return original, processed, info
+                    except Exception as e:
+                        return None, None, f"Error: {str(e)}"
+
+                # Connect handlers
+                load_preview_curve_btn.click(
+                    load_curve_for_preview,
+                    inputs=[preview_curve_file],
+                    outputs=[preview_curve_state, preview_curve_info],
+                )
+
+                load_custom_curve_btn.click(
+                    load_custom_curve_values,
+                    inputs=[preview_curve_values, preview_curve_name_input],
+                    outputs=[preview_curve_state, preview_curve_info],
+                )
+
+                generate_preview_btn.click(
+                    generate_image_preview,
+                    inputs=[preview_image_upload, preview_curve_state, preview_color_mode],
+                    outputs=[original_preview, processed_preview, preview_info_display],
+                )
+
+            # ========================================
+            # TAB 9: Digital Negative
+            # ========================================
+            with gr.TabItem("Digital Negative"):
+                gr.Markdown(
+                    """
+                    ### Digital Negative Creator
+
+                    Create inverted digital negatives with calibration curves applied.
+                    Export in the same format and resolution as your original, or choose a different format.
+                    """
+                )
+
+                # State
+                dn_curve_state = gr.State(None)
+                dn_result_state = gr.State(None)
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Source Image")
+                        dn_image_upload = gr.Image(
+                            label="Upload Image",
+                            type="filepath",
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Calibration Curve (Optional)")
+
+                        with gr.Tabs():
+                            with gr.TabItem("Upload Curve"):
+                                dn_curve_file = gr.File(
+                                    label="Upload Curve File",
+                                    file_types=[".quad", ".txt", ".csv", ".json"],
+                                )
+                                load_dn_curve_btn = gr.Button("Load Curve")
+
+                            with gr.TabItem("Enter Values"):
+                                dn_curve_values = gr.Textbox(
+                                    label="Curve Values (comma-separated)",
+                                    lines=2,
+                                )
+                                dn_curve_name_input = gr.Textbox(
+                                    label="Curve Name",
+                                    value="Digital Negative Curve",
+                                )
+                                load_dn_custom_btn = gr.Button("Load Values")
+
+                        dn_curve_info = gr.JSON(label="Loaded Curve")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Processing Options")
+
+                        dn_invert = gr.Checkbox(
+                            label="Invert Image (Create Negative)",
+                            value=True,
+                        )
+
+                        dn_color_mode = gr.Dropdown(
+                            choices=[
+                                ("Grayscale", "grayscale"),
+                                ("Preserve Original", "preserve"),
+                                ("RGB", "rgb"),
+                            ],
+                            value="grayscale",
+                            label="Color Mode",
+                        )
+
+                        process_dn_btn = gr.Button("Create Digital Negative", variant="primary")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Result")
+
+                        dn_result_image = gr.Image(
+                            label="Digital Negative Preview",
+                            interactive=False,
+                        )
+
+                        dn_info_display = gr.JSON(label="Processing Info")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Export")
+
+                        dn_export_format = gr.Dropdown(
+                            choices=[
+                                ("Same as Original", "original"),
+                                ("TIFF (Lossless)", "tiff"),
+                                ("TIFF 16-bit", "tiff_16bit"),
+                                ("PNG (Lossless)", "png"),
+                                ("PNG 16-bit", "png_16bit"),
+                                ("JPEG (Standard)", "jpeg"),
+                                ("JPEG (High Quality)", "jpeg_high"),
+                            ],
+                            value="original",
+                            label="Export Format",
+                        )
+
+                        dn_jpeg_quality = gr.Slider(
+                            minimum=50,
+                            maximum=100,
+                            value=95,
+                            step=5,
+                            label="JPEG Quality (if applicable)",
+                        )
+
+                        export_dn_btn = gr.Button("Export Digital Negative", variant="secondary")
+                        dn_export_file = gr.File(label="Download")
+
+                def load_dn_curve(file):
+                    """Load curve for digital negative."""
+                    if file is None:
+                        return None, {"status": "No curve (will invert only)"}
+
+                    try:
+                        file_path = Path(file.name)
+                        suffix = file_path.suffix.lower()
+
+                        if suffix in [".quad", ".txt"]:
+                            profile = load_quad_file(file_path)
+                            curve = profile.to_curve_data("K")
+                        elif suffix == ".json":
+                            from ptpd_calibration.curves.export import load_curve
+                            curve = load_curve(file_path)
+                        elif suffix == ".csv":
+                            from ptpd_calibration.curves.export import load_curve
+                            curve = load_curve(file_path)
+                        else:
+                            return None, {"error": f"Unsupported: {suffix}"}
+
+                        return curve, {
+                            "name": curve.name,
+                            "points": len(curve.input_values),
+                        }
+                    except Exception as e:
+                        return None, {"error": str(e)}
+
+                def load_dn_custom_values(values_str, name):
+                    """Load custom curve values."""
+                    if not values_str.strip():
+                        return None, {"status": "No curve (will invert only)"}
+
+                    try:
+                        values = [float(v.strip()) for v in values_str.split(",")]
+                        inputs = [i / (len(values) - 1) for i in range(len(values))]
+
+                        curve = CurveData(
+                            name=name or "Custom Curve",
+                            input_values=inputs,
+                            output_values=values,
+                        )
+
+                        return curve, {
+                            "name": curve.name,
+                            "points": len(curve.input_values),
+                        }
+                    except Exception as e:
+                        return None, {"error": str(e)}
+
+                def create_digital_negative(image_path, curve, invert, color_mode_str):
+                    """Create digital negative from image."""
+                    if image_path is None:
+                        return None, None, {"error": "No image uploaded"}
+
+                    try:
+                        processor = ImageProcessor()
+                        color_mode = ColorMode(color_mode_str)
+
+                        result = processor.create_digital_negative(
+                            image_path,
+                            curve=curve,
+                            invert=invert,
+                            color_mode=color_mode,
+                        )
+
+                        return result, result.image, result.get_info()
+                    except Exception as e:
+                        return None, None, {"error": str(e)}
+
+                def export_digital_negative(result, export_format, jpeg_quality):
+                    """Export the digital negative."""
+                    if result is None:
+                        return None
+
+                    try:
+                        import tempfile
+                        processor = ImageProcessor()
+
+                        settings = ExportSettings(
+                            format=ImageFormat(export_format),
+                            jpeg_quality=int(jpeg_quality),
+                        )
+
+                        # Determine extension
+                        ext_map = {
+                            "original": result.original_format or "png",
+                            "tiff": "tiff",
+                            "tiff_16bit": "tiff",
+                            "png": "png",
+                            "png_16bit": "png",
+                            "jpeg": "jpg",
+                            "jpeg_high": "jpg",
+                        }
+                        ext = ext_map.get(export_format, "png")
+
+                        temp_path = Path(tempfile.gettempdir()) / f"digital_negative.{ext}"
+                        processor.export(result, temp_path, settings)
+
+                        return str(temp_path)
+                    except Exception as e:
+                        return None
+
+                # Connect handlers
+                load_dn_curve_btn.click(
+                    load_dn_curve,
+                    inputs=[dn_curve_file],
+                    outputs=[dn_curve_state, dn_curve_info],
+                )
+
+                load_dn_custom_btn.click(
+                    load_dn_custom_values,
+                    inputs=[dn_curve_values, dn_curve_name_input],
+                    outputs=[dn_curve_state, dn_curve_info],
+                )
+
+                process_dn_btn.click(
+                    create_digital_negative,
+                    inputs=[dn_image_upload, dn_curve_state, dn_invert, dn_color_mode],
+                    outputs=[dn_result_state, dn_result_image, dn_info_display],
+                )
+
+                export_dn_btn.click(
+                    export_digital_negative,
+                    inputs=[dn_result_state, dn_export_format, dn_jpeg_quality],
+                    outputs=[dn_export_file],
+                )
+
+            # ========================================
+            # TAB 10: Interactive Curve Editor
+            # ========================================
+            with gr.TabItem("Interactive Editor"):
+                gr.Markdown(
+                    """
+                    ### Interactive Curve Editor
+
+                    Create and edit calibration curves by adjusting control points numerically
+                    or using preset adjustments. Changes update the curve visualization in real-time.
+                    """
+                )
+
+                # State for interactive curve
+                ie_curve_state = gr.State({
+                    "points": [(0.0, 0.0), (0.25, 0.25), (0.5, 0.5), (0.75, 0.75), (1.0, 1.0)],
+                    "name": "Custom Curve",
+                })
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Control Points")
+                        gr.Markdown("*Adjust input/output pairs (0-1 range)*")
+
+                        # Create 9 editable control points
+                        ie_point_inputs = []
+                        ie_point_outputs = []
+
+                        with gr.Accordion("Control Points (0-1)", open=True):
+                            for i in range(9):
+                                with gr.Row():
+                                    inp = gr.Number(
+                                        label=f"In {i+1}",
+                                        value=i / 8.0,
+                                        minimum=0.0,
+                                        maximum=1.0,
+                                        step=0.01,
+                                        scale=1,
+                                    )
+                                    out = gr.Number(
+                                        label=f"Out {i+1}",
+                                        value=i / 8.0,
+                                        minimum=0.0,
+                                        maximum=1.0,
+                                        step=0.01,
+                                        scale=1,
+                                    )
+                                    ie_point_inputs.append(inp)
+                                    ie_point_outputs.append(out)
+
+                        update_ie_curve_btn = gr.Button("Update Curve", variant="primary")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Presets")
+
+                        ie_preset_select = gr.Dropdown(
+                            choices=[
+                                ("Linear (No Change)", "linear"),
+                                ("S-Curve (Contrast)", "s_curve"),
+                                ("Brighten Highlights", "brighten"),
+                                ("Darken Shadows", "darken"),
+                                ("High Contrast", "high_contrast"),
+                                ("Low Contrast", "low_contrast"),
+                                ("Gamma 1.8", "gamma_18"),
+                                ("Gamma 2.2", "gamma_22"),
+                            ],
+                            label="Load Preset",
+                        )
+                        apply_preset_btn = gr.Button("Apply Preset")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Quick Adjustments")
+
+                        ie_gamma_slider = gr.Slider(
+                            minimum=0.5,
+                            maximum=3.0,
+                            value=1.0,
+                            step=0.1,
+                            label="Gamma",
+                        )
+                        apply_gamma_btn = gr.Button("Apply Gamma")
+
+                        ie_curve_name = gr.Textbox(
+                            label="Curve Name",
+                            value="Custom Curve",
+                        )
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Curve Visualization")
+                        ie_curve_plot = gr.Plot(label="Interactive Curve")
+
+                        ie_curve_info = gr.JSON(label="Curve Data")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Export")
+
+                        ie_export_format = gr.Dropdown(
+                            choices=["qtr", "csv", "json"],
+                            value="qtr",
+                            label="Export Format",
+                        )
+                        export_ie_btn = gr.Button("Export Curve")
+                        ie_export_file = gr.File(label="Download")
+
+                def update_ie_curve_from_points(*args):
+                    """Update curve from control point values."""
+                    import matplotlib.pyplot as plt
+
+                    # First 9 args are inputs, next 9 are outputs
+                    inputs = list(args[:9])
+                    outputs = list(args[9:18])
+
+                    # Filter out None values and create valid points
+                    points = []
+                    for inp, out in zip(inputs, outputs):
+                        if inp is not None and out is not None:
+                            points.append((float(inp), float(out)))
+
+                    # Sort by input value
+                    points.sort(key=lambda x: x[0])
+
+                    if len(points) < 2:
+                        return None, {"error": "Need at least 2 points"}
+
+                    # Create curve data
+                    curve = CurveData(
+                        name="Interactive Curve",
+                        input_values=[p[0] for p in points],
+                        output_values=[p[1] for p in points],
+                    )
+
+                    # Create plot
+                    fig, ax = plt.subplots(figsize=(8, 6))
+                    ax.plot(curve.input_values, curve.output_values, "o-", color="#8B4513", linewidth=2, markersize=8, label="Curve")
+                    ax.plot([0, 1], [0, 1], "--", color="gray", alpha=0.5, label="Linear")
+                    ax.set_xlabel("Input")
+                    ax.set_ylabel("Output")
+                    ax.set_title("Interactive Curve Editor")
+                    ax.legend()
+                    ax.grid(True, alpha=0.3)
+                    ax.set_xlim(0, 1)
+                    ax.set_ylim(0, 1)
+                    ax.set_facecolor("#FAF8F5")
+                    fig.patch.set_facecolor("#FAF8F5")
+
+                    info = {
+                        "points": len(points),
+                        "input_range": f"{min(curve.input_values):.3f} - {max(curve.input_values):.3f}",
+                        "output_range": f"{min(curve.output_values):.3f} - {max(curve.output_values):.3f}",
+                    }
+
+                    return fig, info
+
+                def apply_ie_preset(preset):
+                    """Apply a preset to the curve."""
+                    presets = {
+                        "linear": [(i/8, i/8) for i in range(9)],
+                        "s_curve": [(0, 0), (0.125, 0.08), (0.25, 0.18), (0.375, 0.35),
+                                   (0.5, 0.5), (0.625, 0.65), (0.75, 0.82), (0.875, 0.92), (1, 1)],
+                        "brighten": [(i/8, min(1, (i/8) * 1.2 + 0.05)) for i in range(9)],
+                        "darken": [(i/8, max(0, (i/8) * 0.8)) for i in range(9)],
+                        "high_contrast": [(0, 0), (0.125, 0.03), (0.25, 0.1), (0.375, 0.25),
+                                         (0.5, 0.5), (0.625, 0.75), (0.75, 0.9), (0.875, 0.97), (1, 1)],
+                        "low_contrast": [(0, 0.1), (0.125, 0.175), (0.25, 0.275), (0.375, 0.375),
+                                        (0.5, 0.5), (0.625, 0.625), (0.75, 0.725), (0.875, 0.825), (1, 0.9)],
+                        "gamma_18": [(i/8, (i/8) ** (1/1.8)) for i in range(9)],
+                        "gamma_22": [(i/8, (i/8) ** (1/2.2)) for i in range(9)],
+                    }
+
+                    points = presets.get(preset, presets["linear"])
+
+                    # Return values for all 9 input/output pairs
+                    results = []
+                    for i in range(9):
+                        if i < len(points):
+                            results.append(points[i][0])  # input
+                        else:
+                            results.append(i / 8.0)
+
+                    for i in range(9):
+                        if i < len(points):
+                            results.append(points[i][1])  # output
+                        else:
+                            results.append(i / 8.0)
+
+                    return results
+
+                def apply_gamma_to_curve(gamma, *current_values):
+                    """Apply gamma adjustment to current curve."""
+                    outputs = list(current_values[9:18])
+
+                    # Apply gamma to outputs
+                    new_outputs = []
+                    for i, out in enumerate(outputs):
+                        if out is not None:
+                            inp = i / 8.0
+                            # Apply gamma: output = input^(1/gamma)
+                            new_out = inp ** (1 / gamma) if gamma > 0 else inp
+                            new_outputs.append(min(1.0, max(0.0, new_out)))
+                        else:
+                            new_outputs.append(i / 8.0)
+
+                    return new_outputs
+
+                def export_ie_curve(export_format, name, *point_values):
+                    """Export the interactive curve."""
+                    try:
+                        import tempfile
+
+                        inputs = list(point_values[:9])
+                        outputs = list(point_values[9:18])
+
+                        points = []
+                        for inp, out in zip(inputs, outputs):
+                            if inp is not None and out is not None:
+                                points.append((float(inp), float(out)))
+
+                        points.sort(key=lambda x: x[0])
+
+                        curve = CurveData(
+                            name=name or "Interactive Curve",
+                            input_values=[p[0] for p in points],
+                            output_values=[p[1] for p in points],
+                        )
+
+                        ext_map = {"qtr": ".txt", "csv": ".csv", "json": ".json"}
+                        ext = ext_map.get(export_format, ".txt")
+
+                        safe_name = "".join(c for c in curve.name if c.isalnum() or c in " -_")[:30]
+                        temp_path = Path(tempfile.gettempdir()) / f"{safe_name}{ext}"
+
+                        save_curve(curve, temp_path, format=export_format)
+
+                        return str(temp_path)
+                    except Exception:
+                        return None
+
+                # Connect handlers
+                all_point_components = ie_point_inputs + ie_point_outputs
+
+                update_ie_curve_btn.click(
+                    update_ie_curve_from_points,
+                    inputs=all_point_components,
+                    outputs=[ie_curve_plot, ie_curve_info],
+                )
+
+                apply_preset_btn.click(
+                    apply_ie_preset,
+                    inputs=[ie_preset_select],
+                    outputs=ie_point_inputs + ie_point_outputs,
+                ).then(
+                    update_ie_curve_from_points,
+                    inputs=all_point_components,
+                    outputs=[ie_curve_plot, ie_curve_info],
+                )
+
+                apply_gamma_btn.click(
+                    apply_gamma_to_curve,
+                    inputs=[ie_gamma_slider] + all_point_components,
+                    outputs=ie_point_outputs,
+                ).then(
+                    update_ie_curve_from_points,
+                    inputs=all_point_components,
+                    outputs=[ie_curve_plot, ie_curve_info],
+                )
+
+                export_ie_btn.click(
+                    export_ie_curve,
+                    inputs=[ie_export_format, ie_curve_name] + all_point_components,
+                    outputs=[ie_export_file],
+                )
+
+            # ========================================
+            # TAB 11: Chemistry Calculator
             # ========================================
             with gr.TabItem("Chemistry Calculator"):
                 gr.Markdown(
@@ -1674,7 +2366,7 @@ def create_gradio_app(share: bool = False):
                 )
 
             # ========================================
-            # TAB 9: Settings
+            # TAB 12: Settings
             # ========================================
             with gr.TabItem("Settings"):
                 gr.Markdown(
@@ -1849,7 +2541,7 @@ def create_gradio_app(share: bool = False):
                 )
 
             # ========================================
-            # TAB 10: About
+            # TAB 13: About
             # ========================================
             with gr.TabItem("About"):
                 gr.Markdown(
@@ -1867,6 +2559,9 @@ def create_gradio_app(share: bool = False):
                     - **Curve Editor**: Upload .quad files, modify curves, smooth curves, and apply AI-powered enhancements
                     - **AI Enhancement**: Intelligent curve optimization
                     - **AI Assistant**: Get help from an AI expert in Pt/Pd printing
+                    - **Image Preview**: Upload an image, select a curve, and preview the output
+                    - **Digital Negative**: Create inverted negatives with curves applied, export in multiple formats
+                    - **Interactive Editor**: Create curves with numeric control points and presets
                     - **Chemistry Calculator**: Calculate coating solution amounts for any print size
                     - **Recipe Suggestions**: Get starting parameters for new papers
                     - **Troubleshooting**: Diagnose and fix common problems
@@ -1877,6 +2572,13 @@ def create_gradio_app(share: bool = False):
                     - Piezography (.ppt)
                     - CSV
                     - JSON
+
+                    ### Image Export Formats
+
+                    - TIFF (8-bit and 16-bit)
+                    - PNG (8-bit and 16-bit)
+                    - JPEG (standard and high quality)
+                    - Original format preservation
 
                     ### Chemistry Reference
 
