@@ -163,8 +163,22 @@ class QuadFileParser:
         self._profile = QuadProfile(source_path=path)
         self._current_section = None
 
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
-            content = f.read()
+        content = None
+        # Try different encodings
+        for encoding in ["utf-8", "utf-16", "latin-1", "cp1252"]:
+            try:
+                with open(path, "r", encoding=encoding) as f:
+                    content = f.read()
+                    # Check if content looks reasonable (has sections)
+                    if "[" in content and "]" in content:
+                        break
+            except UnicodeError:
+                continue
+
+        if content is None:
+            # Fallback to replace
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
 
         # Parse the content
         self._parse_content(content)

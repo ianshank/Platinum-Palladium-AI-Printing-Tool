@@ -199,10 +199,17 @@ def create_gradio_app(share: bool = False):
                             if suffix in [".quad", ".txt"]:
                                 profile = load_quad_file(file_path)
                                 # Get primary channel
-                                if profile.primary_channel:
+                                if profile.primary_channel and profile.primary_channel.enabled:
                                     curve = profile.to_curve_data("K")
                                     curves.append(curve)
                                     names.append(f"{profile.profile_name} (K)")
+                                else:
+                                    # Try to find any active channel
+                                    active = profile.active_channels
+                                    if active:
+                                        curve = profile.to_curve_data(active[0])
+                                        curves.append(curve)
+                                        names.append(f"{profile.profile_name} ({active[0]})")
                             elif suffix == ".json":
                                 from ptpd_calibration.curves.export import load_curve
                                 curve = load_curve(file_path)
