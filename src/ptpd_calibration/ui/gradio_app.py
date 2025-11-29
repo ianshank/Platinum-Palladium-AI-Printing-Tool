@@ -1,5 +1,7 @@
 """
 Gradio-based user interface for PTPD Calibration System.
+
+Provides comprehensive curve display, step wedge analysis, and calibration tools.
 """
 
 from pathlib import Path
@@ -25,7 +27,7 @@ def create_gradio_app(share: bool = False):
             "Gradio is required for UI. Install with: pip install ptpd-calibration[ui]"
         )
 
-    from ptpd_calibration.config import TabletType
+    from ptpd_calibration.config import TabletType, get_settings
     from ptpd_calibration.core.types import CurveType
     from ptpd_calibration.core.models import CurveData
     from ptpd_calibration.curves import (
@@ -35,16 +37,42 @@ def create_gradio_app(share: bool = False):
         load_quad_string,
         CurveModifier,
         SmoothingMethod,
-        BlendMode,
         CurveAIEnhancer,
         EnhancementGoal,
         save_curve,
+        CurveVisualizer,
+        VisualizationConfig,
+        PlotStyle,
+        ColorScheme,
     )
     from ptpd_calibration.detection import StepTabletReader
+    from ptpd_calibration.analysis import (
+        StepWedgeAnalyzer,
+        WedgeAnalysisConfig,
+        QualityGrade,
+    )
+
+    # Get settings for configuration-driven defaults
+    settings = get_settings()
+
+    # Channel colors for multi-channel view
+    CHANNEL_COLORS = {
+        "K": "#1a1a1a",
+        "C": "#00BFFF",
+        "M": "#FF1493",
+        "Y": "#FFD700",
+        "LC": "#87CEEB",
+        "LM": "#FFB6C1",
+        "LK": "#696969",
+        "LLK": "#A9A9A9",
+        "PK": "#2F4F4F",
+        "MK": "#4A4A4A",
+    }
 
     # Create the interface
     with gr.Blocks(
         title="Pt/Pd Calibration Studio",
+        theme=gr.themes.Soft(),
     ) as app:
         gr.Markdown(
             """
@@ -55,7 +83,541 @@ def create_gradio_app(share: bool = False):
         )
 
         with gr.Tabs():
-            # Analyze Tab
+            # ========================================
+            # TAB 1: Curve Display
+            # ========================================
+            with gr.TabItem("Curve Display"):
+                gr.Markdown(
+                    """
+                    ### Curve Visualization
+
+                    Upload and compare calibration curves with comprehensive statistics.
+                    """
+                )
+
+                # State for loaded curves
+                loaded_curves = gr.State([])
+                curve_names_list = gr.State([])
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Load Curves")
+
+                        with gr.Tabs():
+                            with gr.TabItem("Upload File"):
+                                curve_file_upload = gr.File(
+                                    label="Upload Curve File(s)",
+                                    file_types=[".quad", ".txt", ".csv", ".json"],
+                                    file_count="multiple",
+                                )
+                                load_files_btn = gr.Button("Load Files", variant="primary")
+
+                            with gr.TabItem("Paste Data"):
+                                paste_curve_data = gr.Textbox(
+                                    label="Paste Curve Values (comma-separated)",
+                                    placeholder="0.0, 0.1, 0.2, 0.3, ..., 1.0",
+                                    lines=3,
+                                )
+                                paste_curve_name = gr.Textbox(
+                                    label="Curve Name",
+                                    value="Custom Curve",
+                                )
+                                add_pasted_btn = gr.Button("Add Curve")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Display Options")
+
+                        plot_style = gr.Dropdown(
+                            choices=["line", "line_markers", "scatter", "area", "step"],
+                            value="line",
+                            label="Plot Style",
+                        )
+                        color_scheme = gr.Dropdown(
+                            choices=["platinum", "monochrome", "vibrant", "pastel", "accessible"],
+                            value=settings.visualization.color_scheme,
+                            label="Color Scheme",
+                        )
+                        show_reference = gr.Checkbox(
+                            label="Show Linear Reference",
+                            value=settings.visualization.show_reference_line,
+                        )
+                        show_statistics = gr.Checkbox(
+                            label="Show Statistics Panel",
+                            value=False,
+                        )
+                        show_difference = gr.Checkbox(
+                            label="Show Difference Plot",
+                            value=False,
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Loaded Curves")
+                        curves_list_display = gr.Dataframe(
+                            headers=["Name", "Points", "Gamma"],
+                            label="Loaded Curves",
+                            interactive=False,
+                        )
+                        clear_curves_btn = gr.Button("Clear All Curves")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Curve Visualization")
+                        curve_display_plot = gr.Plot(label="Curves")
+
+                        with gr.Row():
+                            stats_output = gr.JSON(label="Statistics")
+
+                        with gr.Row():
+                            comparison_output = gr.JSON(label="Comparison Metrics", visible=False)
+
+                def load_curve_files(files, existing_curves, existing_names):
+                    """Load curves from uploaded files."""
+                    if not files:
+                        return existing_curves, existing_names, None, None, gr.update()
+
+                    curves = list(existing_curves) if existing_curves else []
+                    names = list(existing_names) if existing_names else []
+
+                    for file in files:
+                        try:
+                            file_path = Path(file.name)
+                            suffix = file_path.suffix.lower()
+
+                            if suffix in [".quad", ".txt"]:
+                                profile = load_quad_file(file_path)
+                                # Get primary channel
+                                if profile.primary_channel:
+                                    curve = profile.to_curve_data("K")
+                                    curves.append(curve)
+                                    names.append(f"{profile.profile_name} (K)")
+                            elif suffix == ".json":
+                                from ptpd_calibration.curves.export import load_curve
+                                curve = load_curve(file_path)
+                                curves.append(curve)
+                                names.append(curve.name)
+                            elif suffix == ".csv":
+                                from ptpd_calibration.curves.export import load_curve
+                                curve = load_curve(file_path)
+                                curves.append(curve)
+                                names.append(curve.name)
+                        except Exception as e:
+                            continue
+
+                    # Update display
+                    table_data, plot, stats = update_curve_display(
+                        curves, names, "line", "platinum", True, False, False
+                    )
+
+                    return curves, names, table_data, plot, stats
+
+                def add_pasted_curve(data_str, name, existing_curves, existing_names):
+                    """Add curve from pasted data."""
+                    if not data_str.strip():
+                        return existing_curves, existing_names, None, None, None
+
+                    try:
+                        values = [float(v.strip()) for v in data_str.split(",")]
+                        inputs = [i / (len(values) - 1) for i in range(len(values))]
+
+                        curve = CurveData(
+                            name=name or "Custom Curve",
+                            input_values=inputs,
+                            output_values=values,
+                        )
+
+                        curves = list(existing_curves) if existing_curves else []
+                        names = list(existing_names) if existing_names else []
+                        curves.append(curve)
+                        names.append(name or "Custom Curve")
+
+                        table_data, plot, stats = update_curve_display(
+                            curves, names, "line", "platinum", True, False, False
+                        )
+
+                        return curves, names, table_data, plot, stats
+                    except Exception:
+                        return existing_curves, existing_names, None, None, None
+
+                def update_curve_display(curves, names, style, scheme, show_ref, show_stats, show_diff):
+                    """Update the curve display with current settings."""
+                    if not curves:
+                        return [], None, {}
+
+                    # Create visualizer with settings
+                    vis_config = VisualizationConfig(
+                        figure_width=settings.visualization.figure_width,
+                        figure_height=settings.visualization.figure_height,
+                        dpi=settings.visualization.dpi,
+                        background_color=settings.visualization.background_color,
+                        grid_alpha=settings.visualization.grid_alpha,
+                        line_width=settings.visualization.line_width,
+                        marker_size=settings.visualization.marker_size,
+                        color_scheme=ColorScheme(scheme),
+                        show_reference_line=show_ref,
+                        show_statistics=show_stats,
+                        show_difference=show_diff,
+                    )
+                    visualizer = CurveVisualizer(vis_config)
+
+                    # Compute statistics
+                    stats_list = []
+                    table_data = []
+                    for curve in curves:
+                        stats = visualizer.compute_statistics(curve)
+                        stats_list.append(stats)
+                        table_data.append([curve.name, stats.num_points, round(stats.gamma, 2)])
+
+                    # Create plot
+                    if show_stats and len(curves) > 0:
+                        fig = visualizer.plot_with_statistics(curves, title="Curve Comparison")
+                    elif len(curves) == 1:
+                        fig = visualizer.plot_single_curve(
+                            curves[0],
+                            style=PlotStyle(style),
+                            show_stats=show_stats,
+                        )
+                    else:
+                        fig = visualizer.plot_multiple_curves(
+                            curves,
+                            title="Curve Comparison",
+                            style=PlotStyle(style),
+                            show_difference=show_diff,
+                        )
+
+                    # Build stats output
+                    stats_output = {s.name: s.to_dict() for s in stats_list}
+
+                    return table_data, fig, stats_output
+
+                def clear_all_curves():
+                    """Clear all loaded curves."""
+                    return [], [], [], None, {}
+
+                def on_display_options_change(curves, names, style, scheme, show_ref, show_stats, show_diff):
+                    """Handle display option changes."""
+                    if not curves:
+                        return [], None, {}
+                    return update_curve_display(curves, names, style, scheme, show_ref, show_stats, show_diff)
+
+                # Connect event handlers
+                load_files_btn.click(
+                    load_curve_files,
+                    inputs=[curve_file_upload, loaded_curves, curve_names_list],
+                    outputs=[loaded_curves, curve_names_list, curves_list_display, curve_display_plot, stats_output],
+                )
+
+                add_pasted_btn.click(
+                    add_pasted_curve,
+                    inputs=[paste_curve_data, paste_curve_name, loaded_curves, curve_names_list],
+                    outputs=[loaded_curves, curve_names_list, curves_list_display, curve_display_plot, stats_output],
+                )
+
+                clear_curves_btn.click(
+                    clear_all_curves,
+                    outputs=[loaded_curves, curve_names_list, curves_list_display, curve_display_plot, stats_output],
+                )
+
+                # Display option change handlers
+                for component in [plot_style, color_scheme, show_reference, show_statistics, show_difference]:
+                    component.change(
+                        on_display_options_change,
+                        inputs=[loaded_curves, curve_names_list, plot_style, color_scheme, show_reference, show_statistics, show_difference],
+                        outputs=[curves_list_display, curve_display_plot, stats_output],
+                    )
+
+            # ========================================
+            # TAB 2: Step Wedge Analysis
+            # ========================================
+            with gr.TabItem("Step Wedge Analysis"):
+                gr.Markdown(
+                    """
+                    ### Step Wedge Scan Analysis
+
+                    Upload a step wedge scan to automatically extract densities and generate calibration curves.
+                    """
+                )
+
+                # State for analysis results
+                analysis_result_state = gr.State(None)
+                generated_curve_state = gr.State(None)
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Upload & Configure")
+
+                        wedge_image_upload = gr.Image(
+                            label="Step Wedge Scan",
+                            type="filepath",
+                        )
+
+                        with gr.Accordion("Analysis Settings", open=True):
+                            tablet_type_select = gr.Dropdown(
+                                choices=[t.value for t in TabletType],
+                                value=settings.wedge_analysis.default_tablet_type,
+                                label="Step Tablet Type",
+                            )
+                            min_density_range = gr.Slider(
+                                minimum=0.5,
+                                maximum=3.0,
+                                value=settings.wedge_analysis.min_density_range,
+                                step=0.1,
+                                label="Min Density Range",
+                            )
+                            auto_fix_reversals = gr.Checkbox(
+                                label="Auto-fix Density Reversals",
+                                value=settings.wedge_analysis.auto_fix_reversals,
+                            )
+                            outlier_rejection = gr.Checkbox(
+                                label="Outlier Rejection",
+                                value=settings.wedge_analysis.outlier_rejection,
+                            )
+
+                        analyze_wedge_btn = gr.Button("Analyze Step Wedge", variant="primary")
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Curve Generation")
+
+                        with gr.Accordion("Curve Settings", open=True):
+                            curve_name_input = gr.Textbox(
+                                label="Curve Name",
+                                value="",
+                                placeholder="Auto-generated if empty",
+                            )
+                            paper_type_input = gr.Textbox(
+                                label="Paper Type",
+                                placeholder="e.g., Arches Platine",
+                            )
+                            chemistry_input = gr.Textbox(
+                                label="Chemistry",
+                                placeholder="e.g., 50% Pt, 5 drops Na2",
+                            )
+                            curve_type_select = gr.Dropdown(
+                                choices=["linear", "paper_white", "aesthetic"],
+                                value=settings.wedge_analysis.default_curve_type,
+                                label="Curve Type",
+                            )
+
+                        generate_curve_btn = gr.Button("Generate Curve", variant="secondary")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Analysis Results")
+
+                        with gr.Row():
+                            quality_grade_display = gr.Textbox(
+                                label="Quality Grade",
+                                interactive=False,
+                            )
+                            quality_score_display = gr.Number(
+                                label="Quality Score",
+                                interactive=False,
+                            )
+
+                        with gr.Tabs():
+                            with gr.TabItem("Density Curve"):
+                                density_curve_plot = gr.Plot(label="Measured Densities")
+
+                            with gr.TabItem("Generated Curve"):
+                                generated_curve_plot = gr.Plot(label="Calibration Curve")
+
+                            with gr.TabItem("Quality Metrics"):
+                                quality_metrics_json = gr.JSON(label="Quality Assessment")
+
+                        with gr.Accordion("Warnings & Recommendations", open=False):
+                            warnings_output = gr.Textbox(
+                                label="Analysis Warnings",
+                                lines=4,
+                                interactive=False,
+                            )
+                            recommendations_output = gr.Textbox(
+                                label="Recommendations",
+                                lines=3,
+                                interactive=False,
+                            )
+
+                        with gr.Row():
+                            export_format_select = gr.Dropdown(
+                                choices=["qtr", "piezography", "csv", "json"],
+                                value="qtr",
+                                label="Export Format",
+                            )
+                            export_curve_btn = gr.Button("Export Curve")
+                        export_file_output = gr.File(label="Download Curve")
+
+                def analyze_step_wedge(image_path, tablet_type, min_range, fix_reversals, reject_outliers):
+                    """Analyze uploaded step wedge scan."""
+                    if image_path is None:
+                        return None, "No Image", 0, None, {}, "", "", gr.update()
+
+                    try:
+                        config = WedgeAnalysisConfig(
+                            tablet_type=TabletType(tablet_type),
+                            min_density_range=min_range,
+                            auto_fix_reversals=fix_reversals,
+                            outlier_rejection=reject_outliers,
+                        )
+
+                        analyzer = StepWedgeAnalyzer(config)
+                        result = analyzer.analyze(
+                            image_path,
+                            generate_curve=False,  # Generate separately
+                        )
+
+                        # Quality info
+                        grade = result.quality.grade.value.upper() if result.quality else "N/A"
+                        score = result.quality.score if result.quality else 0
+
+                        # Create density plot
+                        import matplotlib.pyplot as plt
+                        fig, ax = plt.subplots(figsize=(10, 6))
+
+                        if result.densities:
+                            x = np.linspace(0, 100, len(result.densities))
+                            ax.plot(x, result.densities, "o-", color="#B8860B", linewidth=2, markersize=6, label="Measured")
+
+                            if result.raw_densities and result.raw_densities != result.densities:
+                                ax.plot(x, result.raw_densities, "x--", color="#808080", alpha=0.5, label="Raw")
+                                ax.legend()
+
+                        ax.set_xlabel("Input %")
+                        ax.set_ylabel("Density")
+                        ax.set_title(f"Step Wedge Response (Dmin: {result.dmin:.3f}, Dmax: {result.dmax:.3f})")
+                        ax.grid(True, alpha=0.3)
+                        ax.set_facecolor("#FAF8F5")
+                        fig.patch.set_facecolor("#FAF8F5")
+
+                        # Quality metrics
+                        quality_metrics = result.quality.to_dict() if result.quality else {}
+
+                        # Warnings
+                        warnings_text = ""
+                        if result.quality and result.quality.warnings:
+                            warnings_text = "\n".join([
+                                f"[{w.level.value.upper()}] {w.message}"
+                                for w in result.quality.warnings
+                            ])
+
+                        # Recommendations
+                        recommendations_text = ""
+                        if result.quality and result.quality.recommendations:
+                            recommendations_text = "\n".join([
+                                f"• {r}" for r in result.quality.recommendations
+                            ])
+
+                        return (
+                            result,
+                            grade,
+                            score,
+                            fig,
+                            quality_metrics,
+                            warnings_text,
+                            recommendations_text,
+                            gr.update(visible=True),
+                        )
+
+                    except Exception as e:
+                        return None, f"Error: {str(e)}", 0, None, {}, str(e), "", gr.update()
+
+                def generate_calibration_curve(
+                    result, curve_name, paper_type, chemistry, curve_type
+                ):
+                    """Generate calibration curve from analysis result."""
+                    if result is None or not result.densities:
+                        return None, None, gr.update()
+
+                    try:
+                        config = WedgeAnalysisConfig(
+                            default_curve_type=CurveType(curve_type),
+                        )
+                        analyzer = StepWedgeAnalyzer(config)
+
+                        # Generate curve from existing densities
+                        analysis = analyzer.analyze_from_densities(
+                            result.densities,
+                            curve_name=curve_name if curve_name else None,
+                            paper_type=paper_type if paper_type else None,
+                            chemistry=chemistry if chemistry else None,
+                            generate_curve=True,
+                            curve_type=CurveType(curve_type),
+                        )
+
+                        curve = analysis.curve
+                        if curve is None:
+                            return None, None, gr.update()
+
+                        # Create curve plot
+                        import matplotlib.pyplot as plt
+                        fig, ax = plt.subplots(figsize=(10, 6))
+
+                        ax.plot(
+                            curve.input_values,
+                            curve.output_values,
+                            "-",
+                            color="#8B4513",
+                            linewidth=2,
+                            label=curve.name,
+                        )
+                        ax.plot([0, 1], [0, 1], "--", color="gray", alpha=0.5, label="Linear Reference")
+
+                        ax.set_xlabel("Input")
+                        ax.set_ylabel("Output")
+                        ax.set_title(f"Calibration Curve: {curve.name}")
+                        ax.legend()
+                        ax.grid(True, alpha=0.3)
+                        ax.set_xlim(0, 1)
+                        ax.set_ylim(0, 1)
+                        ax.set_facecolor("#FAF8F5")
+                        fig.patch.set_facecolor("#FAF8F5")
+
+                        return curve, fig, gr.update(visible=True)
+
+                    except Exception as e:
+                        return None, None, gr.update()
+
+                def export_generated_curve(curve, format_type):
+                    """Export the generated curve."""
+                    if curve is None:
+                        return None
+
+                    try:
+                        import tempfile
+
+                        ext_map = {
+                            "qtr": ".txt",
+                            "piezography": ".ppt",
+                            "csv": ".csv",
+                            "json": ".json",
+                        }
+                        ext = ext_map.get(format_type, ".txt")
+
+                        safe_name = "".join(c for c in curve.name if c.isalnum() or c in " -_")[:50]
+                        temp_path = Path(tempfile.gettempdir()) / f"{safe_name}{ext}"
+
+                        save_curve(curve, temp_path, format=format_type)
+                        return str(temp_path)
+                    except Exception:
+                        return None
+
+                # Connect handlers
+                analyze_wedge_btn.click(
+                    analyze_step_wedge,
+                    inputs=[wedge_image_upload, tablet_type_select, min_density_range, auto_fix_reversals, outlier_rejection],
+                    outputs=[analysis_result_state, quality_grade_display, quality_score_display, density_curve_plot, quality_metrics_json, warnings_output, recommendations_output, generate_curve_btn],
+                )
+
+                generate_curve_btn.click(
+                    generate_calibration_curve,
+                    inputs=[analysis_result_state, curve_name_input, paper_type_input, chemistry_input, curve_type_select],
+                    outputs=[generated_curve_state, generated_curve_plot, export_curve_btn],
+                )
+
+                export_curve_btn.click(
+                    export_generated_curve,
+                    inputs=[generated_curve_state, export_format_select],
+                    outputs=[export_file_output],
+                )
+
+            # ========================================
+            # TAB 3: Analyze Scan (Original)
+            # ========================================
             with gr.TabItem("Analyze Scan"):
                 gr.Markdown("### Upload Step Tablet Scan")
 
@@ -120,7 +682,9 @@ def create_gradio_app(share: bool = False):
                     outputs=[analysis_output, density_plot],
                 )
 
-            # Generate Curve Tab
+            # ========================================
+            # TAB 4: Generate Curve
+            # ========================================
             with gr.TabItem("Generate Curve"):
                 gr.Markdown("### Generate Calibration Curve")
 
@@ -131,11 +695,11 @@ def create_gradio_app(share: bool = False):
                             placeholder="0.1, 0.3, 0.5, 0.8, 1.2, 1.6, 2.0",
                             lines=3,
                         )
-                        curve_name = gr.Textbox(
+                        gen_curve_name = gr.Textbox(
                             label="Curve Name",
                             value="My Calibration",
                         )
-                        curve_type = gr.Dropdown(
+                        gen_curve_type = gr.Dropdown(
                             choices=["linear", "paper_white", "aesthetic"],
                             value="linear",
                             label="Curve Type",
@@ -190,11 +754,13 @@ def create_gradio_app(share: bool = False):
 
                 generate_btn.click(
                     generate_curve,
-                    inputs=[density_input, curve_name, curve_type],
+                    inputs=[density_input, gen_curve_name, gen_curve_type],
                     outputs=[curve_output, curve_plot],
                 )
 
-            # Curve Editor Tab
+            # ========================================
+            # TAB 5: Curve Editor
+            # ========================================
             with gr.TabItem("Curve Editor"):
                 gr.Markdown(
                     """
@@ -208,7 +774,7 @@ def create_gradio_app(share: bool = False):
                 current_curve_inputs = gr.State([])
                 current_curve_outputs = gr.State([])
                 current_curve_name = gr.State("Edited Curve")
-                current_profile_data = gr.State(None)  # Store the full profile for multi-channel access
+                current_profile_data = gr.State(None)
 
                 with gr.Row():
                     with gr.Column(scale=1):
@@ -326,27 +892,12 @@ def create_gradio_app(share: bool = False):
                             visible=True,
                         )
 
-                # Channel colors for multi-channel view
-                CHANNEL_COLORS = {
-                    "K": "#1a1a1a",   # Black
-                    "C": "#00BFFF",   # Cyan
-                    "M": "#FF1493",   # Magenta
-                    "Y": "#FFD700",   # Yellow
-                    "LC": "#87CEEB",  # Light Cyan
-                    "LM": "#FFB6C1",  # Light Magenta
-                    "LK": "#696969",  # Light Black/Gray
-                    "LLK": "#A9A9A9", # Light Light Black
-                    "PK": "#2F4F4F",  # Photo Black
-                    "MK": "#4A4A4A",  # Matte Black
-                }
-
                 def create_curve_plot(inputs, outputs, name="Curve", profile_data=None, show_all=False, selected_channel="K"):
                     """Create a matplotlib plot for the curve with multi-channel support."""
                     import matplotlib.pyplot as plt
 
                     fig, ax = plt.subplots(figsize=(10, 6))
 
-                    # Plot all channels if profile data available and show_all is True
                     if show_all and profile_data is not None:
                         channels_data = profile_data.get("channels", {})
                         for ch_name, ch_data in channels_data.items():
@@ -388,7 +939,6 @@ def create_gradio_app(share: bool = False):
                     try:
                         profile = load_quad_file(Path(file.name))
 
-                        # Build profile data with all channels for storage
                         profile_data = {
                             "profile_name": profile.profile_name,
                             "resolution": profile.resolution,
@@ -399,7 +949,6 @@ def create_gradio_app(share: bool = False):
                             "channels": {},
                         }
 
-                        # Store all channel data
                         for ch_name in profile.all_channel_names:
                             ch = profile.get_channel(ch_name)
                             if ch:
@@ -409,13 +958,9 @@ def create_gradio_app(share: bool = False):
                                     "outputs": ch_outputs,
                                 }
 
-                        # Get available channels for dropdown update
                         available_channels = profile.all_channel_names if profile.all_channel_names else ["K"]
-
-                        # Determine which channel to display
                         selected_channel = channel.upper() if channel.upper() in available_channels else available_channels[0]
 
-                        # Get the selected channel's curve data
                         if selected_channel in profile.channels:
                             curve_data = profile.to_curve_data(selected_channel)
                             inputs = curve_data.input_values
@@ -437,7 +982,6 @@ def create_gradio_app(share: bool = False):
                             "num_points": len(inputs),
                         }
 
-                        # Create plot with multi-channel support
                         fig = create_curve_plot(
                             inputs, outputs, name,
                             profile_data=profile_data,
@@ -445,7 +989,6 @@ def create_gradio_app(share: bool = False):
                             selected_channel=selected_channel
                         )
 
-                        # Update dropdown choices
                         dropdown_update = gr.update(choices=available_channels, value=selected_channel)
 
                         return inputs, outputs, name, info, fig, profile_data, dropdown_update
@@ -480,7 +1023,6 @@ def create_gradio_app(share: bool = False):
                     try:
                         profile = load_quad_string(content, "Pasted Profile")
 
-                        # Build profile data with all channels
                         profile_data = {
                             "profile_name": profile.profile_name,
                             "active_channels": profile.active_channels,
@@ -570,7 +1112,6 @@ def create_gradio_app(share: bool = False):
                 def on_show_all_toggle(show_all, channel, profile_data, inputs, outputs, name):
                     """Handle show all channels checkbox toggle."""
                     if profile_data is None:
-                        # No profile, just redraw with current curve
                         fig = create_curve_plot(inputs, outputs, name)
                         return fig
 
@@ -730,14 +1271,13 @@ def create_gradio_app(share: bool = False):
                         }
                         ext = ext_map.get(format_type, ".txt")
 
-                        # Create temp file
                         safe_name = "".join(c for c in name if c.isalnum() or c in " -_")[:50]
                         temp_path = Path(tempfile.gettempdir()) / f"{safe_name}{ext}"
 
                         save_curve(curve, temp_path, format=format_type)
 
                         return str(temp_path)
-                    except Exception as e:
+                    except Exception:
                         return None
 
                 # Connect event handlers
@@ -775,14 +1315,12 @@ def create_gradio_app(share: bool = False):
                     ],
                 )
 
-                # Channel selection change handler
                 channel_select.change(
                     on_channel_change,
                     inputs=[channel_select, current_profile_data, show_all_channels],
                     outputs=[current_curve_inputs, current_curve_outputs, current_curve_name, editor_info, editor_plot],
                 )
 
-                # Show all channels toggle handler
                 show_all_channels.change(
                     on_show_all_toggle,
                     inputs=[show_all_channels, channel_select, current_profile_data, current_curve_inputs, current_curve_outputs, current_curve_name],
@@ -813,7 +1351,9 @@ def create_gradio_app(share: bool = False):
                     outputs=[export_file],
                 )
 
-            # AI Assistant Tab
+            # ========================================
+            # TAB 6: AI Assistant
+            # ========================================
             with gr.TabItem("AI Assistant"):
                 gr.Markdown(
                     """
@@ -862,7 +1402,9 @@ def create_gradio_app(share: bool = False):
                 )
                 clear_btn.click(lambda: (None, []), outputs=[msg_input, chatbot])
 
-            # Quick Tools Tab
+            # ========================================
+            # TAB 7: Quick Tools
+            # ========================================
             with gr.TabItem("Quick Tools"):
                 gr.Markdown("### Quick Calibration Tools")
 
@@ -925,7 +1467,9 @@ def create_gradio_app(share: bool = False):
                     outputs=troubleshoot_output,
                 )
 
-            # About Tab
+            # ========================================
+            # TAB 8: About
+            # ========================================
             with gr.TabItem("About"):
                 gr.Markdown(
                     """
@@ -935,10 +1479,12 @@ def create_gradio_app(share: bool = False):
 
                     ### Features
 
+                    - **Curve Display**: Upload and compare multiple curves with comprehensive statistics
+                    - **Step Wedge Analysis**: Automatic step wedge detection, density extraction, and quality assessment
                     - **Step Tablet Analysis**: Upload scans and extract density measurements
                     - **Curve Generation**: Create linearization curves for digital negatives
-                    - **Curve Editor**: Upload .quad files, modify curves (brightness, contrast, gamma, highlights, shadows, midtones), smooth curves, and apply AI-powered enhancements
-                    - **AI Enhancement**: Intelligent curve optimization for linearization, maximum range, smooth gradation, and more
+                    - **Curve Editor**: Upload .quad files, modify curves, smooth curves, and apply AI-powered enhancements
+                    - **AI Enhancement**: Intelligent curve optimization
                     - **AI Assistant**: Get help from an AI expert in Pt/Pd printing
                     - **Recipe Suggestions**: Get starting parameters for new papers
                     - **Troubleshooting**: Diagnose and fix common problems

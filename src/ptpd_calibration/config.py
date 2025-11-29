@@ -218,6 +218,68 @@ class APISettings(BaseSettings):
     rate_limit_per_minute: int = Field(default=60, ge=1, le=1000)
 
 
+class VisualizationSettings(BaseSettings):
+    """Settings for curve visualization."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_VIS_")
+
+    # Figure dimensions
+    figure_width: float = Field(default=10.0, ge=4.0, le=20.0)
+    figure_height: float = Field(default=6.0, ge=3.0, le=15.0)
+    dpi: int = Field(default=100, ge=50, le=300)
+
+    # Colors and styling
+    background_color: str = Field(default="#FAF8F5")
+    grid_alpha: float = Field(default=0.3, ge=0.0, le=1.0)
+    line_width: float = Field(default=2.0, ge=0.5, le=5.0)
+    marker_size: float = Field(default=6.0, ge=2.0, le=15.0)
+
+    # Color scheme (platinum, monochrome, vibrant, pastel, accessible)
+    color_scheme: str = Field(default="platinum")
+
+    # Font sizes
+    title_fontsize: int = Field(default=14, ge=8, le=24)
+    label_fontsize: int = Field(default=12, ge=6, le=20)
+    tick_fontsize: int = Field(default=10, ge=6, le=16)
+    legend_fontsize: int = Field(default=10, ge=6, le=16)
+
+    # Display options
+    show_grid: bool = Field(default=True)
+    show_legend: bool = Field(default=True)
+    show_reference_line: bool = Field(default=True)
+
+
+class WedgeAnalysisSettings(BaseSettings):
+    """Settings for step wedge analysis."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_WEDGE_")
+
+    # Default tablet type (stouffer_21, stouffer_31, stouffer_41, custom)
+    default_tablet_type: str = Field(default="stouffer_21")
+
+    # Quality thresholds
+    min_density_range: float = Field(default=1.5, ge=0.5, le=3.0)
+    max_dmin: float = Field(default=0.15, ge=0.0, le=0.5)
+    min_dmax: float = Field(default=1.8, ge=1.0, le=3.5)
+    uniformity_threshold: float = Field(default=0.7, ge=0.3, le=1.0)
+
+    # Monotonicity settings
+    max_reversal_tolerance: float = Field(default=0.02, ge=0.0, le=0.1)
+    smoothing_window: int = Field(default=3, ge=1, le=7)
+
+    # Curve generation defaults
+    default_curve_type: str = Field(default="linear")
+    num_output_points: int = Field(default=256, ge=16, le=4096)
+    apply_smoothing: bool = Field(default=True)
+    smoothing_factor: float = Field(default=0.05, ge=0.0, le=0.5)
+    enforce_monotonicity: bool = Field(default=True)
+
+    # Advanced settings
+    auto_fix_reversals: bool = Field(default=True)
+    outlier_rejection: bool = Field(default=True)
+    outlier_threshold: float = Field(default=2.5, ge=1.0, le=5.0)
+
+
 class Settings(BaseSettings):
     """Main application settings aggregating all subsettings."""
 
@@ -246,6 +308,8 @@ class Settings(BaseSettings):
     llm: LLMSettings = Field(default_factory=LLMSettings)
     agent: AgentSettings = Field(default_factory=AgentSettings)
     api: APISettings = Field(default_factory=APISettings)
+    visualization: VisualizationSettings = Field(default_factory=VisualizationSettings)
+    wedge_analysis: WedgeAnalysisSettings = Field(default_factory=WedgeAnalysisSettings)
 
     @field_validator("calibrations_dir", "exports_dir", mode="before")
     @classmethod

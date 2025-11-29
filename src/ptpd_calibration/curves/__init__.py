@@ -38,6 +38,14 @@ from ptpd_calibration.curves.ai_enhance import (
     EnhancementResult,
     enhance_curve,
 )
+from ptpd_calibration.curves.visualization import (
+    CurveVisualizer,
+    CurveStatistics,
+    CurveComparisonResult,
+    VisualizationConfig,
+    PlotStyle,
+    ColorScheme,
+)
 
 __all__ = [
     # Generator
@@ -72,4 +80,11 @@ __all__ = [
     "EnhancementGoal",
     "EnhancementResult",
     "enhance_curve",
+    # Visualization
+    "CurveVisualizer",
+    "CurveStatistics",
+    "CurveComparisonResult",
+    "VisualizationConfig",
+    "PlotStyle",
+    "ColorScheme",
 ]
