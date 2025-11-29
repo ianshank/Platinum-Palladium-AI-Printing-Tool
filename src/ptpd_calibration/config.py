@@ -146,15 +146,35 @@ class MLSettings(BaseSettings):
 
 
 class LLMSettings(BaseSettings):
-    """Settings for LLM integration."""
+    """Settings for LLM integration.
+
+    Users can provide their API key via:
+    1. Environment variable: PTPD_LLM_API_KEY or PTPD_LLM_ANTHROPIC_API_KEY
+    2. Runtime: Through the Settings tab in the UI (for HuggingFace deployment)
+    """
 
     model_config = SettingsConfigDict(env_prefix="PTPD_LLM_")
 
     # Provider configuration
     provider: LLMProvider = Field(default=LLMProvider.ANTHROPIC)
-    api_key: Optional[str] = Field(default=None)
-    anthropic_api_key: Optional[str] = Field(default=None)
-    openai_api_key: Optional[str] = Field(default=None)
+    api_key: Optional[str] = Field(
+        default=None,
+        description="Primary API key (used if provider-specific key not set)"
+    )
+    anthropic_api_key: Optional[str] = Field(
+        default=None,
+        description="Anthropic API key for Claude models"
+    )
+    openai_api_key: Optional[str] = Field(
+        default=None,
+        description="OpenAI API key for GPT models"
+    )
+
+    # Runtime API key (can be set via UI, takes precedence)
+    runtime_api_key: Optional[str] = Field(
+        default=None,
+        description="Runtime API key set via UI (takes precedence over env vars)"
+    )
 
     # Model selection
     anthropic_model: str = Field(default="claude-sonnet-4-20250514")
@@ -168,6 +188,16 @@ class LLMSettings(BaseSettings):
     # Rate limiting
     max_retries: int = Field(default=3, ge=0, le=10)
     retry_delay_seconds: float = Field(default=1.0, ge=0.1, le=30.0)
+
+    def get_active_api_key(self) -> Optional[str]:
+        """Get the active API key with runtime key taking precedence."""
+        if self.runtime_api_key:
+            return self.runtime_api_key
+        if self.provider == LLMProvider.ANTHROPIC:
+            return self.anthropic_api_key or self.api_key
+        elif self.provider == LLMProvider.OPENAI:
+            return self.openai_api_key or self.api_key
+        return self.api_key
 
 
 class AgentSettings(BaseSettings):
@@ -249,6 +279,79 @@ class VisualizationSettings(BaseSettings):
     show_reference_line: bool = Field(default=True)
 
 
+class ChemistrySettings(BaseSettings):
+    """Settings for platinum/palladium chemistry calculations.
+
+    Based on Bostick-Sullivan formulas and industry standards.
+    Reference: https://www.bostick-sullivan.com/wp-content/uploads/2022/03/platinum-and-palladium-kit-instructions.pdf
+
+    Standard formula: A (FO #1) + B (FO #2 contrast) + C (metals) = total coating solution
+    Rule: Drops of metals (C) should equal drops of ferric oxalate (A + B)
+    """
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_CHEM_")
+
+    # Standard drops per square inch (based on 46 drops for 8x10" = 99 sq in)
+    drops_per_square_inch: float = Field(
+        default=0.465,
+        ge=0.2,
+        le=1.0,
+        description="Base drops per square inch for average absorbency paper"
+    )
+
+    # Drops per ml (standard plastic dropper)
+    drops_per_ml: float = Field(default=20.0, ge=15.0, le=25.0)
+
+    # Default metal ratio (platinum percentage, rest is palladium)
+    default_platinum_ratio: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Default platinum ratio (0.0 = all palladium, 1.0 = all platinum)"
+    )
+
+    # Contrast agent (Na2) default drops per 24 drops of metal
+    default_na2_drops_ratio: float = Field(
+        default=0.25,
+        ge=0.0,
+        le=0.5,
+        description="Na2 drops as ratio of metal drops (e.g., 6 drops Na2 per 24 drops metal = 0.25)"
+    )
+
+    # Paper absorbency multipliers
+    low_absorbency_multiplier: float = Field(
+        default=0.80,
+        ge=0.5,
+        le=1.0,
+        description="Multiplier for hot press/low absorbency papers"
+    )
+    medium_absorbency_multiplier: float = Field(default=1.0, ge=0.8, le=1.2)
+    high_absorbency_multiplier: float = Field(
+        default=1.20,
+        ge=1.0,
+        le=1.5,
+        description="Multiplier for cold press/high absorbency papers"
+    )
+
+    # Coating method adjustments
+    brush_coating_multiplier: float = Field(default=1.0, ge=0.8, le=1.2)
+    rod_coating_multiplier: float = Field(
+        default=0.75,
+        ge=0.5,
+        le=1.0,
+        description="Glass rod coating uses less solution"
+    )
+
+    # Default margin (inches to subtract from each side for coating area)
+    default_margin_inches: float = Field(default=0.5, ge=0.0, le=2.0)
+
+    # Solution costs (USD per ml) for cost estimation
+    ferric_oxalate_cost_per_ml: float = Field(default=0.50, ge=0.0, le=10.0)
+    palladium_cost_per_ml: float = Field(default=2.00, ge=0.0, le=50.0)
+    platinum_cost_per_ml: float = Field(default=8.00, ge=0.0, le=100.0)
+    na2_cost_per_ml: float = Field(default=4.00, ge=0.0, le=50.0)
+
+
 class WedgeAnalysisSettings(BaseSettings):
     """Settings for step wedge analysis."""
 
@@ -310,6 +413,7 @@ class Settings(BaseSettings):
     api: APISettings = Field(default_factory=APISettings)
     visualization: VisualizationSettings = Field(default_factory=VisualizationSettings)
     wedge_analysis: WedgeAnalysisSettings = Field(default_factory=WedgeAnalysisSettings)
+    chemistry: ChemistrySettings = Field(default_factory=ChemistrySettings)
 
     @field_validator("calibrations_dir", "exports_dir", mode="before")
     @classmethod

@@ -51,6 +51,14 @@ def create_gradio_app(share: bool = False):
         WedgeAnalysisConfig,
         QualityGrade,
     )
+    from ptpd_calibration.chemistry import (
+        ChemistryCalculator,
+        ChemistryRecipe,
+        PaperAbsorbency,
+        CoatingMethod,
+        MetalMix,
+        METAL_MIX_RATIOS,
+    )
 
     # Get settings for configuration-driven defaults
     settings = get_settings()
@@ -1468,7 +1476,380 @@ def create_gradio_app(share: bool = False):
                 )
 
             # ========================================
-            # TAB 8: About
+            # TAB 8: Chemistry Calculator
+            # ========================================
+            with gr.TabItem("Chemistry Calculator"):
+                gr.Markdown(
+                    """
+                    ### Coating Chemistry Calculator
+
+                    Calculate platinum/palladium coating solution amounts based on your print dimensions.
+                    Based on [Bostick-Sullivan formulas](https://www.bostick-sullivan.com/product-category/platinum-palladium-printing-process/).
+                    """
+                )
+
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("#### Print Dimensions")
+
+                        with gr.Row():
+                            print_width = gr.Number(
+                                label="Width (inches)",
+                                value=8.0,
+                                minimum=1.0,
+                                maximum=40.0,
+                            )
+                            print_height = gr.Number(
+                                label="Height (inches)",
+                                value=10.0,
+                                minimum=1.0,
+                                maximum=40.0,
+                            )
+
+                        standard_size_select = gr.Dropdown(
+                            choices=["Custom", "4x5", "5x7", "8x10", "11x14", "16x20", "20x24"],
+                            value="8x10",
+                            label="Or Select Standard Size",
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Metal Mix")
+
+                        metal_mix_select = gr.Dropdown(
+                            choices=[
+                                ("Pure Palladium (warm tones)", "pure_palladium"),
+                                ("Pure Platinum (cool tones, max Dmax)", "pure_platinum"),
+                                ("Classic Mix 50/50", "classic_mix"),
+                                ("Warm Mix (25% Pt / 75% Pd)", "warm_mix"),
+                                ("Cool Mix (75% Pt / 25% Pd)", "cool_mix"),
+                                ("Custom", "custom"),
+                            ],
+                            value="pure_palladium",
+                            label="Metal Mix Preset",
+                        )
+
+                        platinum_slider = gr.Slider(
+                            minimum=0,
+                            maximum=100,
+                            value=0,
+                            step=5,
+                            label="Platinum % (for custom mix)",
+                            visible=False,
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Paper & Coating")
+
+                        paper_absorbency_select = gr.Dropdown(
+                            choices=[
+                                ("Low (Hot Press, sized)", "low"),
+                                ("Medium (Standard art paper)", "medium"),
+                                ("High (Cold Press, unsized)", "high"),
+                            ],
+                            value="medium",
+                            label="Paper Absorbency",
+                        )
+
+                        coating_method_select = gr.Dropdown(
+                            choices=[
+                                ("Brush (Hake)", "brush"),
+                                ("Glass Rod", "rod"),
+                                ("Puddle Pusher", "puddle_pusher"),
+                            ],
+                            value="brush",
+                            label="Coating Method",
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Contrast & Na2")
+
+                        contrast_slider = gr.Slider(
+                            minimum=0,
+                            maximum=100,
+                            value=0,
+                            step=10,
+                            label="Contrast Boost % (FO#2)",
+                        )
+
+                        na2_slider = gr.Slider(
+                            minimum=0,
+                            maximum=50,
+                            value=25,
+                            step=5,
+                            label="Na2 % (of metal drops)",
+                        )
+
+                        calculate_btn = gr.Button("Calculate Recipe", variant="primary")
+
+                    with gr.Column(scale=2):
+                        gr.Markdown("#### Coating Recipe")
+
+                        recipe_display = gr.Textbox(
+                            label="Recipe",
+                            lines=25,
+                            interactive=False,
+                        )
+
+                        with gr.Row():
+                            recipe_json = gr.JSON(label="Recipe Details", visible=False)
+
+                        gr.Markdown(
+                            """
+                            ---
+                            #### Formula Reference
+
+                            **Standard Pt/Pd Formula:**
+                            - Solution A: Ferric Oxalate #1 (base sensitizer)
+                            - Solution B: Ferric Oxalate #2 (contrast booster, optional)
+                            - Solution C: Metal (Platinum, Palladium, or mix)
+                            - Na2: Sodium Platinum (contrast agent)
+
+                            **Rule:** Drops of metal (C) = Drops of FO (A + B)
+
+                            **Coverage:** ~46 drops per 8x10" (~0.46 drops/sq inch)
+                            """
+                        )
+
+                def on_standard_size_change(size):
+                    """Update dimensions when standard size is selected."""
+                    sizes = ChemistryCalculator.get_standard_sizes()
+                    if size in sizes:
+                        w, h = sizes[size]
+                        return w, h
+                    return gr.update(), gr.update()
+
+                def on_metal_mix_change(mix):
+                    """Show/hide custom slider based on mix selection."""
+                    if mix == "custom":
+                        return gr.update(visible=True)
+                    return gr.update(visible=False)
+
+                def calculate_chemistry(
+                    width, height, metal_mix, pt_custom, absorbency, method, contrast, na2
+                ):
+                    """Calculate and display chemistry recipe."""
+                    try:
+                        calculator = ChemistryCalculator()
+
+                        # Determine platinum ratio
+                        if metal_mix == "custom":
+                            pt_ratio = pt_custom / 100.0
+                        else:
+                            pt_ratio = METAL_MIX_RATIOS[MetalMix(metal_mix)]
+
+                        recipe = calculator.calculate(
+                            width_inches=float(width),
+                            height_inches=float(height),
+                            platinum_ratio=pt_ratio,
+                            paper_absorbency=PaperAbsorbency(absorbency),
+                            coating_method=CoatingMethod(method),
+                            contrast_boost=contrast / 100.0,
+                            na2_ratio=na2 / 100.0,
+                        )
+
+                        return recipe.format_recipe(), recipe.to_dict()
+                    except Exception as e:
+                        return f"Error: {str(e)}", {"error": str(e)}
+
+                # Connect handlers
+                standard_size_select.change(
+                    on_standard_size_change,
+                    inputs=[standard_size_select],
+                    outputs=[print_width, print_height],
+                )
+
+                metal_mix_select.change(
+                    on_metal_mix_change,
+                    inputs=[metal_mix_select],
+                    outputs=[platinum_slider],
+                )
+
+                calculate_btn.click(
+                    calculate_chemistry,
+                    inputs=[
+                        print_width, print_height, metal_mix_select, platinum_slider,
+                        paper_absorbency_select, coating_method_select, contrast_slider, na2_slider
+                    ],
+                    outputs=[recipe_display, recipe_json],
+                )
+
+            # ========================================
+            # TAB 9: Settings
+            # ========================================
+            with gr.TabItem("Settings"):
+                gr.Markdown(
+                    """
+                    ### Application Settings
+
+                    Configure your API keys and preferences for the Pt/Pd Calibration Studio.
+                    Settings entered here are stored for your current session only.
+                    """
+                )
+
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("#### LLM API Configuration")
+                        gr.Markdown(
+                            """
+                            Enter your API key to enable AI-powered features:
+                            - AI Curve Enhancement
+                            - AI Assistant Chat
+                            - Recipe Suggestions
+                            - Troubleshooting
+
+                            Your API key is stored locally and never shared.
+                            """
+                        )
+
+                        llm_provider_select = gr.Dropdown(
+                            choices=[
+                                ("Anthropic (Claude)", "anthropic"),
+                                ("OpenAI (GPT)", "openai"),
+                            ],
+                            value=settings.llm.provider.value,
+                            label="LLM Provider",
+                        )
+
+                        api_key_input = gr.Textbox(
+                            label="API Key",
+                            placeholder="Enter your API key (e.g., sk-ant-... or sk-...)",
+                            type="password",
+                            value="",
+                        )
+
+                        save_api_key_btn = gr.Button("Save API Key", variant="primary")
+
+                        api_key_status = gr.Textbox(
+                            label="Status",
+                            value="No API key configured" if not settings.llm.get_active_api_key() else "API key configured (from environment)",
+                            interactive=False,
+                        )
+
+                        gr.Markdown("---")
+                        gr.Markdown("#### Model Selection")
+
+                        anthropic_model_input = gr.Dropdown(
+                            choices=[
+                                "claude-sonnet-4-20250514",
+                                "claude-3-5-sonnet-20241022",
+                                "claude-3-haiku-20240307",
+                            ],
+                            value=settings.llm.anthropic_model,
+                            label="Anthropic Model",
+                        )
+
+                        openai_model_input = gr.Dropdown(
+                            choices=[
+                                "gpt-4o",
+                                "gpt-4o-mini",
+                                "gpt-4-turbo",
+                            ],
+                            value=settings.llm.openai_model,
+                            label="OpenAI Model",
+                        )
+
+                    with gr.Column():
+                        gr.Markdown("#### Getting API Keys")
+                        gr.Markdown(
+                            """
+                            **Anthropic (Claude)**
+                            1. Go to [console.anthropic.com](https://console.anthropic.com)
+                            2. Sign up or log in
+                            3. Navigate to API Keys
+                            4. Create a new key
+
+                            **OpenAI (GPT)**
+                            1. Go to [platform.openai.com](https://platform.openai.com)
+                            2. Sign up or log in
+                            3. Navigate to API Keys
+                            4. Create a new key
+
+                            ---
+
+                            #### Environment Variables
+
+                            You can also set API keys via environment variables:
+                            ```
+                            PTPD_LLM_API_KEY=your-key
+                            PTPD_LLM_ANTHROPIC_API_KEY=your-anthropic-key
+                            PTPD_LLM_OPENAI_API_KEY=your-openai-key
+                            ```
+
+                            ---
+
+                            #### Current Configuration
+
+                            These settings are derived from environment variables
+                            and can be overridden in the Settings tab.
+                            """
+                        )
+
+                        current_config_display = gr.JSON(
+                            label="Current LLM Configuration",
+                            value={
+                                "provider": settings.llm.provider.value,
+                                "anthropic_model": settings.llm.anthropic_model,
+                                "openai_model": settings.llm.openai_model,
+                                "api_key_configured": bool(settings.llm.get_active_api_key()),
+                                "max_tokens": settings.llm.max_tokens,
+                                "temperature": settings.llm.temperature,
+                            },
+                        )
+
+                def save_api_key(provider, api_key, anthropic_model, openai_model):
+                    """Save API key to runtime settings."""
+                    try:
+                        if not api_key or not api_key.strip():
+                            return "No API key provided", gr.update()
+
+                        # Update the global settings
+                        from ptpd_calibration.config import get_settings, LLMProvider
+                        current_settings = get_settings()
+                        current_settings.llm.runtime_api_key = api_key.strip()
+                        current_settings.llm.provider = LLMProvider(provider)
+                        current_settings.llm.anthropic_model = anthropic_model
+                        current_settings.llm.openai_model = openai_model
+
+                        # Verify the key works (basic format check)
+                        key = api_key.strip()
+                        if provider == "anthropic" and not key.startswith("sk-ant-"):
+                            return "Warning: Anthropic keys typically start with 'sk-ant-'. Key saved anyway.", {
+                                "provider": provider,
+                                "anthropic_model": anthropic_model,
+                                "openai_model": openai_model,
+                                "api_key_configured": True,
+                                "max_tokens": current_settings.llm.max_tokens,
+                                "temperature": current_settings.llm.temperature,
+                            }
+                        elif provider == "openai" and not key.startswith("sk-"):
+                            return "Warning: OpenAI keys typically start with 'sk-'. Key saved anyway.", {
+                                "provider": provider,
+                                "anthropic_model": anthropic_model,
+                                "openai_model": openai_model,
+                                "api_key_configured": True,
+                                "max_tokens": current_settings.llm.max_tokens,
+                                "temperature": current_settings.llm.temperature,
+                            }
+
+                        return f"API key saved successfully for {provider.title()}", {
+                            "provider": provider,
+                            "anthropic_model": anthropic_model,
+                            "openai_model": openai_model,
+                            "api_key_configured": True,
+                            "max_tokens": current_settings.llm.max_tokens,
+                            "temperature": current_settings.llm.temperature,
+                        }
+                    except Exception as e:
+                        return f"Error saving API key: {str(e)}", gr.update()
+
+                save_api_key_btn.click(
+                    save_api_key,
+                    inputs=[llm_provider_select, api_key_input, anthropic_model_input, openai_model_input],
+                    outputs=[api_key_status, current_config_display],
+                )
+
+            # ========================================
+            # TAB 10: About
             # ========================================
             with gr.TabItem("About"):
                 gr.Markdown(
@@ -1486,6 +1867,7 @@ def create_gradio_app(share: bool = False):
                     - **Curve Editor**: Upload .quad files, modify curves, smooth curves, and apply AI-powered enhancements
                     - **AI Enhancement**: Intelligent curve optimization
                     - **AI Assistant**: Get help from an AI expert in Pt/Pd printing
+                    - **Chemistry Calculator**: Calculate coating solution amounts for any print size
                     - **Recipe Suggestions**: Get starting parameters for new papers
                     - **Troubleshooting**: Diagnose and fix common problems
 
@@ -1496,10 +1878,18 @@ def create_gradio_app(share: bool = False):
                     - CSV
                     - JSON
 
+                    ### Chemistry Reference
+
+                    Based on [Bostick-Sullivan Platinum/Palladium Kit Instructions](https://www.bostick-sullivan.com/wp-content/uploads/2022/03/platinum-and-palladium-kit-instructions.pdf):
+                    - Standard formula: FO + Metal drops (1:1 ratio)
+                    - ~46 drops covers 8x10" coating area
+                    - Na2 adds contrast (typically 25% of metal drops)
+
                     ### Links
 
                     - [GitHub Repository](https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool)
                     - [Documentation](https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool#readme)
+                    - [Bostick & Sullivan](https://www.bostick-sullivan.com/)
                     """
                 )
 
