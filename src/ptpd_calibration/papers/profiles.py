@@ -369,6 +369,19 @@ class PaperDatabase:
         """
         return [p.name for p in self.list_papers()]
 
+    # Compatibility helpers for earlier UI code
+    def get_all(self) -> list[PaperProfile]:
+        """Alias for list_papers."""
+        return self.list_papers()
+
+    def get_by_name(self, name: str) -> Optional[PaperProfile]:
+        """Alias for get_paper."""
+        return self.get_paper(name)
+
+    def add_profile(self, profile: PaperProfile) -> None:
+        """Alias for add_custom_paper."""
+        self.add_custom_paper(profile)
+
     def add_custom_paper(self, profile: PaperProfile) -> None:
         """Add a custom paper profile.
 
