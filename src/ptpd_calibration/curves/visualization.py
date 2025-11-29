@@ -11,6 +11,9 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 from ptpd_calibration.core.models import CurveData
 
