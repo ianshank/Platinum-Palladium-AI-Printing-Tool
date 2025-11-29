@@ -208,10 +208,11 @@ def create_gradio_app(share: bool = False):
                     """
                 )
 
-                # State to hold current curve data
+                # State to hold current curve data and profile
                 current_curve_inputs = gr.State([])
                 current_curve_outputs = gr.State([])
                 current_curve_name = gr.State("Edited Curve")
+                current_profile_data = gr.State(None)  # Store the full profile for multi-channel access
 
                 with gr.Row():
                     with gr.Column(scale=1):
@@ -227,8 +228,13 @@ def create_gradio_app(share: bool = False):
                                     choices=["K", "C", "M", "Y", "LC", "LM", "LK"],
                                     value="K",
                                     label="Channel",
+                                    interactive=True,
                                 )
-                                upload_quad_btn = gr.Button("Load Quad File")
+                                show_all_channels = gr.Checkbox(
+                                    label="Show all channels",
+                                    value=False,
+                                )
+                                upload_quad_btn = gr.Button("Load Quad File", variant="primary")
 
                             with gr.TabItem("Paste Data"):
                                 curve_data_input = gr.Textbox(
@@ -324,20 +330,52 @@ def create_gradio_app(share: bool = False):
                             visible=True,
                         )
 
-                def create_curve_plot(inputs, outputs, name="Curve"):
-                    """Create a matplotlib plot for the curve."""
+                # Channel colors for multi-channel view
+                CHANNEL_COLORS = {
+                    "K": "#1a1a1a",   # Black
+                    "C": "#00BFFF",   # Cyan
+                    "M": "#FF1493",   # Magenta
+                    "Y": "#FFD700",   # Yellow
+                    "LC": "#87CEEB",  # Light Cyan
+                    "LM": "#FFB6C1",  # Light Magenta
+                    "LK": "#696969",  # Light Black/Gray
+                    "LLK": "#A9A9A9", # Light Light Black
+                    "PK": "#2F4F4F",  # Photo Black
+                    "MK": "#4A4A4A",  # Matte Black
+                }
+
+                def create_curve_plot(inputs, outputs, name="Curve", profile_data=None, show_all=False, selected_channel="K"):
+                    """Create a matplotlib plot for the curve with multi-channel support."""
                     import matplotlib.pyplot as plt
 
                     fig, ax = plt.subplots(figsize=(10, 6))
 
-                    if inputs and outputs:
-                        ax.plot(inputs, outputs, "-", color="#8B4513", linewidth=2, label=name)
+                    # Plot all channels if profile data available and show_all is True
+                    if show_all and profile_data is not None:
+                        channels_data = profile_data.get("channels", {})
+                        for ch_name, ch_data in channels_data.items():
+                            ch_inputs = ch_data.get("inputs", [])
+                            ch_outputs = ch_data.get("outputs", [])
+                            if ch_inputs and ch_outputs:
+                                color = CHANNEL_COLORS.get(ch_name, "#8B4513")
+                                linewidth = 2.5 if ch_name == selected_channel else 1.5
+                                alpha = 1.0 if ch_name == selected_channel else 0.6
+                                ax.plot(ch_inputs, ch_outputs, "-", color=color,
+                                       linewidth=linewidth, alpha=alpha, label=ch_name)
+                    elif inputs and outputs:
+                        color = CHANNEL_COLORS.get(selected_channel, "#8B4513")
+                        ax.plot(inputs, outputs, "-", color=color, linewidth=2, label=name)
 
                     ax.plot([0, 1], [0, 1], "--", color="gray", alpha=0.5, label="Linear Reference")
                     ax.set_xlabel("Input")
                     ax.set_ylabel("Output")
-                    ax.set_title(f"Curve: {name}")
-                    ax.legend()
+
+                    if show_all and profile_data:
+                        ax.set_title(f"All Channels - {profile_data.get('profile_name', 'Profile')}")
+                    else:
+                        ax.set_title(f"Curve: {name}")
+
+                    ax.legend(loc="lower right")
                     ax.grid(True, alpha=0.3)
                     ax.set_xlim(0, 1)
                     ax.set_ylim(0, 1)
@@ -346,36 +384,79 @@ def create_gradio_app(share: bool = False):
 
                     return fig
 
-                def load_quad_uploaded(file, channel):
+                def load_quad_uploaded(file, channel, show_all):
                     """Load curve from uploaded .quad file."""
                     if file is None:
-                        return [], [], "No Curve", {"error": "No file uploaded"}, None
+                        return [], [], "No Curve", {"error": "No file uploaded"}, None, None, gr.update()
 
                     try:
                         profile = load_quad_file(Path(file.name))
 
-                        if channel.upper() not in profile.channels:
-                            return [], [], "No Curve", {"error": f"Channel {channel} not found"}, None
+                        # Build profile data with all channels for storage
+                        profile_data = {
+                            "profile_name": profile.profile_name,
+                            "resolution": profile.resolution,
+                            "ink_limit": profile.ink_limit,
+                            "media_type": profile.media_type,
+                            "active_channels": profile.active_channels,
+                            "all_channels": profile.all_channel_names,
+                            "channels": {},
+                        }
 
-                        curve_data = profile.to_curve_data(channel.upper())
-                        inputs = curve_data.input_values
-                        outputs = curve_data.output_values
-                        name = f"{profile.profile_name} - {channel}"
+                        # Store all channel data
+                        for ch_name in profile.all_channel_names:
+                            ch = profile.get_channel(ch_name)
+                            if ch:
+                                ch_inputs, ch_outputs = ch.as_normalized
+                                profile_data["channels"][ch_name] = {
+                                    "inputs": ch_inputs,
+                                    "outputs": ch_outputs,
+                                }
+
+                        # Get available channels for dropdown update
+                        available_channels = profile.all_channel_names if profile.all_channel_names else ["K"]
+
+                        # Determine which channel to display
+                        selected_channel = channel.upper() if channel.upper() in available_channels else available_channels[0]
+
+                        # Get the selected channel's curve data
+                        if selected_channel in profile.channels:
+                            curve_data = profile.to_curve_data(selected_channel)
+                            inputs = curve_data.input_values
+                            outputs = curve_data.output_values
+                        else:
+                            inputs = []
+                            outputs = []
+
+                        name = f"{profile.profile_name} - {selected_channel}"
 
                         info = {
                             "profile_name": profile.profile_name,
-                            "channel": channel,
+                            "selected_channel": selected_channel,
                             "resolution": profile.resolution,
                             "ink_limit": profile.ink_limit,
+                            "media_type": profile.media_type or "Not specified",
                             "active_channels": profile.active_channels,
+                            "all_channels": available_channels,
                             "num_points": len(inputs),
                         }
 
-                        fig = create_curve_plot(inputs, outputs, name)
+                        # Create plot with multi-channel support
+                        fig = create_curve_plot(
+                            inputs, outputs, name,
+                            profile_data=profile_data,
+                            show_all=show_all,
+                            selected_channel=selected_channel
+                        )
 
-                        return inputs, outputs, name, info, fig
+                        # Update dropdown choices
+                        dropdown_update = gr.update(choices=available_channels, value=selected_channel)
+
+                        return inputs, outputs, name, info, fig, profile_data, dropdown_update
                     except Exception as e:
-                        return [], [], "Error", {"error": str(e)}, None
+                        import traceback
+                        error_detail = f"{str(e)}\n{traceback.format_exc()}"
+                        return [], [], "Error", {"error": str(e), "detail": error_detail}, None, None, gr.update()
 
                 def load_data_from_text(data_str):
                     """Load curve from comma-separated values."""
@@ -398,30 +479,115 @@ def create_gradio_app(share: bool = False):
                     except Exception as e:
                         return [], [], "Error", {"error": str(e)}, None
 
-                def parse_quad_content_fn(content, channel="K"):
+                def parse_quad_content_fn(content, channel="K", show_all=False):
                     """Parse .quad content from text."""
                     try:
                         profile = load_quad_string(content, "Pasted Profile")
 
-                        if channel.upper() not in profile.channels:
-                            return [], [], "No Curve", {"error": f"Channel {channel} not found"}, None
+                        # Build profile data with all channels
+                        profile_data = {
+                            "profile_name": profile.profile_name,
+                            "active_channels": profile.active_channels,
+                            "all_channels": profile.all_channel_names,
+                            "channels": {},
+                        }
 
-                        curve_data = profile.to_curve_data(channel.upper())
-                        inputs = curve_data.input_values
-                        outputs = curve_data.output_values
-                        name = f"{profile.profile_name} - {channel}"
+                        for ch_name in profile.all_channel_names:
+                            ch = profile.get_channel(ch_name)
+                            if ch:
+                                ch_inputs, ch_outputs = ch.as_normalized
+                                profile_data["channels"][ch_name] = {
+                                    "inputs": ch_inputs,
+                                    "outputs": ch_outputs,
+                                }
+
+                        available_channels = profile.all_channel_names if profile.all_channel_names else ["K"]
+                        selected_channel = channel.upper() if channel.upper() in available_channels else available_channels[0]
+
+                        if selected_channel in profile.channels:
+                            curve_data = profile.to_curve_data(selected_channel)
+                            inputs = curve_data.input_values
+                            outputs = curve_data.output_values
+                        else:
+                            inputs = []
+                            outputs = []
+
+                        name = f"{profile.profile_name} - {selected_channel}"
 
                         info = {
                             "profile_name": profile.profile_name,
+                            "selected_channel": selected_channel,
                             "active_channels": profile.active_channels,
+                            "all_channels": available_channels,
                             "num_points": len(inputs),
                         }
 
-                        fig = create_curve_plot(inputs, outputs, name)
+                        fig = create_curve_plot(
+                            inputs, outputs, name,
+                            profile_data=profile_data,
+                            show_all=show_all,
+                            selected_channel=selected_channel
+                        )
+
+                        dropdown_update = gr.update(choices=available_channels, value=selected_channel)
+
+                        return inputs, outputs, name, info, fig, profile_data, dropdown_update
+                    except Exception as e:
+                        return [], [], "Error", {"error": str(e)}, None, None, gr.update()
+
+                def on_channel_change(channel, profile_data, show_all):
+                    """Handle channel selection change."""
+                    if profile_data is None:
+                        return [], [], "No Curve", {"error": "No profile loaded"}, None
+
+                    try:
+                        channels_data = profile_data.get("channels", {})
+                        selected_channel = channel.upper()
+
+                        if selected_channel not in channels_data:
+                            return [], [], "No Curve", {"error": f"Channel {channel} not found"}, None
+
+                        ch_data = channels_data[selected_channel]
+                        inputs = ch_data.get("inputs", [])
+                        outputs = ch_data.get("outputs", [])
+                        name = f"{profile_data.get('profile_name', 'Profile')} - {selected_channel}"
+
+                        info = {
+                            "profile_name": profile_data.get("profile_name"),
+                            "selected_channel": selected_channel,
+                            "active_channels": profile_data.get("active_channels", []),
+                            "all_channels": profile_data.get("all_channels", []),
+                            "num_points": len(inputs),
+                        }
+
+                        fig = create_curve_plot(
+                            inputs, outputs, name,
+                            profile_data=profile_data,
+                            show_all=show_all,
+                            selected_channel=selected_channel
+                        )
 
                         return inputs, outputs, name, info, fig
                     except Exception as e:
                         return [], [], "Error", {"error": str(e)}, None
+
+                def on_show_all_toggle(show_all, channel, profile_data, inputs, outputs, name):
+                    """Handle show all channels checkbox toggle."""
+                    if profile_data is None:
+                        # No profile, just redraw with current curve
+                        fig = create_curve_plot(inputs, outputs, name)
+                        return fig
+
+                    selected_channel = channel.upper() if channel else "K"
+
+                    fig = create_curve_plot(
+                        inputs, outputs, name,
+                        profile_data=profile_data,
+                        show_all=show_all,
+                        selected_channel=selected_channel
+                    )
+
+                    return fig
 
                 def apply_adjustment(inputs, outputs, name, adj_type, amount):
                     """Apply curve adjustment."""
@@ -581,8 +747,16 @@ def create_gradio_app(share: bool = False):
                 # Connect event handlers
                 upload_quad_btn.click(
                     load_quad_uploaded,
-                    inputs=[quad_upload, channel_select],
-                    outputs=[current_curve_inputs, current_curve_outputs, current_curve_name, editor_info, editor_plot],
+                    inputs=[quad_upload, channel_select, show_all_channels],
+                    outputs=[
+                        current_curve_inputs,
+                        current_curve_outputs,
+                        current_curve_name,
+                        editor_info,
+                        editor_plot,
+                        current_profile_data,
+                        channel_select,
+                    ],
                 )
 
                 load_data_btn.click(
@@ -592,9 +766,31 @@ def create_gradio_app(share: bool = False):
                 )
 
                 parse_quad_btn.click(
-                    lambda content: parse_quad_content_fn(content, "K"),
-                    inputs=[quad_content_input],
+                    lambda content, ch, show: parse_quad_content_fn(content, ch, show),
+                    inputs=[quad_content_input, channel_select, show_all_channels],
+                    outputs=[
+                        current_curve_inputs,
+                        current_curve_outputs,
+                        current_curve_name,
+                        editor_info,
+                        editor_plot,
+                        current_profile_data,
+                        channel_select,
+                    ],
+                )
+
+                # Channel selection change handler
+                channel_select.change(
+                    on_channel_change,
+                    inputs=[channel_select, current_profile_data, show_all_channels],
                     outputs=[current_curve_inputs, current_curve_outputs, current_curve_name, editor_info, editor_plot],
+                )
+
+                # Show all channels toggle handler
+                show_all_channels.change(
+                    on_show_all_toggle,
+                    inputs=[show_all_channels, channel_select, current_profile_data, current_curve_inputs, current_curve_outputs, current_curve_name],
+                    outputs=[editor_plot],
                 )
 
                 apply_adjust_btn.click(
