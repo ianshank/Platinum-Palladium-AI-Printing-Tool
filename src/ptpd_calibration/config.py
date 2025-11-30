@@ -91,7 +91,7 @@ class ExtractionSettings(BaseSettings):
 
     # Density calculation
     reference_white_reflectance: float = Field(default=0.9, ge=0.5, le=1.0)
-    status_a_weights: tuple[float, float, float] = Field(default=(0.299, 0.587, 0.114))
+    status_a_weights: tuple[float, float, float] = Field(default=(0.2126, 0.7152, 0.0722))
 
     # Paper base detection
     paper_margin_ratio: float = Field(default=0.05, ge=0.01, le=0.2)
