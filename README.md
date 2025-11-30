@@ -514,6 +514,9 @@ pytest tests/sanity/ -v
 - **CSV**: Standard comma-separated values
 - **JSON**: Full metadata preservation
 
+## Created By
+Ian Cruickshank
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
