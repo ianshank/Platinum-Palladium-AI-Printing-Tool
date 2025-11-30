@@ -509,8 +509,8 @@ class SplitGradeSettings(BaseSettings):
     default_highlight_grade: float = Field(default=0.0, ge=0.0, le=5.0)
 
     # Thresholds
-    shadow_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
-    highlight_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
+    shadow_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
+    highlight_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
 
     # Blending
     blend_gamma: float = Field(default=2.2, ge=1.0, le=3.0)
