@@ -368,16 +368,21 @@ class ICCProfileManager:
             }
             color_space = color_space_map.get(color_space_str, ColorSpace.RGB)
 
-            # Try to determine profile class from description
-            desc_lower = description.lower()
-            if any(x in desc_lower for x in ["printer", "output"]):
-                profile_class = ProfileClass.OUTPUT
-            elif any(x in desc_lower for x in ["display", "monitor"]):
-                profile_class = ProfileClass.DISPLAY
-            elif any(x in desc_lower for x in ["scanner", "camera", "input"]):
-                profile_class = ProfileClass.INPUT
-            else:
-                profile_class = ProfileClass.COLOR_SPACE
+            # Read profile class from ICC header (byte offset 12, 4-byte signature)
+            profile_class = self._read_profile_class_from_header(path)
+
+            # Fall back to description-based detection if header read fails
+            if profile_class is None:
+                logger.debug(f"Falling back to description-based class detection for {path.name}")
+                desc_lower = description.lower()
+                if any(x in desc_lower for x in ["printer", "output"]):
+                    profile_class = ProfileClass.OUTPUT
+                elif any(x in desc_lower for x in ["display", "monitor"]):
+                    profile_class = ProfileClass.DISPLAY
+                elif any(x in desc_lower for x in ["scanner", "camera", "input"]):
+                    profile_class = ProfileClass.INPUT
+                else:
+                    profile_class = ProfileClass.COLOR_SPACE
 
             return ProfileInfo(
                 path=path,
@@ -390,6 +395,59 @@ class ICCProfileManager:
 
         except Exception as e:
             raise ValueError(f"Failed to read profile info: {e}")
+
+    def _read_profile_class_from_header(self, path: Path) -> Optional[ProfileClass]:
+        """
+        Read ICC profile class directly from header.
+
+        The ICC specification defines a Profile/Device Class field at byte offset 12
+        containing a 4-byte signature.
+
+        Args:
+            path: Path to ICC profile file
+
+        Returns:
+            ProfileClass enum value, or None if reading fails
+        """
+        try:
+            with open(path, 'rb') as f:
+                # Skip to byte offset 12 (profile class signature)
+                f.seek(12)
+                class_signature = f.read(4)
+
+                if len(class_signature) != 4:
+                    logger.warning(f"Could not read profile class signature from {path.name}")
+                    return None
+
+                # Map ICC profile class signatures to ProfileClass enum
+                signature_map = {
+                    b'scnr': ProfileClass.INPUT,       # Scanner/Input
+                    b'mntr': ProfileClass.DISPLAY,     # Display/Monitor
+                    b'prtr': ProfileClass.OUTPUT,      # Printer/Output
+                    b'link': ProfileClass.DEVICE_LINK, # Device Link
+                    b'spac': ProfileClass.COLOR_SPACE, # Color Space
+                    b'abst': ProfileClass.ABSTRACT,    # Abstract
+                    b'nmcl': ProfileClass.NAMED_COLOR, # Named Color
+                }
+
+                profile_class = signature_map.get(class_signature)
+
+                if profile_class:
+                    logger.debug(
+                        f"Read profile class from header: {class_signature.decode('ascii', errors='ignore')} "
+                        f"-> {profile_class.value}"
+                    )
+                else:
+                    logger.warning(
+                        f"Unknown profile class signature: {class_signature.hex()} "
+                        f"in {path.name}"
+                    )
+
+                return profile_class
+
+        except Exception as e:
+            logger.debug(f"Failed to read profile class from header: {e}")
+            return None
 
     def convert_colorspace(
         self,

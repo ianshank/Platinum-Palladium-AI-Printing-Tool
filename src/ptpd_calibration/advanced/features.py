@@ -25,6 +25,49 @@ except ImportError:
     HAS_QRCODE = False
 
 
+def _get_truetype_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    """Get a TrueType font with cross-platform support.
+
+    Tries multiple common font paths for Windows, macOS, and Linux.
+    Falls back to default font if none are found.
+
+    Args:
+        size: Font size in points
+        bold: Whether to use bold variant
+
+    Returns:
+        Font object (TrueType if available, default otherwise)
+    """
+    # Font candidates to try
+    font_names = [
+        "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
+        "arialbd.ttf" if bold else "arial.ttf",
+        "Arial Bold.ttf" if bold else "Arial.ttf",
+        "Helvetica-Bold.ttf" if bold else "Helvetica.ttf",
+    ]
+
+    # Common font directories by platform
+    font_paths = [
+        "/usr/share/fonts/truetype/dejavu/",  # Linux (Debian/Ubuntu)
+        "/usr/share/fonts/dejavu/",            # Linux (other distros)
+        "/System/Library/Fonts/",              # macOS
+        "/Library/Fonts/",                     # macOS
+        "C:/Windows/Fonts/",                   # Windows
+        "C:\\Windows\\Fonts\\",                # Windows (alternative)
+    ]
+
+    # Try each combination of path and font name
+    for path in font_paths:
+        for name in font_names:
+            try:
+                return ImageFont.truetype(path + name, size)
+            except OSError:
+                continue
+
+    # Fall back to default font if nothing works
+    return ImageFont.load_default()
+
+
 class BlendMode(str, Enum):
     """Blending modes for negative composition."""
 
@@ -903,13 +946,9 @@ class QRMetadataGenerator:
         text_y = 20
         line_height = 25
 
-        # Try to load a font, fall back to default
-        try:
-            font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
-            font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
-        except:
-            font_large = ImageFont.load_default()
-            font_small = ImageFont.load_default()
+        # Load fonts with cross-platform support
+        font_large = _get_truetype_font(16, bold=True)
+        font_small = _get_truetype_font(12, bold=False)
 
         # Draw text fields
         y = text_y

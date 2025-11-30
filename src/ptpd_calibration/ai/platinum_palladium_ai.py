@@ -658,9 +658,9 @@ class PlatinumPalladiumAI:
         # Calculate bounds using error propagation
         # Density affects exposure exponentially (2^(Δd/0.3))
         density_factor_low = 2 ** ((negative_density - density_uncertainty -
-                                   result.base_exposure) / 0.3)
+                                   exposure_settings.base_negative_density) / 0.3)
         density_factor_high = 2 ** ((negative_density + density_uncertainty -
-                                    result.base_exposure) / 0.3)
+                                    exposure_settings.base_negative_density) / 0.3)
 
         lower_bound = result.exposure_seconds * (1 - paper_uncertainty - env_uncertainty)
         upper_bound = result.exposure_seconds * (1 + paper_uncertainty + env_uncertainty)

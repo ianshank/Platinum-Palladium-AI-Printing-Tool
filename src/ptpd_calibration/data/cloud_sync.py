@@ -9,7 +9,7 @@ import hashlib
 import json
 import shutil
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
@@ -221,7 +221,7 @@ class LocalStorageProvider(CloudProvider):
         return FileMetadata(
             path=remote_path,
             size=stat.st_size,
-            modified_time=datetime.fromtimestamp(stat.st_mtime),
+            modified_time=datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc),
             checksum=checksum,
         )
 
@@ -538,7 +538,7 @@ class SyncManager:
             return True  # File doesn't exist remotely
 
         # Compare modification times
-        local_mtime = datetime.fromtimestamp(local_file.stat().st_mtime)
+        local_mtime = datetime.fromtimestamp(local_file.stat().st_mtime, tz=timezone.utc)
         return local_mtime > remote_meta.modified_time
 
     def _needs_download(self, remote_path: str, local_file: Path) -> bool:
@@ -551,7 +551,7 @@ class SyncManager:
             return False  # Remote file doesn't exist
 
         # Compare modification times
-        local_mtime = datetime.fromtimestamp(local_file.stat().st_mtime)
+        local_mtime = datetime.fromtimestamp(local_file.stat().st_mtime, tz=timezone.utc)
         return remote_meta.modified_time > local_mtime
 
     def _detect_conflicts(self) -> list[dict[str, Any]]:
@@ -567,7 +567,7 @@ class SyncManager:
             if remote_meta is None:
                 continue
 
-            local_mtime = datetime.fromtimestamp(local_file.stat().st_mtime)
+            local_mtime = datetime.fromtimestamp(local_file.stat().st_mtime, tz=timezone.utc)
 
             # Check if both have been modified
             if local_mtime != remote_meta.modified_time:
