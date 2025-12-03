@@ -209,11 +209,7 @@ class PrinterInterface(ABC):
         pass
 
     @abstractmethod
-<<<<<<< HEAD
     def get_status(self) -> Dict[str, Any]:
-=======
-    def get_status(self) -> Dict[str, any]:
->>>>>>> claude/implement-chat-requirements-014YeEiyBSMJL91puKEgVcih
         """
         Get printer status.
 
@@ -323,11 +319,7 @@ class EpsonDriver(PrinterInterface):
         logger.info(f"Starting print job {job_id}")
 
         # Prepare image for printing
-<<<<<<< HEAD
         _ = self._prepare_image(image, settings)
-=======
-        processed_image = self._prepare_image(image, settings)
->>>>>>> claude/implement-chat-requirements-014YeEiyBSMJL91puKEgVcih
 
         if self.simulate:
             # Simulate printing
@@ -464,11 +456,7 @@ class EpsonDriver(PrinterInterface):
         # - Query printer status
         raise NotImplementedError("Real nozzle check not implemented")
 
-<<<<<<< HEAD
     def get_status(self) -> Dict[str, Any]:
-=======
-    def get_status(self) -> Dict[str, any]:
->>>>>>> claude/implement-chat-requirements-014YeEiyBSMJL91puKEgVcih
         """Get Epson printer status."""
         if not self.is_connected:
             raise ConnectionError("Printer not connected")
@@ -585,11 +573,7 @@ class CanonDriver(PrinterInterface):
         logger.info(f"Starting print job {job_id}")
 
         # Canon-specific processing
-<<<<<<< HEAD
         _ = self._prepare_image(image, settings)
-=======
-        processed_image = self._prepare_image(image, settings)
->>>>>>> claude/implement-chat-requirements-014YeEiyBSMJL91puKEgVcih
 
         if self.simulate:
             logger.info(
@@ -702,11 +686,7 @@ class CanonDriver(PrinterInterface):
 
         raise NotImplementedError("Real nozzle check not implemented")
 
-<<<<<<< HEAD
     def get_status(self) -> Dict[str, Any]:
-=======
-    def get_status(self) -> Dict[str, any]:
->>>>>>> claude/implement-chat-requirements-014YeEiyBSMJL91puKEgVcih
         """Get Canon printer status."""
         if not self.is_connected:
             raise ConnectionError("Printer not connected")
