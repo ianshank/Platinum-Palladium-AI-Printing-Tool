@@ -484,6 +484,9 @@ class NegativeBlender:
         mask_arrays = []
         if masks:
             for mask in masks:
+                if mask is None:
+                    mask_arrays.append(np.ones(target_size, dtype=np.float32))
+                    continue
                 if isinstance(mask, Image.Image):
                     if mask.mode != 'L':
                         mask = mask.convert('L')
@@ -1374,8 +1377,8 @@ class PrintComparison:
         # Resize to match if needed
         if orig_arr.shape != scan_arr.shape:
             from scipy.ndimage import zoom
-            scale_y = scan_arr.shape[0] / orig_arr.shape[0]
-            scale_x = scan_arr.shape[1] / orig_arr.shape[1]
+            scale_y = orig_arr.shape[0] / scan_arr.shape[0]
+            scale_x = orig_arr.shape[1] / scan_arr.shape[1]
             scan_arr = zoom(scan_arr, (scale_y, scale_x), order=1)
 
         # Calculate metrics
@@ -1387,17 +1390,21 @@ class PrintComparison:
         psnr = 20 * np.log10(max_val / (rmse + 1e-10))
 
         # Structural similarity (simplified)
-        similarity = 1.0 - rmse
+        similarity = float(np.clip(1.0 - rmse, 0.0, 1.0))
 
         # Histogram comparison
         orig_hist = np.histogram(orig_arr, bins=50, range=(0, 1))[0]
         scan_hist = np.histogram(scan_arr, bins=50, range=(0, 1))[0]
-        hist_correlation = np.corrcoef(orig_hist, scan_hist)[0, 1]
+        hist_correlation = float(np.clip(np.corrcoef(orig_hist, scan_hist)[0, 1], -1.0, 1.0))
 
         # Tonal range comparison
         orig_range = float(orig_arr.max() - orig_arr.min())
         scan_range = float(scan_arr.max() - scan_arr.min())
-        range_preservation = min(scan_range, orig_range) / max(scan_range, orig_range)
+        max_range = max(scan_range, orig_range)
+        if max_range == 0:
+            range_preservation = 1.0
+        else:
+            range_preservation = float(np.clip(min(scan_range, orig_range) / max_range, 0.0, 1.0))
 
         return {
             'rmse': float(rmse),
@@ -1502,11 +1509,11 @@ class PrintComparison:
 
         if method == 'mse':
             mse = np.mean((arr1 - arr2) ** 2)
-            return float(1.0 - np.sqrt(mse))
+            return float(np.clip(1.0 - np.sqrt(mse), 0.0, 1.0))
 
         elif method == 'correlation':
             corr = np.corrcoef(arr1.flatten(), arr2.flatten())[0, 1]
-            return float((corr + 1) / 2)  # Map from [-1, 1] to [0, 1]
+            return float(np.clip((corr + 1) / 2, 0.0, 1.0))  # Map from [-1, 1] to [0, 1]
 
         elif method == 'ssim':
             # Simplified SSIM calculation
@@ -1524,7 +1531,7 @@ class PrintComparison:
             ssim = ((2 * mu1 * mu2 + c1) * (2 * sigma12 + c2)) / \
                    ((mu1**2 + mu2**2 + c1) * (sigma1**2 + sigma2**2 + c2))
 
-            return float((ssim + 1) / 2)  # Normalize to 0-1
+            return float(np.clip((ssim + 1) / 2, 0.0, 1.0))  # Normalize to 0-1
 
         else:
             raise ValueError(f"Unknown similarity method: {method}")

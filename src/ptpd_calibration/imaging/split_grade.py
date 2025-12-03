@@ -897,9 +897,12 @@ class SplitGradeSimulator:
         """
         settings = settings or self.settings
 
-        # Calculate individual exposures
-        shadow_time = base_time * settings.shadow_exposure_ratio
-        highlight_time = base_time * (1 - settings.shadow_exposure_ratio)
+        # Calculate individual exposures with ratios clamped to 0-1
+        shadow_ratio = float(np.clip(settings.shadow_exposure_ratio, 0.0, 1.0))
+        shadow_ratio = float(round(shadow_ratio, 6))
+        highlight_ratio = float(round(np.clip(1.0 - shadow_ratio, 0.0, 1.0), 6))
+        shadow_time = base_time * shadow_ratio
+        highlight_time = base_time * highlight_ratio
 
         # Generate notes
         notes = []
@@ -926,8 +929,8 @@ class SplitGradeSimulator:
             total_exposure_seconds=base_time,
             shadow_exposure_seconds=shadow_time,
             highlight_exposure_seconds=highlight_time,
-            shadow_ratio=settings.shadow_exposure_ratio,
-            highlight_ratio=1 - settings.shadow_exposure_ratio,
+            shadow_ratio=shadow_ratio,
+            highlight_ratio=highlight_ratio,
             shadow_grade=settings.shadow_grade,
             highlight_grade=settings.highlight_grade,
             notes=notes,

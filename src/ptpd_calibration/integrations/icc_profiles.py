@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Tuple
 import logging
 import struct
 import platform
+import io
 
 import numpy as np
 from PIL import Image, ImageCms
@@ -155,7 +156,11 @@ class ICCProfileManager:
             raise FileNotFoundError(f"Profile not found: {path}")
 
         try:
-            profile = ImageCms.getOpenProfile(str(path))
+            # Read profile bytes into memory so Windows can release the file handle
+            profile_bytes = path.read_bytes()
+            profile = ImageCms.ImageCmsProfile(io.BytesIO(profile_bytes))
+            # Keep a reference to the bytes to prevent garbage collection while cached
+            profile._profile_bytes = profile_bytes  # type: ignore[attr-defined]
             self._profile_cache[cache_key] = profile
             logger.info(f"Loaded ICC profile: {path.name}")
             return profile

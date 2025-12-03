@@ -9,7 +9,7 @@ chemistry, exposure, environmental conditions, and calibration curves.
 
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -207,7 +207,10 @@ class PrintRecipe(BaseModel):
         if dmax is not None:
             self.dmax_achieved = dmax
 
-        self.modified_at = datetime.now()
+        now = datetime.now()
+        if self.modified_at and now <= self.modified_at:
+            now = self.modified_at + timedelta(microseconds=1)
+        self.modified_at = now
 
     def to_dict(self) -> dict[str, Any]:
         """Convert recipe to dictionary with JSON-serializable values."""
@@ -667,6 +670,14 @@ class WorkflowAutomation:
         """Initialize workflow automation system."""
         self.jobs: dict[UUID, WorkflowJob] = {}
         self._job_callbacks: dict[UUID, list[Callable]] = {}
+        self._job_sequence = 0
+
+    def _register_job(self, job: WorkflowJob) -> WorkflowJob:
+        """Register a job and ensure strict creation ordering."""
+        job.created_at = datetime.now() + timedelta(microseconds=self._job_sequence)
+        self._job_sequence += 1
+        self.jobs[job.job_id] = job
+        return job
 
     def create_batch_job(
         self, images: list[Path], recipe: PrintRecipe, output_dir: Path
@@ -700,8 +711,7 @@ class WorkflowAutomation:
             )
             job.steps.append(step)
 
-        self.jobs[job.job_id] = job
-        return job
+        return self._register_job(job)
 
     def execute_workflow(self, workflow_steps: list[WorkflowStep]) -> WorkflowJob:
         """
@@ -714,7 +724,7 @@ class WorkflowAutomation:
             WorkflowJob tracking execution
         """
         job = WorkflowJob(name="Custom workflow", steps=workflow_steps)
-        self.jobs[job.job_id] = job
+        self._register_job(job)
 
         # Start execution
         job.status = WorkflowStatus.RUNNING
@@ -749,8 +759,7 @@ class WorkflowAutomation:
             Scheduled WorkflowJob
         """
         job = WorkflowJob(name="Scheduled workflow", steps=workflow, scheduled_for=schedule)
-        self.jobs[job.job_id] = job
-        return job
+        return self._register_job(job)
 
     def get_workflow_status(self, job_id: UUID) -> Optional[WorkflowJob]:
         """
