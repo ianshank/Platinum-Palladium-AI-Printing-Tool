@@ -91,7 +91,7 @@ class ExtractionSettings(BaseSettings):
 
     # Density calculation
     reference_white_reflectance: float = Field(default=0.9, ge=0.5, le=1.0)
-    status_a_weights: tuple[float, float, float] = Field(default=(0.299, 0.587, 0.114))
+    status_a_weights: tuple[float, float, float] = Field(default=(0.2126, 0.7152, 0.0722))
 
     # Paper base detection
     paper_margin_ratio: float = Field(default=0.05, ge=0.01, le=0.2)
@@ -383,6 +383,513 @@ class WedgeAnalysisSettings(BaseSettings):
     outlier_threshold: float = Field(default=2.5, ge=1.0, le=5.0)
 
 
+class WorkflowSettings(BaseSettings):
+    """Settings for workflow automation and recipe management."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_WORKFLOW_")
+
+    # Database settings
+    recipe_db_path: Optional[Path] = Field(
+        default=None, description="Path to recipe database (defaults to data_dir/recipes.db)"
+    )
+    auto_backup: bool = Field(default=True, description="Automatically backup recipe database")
+    backup_interval_hours: int = Field(
+        default=24, ge=1, le=168, description="Hours between automatic backups"
+    )
+
+    # Batch processing
+    default_max_workers: int = Field(
+        default=4, ge=1, le=32, description="Default number of parallel workers"
+    )
+    batch_timeout_minutes: int = Field(
+        default=60, ge=5, le=480, description="Timeout for batch jobs (minutes)"
+    )
+
+    # Workflow execution
+    enable_scheduling: bool = Field(
+        default=True, description="Enable workflow scheduling"
+    )
+    max_concurrent_workflows: int = Field(
+        default=3, ge=1, le=10, description="Maximum concurrent workflows"
+    )
+
+
+class QASettings(BaseSettings):
+    """Quality assurance settings."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_QA_")
+
+    # Density validation
+    min_density: float = Field(default=0.0, ge=0.0, le=1.0)
+    max_density: float = Field(default=3.5, ge=1.0, le=5.0)
+    highlight_warning_threshold: float = Field(default=0.10, ge=0.0, le=0.5)
+    shadow_warning_threshold: float = Field(default=2.0, ge=1.0, le=4.0)
+    density_step_warning: float = Field(default=0.15, ge=0.05, le=0.5)
+
+    # Density warning thresholds (additional)
+    density_min_warning: float = Field(default=0.05, ge=0.0, le=0.2)
+    density_max_warning: float = Field(default=3.0, ge=2.0, le=4.0)
+    density_range_warning: float = Field(default=1.5, ge=0.5, le=3.0)
+    density_uniformity_warning: float = Field(default=0.05, ge=0.01, le=0.2)
+
+    # Chemistry freshness (in days)
+    ferric_oxalate_shelf_life: int = Field(default=180, ge=1, le=730)
+    palladium_shelf_life: int = Field(default=365, ge=1, le=1095)
+    platinum_shelf_life: int = Field(default=365, ge=1, le=1095)
+    na2_shelf_life: int = Field(default=365, ge=1, le=1095)
+    developer_shelf_life: int = Field(default=90, ge=1, le=365)
+    clearing_bath_shelf_life: int = Field(default=90, ge=1, le=365)
+    edta_shelf_life: int = Field(default=90, ge=1, le=365)
+
+    # Chemistry usage alerts (percentage remaining)
+    low_volume_warning_percent: float = Field(default=20.0, ge=0.0, le=50.0)
+    critical_volume_percent: float = Field(default=10.0, ge=0.0, le=25.0)
+
+    # Expiration warnings (days before expiration)
+    expiration_warning_days: int = Field(default=30, ge=1, le=90)
+    expiration_critical_days: int = Field(default=7, ge=1, le=30)
+
+    # Paper humidity
+    ideal_humidity_min: float = Field(default=40.0, ge=20.0, le=60.0)
+    ideal_humidity_max: float = Field(default=60.0, ge=40.0, le=80.0)
+    humidity_tolerance: float = Field(default=5.0, ge=2.0, le=15.0)
+    humidity_optimal_range: tuple[float, float] = Field(
+        default=(45.0, 55.0),
+        description="Optimal humidity range (min, max) in percent"
+    )
+
+    # Drying time estimation (hours per % humidity difference)
+    drying_time_factor: float = Field(default=0.5, ge=0.1, le=2.0)
+
+    # UV light
+    uv_intensity_target: float = Field(default=100.0, ge=10.0, le=1000.0)
+    uv_intensity_tolerance: float = Field(default=10.0, ge=5.0, le=30.0)
+    uv_intensity_reference: float = Field(default=100.0, ge=10.0, le=1000.0)
+    uv_wavelength_target: float = Field(default=365.0, ge=300.0, le=420.0)
+    bulb_degradation_threshold: float = Field(default=15.0, ge=5.0, le=30.0)
+    bulb_replacement_hours: int = Field(default=1000, ge=100, le=5000)
+
+    # Alert retention
+    alert_history_days: int = Field(default=90, ge=7, le=365)
+
+
+class PlatinumPalladiumAISettings(BaseSettings):
+    """Settings for AI-powered platinum/palladium printing features."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_AI_")
+
+    # Tonality analysis
+    tonality_analysis_enabled: bool = Field(default=True)
+    tonality_histogram_bins: int = Field(default=256, ge=64, le=1024)
+    tonality_percentile_threshold: float = Field(default=0.02, ge=0.0, le=0.1)
+
+    # Exposure prediction
+    exposure_prediction_enabled: bool = Field(default=True)
+    exposure_model_type: str = Field(default="gradient_boosting")
+    exposure_confidence_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
+
+    # Digital negative generation
+    digital_negative_enabled: bool = Field(default=True)
+    digital_negative_bit_depth: int = Field(default=16, ge=8, le=16)
+    digital_negative_dpi: int = Field(default=1440, ge=300, le=5760)
+
+    # Confidence thresholds
+    min_confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+    high_confidence_threshold: float = Field(default=0.9, ge=0.0, le=1.0)
+    uncertainty_warning_threshold: float = Field(default=0.15, ge=0.0, le=0.5)
+
+
+class SplitGradeSettings(BaseSettings):
+    """Settings for split-grade printing technique."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_SPLIT_GRADE_")
+
+    # Default grade values
+    default_shadow_grade: float = Field(default=5.0, ge=0.0, le=5.0)
+    default_highlight_grade: float = Field(default=0.0, ge=0.0, le=5.0)
+
+    # Thresholds
+    shadow_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
+    highlight_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+
+    # Blending
+    blend_gamma: float = Field(default=2.2, ge=1.0, le=3.0)
+    blend_smoothness: float = Field(default=0.5, ge=0.0, le=1.0)
+
+    # Advanced
+    auto_split_enabled: bool = Field(default=True)
+    split_ratio: float = Field(default=0.5, ge=0.0, le=1.0)
+
+
+class RecipeSettings(BaseSettings):
+    """Settings for recipe management and versioning."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_RECIPE_")
+
+    # Database settings
+    database_path: Optional[Path] = Field(
+        default=None,
+        description="Path to recipe database (defaults to data_dir/recipes.db)"
+    )
+
+    # Versioning
+    max_recipe_versions: int = Field(default=50, ge=5, le=500)
+    auto_version_on_save: bool = Field(default=True)
+
+    # Auto-save
+    auto_save_enabled: bool = Field(default=True)
+    auto_save_interval_seconds: int = Field(default=300, ge=30, le=3600)
+
+    # Search and filtering
+    enable_full_text_search: bool = Field(default=True)
+    search_result_limit: int = Field(default=50, ge=10, le=500)
+
+    # Tags and categorization
+    default_tags: list[str] = Field(default_factory=list)
+    max_tags_per_recipe: int = Field(default=20, ge=1, le=100)
+
+
+class AdvancedFeaturesSettings(BaseSettings):
+    """Settings for advanced features like QR codes, style transfer, and process simulation."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_ADVANCED_")
+
+    # QR code settings
+    qr_code_enabled: bool = Field(default=True)
+    qr_code_size: int = Field(default=100, ge=50, le=500)
+    qr_error_correction: str = Field(
+        default="M",
+        description="QR error correction level (L, M, Q, H)"
+    )
+    qr_border_size: int = Field(default=4, ge=1, le=10)
+
+    # Style transfer
+    style_transfer_enabled: bool = Field(default=True)
+    style_transfer_intensity: float = Field(default=0.5, ge=0.0, le=1.0)
+    style_transfer_model: str = Field(default="neural_style")
+
+    # Process simulation gamma values
+    process_simulation_enabled: bool = Field(default=True)
+    simulation_gamma_cyanotype: float = Field(default=1.8, ge=1.0, le=3.0)
+    simulation_gamma_vandyke: float = Field(default=2.0, ge=1.0, le=3.0)
+    simulation_gamma_kallittype: float = Field(default=1.9, ge=1.0, le=3.0)
+    simulation_gamma_argyrotype: float = Field(default=2.1, ge=1.0, le=3.0)
+
+    # Additional process parameters
+    simulation_contrast_boost: float = Field(default=1.1, ge=0.5, le=2.0)
+    simulation_color_tint_enabled: bool = Field(default=True)
+
+
+class IntegrationSettings(BaseSettings):
+    """Settings for hardware and API integrations."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_INTEGRATION_")
+
+    # Weather API settings
+    weather_api_key: Optional[str] = Field(
+        default=None,
+        description="OpenWeatherMap API key for environmental data"
+    )
+    weather_api_url: str = Field(
+        default="https://api.openweathermap.org/data/2.5/weather",
+        description="Weather API endpoint URL"
+    )
+    weather_location: str = Field(
+        default="Portland, OR",
+        description="Default location for weather data"
+    )
+    weather_cache_minutes: int = Field(
+        default=10,
+        ge=1,
+        le=60,
+        description="Weather data cache duration (minutes)"
+    )
+
+    # Spectrophotometer settings
+    spectrophotometer_port: Optional[str] = Field(
+        default=None,
+        description="Serial port for spectrophotometer (e.g., /dev/ttyUSB0 or COM3)"
+    )
+    spectro_device_id: Optional[str] = Field(
+        default=None,
+        description="Spectrophotometer device identifier"
+    )
+    spectro_measurement_mode: str = Field(
+        default="reflection",
+        description="Default measurement mode (reflection, transmission, density)"
+    )
+    spectro_aperture_size: str = Field(
+        default="medium",
+        description="Aperture size (small, medium, large)"
+    )
+    spectro_baud_rate: int = Field(default=9600, ge=1200, le=115200)
+    spectro_timeout_seconds: int = Field(default=5, ge=1, le=30)
+    spectro_simulate: bool = Field(
+        default=True,
+        description="Use simulated spectrophotometer for testing"
+    )
+
+    # Printer settings
+    default_printer_name: Optional[str] = Field(
+        default=None,
+        description="Default printer for digital negatives"
+    )
+    default_printer_brand: str = Field(
+        default="epson",
+        description="Default printer brand (epson, canon, hp)"
+    )
+    default_printer_model: str = Field(
+        default="R2400",
+        description="Default printer model"
+    )
+    printer_driver: str = Field(
+        default="gutenprint",
+        description="Printer driver (gutenprint, cups, native)"
+    )
+    printer_resolution: int = Field(default=2880, ge=360, le=5760)
+    printer_paper_feed: str = Field(default="sheet", description="Paper feed type")
+    printer_simulate: bool = Field(
+        default=True,
+        description="Use simulated printer for testing"
+    )
+
+    # ICC Profile settings
+    icc_profile_paths: list[str] = Field(
+        default_factory=lambda: [
+            "/usr/share/color/icc",
+            "~/.local/share/color/icc",
+        ],
+        description="System ICC profile search paths"
+    )
+    custom_profile_dir: Optional[Path] = Field(
+        default=None,
+        description="Custom directory for ICC profiles"
+    )
+    default_rendering_intent: str = Field(
+        default="perceptual",
+        description="Default ICC rendering intent (perceptual, relative, saturation, absolute)"
+    )
+    default_icc_profile: Optional[str] = Field(
+        default=None,
+        description="Default ICC profile name"
+    )
+
+    # Paper drying time defaults
+    default_paper_type: str = Field(
+        default="cold_press",
+        description="Default paper type for drying time calculations"
+    )
+
+
+class EducationSettings(BaseSettings):
+    """Settings for educational features and tutorials."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_EDUCATION_")
+
+    # Tutorial paths
+    tutorials_path: Optional[Path] = Field(
+        default=None,
+        description="Path to tutorials directory (defaults to data_dir/tutorials)"
+    )
+    glossary_path: Optional[Path] = Field(
+        default=None,
+        description="Path to glossary file (defaults to data_dir/glossary.json)"
+    )
+
+    # Display settings
+    show_tips: bool = Field(default=True, description="Show tips and hints in UI")
+    show_tooltips: bool = Field(default=True, description="Show detailed tooltips")
+    tutorial_auto_advance: bool = Field(default=False)
+
+    # Tutorial difficulty
+    default_difficulty_level: str = Field(
+        default="beginner",
+        description="Default tutorial difficulty (beginner, intermediate, advanced)"
+    )
+
+    # Progress tracking
+    track_progress: bool = Field(default=True, description="Track tutorial progress")
+    progress_file: Optional[Path] = Field(
+        default=None,
+        description="Path to progress tracking file"
+    )
+
+
+class PerformanceSettings(BaseSettings):
+    """Settings for performance monitoring and optimization."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_PERFORMANCE_")
+
+    # Profiling
+    enable_profiling: bool = Field(
+        default=False,
+        description="Enable performance profiling"
+    )
+    profiling_output_dir: Optional[Path] = Field(
+        default=None,
+        description="Directory for profiling output"
+    )
+    profile_memory: bool = Field(default=False)
+    profile_cpu: bool = Field(default=True)
+
+    # Caching
+    enable_cache: bool = Field(default=True)
+    cache_ttl_seconds: int = Field(
+        default=3600,
+        ge=60,
+        le=86400,
+        description="Cache time-to-live in seconds"
+    )
+    cache_max_size: int = Field(
+        default=1000,
+        ge=10,
+        le=100000,
+        description="Maximum number of cached items"
+    )
+    cache_backend: str = Field(
+        default="memory",
+        description="Cache backend (memory, redis, disk)"
+    )
+
+    # Metrics
+    enable_metrics: bool = Field(default=True)
+    metrics_retention_days: int = Field(
+        default=30,
+        ge=1,
+        le=365,
+        description="Days to retain performance metrics"
+    )
+    metrics_export_path: Optional[Path] = Field(
+        default=None,
+        description="Path to export metrics"
+    )
+
+    # Optimization
+    lazy_loading: bool = Field(default=True)
+    parallel_processing: bool = Field(default=True)
+    max_workers: int = Field(default=4, ge=1, le=32)
+
+
+class DataManagementSettings(BaseSettings):
+    """Settings for data management, backup, and sync."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_DATA_")
+
+    # Database settings
+    database_path: Optional[Path] = Field(
+        default=None,
+        description="Path to main database (defaults to data_dir/ptpd.db)"
+    )
+    database_backup_path: Optional[Path] = Field(
+        default=None,
+        description="Path to database backups directory"
+    )
+
+    # Backup settings
+    auto_backup: bool = Field(default=True)
+    backup_interval_hours: int = Field(
+        default=24,
+        ge=1,
+        le=168,
+        description="Hours between automatic backups"
+    )
+    max_backup_count: int = Field(
+        default=30,
+        ge=1,
+        le=365,
+        description="Maximum number of backups to keep"
+    )
+    backup_compression: bool = Field(default=True)
+
+    # Cloud sync
+    cloud_sync_enabled: bool = Field(default=False)
+    cloud_provider: str = Field(
+        default="s3",
+        description="Cloud provider (s3, gcs, azure, dropbox)"
+    )
+    cloud_bucket_name: Optional[str] = Field(default=None)
+    cloud_api_key: Optional[str] = Field(default=None)
+    cloud_sync_interval_minutes: int = Field(default=60, ge=5, le=1440)
+
+    # Data retention
+    data_retention_days: int = Field(
+        default=365,
+        ge=7,
+        le=3650,
+        description="Days to retain historical data"
+    )
+    archive_old_data: bool = Field(default=True)
+
+    # Export settings
+    default_export_format: str = Field(default="json")
+    export_path: Optional[Path] = Field(default=None)
+
+
+class CalculationsSettings(BaseSettings):
+    """Settings for environmental calculations and cost estimation."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_CALC_")
+
+    # Environmental factor coefficients
+    temperature_coefficient: float = Field(
+        default=0.02,
+        ge=0.0,
+        le=0.1,
+        description="Exposure adjustment per degree C from optimal"
+    )
+    humidity_coefficient: float = Field(
+        default=0.015,
+        ge=0.0,
+        le=0.1,
+        description="Exposure adjustment per % humidity from optimal"
+    )
+    altitude_coefficient: float = Field(
+        default=0.001,
+        ge=0.0,
+        le=0.01,
+        description="Exposure adjustment per 100m elevation"
+    )
+
+    # Optimal conditions
+    optimal_temperature_c: float = Field(
+        default=20.0,
+        ge=15.0,
+        le=25.0,
+        description="Optimal working temperature in Celsius"
+    )
+    optimal_humidity_percent: float = Field(
+        default=50.0,
+        ge=30.0,
+        le=70.0,
+        description="Optimal relative humidity percentage"
+    )
+    optimal_uv_intensity: float = Field(
+        default=100.0,
+        ge=10.0,
+        le=1000.0,
+        description="Optimal UV intensity (arbitrary units)"
+    )
+
+    # Cost per ml values (USD)
+    ferric_oxalate_cost_per_ml: float = Field(default=0.50, ge=0.0, le=10.0)
+    palladium_cost_per_ml: float = Field(default=2.00, ge=0.0, le=50.0)
+    platinum_cost_per_ml: float = Field(default=8.00, ge=0.0, le=100.0)
+    na2_cost_per_ml: float = Field(default=4.00, ge=0.0, le=50.0)
+    developer_cost_per_ml: float = Field(default=0.10, ge=0.0, le=5.0)
+    clearing_bath_cost_per_ml: float = Field(default=0.15, ge=0.0, le=5.0)
+
+    # Paper costs (per sheet)
+    default_paper_cost_per_sheet: float = Field(default=5.0, ge=0.0, le=100.0)
+
+    # Labor and overhead
+    hourly_labor_rate: float = Field(default=0.0, ge=0.0, le=500.0)
+    overhead_multiplier: float = Field(default=1.2, ge=1.0, le=3.0)
+
+    # Exposure time calculations
+    exposure_base_time_seconds: float = Field(default=180.0, ge=1.0, le=3600.0)
+    uv_intensity_multiplier: float = Field(default=1.0, ge=0.1, le=10.0)
+
+
 class Settings(BaseSettings):
     """Main application settings aggregating all subsettings."""
 
@@ -414,6 +921,19 @@ class Settings(BaseSettings):
     visualization: VisualizationSettings = Field(default_factory=VisualizationSettings)
     wedge_analysis: WedgeAnalysisSettings = Field(default_factory=WedgeAnalysisSettings)
     chemistry: ChemistrySettings = Field(default_factory=ChemistrySettings)
+    workflow: WorkflowSettings = Field(default_factory=WorkflowSettings)
+    qa: QASettings = Field(default_factory=QASettings)
+    integrations: IntegrationSettings = Field(default_factory=IntegrationSettings)
+
+    # New subsettings for expanded features
+    ai: PlatinumPalladiumAISettings = Field(default_factory=PlatinumPalladiumAISettings)
+    split_grade: SplitGradeSettings = Field(default_factory=SplitGradeSettings)
+    recipe: RecipeSettings = Field(default_factory=RecipeSettings)
+    advanced: AdvancedFeaturesSettings = Field(default_factory=AdvancedFeaturesSettings)
+    education: EducationSettings = Field(default_factory=EducationSettings)
+    performance: PerformanceSettings = Field(default_factory=PerformanceSettings)
+    data_management: DataManagementSettings = Field(default_factory=DataManagementSettings)
+    calculations: CalculationsSettings = Field(default_factory=CalculationsSettings)
 
     @field_validator("calibrations_dir", "exports_dir", mode="before")
     @classmethod

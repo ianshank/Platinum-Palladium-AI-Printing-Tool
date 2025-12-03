@@ -92,6 +92,9 @@ An AI-powered calibration system for platinum/palladium alternative photographic
 - [Documentation](https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool#readme)
 - [Issues](https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/issues)
 
+## Created By
+Ian Cruickshank
+
 ## License
 
 MIT License - see [LICENSE](https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/blob/main/LICENSE) for details.

@@ -17,6 +17,15 @@ from ptpd_calibration.imaging.histogram import (
     HistogramStats,
     HistogramScale,
 )
+from ptpd_calibration.imaging.split_grade import (
+    SplitGradeSettings,
+    SplitGradeSimulator,
+    TonalCurveAdjuster,
+    TonalAnalysis,
+    ExposureCalculation,
+    BlendMode,
+    MetalType,
+)
 
 __all__ = [
     # Processor
@@ -29,4 +38,12 @@ __all__ = [
     "HistogramResult",
     "HistogramStats",
     "HistogramScale",
+    # Split-grade
+    "SplitGradeSettings",
+    "SplitGradeSimulator",
+    "TonalCurveAdjuster",
+    "TonalAnalysis",
+    "ExposureCalculation",
+    "BlendMode",
+    "MetalType",
 ]
