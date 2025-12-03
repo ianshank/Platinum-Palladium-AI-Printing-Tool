@@ -172,7 +172,66 @@ def demo_auto_linearization():
 
 
 # =============================================================================
-# DEMO 4: Chemistry Calculator
+# DEMO 4: Quad File Import
+# =============================================================================
+def demo_quad_import():
+    """Demonstrate importing a real-world QuadTone RIP .quad file."""
+    demo_separator("Quad File Import")
+
+    from ptpd_calibration.curves import load_quad_file
+
+    # Path to example data
+    data_dir = Path(__file__).parent / "data"
+    quad_path = data_dir / "Platinum_Palladium_V6-CC.quad"
+    
+    # Check if file exists (it should be created by our setup)
+    if not quad_path.exists():
+        # Try to find it in tests/fixtures as fallback for dev environment
+        alt_path = Path(__file__).parent.parent / "tests" / "fixtures" / "Platinum_Palladium_V6-CC.quad"
+        if alt_path.exists():
+            quad_path = alt_path
+        else:
+            print(f"Note: Example .quad file not found at {quad_path}. Skipping detail demo.")
+            return
+
+    print(f"Loading profile: {quad_path.name}")
+    try:
+        profile = load_quad_file(quad_path)
+        
+        print(f"\nProfile loaded successfully:")
+        print(f"  - Name: {profile.profile_name}")
+        print(f"  - Channels found: {', '.join(profile.channels.keys())}")
+        
+        # Show active channels
+        active_channels = [name for name, ch in profile.channels.items() if any(v > 0 for v in ch.values)]
+        print(f"  - Active channels: {', '.join(active_channels)}")
+        
+        # Inspect K channel
+        if "K" in profile.channels:
+            k_curve = profile.channels["K"]
+            print(f"\nK Channel Analysis:")
+            print(f"  - Points: {len(k_curve.values)}")
+            print(f"  - Max output: {max(k_curve.values)} (on 0-255 scale)")
+            
+            # Show sample points
+            print(f"  - First 5 values: {k_curve.values[:5]}")
+            print(f"  - Last 5 values: {k_curve.values[-5:]}")
+            
+        # Show comments/metadata
+        if profile.comments:
+            print(f"\nMetadata/Comments:")
+            for comment in profile.comments[:5]:  # Show first 5 comments
+                print(f"  # {comment}")
+            if len(profile.comments) > 5:
+                print(f"  ... and {len(profile.comments) - 5} more comments")
+                
+    except Exception as e:
+        print(f"Error loading quad file: {e}")
+        raise
+
+
+# =============================================================================
+# DEMO 5: Chemistry Calculator
 # =============================================================================
 def demo_chemistry_calculator():
     """Demonstrate chemistry calculation."""
@@ -495,6 +554,7 @@ def run_all_demos():
         ("Step Tablet Reading", demo_step_tablet_reading),
         ("Curve Generation", demo_curve_generation),
         ("Auto-Linearization", demo_auto_linearization),
+        ("Quad File Import", demo_quad_import),
         ("Chemistry Calculator", demo_chemistry_calculator),
         ("Exposure Calculator", demo_exposure_calculator),
         ("Zone System Analysis", demo_zone_system),

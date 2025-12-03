@@ -14,6 +14,12 @@ import io
 import numpy as np
 from PIL import Image
 
+try:
+    import tifffile
+    HAS_TIFFFILE = True
+except ImportError:
+    HAS_TIFFFILE = False
+
 from ptpd_calibration.core.models import CurveData
 
 
@@ -206,6 +212,198 @@ class ImageProcessor:
             inverted=result.inverted,
             processing_notes=notes,
         )
+
+    def apply_curves_per_channel(
+        self,
+        result: ProcessingResult,
+        curves: dict[str, CurveData],
+    ) -> ProcessingResult:
+        """Apply different curves to each RGB channel.
+
+        This method allows independent curve application to R, G, B channels,
+        useful for scanner calibration or color correction workflows.
+
+        Args:
+            result: ProcessingResult with RGB/RGBA image to process
+            curves: Dictionary with keys 'R', 'G', 'B' mapping to CurveData.
+                    Missing channels use identity (no modification).
+
+        Returns:
+            New ProcessingResult with per-channel curves applied
+
+        Raises:
+            ValueError: If image is not RGB or RGBA mode
+        """
+        img = result.image
+
+        # Validate input mode
+        if img.mode not in ("RGB", "RGBA"):
+            raise ValueError(
+                f"Per-channel curves require RGB/RGBA image, got {img.mode}"
+            )
+
+        # Extract alpha if present
+        has_alpha = img.mode == "RGBA"
+        if has_alpha:
+            a_channel = img.split()[3]
+            img = img.convert("RGB")
+
+        # Convert to numpy array for processing
+        arr = np.array(img)
+
+        # Validate channel dimensions
+        self._validate_channel_dimensions(arr, expected_channels=3)
+
+        # Create LUTs for each channel
+        luts = {}
+        for channel in ("R", "G", "B"):
+            if channel in curves and curves[channel] is not None:
+                luts[channel] = self._create_lut(curves[channel])
+            else:
+                # Identity LUT (no change)
+                luts[channel] = np.arange(256, dtype=np.uint8)
+
+        # Apply LUTs per channel
+        processed = np.zeros_like(arr)
+        channel_map = {"R": 0, "G": 1, "B": 2}
+        for channel, idx in channel_map.items():
+            processed[:, :, idx] = luts[channel][arr[:, :, idx]]
+
+        # Convert back to PIL Image
+        processed_img = Image.fromarray(processed, mode="RGB")
+
+        # Restore alpha if present
+        if has_alpha:
+            processed_img.putalpha(a_channel)
+
+        notes = list(result.processing_notes)
+        applied_channels = [
+            ch for ch in ("R", "G", "B")
+            if ch in curves and curves[ch] is not None
+        ]
+        if applied_channels:
+            notes.append(f"Applied per-channel curves: {', '.join(applied_channels)}")
+        else:
+            notes.append("Applied per-channel curves: none")
+
+        return ProcessingResult(
+            image=processed_img,
+            original_size=result.original_size,
+            original_mode=result.original_mode,
+            original_format=result.original_format,
+            original_dpi=result.original_dpi,
+            curve_applied=True,
+            inverted=result.inverted,
+            processing_notes=notes,
+        )
+
+    def _validate_channel_dimensions(
+        self,
+        arr: np.ndarray,
+        expected_channels: Optional[int] = None,
+    ) -> None:
+        """Validate that all channels have consistent dimensions.
+
+        Args:
+            arr: Image array to validate (H, W) or (H, W, C)
+            expected_channels: Expected number of channels (None to skip check)
+
+        Raises:
+            ValueError: If validation fails
+        """
+        if arr.ndim == 2:
+            # Grayscale - single channel, nothing to validate
+            return
+
+        if arr.ndim != 3:
+            raise ValueError(f"Expected 2D or 3D array, got {arr.ndim}D")
+
+        height, width, channels = arr.shape
+
+        if expected_channels is not None and channels != expected_channels:
+            raise ValueError(
+                f"Expected {expected_channels} channels, got {channels}"
+            )
+
+        # Validate no channel is empty (all zeros)
+        for c in range(channels):
+            channel_data = arr[:, :, c]
+            if channel_data.max() == 0 and channel_data.min() == 0:
+                # Channel is all zeros - might be intentional, just log
+                pass
+
+        # Validate all channels have same dimensions (already guaranteed by numpy)
+        # This check is mostly for documentation/clarity
+
+    def validate_image_channels(
+        self,
+        result: ProcessingResult,
+        require_uniform: bool = True,
+    ) -> dict:
+        """Validate image channel consistency and return diagnostics.
+
+        Args:
+            result: ProcessingResult to validate
+            require_uniform: If True, raises error on inconsistent channels
+
+        Returns:
+            Dictionary with channel statistics:
+            - mode: Image mode (L, RGB, RGBA, etc.)
+            - channels: Number of channels
+            - shape: Image dimensions (width, height)
+            - per_channel_stats: List of (min, max, mean, std) per channel
+            - all_channels_processed: True if no channel is constant/flat
+        """
+        img = result.image
+        arr = np.array(img)
+
+        stats = {
+            "mode": img.mode,
+            "shape": img.size,  # (width, height)
+        }
+
+        if arr.ndim == 2:
+            stats["channels"] = 1
+            stats["per_channel_stats"] = [{
+                "min": int(arr.min()),
+                "max": int(arr.max()),
+                "mean": float(arr.mean()),
+                "std": float(arr.std()),
+            }]
+            stats["all_channels_processed"] = arr.max() != arr.min()
+        else:
+            stats["channels"] = arr.shape[2]
+            stats["per_channel_stats"] = []
+            all_processed = True
+
+            for c in range(arr.shape[2]):
+                channel = arr[:, :, c]
+                channel_stats = {
+                    "min": int(channel.min()),
+                    "max": int(channel.max()),
+                    "mean": float(channel.mean()),
+                    "std": float(channel.std()),
+                }
+                stats["per_channel_stats"].append(channel_stats)
+
+                # Check if channel appears unprocessed (all same value)
+                if channel.max() == channel.min():
+                    all_processed = False
+
+            stats["all_channels_processed"] = all_processed
+
+        if require_uniform and not stats["all_channels_processed"]:
+            # Check if any channel is constant (might indicate unprocessed)
+            constant_channels = [
+                i for i, s in enumerate(stats["per_channel_stats"])
+                if s["min"] == s["max"]
+            ]
+            if constant_channels:
+                raise ValueError(
+                    f"Channels {constant_channels} appear unprocessed (constant value)"
+                )
+
+        return stats
 
     def invert(self, result: ProcessingResult) -> ProcessingResult:
         """Invert an image (create negative).
@@ -549,23 +747,61 @@ class ImageProcessor:
         path: Path,
         kwargs: dict,
     ) -> None:
-        """Save 16-bit TIFF using PIL.
+        """Save 16-bit TIFF using tifffile (if available) or PIL fallback.
 
         Args:
-            arr: 16-bit numpy array
+            arr: 16-bit numpy array (H, W) for grayscale or (H, W, 3) for RGB
             path: Output path
-            kwargs: Additional save arguments
+            kwargs: Additional save arguments (dpi, compression, etc.)
         """
         if arr.ndim == 2:
-            # Grayscale
+            # Grayscale - PIL handles this fine
             img = Image.fromarray(arr, mode="I;16")
+            img.save(path, format="TIFF", **kwargs)
+        elif HAS_TIFFFILE:
+            # RGB 16-bit - use tifffile for proper support
+            # Extract DPI for resolution tags
+            dpi = kwargs.get("dpi")
+            resolution = None
+            if dpi:
+                # tifffile expects resolution as (value, value) in pixels per cm or inch
+                resolution = (dpi[0], dpi[1])
+
+            compression = kwargs.get("compression", "lzw")
+            # Map PIL compression names to tifffile
+            compression_map = {
+                "tiff_lzw": "lzw",
+                "tiff_deflate": "deflate",
+                "tiff_adobe_deflate": "deflate",
+                None: None,
+            }
+            tiff_compression = compression_map.get(compression, compression)
+
+            # Try with compression, fallback to no compression if imagecodecs unavailable
+            try:
+                tifffile.imwrite(
+                    path,
+                    arr,
+                    photometric="rgb",
+                    compression=tiff_compression,
+                    resolution=resolution,
+                    resolutionunit=2 if resolution else None,  # 2 = inch
+                )
+            except KeyError:
+                # imagecodecs not available for compression, use no compression
+                tifffile.imwrite(
+                    path,
+                    arr,
+                    photometric="rgb",
+                    compression=None,
+                    resolution=resolution,
+                    resolutionunit=2 if resolution else None,
+                )
         else:
-            # RGB - need to handle specially
-            # PIL doesn't support 16-bit RGB directly, so we'll save as 8-bit
+            # Fallback: save as 8-bit if tifffile not available
             arr_8bit = (arr / 257).astype(np.uint8)
             img = Image.fromarray(arr_8bit, mode="RGB")
-
-        img.save(path, format="TIFF", **kwargs)
+            img.save(path, format="TIFF", **kwargs)
 
     @staticmethod
     def get_supported_formats() -> list[str]:

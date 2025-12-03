@@ -163,8 +163,27 @@ class QuadFileParser:
         self._profile = QuadProfile(source_path=path)
         self._current_section = None
 
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
-            content = f.read()
+        content = None
+        candidate_markers = ("[", "]")
+        # Try different encodings
+        for encoding in ["utf-8", "utf-16", "latin-1", "cp1252"]:
+            try:
+                with open(path, "r", encoding=encoding) as f:
+                    candidate = f.read()
+            except UnicodeError:
+                continue
+
+            has_bracket_sections = all(marker in candidate for marker in candidate_markers)
+            has_qtr_header = candidate.lstrip().startswith("## QuadToneRIP")
+
+            if has_bracket_sections or has_qtr_header:
+                content = candidate
+                break
+
+        if content is None:
+            # Fallback to replace
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
 
         # Parse the content
         self._parse_content(content)
@@ -196,6 +215,11 @@ class QuadFileParser:
     def _parse_content(self, content: str) -> None:
         """Parse the file content."""
         lines = content.split("\n")
+        
+        # Check for simple format (starts with ## QuadToneRIP)
+        if len(lines) > 0 and lines[0].startswith("## QuadToneRIP"):
+            self._parse_simple_format(lines)
+            return
 
         for line_num, line in enumerate(lines, 1):
             line = line.strip()
@@ -230,6 +254,52 @@ class QuadFileParser:
             # Parse key=value pairs
             if "=" in line:
                 self._parse_key_value(line)
+
+    def _parse_simple_format(self, lines: list[str]) -> None:
+        """Parse the simple list-based QuadToneRIP format."""
+        current_channel = None
+        value_index = 0
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            if line.startswith("#"):
+                # Check for curve header (e.g. "# K Curve")
+                if " Curve" in line:
+                    parts = line.replace("#", "").strip().split()
+                    # Usually "# K Curve" -> parts=["K", "Curve"]
+                    if len(parts) >= 2 and parts[-1] == "Curve":
+                        # Handle "K Curve", "LC Curve" etc.
+                        channel_name = parts[0].upper()
+                        current_channel = channel_name
+                        
+                        if current_channel not in self._profile.channels:
+                             self._profile.channels[current_channel] = ChannelCurve(
+                                name=current_channel,
+                                values=[0] * 256
+                            )
+                        value_index = 0
+                elif line.startswith("## QuadToneRIP"):
+                    pass # Header
+                else:
+                    self._profile.comments.append(line[1:].strip())
+                continue
+            
+            # Parse number
+            if current_channel and (line[0].isdigit() or line.startswith('-')):
+                try:
+                    val = int(line)
+                    # QTR simple format uses 16-bit values (0-65535)
+                    # We normalize to 8-bit (0-255) for internal storage
+                    norm_val = int((val / 65535.0) * 255.0)
+                    
+                    if value_index < 256:
+                        self._profile.channels[current_channel].values[value_index] = max(0, min(255, norm_val))
+                        value_index += 1
+                except ValueError:
+                    pass
 
     def _parse_key_value(self, line: str) -> None:
         """Parse a key=value line."""

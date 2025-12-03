@@ -61,6 +61,7 @@ api = [
 ]
 ui = [
     "gradio>=4.0.0",
+    "huggingface_hub>=0.25,<1.0",
 ]
 all = [
     "ptpd-calibration[ml,llm,api,ui]",
@@ -125,6 +126,21 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["ptpd_calibration"]
+
+[tool.coverage.run]
+branch = true
+source = ["src/ptpd_calibration"]
+omit = [
+    "*/ui/*",           # UI modules require integration tests
+    "*/api/server.py",  # API server requires integration tests
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
 
 [tool.mypy]
 python_version = "3.10"

@@ -163,8 +163,12 @@ class TestCurveExporters:
 
         assert output_path.exists()
         content = output_path.read_text()
-        assert "CURVE=" in content
-        assert "0=" in content
+        # New QTR format uses QuadToneRIP header and raw values
+        assert "## QuadToneRIP" in content
+        assert "# K Curve" in content
+        # Should have numeric values (256 points)
+        lines = [l for l in content.split("\n") if l and not l.startswith("#")]
+        assert len(lines) >= 256
 
     def test_qtr_quad_export(self, sample_curve, tmp_path):
         """Test QTR .quad profile export."""
@@ -175,8 +179,10 @@ class TestCurveExporters:
 
         assert output_path.exists()
         content = output_path.read_text()
-        assert "[General]" in content
-        assert "ProfileName=" in content
+        # New QTR format uses QuadToneRIP header with all channels
+        assert "## QuadToneRIP" in content
+        assert "K,C,M,Y" in content
+        assert "# K Curve" in content
 
     def test_piezography_export(self, sample_curve, tmp_path):
         """Test Piezography export."""

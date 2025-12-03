@@ -72,53 +72,77 @@ class QTRExporter(CurveExporter):
             self._export_curve_file(curve, path)
 
     def _export_curve_file(self, curve: CurveData, path: Path) -> None:
-        """Export as QTR curve file."""
+        """Export as QTR curve file (single channel).
+        
+        Uses QuadTone RIP format with 16-bit values.
+        """
         lines = [
+            f"## QuadToneRIP {self.primary_channel}",
             f"# QTR Curve File",
             f"# Generated: {datetime.now().isoformat()}",
             f"# Name: {curve.name}",
             f"# Paper: {curve.paper_type or 'Unknown'}",
             f"# Chemistry: {curve.chemistry or 'Unknown'}",
-            "",
-            f"CURVE={self.primary_channel}",
+            f"# Ink Limit: {self.ink_limit}%",
+            f"# {self.primary_channel} Curve",
         ]
 
-        # Convert to 0-255 range (QTR format)
-        for i, (inp, out) in enumerate(zip(curve.input_values, curve.output_values)):
-            qtr_input = int(inp * 255)
-            qtr_output = int(out * 255 * self.ink_limit / 100)
-            lines.append(f"{qtr_input}={qtr_output}")
+        # Interpolate to 256 points and convert to 16-bit values
+        x_new = np.linspace(0, 1, 256)
+        y_new = np.interp(x_new, curve.input_values, curve.output_values)
+
+        for out in y_new:
+            # Convert to 16-bit value (0-65535) with ink limit
+            qtr_output = int(out * 65535 * self.ink_limit / 100)
+            qtr_output = max(0, min(65535, qtr_output))
+            lines.append(str(qtr_output))
 
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:
             f.write("\n".join(lines))
 
     def _export_quad_profile(self, curve: CurveData, path: Path) -> None:
-        """Export as full .quad profile."""
+        """Export as full .quad profile in QuadTone RIP format.
+        
+        QuadTone RIP format specification:
+        - Header: ## QuadToneRIP K,C,M,Y,LC,LM,LK,LLK
+        - Comments: lines starting with #
+        - Channel headers: # K Curve, # C Curve, etc.
+        - Values: 256 integers per channel (0-65535 range), one per line
+        - NO section brackets like [K]
+        - NO index= format like 0=value
+        """
+        # Standard channel order
+        all_channels = ["K", "C", "M", "Y", "LC", "LM", "LK", "LLK"]
+        
         lines = [
-            "[General]",
-            f"ProfileName={curve.name}",
-            f"Resolution={self.resolution}",
-            f"InkLimit={self.ink_limit}",
-            "",
-            f"[{self.primary_channel}]",
+            f"## QuadToneRIP {','.join(all_channels)}",
+            f"# Profile: {curve.name}",
+            f"# Generated: {datetime.now().isoformat()}",
+            f"# Paper: {curve.paper_type or 'Unknown'}",
+            f"# Chemistry: {curve.chemistry or 'Unknown'}",
+            f"# Resolution: {self.resolution}",
+            f"# Ink Limit: {self.ink_limit}%",
         ]
 
-        # QTR uses 256-point curves
+        # QTR uses 256-point curves with 16-bit values (0-65535)
         x_new = np.linspace(0, 1, 256)
         y_new = np.interp(x_new, curve.input_values, curve.output_values)
 
-        for i, (inp, out) in enumerate(zip(x_new, y_new)):
-            qtr_output = int(out * 255 * self.ink_limit / 100)
-            lines.append(f"{i}={qtr_output}")
+        # Primary channel
+        lines.append(f"# {self.primary_channel} Curve")
+        for out in y_new:
+            # Convert to 16-bit value (0-65535) with ink limit
+            qtr_output = int(out * 65535 * self.ink_limit / 100)
+            qtr_output = max(0, min(65535, qtr_output))
+            lines.append(str(qtr_output))
 
         # Add empty curves for other channels
-        for channel in ["C", "M", "Y", "LC", "LM", "LK"]:
+        for channel in all_channels:
             if channel != self.primary_channel:
-                lines.append("")
-                lines.append(f"[{channel}]")
-                for i in range(256):
-                    lines.append(f"{i}=0")
+                lines.append(f"# {channel} Curve")
+                for _ in range(256):
+                    lines.append("0")
 
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:

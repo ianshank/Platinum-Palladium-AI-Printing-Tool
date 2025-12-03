@@ -4,10 +4,24 @@ Shared fixtures for PTPD Calibration tests.
 
 import numpy as np
 import pytest
+from pathlib import Path
 from PIL import Image
 
 from ptpd_calibration.core.models import CalibrationRecord
 from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
+
+
+@pytest.fixture
+def real_quad_path():
+    """Return path to the real-world .quad fixture file."""
+    # Assumes fixture is in tests/fixtures/Platinum_Palladium_V6-CC.quad
+    base_dir = Path(__file__).parent
+    fixture_path = base_dir / "fixtures" / "Platinum_Palladium_V6-CC.quad"
+    
+    if not fixture_path.exists():
+        pytest.skip(f"Real world fixture not found at {fixture_path}")
+        
+    return fixture_path
 
 
 @pytest.fixture

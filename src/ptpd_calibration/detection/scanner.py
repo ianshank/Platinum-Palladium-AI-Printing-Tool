@@ -283,7 +283,19 @@ class ScannerCalibration:
     def _resize_uniformity_map(
         self, uniformity: np.ndarray, target_size: tuple[int, int]
     ) -> np.ndarray:
-        """Resize uniformity map to target size."""
+        """Resize uniformity map to target size.
+
+        Uses cubic spline interpolation (order=3) for smooth uniformity
+        correction maps. This provides better quality than bilinear (order=1)
+        while avoiding potential ringing artifacts from higher orders.
+
+        Args:
+            uniformity: Source uniformity map array
+            target_size: Target (width, height) in pixels
+
+        Returns:
+            Resized uniformity map matching target dimensions
+        """
         from scipy.ndimage import zoom
 
         current_size = (uniformity.shape[1], uniformity.shape[0])
@@ -291,4 +303,6 @@ class ScannerCalibration:
             return uniformity
 
         zoom_factors = (target_size[1] / uniformity.shape[0], target_size[0] / uniformity.shape[1])
-        return zoom(uniformity, zoom_factors, order=1)
+        # Use order=3 (cubic spline) for smooth correction maps
+        # This is closer to Lanczos quality while avoiding potential issues
+        return zoom(uniformity, zoom_factors, order=3, mode="nearest")

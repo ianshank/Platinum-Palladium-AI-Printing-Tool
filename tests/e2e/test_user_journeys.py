@@ -93,6 +93,32 @@ class TestCalibrationJourney:
         content = export_path.read_text()
         assert len(content) > 0
 
+    def test_import_quad_journey(self, real_quad_path):
+        """
+        Journey: Import existing .quad file → Validate → Check Channels
+        """
+        from ptpd_calibration.curves import load_quad_file
+
+        # Step 1: Load the real-world quad file
+        profile = load_quad_file(real_quad_path)
+        
+        # Step 2: Validate basic metadata
+        assert profile is not None
+        # The file has "Platinum-Palladium" in comments
+        assert any("Platinum-Palladium" in c for c in profile.comments)
+        
+        # Step 3: Check Channels
+        # The file has K, C, M, Y, LC, LM, LK, LLK, V, MK headers
+        # Check for active channels. Based on file content, K seems active.
+        assert "K" in profile.channels
+        k_curve = profile.channels["K"]
+        assert len(k_curve.values) == 256
+        assert k_curve.values[-1] > 0  # Should have some density
+        
+        # Step 4: Check specific metadata if parsed (e.g. ink load)
+        # The parser might extract these if implemented, otherwise check comments
+        assert len(profile.comments) > 0
+
 
 class TestDigitalNegativeJourney:
     """Test digital negative creation workflow."""
@@ -113,7 +139,7 @@ class TestDigitalNegativeJourney:
             output_values=[i / 10.0 for i in range(11)],
         )
 
-    def test_digital_negative_workflow(self, sample_image, sample_curve, tmp_path):
+    def test_digital_negative_workflow(self, sample_image, sample_curve, real_quad_path, tmp_path):
         """
         Workflow: Load Image → Preview → Apply Curve → Export Negative
         """
@@ -122,6 +148,7 @@ class TestDigitalNegativeJourney:
             ImageFormat,
             ExportSettings,
         )
+        from ptpd_calibration.curves import load_quad_file
 
         # Step 1: Save sample image
         image_path = tmp_path / "sample.png"
@@ -130,26 +157,34 @@ class TestDigitalNegativeJourney:
         # Step 2: Initialize processor
         processor = ImageProcessor()
 
-        # Step 3: Preview curve effect
+        # Step 3: Load real curve if available, otherwise use sample
+        try:
+            profile = load_quad_file(real_quad_path)
+            # Use K channel curve
+            curve = profile.to_curve_data("K")
+        except Exception:
+            curve = sample_curve
+
+        # Step 4: Preview curve effect
         original, processed = processor.preview_curve_effect(
             str(image_path),
-            sample_curve,
+            curve,
         )
 
         assert original is not None
         assert processed is not None
 
-        # Step 4: Create digital negative
+        # Step 5: Create digital negative
         result = processor.create_digital_negative(
             str(image_path),
-            curve=sample_curve,
+            curve=curve,
             invert=True,
         )
 
         assert result is not None
         assert result.image is not None
 
-        # Step 5: Export
+        # Step 6: Export
         export_path = tmp_path / "negative.tiff"
         settings = ExportSettings(format=ImageFormat.TIFF)
         processor.export(result, str(export_path), settings)
@@ -280,7 +315,7 @@ class TestSoftProofingJourney:
         arr = np.repeat(np.repeat(arr, 10, axis=0), 10, axis=1)
         return Image.fromarray(arr, mode="L")
 
-    def test_soft_proofing_workflow(self, sample_image):
+    def test_soft_proofing_workflow(self, sample_image, real_quad_path):
         """
         Workflow: Select Paper → Adjust Settings → Generate Proof
         """
@@ -289,6 +324,7 @@ class TestSoftProofingJourney:
             ProofSettings,
             PaperSimulation,
         )
+        from ptpd_calibration.curves import load_quad_file
 
         # Step 1: Try different paper presets
         for paper in [
@@ -303,7 +339,13 @@ class TestSoftProofingJourney:
             assert result.image is not None
             assert result.image.mode == "RGB"
 
-        # Step 2: Custom settings
+        # Step 2: Custom settings with Real Curve
+        # Load real curve to get some characteristics if possible, 
+        # but SoftProofer mainly uses density/color. 
+        # We'll just ensure we can read it and potentially use it in a more advanced test.
+        profile = load_quad_file(real_quad_path)
+        assert profile is not None
+
         custom_settings = ProofSettings(
             paper_dmax=1.7,
             paper_dmin=0.06,
