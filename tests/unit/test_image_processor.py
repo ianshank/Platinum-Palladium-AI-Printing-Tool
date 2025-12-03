@@ -529,3 +529,401 @@ class TestEdgeCases:
         result = processor.invert(result)
 
         assert len(result.processing_notes) == 2
+
+
+class TestPerChannelCurves:
+    """Tests for per-channel curve application."""
+
+    @pytest.fixture
+    def processor(self):
+        return ImageProcessor()
+
+    @pytest.fixture
+    def rgb_image(self):
+        """Create an RGB test image with distinct channel values."""
+        arr = np.zeros((50, 50, 3), dtype=np.uint8)
+        arr[:, :, 0] = 100  # Red
+        arr[:, :, 1] = 150  # Green
+        arr[:, :, 2] = 200  # Blue
+        return Image.fromarray(arr, mode="RGB")
+
+    @pytest.fixture
+    def rgba_image(self):
+        """Create RGBA test image."""
+        arr = np.zeros((50, 50, 4), dtype=np.uint8)
+        arr[:, :, 0] = 100  # Red
+        arr[:, :, 1] = 150  # Green
+        arr[:, :, 2] = 200  # Blue
+        arr[:, :, 3] = 255  # Alpha
+        return Image.fromarray(arr, mode="RGBA")
+
+    @pytest.fixture
+    def red_boost_curve(self):
+        """Curve that boosts values."""
+        return CurveData(
+            name="RedBoost",
+            input_values=[0, 0.5, 1],
+            output_values=[0.1, 0.7, 1],
+        )
+
+    @pytest.fixture
+    def green_reduce_curve(self):
+        """Curve that reduces values."""
+        return CurveData(
+            name="GreenReduce",
+            input_values=[0, 0.5, 1],
+            output_values=[0, 0.3, 0.8],
+        )
+
+    def test_apply_single_channel_curve(self, processor, rgb_image, red_boost_curve):
+        """Apply curve to only red channel."""
+        result = processor.load_image(rgb_image)
+        processed = processor.apply_curves_per_channel(
+            result,
+            curves={"R": red_boost_curve}
+        )
+
+        proc_arr = np.array(processed.image)
+        orig_arr = np.array(rgb_image)
+
+        # Red channel should be modified
+        assert not np.allclose(proc_arr[:, :, 0], orig_arr[:, :, 0], atol=5)
+        # Green and Blue should be unchanged (identity)
+        assert np.allclose(proc_arr[:, :, 1], orig_arr[:, :, 1])
+        assert np.allclose(proc_arr[:, :, 2], orig_arr[:, :, 2])
+
+    def test_apply_multiple_channel_curves(
+        self, processor, rgb_image, red_boost_curve, green_reduce_curve
+    ):
+        """Apply different curves to R and G channels."""
+        result = processor.load_image(rgb_image)
+        processed = processor.apply_curves_per_channel(
+            result,
+            curves={"R": red_boost_curve, "G": green_reduce_curve}
+        )
+
+        proc_arr = np.array(processed.image)
+        orig_arr = np.array(rgb_image)
+
+        # Both R and G should be modified
+        assert not np.allclose(proc_arr[:, :, 0], orig_arr[:, :, 0], atol=5)
+        assert not np.allclose(proc_arr[:, :, 1], orig_arr[:, :, 1], atol=5)
+        # Blue unchanged
+        assert np.allclose(proc_arr[:, :, 2], orig_arr[:, :, 2])
+
+    def test_apply_all_channel_curves(
+        self, processor, rgb_image, red_boost_curve, green_reduce_curve
+    ):
+        """Apply curves to all three channels."""
+        blue_curve = CurveData(
+            name="BlueLinear",
+            input_values=[0, 1],
+            output_values=[0, 0.9],
+        )
+
+        result = processor.load_image(rgb_image)
+        processed = processor.apply_curves_per_channel(
+            result,
+            curves={"R": red_boost_curve, "G": green_reduce_curve, "B": blue_curve}
+        )
+
+        assert processed.curve_applied is True
+        assert "Applied per-channel curves: R, G, B" in processed.processing_notes[-1]
+
+    def test_per_channel_preserves_alpha(
+        self, processor, rgba_image, red_boost_curve
+    ):
+        """Per-channel curves should preserve alpha."""
+        result = processor.load_image(rgba_image)
+        processed = processor.apply_curves_per_channel(
+            result,
+            curves={"R": red_boost_curve}
+        )
+
+        proc_arr = np.array(processed.image)
+        # Alpha should be preserved
+        assert np.all(proc_arr[:, :, 3] == 255)
+
+    def test_per_channel_rejects_grayscale(self, processor, red_boost_curve):
+        """Per-channel curves should reject grayscale images."""
+        arr = np.ones((50, 50), dtype=np.uint8) * 128
+        img = Image.fromarray(arr, mode="L")
+        result = processor.load_image(img)
+
+        with pytest.raises(ValueError, match="require RGB"):
+            processor.apply_curves_per_channel(result, curves={"R": red_boost_curve})
+
+    def test_empty_curves_dict_no_change(self, processor, rgb_image):
+        """Empty curves dict should return image unchanged."""
+        result = processor.load_image(rgb_image)
+        processed = processor.apply_curves_per_channel(result, curves={})
+
+        proc_arr = np.array(processed.image)
+        orig_arr = np.array(rgb_image)
+        assert np.allclose(proc_arr, orig_arr)
+
+
+class TestChannelValidation:
+    """Tests for channel validation functionality."""
+
+    @pytest.fixture
+    def processor(self):
+        return ImageProcessor()
+
+    def test_validate_grayscale_image(self, processor):
+        """Validate grayscale image channels."""
+        arr = np.random.randint(0, 256, (50, 50), dtype=np.uint8)
+        img = Image.fromarray(arr, mode="L")
+        result = processor.load_image(img)
+
+        stats = processor.validate_image_channels(result, require_uniform=False)
+
+        assert stats["mode"] == "L"
+        assert stats["channels"] == 1
+        assert len(stats["per_channel_stats"]) == 1
+        assert stats["per_channel_stats"][0]["min"] >= 0
+        assert stats["per_channel_stats"][0]["max"] <= 255
+
+    def test_validate_rgb_image(self, processor):
+        """Validate RGB image channels."""
+        arr = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
+        img = Image.fromarray(arr, mode="RGB")
+        result = processor.load_image(img)
+
+        stats = processor.validate_image_channels(result, require_uniform=False)
+
+        assert stats["mode"] == "RGB"
+        assert stats["channels"] == 3
+        assert len(stats["per_channel_stats"]) == 3
+        assert stats["all_channels_processed"] is True
+
+    def test_validate_detects_constant_channel(self, processor):
+        """Validation should detect constant (unprocessed) channels."""
+        arr = np.zeros((50, 50, 3), dtype=np.uint8)
+        arr[:, :, 0] = np.random.randint(0, 256, (50, 50))  # Random red
+        arr[:, :, 1] = 128  # Constant green
+        arr[:, :, 2] = 128  # Constant blue
+        img = Image.fromarray(arr, mode="RGB")
+        result = processor.load_image(img)
+
+        stats = processor.validate_image_channels(result, require_uniform=False)
+
+        # Green and blue are constant
+        assert stats["per_channel_stats"][1]["min"] == stats["per_channel_stats"][1]["max"]
+        assert stats["per_channel_stats"][2]["min"] == stats["per_channel_stats"][2]["max"]
+
+    def test_validate_raises_on_constant_channels_if_required(self, processor):
+        """Validation should raise if constant channels and require_uniform=True."""
+        arr = np.zeros((50, 50, 3), dtype=np.uint8)
+        arr[:, :, 0] = np.random.randint(10, 240, (50, 50))  # Variable red
+        arr[:, :, 1] = 128  # Constant green
+        arr[:, :, 2] = 128  # Constant blue
+        img = Image.fromarray(arr, mode="RGB")
+        result = processor.load_image(img)
+
+        with pytest.raises(ValueError, match="appear unprocessed"):
+            processor.validate_image_channels(result, require_uniform=True)
+
+    def test_validate_returns_stats(self, processor):
+        """Validation should return comprehensive stats."""
+        arr = np.arange(100).reshape(10, 10).astype(np.uint8)
+        img = Image.fromarray(arr, mode="L")
+        result = processor.load_image(img)
+
+        stats = processor.validate_image_channels(result, require_uniform=False)
+
+        assert "mean" in stats["per_channel_stats"][0]
+        assert "std" in stats["per_channel_stats"][0]
+        assert stats["per_channel_stats"][0]["min"] == 0
+        assert stats["per_channel_stats"][0]["max"] == 99
+
+
+class Test16BitTiffExport:
+    """Tests for 16-bit TIFF export functionality."""
+
+    @pytest.fixture
+    def processor(self):
+        return ImageProcessor()
+
+    def test_export_16bit_grayscale_tiff(self, processor, tmp_path):
+        """Export 16-bit grayscale TIFF."""
+        arr = np.arange(100).reshape(10, 10).astype(np.uint8)
+        img = Image.fromarray(arr, mode="L")
+        result = processor.load_image(img)
+
+        output_path = tmp_path / "test_16bit.tiff"
+        settings = ExportSettings(format=ImageFormat.TIFF_16BIT)
+        processor.export(result, output_path, settings)
+
+        assert output_path.exists()
+        # Verify it can be loaded
+        loaded = Image.open(output_path)
+        assert loaded is not None
+
+    def test_export_16bit_rgb_tiff(self, processor, tmp_path):
+        """Export 16-bit RGB TIFF (uses tifffile if available)."""
+        arr = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
+        img = Image.fromarray(arr, mode="RGB")
+        result = processor.load_image(img)
+
+        output_path = tmp_path / "test_rgb_16bit.tiff"
+        settings = ExportSettings(format=ImageFormat.TIFF_16BIT)
+        processor.export(result, output_path, settings)
+
+        assert output_path.exists()
+        # File should be created
+        assert output_path.stat().st_size > 0
+
+    def test_export_preserves_dpi_16bit(self, processor, tmp_path):
+        """16-bit export should preserve DPI."""
+        arr = np.ones((50, 50), dtype=np.uint8) * 128
+        img = Image.fromarray(arr, mode="L")
+        result = processor.load_image(img)
+        # Manually set DPI
+        result = ProcessingResult(
+            image=result.image,
+            original_size=result.original_size,
+            original_mode=result.original_mode,
+            original_format=result.original_format,
+            original_dpi=(300, 300),
+            curve_applied=False,
+            inverted=False,
+        )
+
+        output_path = tmp_path / "test_dpi_16bit.tiff"
+        settings = ExportSettings(format=ImageFormat.TIFF_16BIT, preserve_resolution=True)
+        processor.export(result, output_path, settings)
+
+        assert output_path.exists()
+
+
+class TestImageLoadingEdgeCases:
+    """Tests for image loading edge cases."""
+
+    @pytest.fixture
+    def processor(self):
+        return ImageProcessor()
+
+    def test_load_from_file_path(self, processor, tmp_path):
+        """Load image from file path."""
+        arr = np.ones((50, 50), dtype=np.uint8) * 128
+        img = Image.fromarray(arr, mode="L")
+        img_path = tmp_path / "test_load.png"
+        img.save(img_path)
+
+        result = processor.load_image(str(img_path))
+        assert result.image is not None
+        assert result.original_size == (50, 50)
+
+    def test_load_from_path_object(self, processor, tmp_path):
+        """Load image from Path object."""
+        arr = np.ones((50, 50), dtype=np.uint8) * 128
+        img = Image.fromarray(arr, mode="L")
+        img_path = tmp_path / "test_path.png"
+        img.save(img_path)
+
+        result = processor.load_image(img_path)
+        assert result.image is not None
+
+    def test_load_rgba_numpy(self, processor):
+        """Load RGBA image from numpy array."""
+        arr = np.ones((50, 50, 4), dtype=np.uint8) * 128
+        result = processor.load_image(arr)
+        assert result.original_mode == "RGBA"
+
+    def test_load_unsupported_array_shape(self, processor):
+        """Loading unsupported array shape should raise."""
+        arr = np.ones((50, 50, 5), dtype=np.uint8)  # 5 channels not supported
+        with pytest.raises(ValueError, match="Unsupported array shape"):
+            processor.load_image(arr)
+
+    def test_load_1d_array_raises(self, processor):
+        """Loading 1D array should raise."""
+        arr = np.ones(100, dtype=np.uint8)
+        with pytest.raises(ValueError):
+            processor.load_image(arr)
+
+
+class TestAlphaChannelHandling:
+    """Tests for alpha channel handling in various operations."""
+
+    @pytest.fixture
+    def processor(self):
+        return ImageProcessor()
+
+    @pytest.fixture
+    def la_image(self):
+        """Create grayscale+alpha image."""
+        arr = np.zeros((50, 50, 2), dtype=np.uint8)
+        arr[:, :, 0] = 128  # Luminance
+        arr[:, :, 1] = 200  # Alpha
+        return Image.fromarray(arr, mode="LA")
+
+    def test_apply_curve_la_preserves_alpha(self, processor, la_image):
+        """Apply curve to LA image should preserve alpha."""
+        curve = CurveData(
+            name="Test",
+            input_values=[0, 1],
+            output_values=[0.2, 0.8],
+        )
+        result = processor.load_image(la_image)
+        processed = processor.apply_curve(result, curve)
+
+        proc_arr = np.array(processed.image)
+        # Alpha should be preserved
+        assert np.all(proc_arr[:, :, 1] == 200)
+
+    def test_invert_la_preserves_alpha(self, processor, la_image):
+        """Invert LA image should preserve alpha."""
+        result = processor.load_image(la_image)
+        inverted = processor.invert(result)
+
+        inv_arr = np.array(inverted.image)
+        # Alpha should be preserved
+        assert np.all(inv_arr[:, :, 1] == 200)
+        # Luminance should be inverted
+        assert np.all(inv_arr[:, :, 0] == 127)
+
+
+class TestCurveEdgeCases:
+    """Tests for curve-related edge cases."""
+
+    @pytest.fixture
+    def processor(self):
+        return ImageProcessor()
+
+    def test_curve_with_many_points(self, processor):
+        """Curve with many control points."""
+        inputs = [i / 100 for i in range(101)]
+        outputs = [i / 100 for i in range(101)]
+        curve = CurveData(
+            name="Dense",
+            input_values=inputs,
+            output_values=outputs,
+        )
+
+        arr = np.ones((10, 10), dtype=np.uint8) * 128
+        img = Image.fromarray(arr, mode="L")
+        result = processor.load_image(img)
+        processed = processor.apply_curve(result, curve)
+
+        assert processed.image is not None
+
+    def test_curve_clamps_values(self, processor):
+        """Curve output should be clamped to valid range."""
+        # Curve that would go outside 0-1
+        curve = CurveData(
+            name="OutOfRange",
+            input_values=[0, 0.5, 1],
+            output_values=[0, 0.5, 1],  # Normal range
+        )
+
+        arr = np.array([[0, 128, 255]], dtype=np.uint8).reshape(1, 3)
+        img = Image.fromarray(arr, mode="L")
+        result = processor.load_image(img)
+        processed = processor.apply_curve(result, curve)
+
+        proc_arr = np.array(processed.image)
+        # All values should be in valid range
+        assert proc_arr.min() >= 0
+        assert proc_arr.max() <= 255
