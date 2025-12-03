@@ -4,9 +4,6 @@ Tests for paper profiles module.
 Tests paper characteristics, profiles, and database functionality.
 """
 
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from ptpd_calibration.papers.profiles import (

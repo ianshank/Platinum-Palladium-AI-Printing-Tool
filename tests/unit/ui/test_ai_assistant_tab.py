@@ -1,6 +1,4 @@
-import pytest
-from unittest.mock import MagicMock, patch
-import gradio as gr
+from unittest.mock import patch
 from ptpd_calibration.ui.tabs.ai_assistant import build_ai_assistant_tab
 
 def test_ai_assistant_structure():

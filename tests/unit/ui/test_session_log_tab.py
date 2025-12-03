@@ -1,6 +1,4 @@
-import pytest
 from unittest.mock import MagicMock, patch
-import gradio as gr
 from ptpd_calibration.ui.tabs.session_log import build_session_log_tab
 
 def test_session_log_structure():

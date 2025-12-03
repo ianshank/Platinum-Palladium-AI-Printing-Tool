@@ -31,7 +31,7 @@ class TestPaperSimulation:
 
     def test_presets_have_data(self):
         """All paper presets should have data."""
-        for preset in PaperSimulation:
+        for preset in list(PaperSimulation):
             if preset != PaperSimulation.CUSTOM:
                 assert preset in PAPER_PRESETS
 
@@ -292,7 +292,7 @@ class TestSoftProoferEdgeCases:
         proofer = SoftProofer()
         img = Image.new("L", (50, 50), color=128)
 
-        for preset in PaperSimulation:
+        for preset in list(PaperSimulation):
             settings = ProofSettings.from_paper_preset(preset)
             result = proofer.proof(img, settings=settings)
             assert result.image is not None

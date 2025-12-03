@@ -1,6 +1,4 @@
-import pytest
-from unittest.mock import MagicMock, patch
-import gradio as gr
+from unittest.mock import patch
 from ptpd_calibration.ui.tabs.chemistry import build_chemistry_tab
 
 def test_chemistry_tab_structure():

@@ -1,8 +1,5 @@
-import pytest
-from unittest.mock import MagicMock, patch
-import gradio as gr
+from unittest.mock import patch
 from ptpd_calibration.ui.tabs.calibration_wizard import build_calibration_wizard_tab
-from ptpd_calibration.analysis import WedgeAnalysisResult, QualityAssessment, QualityGrade
 
 def test_wizard_step_visibility():
     with patch('gradio.TabItem'), \

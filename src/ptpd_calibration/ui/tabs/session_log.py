@@ -33,13 +33,6 @@ def build_session_log_tab(session_logger: SessionLogger):
                 best_practices = gr.Markdown("Not enough data yet.")
 
         # Logic
-        def _rating_to_result(rating: int) -> PrintResult:
-            if rating >= 5: return PrintResult.EXCELLENT
-            if rating >= 4: return PrintResult.GOOD
-            if rating >= 3: return PrintResult.ACCEPTABLE
-            if rating >= 2: return PrintResult.POOR
-            return PrintResult.FAILED
-
         def render_timeline_html(sessions):
             if not sessions:
                 return "<div style='padding: 20px; text-align: center; color: gray;'>No print sessions found.</div>"

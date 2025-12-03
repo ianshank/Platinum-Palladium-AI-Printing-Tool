@@ -332,12 +332,12 @@ class TestTopLevelImports:
 
     def test_import_main_package(self):
         """Import main package."""
-        import ptpd_calibration
+        import ptpd_calibration  # noqa: F401
         assert ptpd_calibration is not None
 
     def test_package_has_version(self):
         """Package should have version."""
-        import ptpd_calibration
+        import ptpd_calibration  # noqa: F401
         assert hasattr(ptpd_calibration, "__version__")
 
     def test_package_exports(self):

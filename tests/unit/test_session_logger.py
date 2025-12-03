@@ -5,7 +5,6 @@ Tests print session logging, record management, and statistics.
 """
 
 from datetime import datetime, timedelta
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -311,7 +310,7 @@ class TestSessionLogger:
     def test_logger_creates_storage_dir(self, tmp_path):
         """Logger should create storage directory."""
         storage_dir = tmp_path / "new_sessions"
-        logger = SessionLogger(storage_dir=storage_dir)
+        _ = SessionLogger(storage_dir=storage_dir)
         assert storage_dir.exists()
 
     def test_start_session(self, logger):

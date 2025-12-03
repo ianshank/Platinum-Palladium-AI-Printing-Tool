@@ -88,9 +88,6 @@ def build_chemistry_tab():
                     log_btn = gr.Button("📝 Log to Session")
 
         # Logic
-        def update_size(w, h):
-            return w, h
-
         btn_4x5.click(lambda: (4, 5), outputs=[width, height])
         btn_5x7.click(lambda: (5, 7), outputs=[width, height])
         btn_8x10.click(lambda: (8, 10), outputs=[width, height])

@@ -496,7 +496,6 @@ class TestScannerCalibrationWorkflow:
     def test_create_profile_from_target(self, target_image):
         """Create profile from calibration target scan."""
         # This tests that the workflow can complete
-        calibration = ScannerCalibration()
 
         # Simulate creating profile (basic test)
         profile = ScannerProfile(
@@ -525,7 +524,7 @@ class TestScannerCalibrationWorkflow:
         """Test complete calibration workflow: calibrate, save, load, apply."""
         # 1. Calibrate from target
         cal1 = ScannerCalibration()
-        profile = cal1.calibrate_from_target(
+        _ = cal1.calibrate_from_target(
             target_scan=target_image,
             reference_values={},
             name="Workflow Test",

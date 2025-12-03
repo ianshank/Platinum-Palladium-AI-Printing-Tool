@@ -2139,12 +2139,6 @@ def create_gradio_app(share: bool = False):
                 """
             )
 
-            # State for interactive curve
-            ie_curve_state = gr.State({
-                "points": [(0.0, 0.0), (0.25, 0.25), (0.5, 0.5), (0.75, 0.75), (1.0, 1.0)],
-                "name": "Custom Curve",
-            })
-
             with gr.Row():
                 with gr.Column(scale=1):
                     gr.Markdown("#### Control Points")
@@ -3243,7 +3237,8 @@ def create_gradio_app(share: bool = False):
                     if preset_enum in PAPER_PRESETS:
                         data = PAPER_PRESETS[preset_enum]
                         return data["dmax"], data["dmin"]
-                except:
+                except (ValueError, KeyError):
+                    # Ignore invalid preset values
                     pass
                 return gr.update(), gr.update()
 

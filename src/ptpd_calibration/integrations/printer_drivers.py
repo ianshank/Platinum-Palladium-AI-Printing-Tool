@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Any
 import logging
 from datetime import datetime
 
@@ -319,7 +319,7 @@ class EpsonDriver(PrinterInterface):
         logger.info(f"Starting print job {job_id}")
 
         # Prepare image for printing
-        processed_image = self._prepare_image(image, settings)
+        _ = self._prepare_image(image, settings)
 
         if self.simulate:
             # Simulate printing
@@ -573,7 +573,7 @@ class CanonDriver(PrinterInterface):
         logger.info(f"Starting print job {job_id}")
 
         # Canon-specific processing
-        processed_image = self._prepare_image(image, settings)
+        _ = self._prepare_image(image, settings)
 
         if self.simulate:
             logger.info(

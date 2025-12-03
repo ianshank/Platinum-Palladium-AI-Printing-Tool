@@ -1,8 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-import gradio as gr
 from datetime import datetime
-from pathlib import Path
 from ptpd_calibration.ui.tabs.dashboard import build_dashboard_tab
 from ptpd_calibration.session import PrintRecord, PrintSession, PrintResult
 

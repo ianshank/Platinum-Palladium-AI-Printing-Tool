@@ -12,7 +12,6 @@ Tests cover:
 
 import pytest
 from pathlib import Path
-import tempfile
 import re
 
 
@@ -299,6 +298,7 @@ class TestQTRFormatCompliance:
                 try:
                     values.append(int(line))
                 except ValueError:
+                    # Skip non-integer lines (comments, blank lines)
                     pass
         
         assert len(values) == 256, f"Expected 256 values, got {len(values)}"
@@ -356,6 +356,7 @@ class TestQTRFormatCompliance:
                     int(stripped)
                     channel_counts[current_channel] += 1
                 except ValueError:
+                    # Skip non-integer lines
                     pass
         
         for ch, count in channel_counts.items():

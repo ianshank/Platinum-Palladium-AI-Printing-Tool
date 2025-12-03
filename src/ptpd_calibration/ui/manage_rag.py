@@ -17,7 +17,6 @@ import logging
 try:
     import typer
     from rich.console import Console
-    from rich.table import Table
 except ImportError:
     print("Please install CLI dependencies: pip install typer rich")
     sys.exit(1)

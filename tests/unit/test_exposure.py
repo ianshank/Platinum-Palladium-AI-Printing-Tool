@@ -28,7 +28,7 @@ class TestLightSource:
 
     def test_light_source_speeds(self):
         """All light sources should have speed multipliers."""
-        for source in LightSource:
+        for source in list(LightSource):
             assert source in LIGHT_SOURCE_SPEEDS
 
 
@@ -380,7 +380,7 @@ class TestExposureCalculatorEdgeCases:
         """All light sources should produce valid results."""
         calculator = ExposureCalculator()
 
-        for source in LightSource:
+        for source in list(LightSource):
             result = calculator.calculate(
                 negative_density=1.6,
                 light_source=source,
