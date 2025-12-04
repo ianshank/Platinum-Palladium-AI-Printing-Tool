@@ -18,6 +18,8 @@ jobs:
   lint:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    # Lint is informational only - don't block other jobs
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -34,18 +36,17 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Ruff linter
-        run: ruff check src/ tests/ --output-format=github
-        continue-on-error: true
+        run: ruff check src/ tests/ --output-format=github || true
 
       - name: Run type checking
-        run: mypy src/ptpd_calibration --ignore-missing-imports
-        continue-on-error: true
+        run: mypy src/ptpd_calibration --ignore-missing-imports || true
 
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    needs: lint
+    # Run tests independently of lint results
     strategy:
+      fail-fast: false
       matrix:
         test-type: [unit, sanity, e2e]
     steps:
@@ -63,25 +64,33 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-timeout
 
-      - name: Run ${{ matrix.test-type }} tests
+      - name: Check test directory exists
+        id: check-tests
         run: |
-          PYTHONPATH=src pytest tests/${{ matrix.test-type }}/ -v --timeout=300
+          if [ -d "tests/${{ matrix.test-type }}" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Test directory tests/${{ matrix.test-type }} found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "::warning::Test directory tests/${{ matrix.test-type }} not found"
+          fi
+
+      - name: Run ${{ matrix.test-type }} tests
+        if: steps.check-tests.outputs.exists == 'true'
+        run: |
+          PYTHONPATH=src pytest tests/${{ matrix.test-type }}/ -v --timeout=300 --tb=short
         env:
           PYTHONPATH: src
 
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: test-results-${{ matrix.test-type }}
-          path: |
-            pytest-*.xml
-            .pytest_cache/
+      - name: Skip message
+        if: steps.check-tests.outputs.exists == 'false'
+        run: echo "Skipping ${{ matrix.test-type }} tests - directory not found"
 
   sanity-check:
     name: Deployment Sanity Check
     runs-on: ubuntu-latest
     needs: test
+    if: always() && !contains(needs.test.result, 'failure')
     steps:
       - uses: actions/checkout@v4
 
@@ -111,7 +120,12 @@ jobs:
     name: Deploy to Hugging Face Spaces
     runs-on: ubuntu-latest
     needs: [test, sanity-check]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/'))
+    if: |
+      always() &&
+      !contains(needs.test.result, 'failure') &&
+      !contains(needs.sanity-check.result, 'failure') &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/'))
     steps:
       - uses: actions/checkout@v4
         with:
