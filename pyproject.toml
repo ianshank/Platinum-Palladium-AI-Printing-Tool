@@ -74,6 +74,41 @@ dev = [
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
 ]
+test = [
+    # Core testing
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.5.0",      # Parallel test execution
+    "pytest-html>=4.1.0",        # Enhanced HTML reports
+    "pytest-timeout>=2.3.0",     # Test timeouts
+
+    # Selenium E2E testing
+    "selenium>=4.15.0",
+    "pytest-selenium>=4.0.0",
+    "webdriver-manager>=4.0.0",  # Auto-manage browser drivers
+
+    # API testing
+    "httpx>=0.27.0",             # Async HTTP client for API tests
+    "pytest-httpx>=0.30.0",      # HTTPX pytest plugin
+
+    # Performance testing
+    "pytest-benchmark>=4.0.0",   # Benchmarking
+    "locust>=2.20.0",            # Load testing
+
+    # Visual regression testing
+    "pillow>=10.0.0",
+    "pixelmatch>=0.3.0",         # Pixel-level image comparison
+
+    # Test data generation
+    "faker>=22.0.0",             # Fake data generation
+    "factory-boy>=3.3.0",        # Test factories
+
+    # Mocking and fixtures
+    "responses>=0.24.0",         # Mock HTTP requests
+    "pytest-mock>=3.12.0",       # Mocking utilities
+    "freezegun>=1.3.0",          # Time freezing for tests
+]
 
 [project.scripts]
 ptpd = "ptpd_calibration.cli:main"
@@ -100,6 +135,23 @@ include = [
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-v --cov=src/ptpd_calibration --cov-report=term-missing"
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (slower, real components)",
+    "e2e: End-to-end tests (require running app)",
+    "selenium: Selenium browser tests (require WebDriver)",
+    "api: API endpoint tests",
+    "performance: Performance and benchmark tests",
+    "visual: Visual regression tests",
+    "slow: Tests that take a long time to run",
+    "browser: Tests requiring a browser (Selenium or Playwright)",
+    "functional: Functional tests without browser",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+timeout = 300
 
 [tool.ruff]
 target-version = "py310"
