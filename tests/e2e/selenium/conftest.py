@@ -265,11 +265,14 @@ def gradio_wait(driver):
             EC.presence_of_element_located((By.CSS_SELECTOR, ".gradio-container"))
         )
         # Wait for any loading indicators to disappear
-        wait.until_not(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, ".loading, .progress-bar:not([style*='display: none'])")
+        try:
+            wait.until(
+                EC.invisibility_of_element_located(
+                    (By.CSS_SELECTOR, ".loading, .progress-bar:not([style*='display: none'])")
+                )
             )
-        )
+        except Exception:
+            pass  # Loading indicator may not exist
         time.sleep(0.5)  # Small buffer for JS initialization
 
     return _gradio_wait

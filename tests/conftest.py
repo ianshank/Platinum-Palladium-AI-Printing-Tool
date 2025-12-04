@@ -282,13 +282,3 @@ def api_headers():
     }
 
 
-# =============================================================================
-# Cleanup Fixtures
-# =============================================================================
-
-
-@pytest.fixture(autouse=True)
-def reset_singletons():
-    """Reset any singleton instances between tests."""
-    yield
-    # Cleanup after test if needed

@@ -139,9 +139,8 @@ class TestCalibrationValidation:
 
         response = client.post("/api/calibrations", json=invalid_data)
 
-        # May or may not fail depending on validation
-        # If it succeeds, the value should be clamped
-        assert response.status_code in [200, 422]
+        # Metal ratio out of bounds should be rejected with validation error
+        assert response.status_code == 422
 
     def test_negative_exposure_time(self, client):
         """Test validation of negative exposure time."""

@@ -9,6 +9,10 @@ from typing import Any, Sequence
 
 import numpy as np
 
+# Maximum realistic density value for photographic processes
+# Typical Pt/Pd prints have Dmax around 1.8-2.2, allowing headroom for unusual cases
+MAX_REALISTIC_DENSITY = 5.0
+
 
 def assert_densities_valid(densities: Sequence[float]) -> None:
     """
@@ -23,7 +27,7 @@ def assert_densities_valid(densities: Sequence[float]) -> None:
 
     for i, d in enumerate(densities):
         assert d >= 0, f"Negative density at index {i}: {d}"
-        assert d <= 5.0, f"Unrealistic density at index {i}: {d}"
+        assert d <= MAX_REALISTIC_DENSITY, f"Unrealistic density at index {i}: {d}"
 
 
 def assert_densities_monotonic(

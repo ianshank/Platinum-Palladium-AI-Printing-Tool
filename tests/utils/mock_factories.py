@@ -246,11 +246,3 @@ def patch_weather_api(response: dict | None = None):
         "ptpd_calibration.integrations.weather.WeatherAPI.get_current",
         new=AsyncMock(return_value=response),
     )
-
-
-def patch_file_operations():
-    """Context manager to patch file operations."""
-    return patch.multiple(
-        "builtins",
-        open=MagicMock(),
-    )

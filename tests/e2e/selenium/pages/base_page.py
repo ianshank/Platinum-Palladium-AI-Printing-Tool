@@ -4,7 +4,7 @@ Base Page Object Model for PTPD Calibration UI.
 Provides common methods and utilities for interacting with Gradio-based UI components.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver
@@ -118,8 +118,7 @@ class BasePage:
 
     def click_tab(self, tab_name: str) -> None:
         """Click on a Gradio tab by its name."""
-        tab_selector = f"button[role='tab']:has-text('{tab_name}')"
-        # Fallback to more generic selector
+        # Find all tabs and match by text content
         tabs = self.find_elements(By.CSS_SELECTOR, "button[role='tab']")
         for tab in tabs:
             if tab_name.lower() in tab.text.lower():
@@ -335,7 +334,7 @@ class BasePage:
 
     # --- JavaScript Execution ---
 
-    def execute_script(self, script: str, *args) -> any:
+    def execute_script(self, script: str, *args) -> Any:
         """Execute JavaScript in the browser."""
         return self.driver.execute_script(script, *args)
 
