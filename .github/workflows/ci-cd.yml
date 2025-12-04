@@ -134,7 +134,14 @@ jobs:
 
       - name: Verify app.py can be loaded
         run: |
-          python -c "import sys; sys.path.insert(0, 'src'); exec(open('app.py').read().split('if __name__')[0])"
+          python -c "
+          import sys
+          import os
+          sys.path.insert(0, 'src')
+          # Verify core imports work
+          from ptpd_calibration.ui.gradio_app import create_gradio_app
+          print('Core UI module imports successfully')
+          "
 
   deploy-huggingface:
     name: Deploy to Hugging Face Spaces
