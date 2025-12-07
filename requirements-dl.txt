@@ -1,0 +1,46 @@
+# Deep Learning Dependencies for Platinum-Palladium AI Printing Tool
+# Install with: pip install -r requirements-dl.txt
+
+# Include base requirements
+-r requirements.txt
+
+# PyTorch (choose appropriate version for your system)
+# For CPU: pip install torch torchvision
+# For CUDA: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Transformers and Hugging Face
+transformers>=4.36.0
+accelerate>=0.25.0
+safetensors>=0.4.0
+
+# Computer Vision Models
+ultralytics>=8.0.0  # YOLOv8
+segment-anything>=1.0  # SAM (Segment Anything)
+timm>=0.9.0  # PyTorch Image Models (for ViT)
+
+# Diffusion Models
+diffusers>=0.25.0
+
+# Perceptual Similarity
+lpips>=0.1.4
+
+# Federated Learning
+# Note: These are optional and may require specific setup
+# flower>=1.5.0  # Federated learning framework
+# syft>=0.8.0  # Privacy-preserving ML
+
+# Additional utilities
+einops>=0.7.0  # Tensor operations
+opencv-python>=4.8.0  # Image processing
+albumentations>=1.3.0  # Data augmentation
+
+# Training utilities
+tensorboard>=2.15.0  # Training visualization
+wandb>=0.16.0  # Experiment tracking (optional)
+tqdm>=4.66.0  # Progress bars
+
+# Testing dependencies for deep learning
+pytest-benchmark>=4.0.0  # Performance testing
+pytest-timeout>=2.2.0  # Test timeouts
