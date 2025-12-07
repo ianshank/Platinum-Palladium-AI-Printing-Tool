@@ -58,7 +58,7 @@ class TestFileUpload:
     def test_upload_png_image(self, page, sample_image):
         """Test uploading a PNG image."""
         page.wait_for_gradio_ready()
-        page.click_tab("Calibration")
+        page.click_tab("📊 Calibration")
 
         # Find file upload component
         try:
@@ -74,7 +74,7 @@ class TestFileUpload:
     def test_upload_tiff_image(self, page, sample_tiff):
         """Test uploading a TIFF image."""
         page.wait_for_gradio_ready()
-        page.click_tab("Calibration")
+        page.click_tab("📊 Calibration")
 
         try:
             page.upload_file("Step Tablet", str(sample_tiff))
@@ -98,7 +98,7 @@ class TestFileUpload:
         img.save(file_path)
 
         page.wait_for_gradio_ready()
-        page.click_tab("Calibration")
+        page.click_tab("📊 Calibration")
 
         try:
             page.upload_file("Step Tablet", str(file_path))
@@ -113,7 +113,7 @@ class TestFileUpload:
         file_path.write_text("This is not an image")
 
         page.wait_for_gradio_ready()
-        page.click_tab("Calibration")
+        page.click_tab("📊 Calibration")
 
         try:
             page.upload_file("Step Tablet", str(file_path))
@@ -134,7 +134,7 @@ class TestFileUpload:
         img2.save(file_path2)
 
         page.wait_for_gradio_ready()
-        page.click_tab("Calibration")
+        page.click_tab("📊 Calibration")
 
         try:
             # Upload first file
@@ -169,7 +169,7 @@ class TestTabNavigation:
         """Test clicking on each tab."""
         page.wait_for_gradio_ready()
 
-        tab_names = ["Dashboard", "Calibration", "Chemistry", "AI Assistant"]
+        tab_names = ["🏠 Dashboard", "📊 Calibration", "🧪 Darkroom", "🤖 AI Tools"]
 
         for name in tab_names:
             try:
@@ -213,7 +213,7 @@ class TestSliderControls:
     def test_slider_adjustment(self, page):
         """Test adjusting slider values."""
         page.wait_for_gradio_ready()
-        page.click_tab("Calibration")
+        page.click_tab("📊 Calibration")
 
         try:
             page.adjust_slider("Metal Ratio", 0.7)
@@ -223,7 +223,7 @@ class TestSliderControls:
     def test_slider_min_max(self, page):
         """Test slider min/max boundaries."""
         page.wait_for_gradio_ready()
-        page.click_tab("Calibration")
+        page.click_tab("📊 Calibration")
 
         try:
             # Try min value
@@ -248,7 +248,7 @@ class TestDropdownSelectors:
     def test_dropdown_open_close(self, page):
         """Test opening and closing dropdowns."""
         page.wait_for_gradio_ready()
-        page.click_tab("Calibration")
+        page.click_tab("📊 Calibration")
 
         try:
             page.select_dropdown("Paper Type", "Arches Platine")
@@ -258,7 +258,7 @@ class TestDropdownSelectors:
     def test_dropdown_selection(self, page):
         """Test selecting dropdown options."""
         page.wait_for_gradio_ready()
-        page.click_tab("Calibration")
+        page.click_tab("📊 Calibration")
 
         papers = ["Arches Platine", "Bergger COT320", "Hahnemuhle Platinum Rag"]
 
