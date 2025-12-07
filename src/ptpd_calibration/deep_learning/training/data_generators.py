@@ -47,6 +47,7 @@ class SyntheticDataConfig:
     input_noise_std: float = 0.05
     output_noise_std: float = 0.02
     label_noise_probability: float = 0.01
+    density_noise_scaling: float = 0.5  # Scaling factor for density noise
 
     # Image generation
     image_size: Tuple[int, int] = (640, 480)
@@ -244,7 +245,9 @@ class DetectionDataGenerator(BaseDataGenerator):
             )
 
             # Add noise to density to prevent exact matching
-            density = density + self.rng.normal(0, self.config.output_noise_std * 0.5)
+            density = density + self.rng.normal(
+                0, self.config.output_noise_std * self.config.density_noise_scaling
+            )
             density = np.clip(density, 0.0, 3.0)
 
             # Convert density to grayscale (higher density = darker)

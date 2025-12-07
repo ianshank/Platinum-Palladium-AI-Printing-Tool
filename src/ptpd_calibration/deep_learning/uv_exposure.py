@@ -96,9 +96,9 @@ class ExposureNet:
         # Build embedding layers for categorical features
         self.embeddings = nn.ModuleDict()
 
-        # Paper type embedding (assume max 50 paper types)
+        # Paper type embedding (configurable max paper types)
         self.embeddings["paper_type"] = nn.Embedding(
-            num_embeddings=50, embedding_dim=settings.embedding_dim
+            num_embeddings=settings.max_paper_types, embedding_dim=settings.embedding_dim
         )
 
         # UV source embedding (from UVSourceType enum)

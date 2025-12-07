@@ -575,6 +575,12 @@ class UVExposureSettings(BaseSettings):
         le=64,
         description="Embedding dimension for categorical features",
     )
+    max_paper_types: int = Field(
+        default=50,
+        ge=10,
+        le=200,
+        description="Maximum number of paper types for embedding layer",
+    )
 
     # Output
     predict_confidence_interval: bool = Field(
