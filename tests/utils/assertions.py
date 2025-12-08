@@ -219,8 +219,8 @@ def assert_cyanotype_recipe_valid(recipe: dict | object) -> None:
         # It's an object, convert to dict-like access
         assert recipe.solution_a_ml > 0, "Solution A must be positive"
         assert recipe.solution_b_ml > 0, "Solution B must be positive"
-        assert recipe.total_volume_ml > 0, "Total volume must be positive"
-        assert recipe.coverage_square_inches > 0, "Coverage must be positive"
+        assert recipe.total_sensitizer_ml > 0, "Total sensitizer must be positive"
+        assert recipe.coating_area_sq_inches > 0, "Coverage area must be positive"
     else:
         # It's a dict
         assert recipe.get("solution_a_ml", 0) > 0, "Solution A must be positive"
@@ -230,10 +230,10 @@ def assert_cyanotype_recipe_valid(recipe: dict | object) -> None:
 def assert_cyanotype_exposure_valid(exposure: dict | object) -> None:
     """Assert that a cyanotype exposure result is valid."""
     if hasattr(exposure, '__dict__'):
-        assert exposure.exposure_time_seconds > 0, "Exposure time must be positive"
-        assert exposure.exposure_time_formatted, "Formatted time must not be empty"
+        assert exposure.exposure_seconds > 0, "Exposure time must be positive"
+        assert exposure.exposure_minutes >= 0, "Exposure minutes must be non-negative"
     else:
-        assert exposure.get("exposure_time_seconds", 0) > 0, "Exposure time must be positive"
+        assert exposure.get("exposure_seconds", 0) > 0, "Exposure time must be positive"
 
 
 def assert_cyanotype_solution_ratio_valid(
@@ -274,22 +274,22 @@ def assert_uv_exposure_inverse_square(
 def assert_silver_gelatin_chemistry_valid(chemistry: dict | object) -> None:
     """Assert that silver gelatin processing chemistry is valid."""
     if hasattr(chemistry, '__dict__'):
-        assert chemistry.developer_volume_ml > 0, "Developer volume must be positive"
-        assert chemistry.stop_bath_volume_ml > 0, "Stop bath volume must be positive"
-        assert chemistry.fixer_volume_ml > 0, "Fixer volume must be positive"
+        assert chemistry.developer.total_ml > 0, "Developer volume must be positive"
+        assert chemistry.stop_bath_ml > 0, "Stop bath volume must be positive"
+        assert chemistry.fixer_ml > 0, "Fixer volume must be positive"
     else:
-        assert chemistry.get("developer_volume_ml", 0) > 0, "Developer volume must be positive"
-        assert chemistry.get("stop_bath_volume_ml", 0) > 0, "Stop bath volume must be positive"
-        assert chemistry.get("fixer_volume_ml", 0) > 0, "Fixer volume must be positive"
+        assert chemistry.get("developer", {}).get("total_ml", 0) > 0, "Developer volume must be positive"
+        assert chemistry.get("stop_bath_ml", 0) > 0, "Stop bath volume must be positive"
+        assert chemistry.get("fixer_ml", 0) > 0, "Fixer volume must be positive"
 
 
 def assert_silver_gelatin_exposure_valid(exposure: dict | object) -> None:
     """Assert that silver gelatin exposure result is valid."""
     if hasattr(exposure, '__dict__'):
-        assert exposure.exposure_time_seconds > 0, "Exposure time must be positive"
-        assert exposure.exposure_time_formatted, "Formatted time must not be empty"
+        assert exposure.exposure_seconds > 0, "Exposure time must be positive"
+        assert exposure.f_stop > 0, "F-stop must be positive"
     else:
-        assert exposure.get("exposure_time_seconds", 0) > 0, "Exposure time must be positive"
+        assert exposure.get("exposure_seconds", 0) > 0, "Exposure time must be positive"
 
 
 def assert_split_filter_valid(split_result: dict) -> None:
@@ -367,12 +367,12 @@ def assert_alternative_process_result_valid(
     if process_type.lower() == "cyanotype":
         if hasattr(result, 'solution_a_ml'):
             assert_cyanotype_recipe_valid(result)
-        elif hasattr(result, 'exposure_time_seconds'):
+        elif hasattr(result, 'exposure_seconds'):
             assert_cyanotype_exposure_valid(result)
     elif process_type.lower() in ["silver_gelatin", "darkroom"]:
-        if hasattr(result, 'developer_volume_ml'):
+        if hasattr(result, 'developer'):
             assert_silver_gelatin_chemistry_valid(result)
-        elif hasattr(result, 'exposure_time_seconds'):
+        elif hasattr(result, 'exposure_seconds'):
             assert_silver_gelatin_exposure_valid(result)
     else:
         # Generic validation
