@@ -229,7 +229,7 @@ class TestSplitGradeSettings:
 
     def test_all_blend_modes(self):
         """Test all blend mode options."""
-        for mode in BlendMode:
+        for mode in list(BlendMode):
             settings = SplitGradeSettings(blend_mode=mode)
             assert settings.blend_mode == mode
 
@@ -1187,7 +1187,7 @@ class TestSplitGradeIntegration:
         simulator = SplitGradeSimulator()
         results = {}
 
-        for mode in BlendMode:
+        for mode in list(BlendMode):
             settings = SplitGradeSettings(blend_mode=mode)
             result = simulator.simulate_split_grade(normal_contrast_image, settings)
             results[mode] = result

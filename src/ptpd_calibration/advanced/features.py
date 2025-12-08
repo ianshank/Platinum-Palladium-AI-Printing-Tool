@@ -428,57 +428,18 @@ class AlternativeProcessSimulator:
 
         Args:
             image: Input image to simulate
-            tone: Tone color ("neutral", "warm", "cold")
+            tone: Tone color ("neutral", "warm", "cold", "sepia")
             params: Optional custom parameters
 
         Returns:
             Simulated silver gelatin print image
         """
-        tone_presets = {
-            "neutral": AlternativeProcessParams(
-                gamma=1.0,
-                contrast=1.0,
-                shadow_color=(15, 15, 15),
-                midtone_color=(100, 100, 100),
-                highlight_color=(250, 250, 250),
-                dmax=2.1,
-                dmin=0.04,
-                stain_level=0.0,
-            ),
-            "warm": AlternativeProcessParams(
-                gamma=1.0,
-                contrast=1.0,
-                shadow_color=(20, 15, 10),
-                midtone_color=(110, 95, 85),
-                highlight_color=(255, 250, 240),
-                dmax=2.0,
-                dmin=0.05,
-                stain_level=0.02,
-            ),
-            "cold": AlternativeProcessParams(
-                gamma=1.05,
-                contrast=1.05,
-                shadow_color=(10, 12, 15),
-                midtone_color=(90, 95, 100),
-                highlight_color=(248, 250, 255),
-                dmax=2.15,
-                dmin=0.03,
-                stain_level=0.0,
-            ),
-            "sepia": AlternativeProcessParams(
-                gamma=0.95,
-                contrast=0.95,
-                shadow_color=(35, 25, 15),
-                midtone_color=(130, 100, 70),
-                highlight_color=(255, 245, 225),
-                dmax=1.8,
-                dmin=0.08,
-                stain_level=0.05,
-            ),
-        }
-
         if params is None:
-            params = tone_presets.get(tone, tone_presets["neutral"])
+            preset_key = f"silver_gelatin_{tone}"
+            params = self._process_presets.get(
+                preset_key,
+                self._process_presets["silver_gelatin_neutral"]
+            )
 
         return self._apply_process_simulation(image, params, f"Silver Gelatin ({tone})")
 
@@ -500,16 +461,7 @@ class AlternativeProcessSimulator:
             Simulated argyrotype image
         """
         if params is None:
-            params = AlternativeProcessParams(
-                gamma=1.15,
-                contrast=1.1,
-                shadow_color=(30, 20, 25),
-                midtone_color=(130, 100, 110),
-                highlight_color=(245, 235, 225),
-                dmax=1.8,
-                dmin=0.12,
-                stain_level=0.04,
-            )
+            params = self._process_presets["argyrotype"]
 
         return self._apply_process_simulation(image, params, "Argyrotype")
 
@@ -563,6 +515,15 @@ class AlternativeProcessSimulator:
                 highlight_color=(248, 250, 255),
                 dmax=2.15,
                 dmin=0.03,
+            ),
+            'silver_gelatin_sepia': AlternativeProcessParams(
+                gamma=0.95, contrast=0.95,
+                shadow_color=(35, 25, 15),
+                midtone_color=(130, 100, 70),
+                highlight_color=(255, 245, 225),
+                dmax=1.8,
+                dmin=0.08,
+                stain_level=0.05,
             ),
             'salt_print': AlternativeProcessParams(
                 gamma=0.9, contrast=0.85,

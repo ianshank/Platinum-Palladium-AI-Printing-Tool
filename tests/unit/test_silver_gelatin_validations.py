@@ -157,7 +157,7 @@ class TestSilverGelatinChemistryValidation:
 
     def test_all_fixer_types(self, calculator):
         """Test all fixer types produce valid results."""
-        for fixer in FixerType:
+        for fixer in list(FixerType):
             try:
                 result = calculator.calculate(
                     width_inches=8.0,

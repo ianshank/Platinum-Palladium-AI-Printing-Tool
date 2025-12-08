@@ -281,7 +281,7 @@ class TestWizardStep3Linearization:
         )
 
         assert len(LINEARIZATION_MODES) == 4
-        for mode in WizardLinearizationMode:
+        for mode in list(WizardLinearizationMode):
             assert mode.value in LINEARIZATION_MODES
 
     def test_wizard_get_linearization_mode_choices(self):

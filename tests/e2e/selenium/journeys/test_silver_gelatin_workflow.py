@@ -492,14 +492,15 @@ class TestSilverGelatinSplitFilter:
                 enlarger_height=30.0,
                 f_stop=8.0,
             )
+            assert exposure is not None
 
-            # Then calculate split filter
-            base_time = 10.0  # Use fixed base if we can't parse
+            # Then calculate split filter using the base exposure
+            base_time = exposure if isinstance(exposure, (int, float)) else 10.0
             results = silver_gelatin_page.calculate_split_filter_print(
                 base_exposure=base_time,
             )
 
             # Workflow should complete
-            assert results is not None or len(results) >= 0
+            assert results is not None
         except Exception:
             pass

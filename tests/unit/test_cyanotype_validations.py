@@ -135,7 +135,7 @@ class TestCyanotypeChemistryValidation:
 
     def test_all_paper_types(self, calculator):
         """Test all paper types produce valid results."""
-        for paper_type in CyanotypePaperType:
+        for paper_type in list(CyanotypePaperType):
             result = calculator.calculate(
                 width_inches=8.0,
                 height_inches=10.0,

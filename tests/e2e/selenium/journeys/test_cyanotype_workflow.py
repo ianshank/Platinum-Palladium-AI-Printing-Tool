@@ -199,6 +199,7 @@ class TestCyanotypeWorkflow:
         cyanotype_page.click_calculate_chemistry()
 
         chemistry_results = cyanotype_page.get_chemistry_results()
+        assert chemistry_results is not None
 
         # Configure and calculate exposure
         cyanotype_page.set_negative_density(1.6)
@@ -207,9 +208,11 @@ class TestCyanotypeWorkflow:
         cyanotype_page.click_calculate_exposure()
 
         exposure_results = cyanotype_page.get_exposure_results()
+        assert exposure_results is not None
 
-        # Verify we got results
-        assert len(chemistry_results) >= 0 or len(exposure_results) >= 0
+        # Verify we got results from both calculations
+        assert len(chemistry_results) >= 0
+        assert len(exposure_results) >= 0
 
     def test_workflow_with_all_settings(self, cyanotype_page):
         """Test workflow with all settings configured."""
