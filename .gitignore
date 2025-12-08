@@ -147,3 +147,6 @@ calibrations.json
 *.quad
 *.ppt
 agent_memory.json
+
+# Secrets
+hf_space_key
