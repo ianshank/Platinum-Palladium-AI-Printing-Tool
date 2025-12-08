@@ -139,17 +139,17 @@ def single_record() -> CalibrationRecord:
 class TestExceptions:
     """Tests for custom exceptions."""
 
-    def test_deep_learning_error_base(self):
+    def test_deep_learning_error_base(self) -> None:
         """Test DeepLearningError is proper exception."""
         with pytest.raises(DeepLearningError):
             raise DeepLearningError("Test error")
 
-    def test_model_not_trained_error(self):
+    def test_model_not_trained_error(self) -> None:
         """Test ModelNotTrainedError inheritance."""
         with pytest.raises(DeepLearningError):
             raise ModelNotTrainedError("Model not trained")
 
-    def test_dataset_error(self):
+    def test_dataset_error(self) -> None:
         """Test DatasetError inheritance."""
         with pytest.raises(DeepLearningError):
             raise DatasetError("Dataset error")
@@ -163,7 +163,7 @@ class TestExceptions:
 class TestDeepLearningSettings:
     """Tests for DeepLearningSettings configuration."""
 
-    def test_default_settings(self):
+    def test_default_settings(self) -> None:
         """Test default settings values."""
         settings = DeepLearningSettings()
 
@@ -173,8 +173,10 @@ class TestDeepLearningSettings:
         assert settings.learning_rate == 1e-3
         assert settings.batch_size == 32
 
-    def test_settings_validation(self):
+    def test_settings_validation(self) -> None:
         """Test settings validation."""
+        from pydantic import ValidationError
+
         # Valid settings
         settings = DeepLearningSettings(
             num_control_points=32,
@@ -184,13 +186,13 @@ class TestDeepLearningSettings:
         assert settings.num_control_points == 32
 
         # Invalid settings should raise
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError):
             DeepLearningSettings(num_control_points=2)  # Too few
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError):
             DeepLearningSettings(dropout_rate=1.5)  # Out of range
 
-    def test_settings_in_global_config(self):
+    def test_settings_in_global_config(self) -> None:
         """Test deep_learning settings in global config."""
         settings = get_settings()
         assert hasattr(settings, "deep_learning")
@@ -205,7 +207,7 @@ class TestDeepLearningSettings:
 class TestCurveMLP:
     """Tests for CurveMLP model."""
 
-    def test_model_creation(self, dl_settings: DeepLearningSettings):
+    def test_model_creation(self, dl_settings: DeepLearningSettings) -> None:
         """Test model creation from settings."""
         from ptpd_calibration.ml.deep.models import CurveMLP
 
@@ -216,7 +218,7 @@ class TestCurveMLP:
         assert model.num_control_points == dl_settings.num_control_points
         assert model.lut_size == dl_settings.lut_size
 
-    def test_forward_pass(self, dl_settings: DeepLearningSettings):
+    def test_forward_pass(self, dl_settings: DeepLearningSettings) -> None:
         """Test forward pass produces correct output shapes."""
         from ptpd_calibration.ml.deep.models import CurveMLP
 
@@ -233,7 +235,7 @@ class TestCurveMLP:
         assert lut.shape == (batch_size, dl_settings.lut_size)
         assert control_points.shape == (batch_size, dl_settings.num_control_points)
 
-    def test_output_monotonicity(self, dl_settings: DeepLearningSettings):
+    def test_output_monotonicity(self, dl_settings: DeepLearningSettings) -> None:
         """Test that output curves are monotonic."""
         from ptpd_calibration.ml.deep.models import CurveMLP
 
@@ -245,9 +247,9 @@ class TestCurveMLP:
 
         # Check monotonicity
         diffs = lut[:, 1:] - lut[:, :-1]
-        assert torch.all(diffs >= -1e-5), "Curves should be monotonically increasing"
+        assert torch.all(diffs >= 0.0), "Curves should be monotonically increasing"
 
-    def test_output_range(self, dl_settings: DeepLearningSettings):
+    def test_output_range(self, dl_settings: DeepLearningSettings) -> None:
         """Test that output is in [0, 1] range."""
         from ptpd_calibration.ml.deep.models import CurveMLP
 
@@ -264,7 +266,7 @@ class TestCurveMLP:
 class TestCurveCNN:
     """Tests for CurveCNN model."""
 
-    def test_model_creation(self, dl_settings: DeepLearningSettings):
+    def test_model_creation(self, dl_settings: DeepLearningSettings) -> None:
         """Test CNN model creation."""
         from ptpd_calibration.ml.deep.models import CurveCNN
 
@@ -277,7 +279,7 @@ class TestCurveCNN:
         assert model.num_features == 15
         assert model.lut_size == dl_settings.lut_size
 
-    def test_forward_pass(self, dl_settings: DeepLearningSettings):
+    def test_forward_pass(self, dl_settings: DeepLearningSettings) -> None:
         """Test CNN forward pass."""
         from ptpd_calibration.ml.deep.models import CurveCNN
 
@@ -291,7 +293,7 @@ class TestCurveCNN:
 class TestMonotonicLayer:
     """Tests for MonotonicLayer."""
 
-    def test_monotonicity_enforcement(self):
+    def test_monotonicity_enforcement(self) -> None:
         """Test that layer enforces monotonicity."""
         from ptpd_calibration.ml.deep.models import MonotonicLayer
 
@@ -306,7 +308,7 @@ class TestMonotonicLayer:
         diffs = output[:, 1:] - output[:, :-1]
         assert torch.all(diffs >= 0), "Output should be monotonically increasing"
 
-    def test_normalization(self):
+    def test_normalization(self) -> None:
         """Test output normalization to [0, 1]."""
         from ptpd_calibration.ml.deep.models import MonotonicLayer
 
@@ -321,7 +323,7 @@ class TestMonotonicLayer:
 class TestContentAwareCurveNet:
     """Tests for ContentAwareCurveNet."""
 
-    def test_model_creation(self):
+    def test_model_creation(self) -> None:
         """Test content-aware model creation."""
         from ptpd_calibration.ml.deep.models import ContentAwareCurveNet
 
@@ -334,7 +336,7 @@ class TestContentAwareCurveNet:
 
         assert model.adjustment_range == (0.9, 1.1)
 
-    def test_forward_pass(self):
+    def test_forward_pass(self) -> None:
         """Test content-aware forward pass."""
         from ptpd_calibration.ml.deep.models import ContentAwareCurveNet
 
@@ -346,7 +348,7 @@ class TestContentAwareCurveNet:
 
         assert output.shape == (2, 1, 64, 64)
 
-    def test_adjustment_range(self):
+    def test_adjustment_range(self) -> None:
         """Test that output is within adjustment range."""
         from ptpd_calibration.ml.deep.models import ContentAwareCurveNet
 
@@ -368,7 +370,7 @@ class TestContentAwareCurveNet:
 class TestUniformityCorrectionNet:
     """Tests for UniformityCorrectionNet."""
 
-    def test_model_creation(self):
+    def test_model_creation(self) -> None:
         """Test uniformity correction model creation."""
         from ptpd_calibration.ml.deep.models import UniformityCorrectionNet
 
@@ -381,7 +383,7 @@ class TestUniformityCorrectionNet:
         assert model.kernel_size == 15
         assert model.sigma == 5.0
 
-    def test_forward_pass(self):
+    def test_forward_pass(self) -> None:
         """Test uniformity correction forward pass."""
         from ptpd_calibration.ml.deep.models import UniformityCorrectionNet
 
@@ -391,7 +393,7 @@ class TestUniformityCorrectionNet:
 
         assert output.shape == (2, 1, 32, 32)
 
-    def test_smoothness(self):
+    def test_smoothness(self) -> None:
         """Test that correction map is smooth."""
         from ptpd_calibration.ml.deep.models import UniformityCorrectionNet
 
@@ -415,7 +417,7 @@ class TestUniformityCorrectionNet:
 class TestFeatureEncoder:
     """Tests for FeatureEncoder."""
 
-    def test_encoder_from_database(self, populated_db: CalibrationDatabase):
+    def test_encoder_from_database(self, populated_db: CalibrationDatabase) -> None:
         """Test encoder creation from database."""
         from ptpd_calibration.ml.deep.dataset import FeatureEncoder
 
@@ -426,7 +428,7 @@ class TestFeatureEncoder:
 
     def test_encoder_encode(
         self, populated_db: CalibrationDatabase, single_record: CalibrationRecord
-    ):
+    ) -> None:
         """Test encoding a record."""
         from ptpd_calibration.ml.deep.dataset import FeatureEncoder
 
@@ -436,7 +438,7 @@ class TestFeatureEncoder:
         assert features.shape == (encoder.num_features,)
         assert features.dtype == np.float32
 
-    def test_encoder_serialization(self, populated_db: CalibrationDatabase):
+    def test_encoder_serialization(self, populated_db: CalibrationDatabase) -> None:
         """Test encoder serialization."""
         from ptpd_calibration.ml.deep.dataset import FeatureEncoder
 
@@ -445,13 +447,13 @@ class TestFeatureEncoder:
         # Serialize
         data = encoder.to_dict()
         assert "paper_to_idx" in data
-        assert "exposure_mean" in data
+        assert "log_exposure_mean" in data
 
         # Deserialize
         loaded = FeatureEncoder.from_dict(data)
         assert loaded.num_features == encoder.num_features
 
-    def test_encoder_empty_database_error(self):
+    def test_encoder_empty_database_error(self) -> None:
         """Test error on empty database."""
         from ptpd_calibration.ml.deep.dataset import FeatureEncoder
 
@@ -463,7 +465,7 @@ class TestFeatureEncoder:
 class TestCalibrationDataset:
     """Tests for CalibrationDataset."""
 
-    def test_dataset_creation(self, populated_db: CalibrationDatabase):
+    def test_dataset_creation(self, populated_db: CalibrationDatabase) -> None:
         """Test dataset creation."""
         from ptpd_calibration.ml.deep.dataset import CalibrationDataset
 
@@ -472,7 +474,7 @@ class TestCalibrationDataset:
         assert len(dataset) == len(populated_db)
         assert dataset.target_length == 64
 
-    def test_dataset_getitem(self, populated_db: CalibrationDatabase):
+    def test_dataset_getitem(self, populated_db: CalibrationDatabase) -> None:
         """Test getting items from dataset."""
         from ptpd_calibration.ml.deep.dataset import CalibrationDataset
 
@@ -484,7 +486,7 @@ class TestCalibrationDataset:
         assert features.shape == (dataset.num_features,)
         assert densities.shape == (64,)
 
-    def test_dataset_split(self, populated_db: CalibrationDatabase):
+    def test_dataset_split(self, populated_db: CalibrationDatabase) -> None:
         """Test dataset splitting."""
         from ptpd_calibration.ml.deep.dataset import CalibrationDataset
 
@@ -505,7 +507,7 @@ class TestCalibrationDataset:
 class TestDataAugmentation:
     """Tests for DataAugmentation."""
 
-    def test_augmentation_features(self):
+    def test_augmentation_features(self) -> None:
         """Test feature augmentation."""
         from ptpd_calibration.ml.deep.dataset import DataAugmentation
 
@@ -517,7 +519,7 @@ class TestDataAugmentation:
         # Should be different due to noise
         assert not np.allclose(features, augmented)
 
-    def test_augmentation_disabled(self):
+    def test_augmentation_disabled(self) -> None:
         """Test disabled augmentation returns unchanged data."""
         from ptpd_calibration.ml.deep.dataset import DataAugmentation
 
@@ -531,7 +533,7 @@ class TestDataAugmentation:
 class TestCreateDataloaders:
     """Tests for create_dataloaders function."""
 
-    def test_create_dataloaders(self, populated_db: CalibrationDatabase):
+    def test_create_dataloaders(self, populated_db: CalibrationDatabase) -> None:
         """Test dataloader creation."""
         from ptpd_calibration.ml.deep.dataset import create_dataloaders
 
@@ -561,7 +563,7 @@ class TestCreateDataloaders:
 class TestCurveLoss:
     """Tests for CurveLoss."""
 
-    def test_loss_computation(self):
+    def test_loss_computation(self) -> None:
         """Test loss computation."""
         from ptpd_calibration.ml.deep.training import CurveLoss
 
@@ -581,7 +583,7 @@ class TestCurveLoss:
         assert "monotonicity" in components
         assert "smoothness" in components
 
-    def test_monotonicity_penalty(self):
+    def test_monotonicity_penalty(self) -> None:
         """Test monotonicity penalty is higher for non-monotonic curves."""
         from ptpd_calibration.ml.deep.training import CurveLoss
 
@@ -604,7 +606,7 @@ class TestCurveLoss:
 class TestEarlyStopping:
     """Tests for EarlyStopping."""
 
-    def test_early_stopping_improvement(self):
+    def test_early_stopping_improvement(self) -> None:
         """Test early stopping with improving values."""
         from ptpd_calibration.ml.deep.training import EarlyStopping
 
@@ -616,7 +618,7 @@ class TestEarlyStopping:
         assert not es(0.8)
         assert not es.should_stop
 
-    def test_early_stopping_no_improvement(self):
+    def test_early_stopping_no_improvement(self) -> None:
         """Test early stopping without improvement."""
         from ptpd_calibration.ml.deep.training import EarlyStopping
 
@@ -625,7 +627,7 @@ class TestEarlyStopping:
         es(1.0)  # Best
         es(1.1)  # Worse
         es(1.1)  # Worse
-        assert not es(1.1)  # Third time - should stop
+        assert es(1.1)  # Third time - should stop
 
         assert es.should_stop
 
@@ -633,7 +635,7 @@ class TestEarlyStopping:
 class TestCurveTrainer:
     """Tests for CurveTrainer."""
 
-    def test_trainer_creation(self, dl_settings: DeepLearningSettings):
+    def test_trainer_creation(self, dl_settings: DeepLearningSettings) -> None:
         """Test trainer creation."""
         from ptpd_calibration.ml.deep.models import CurveMLP
         from ptpd_calibration.ml.deep.training import CurveTrainer
@@ -646,7 +648,7 @@ class TestCurveTrainer:
 
     def test_training_loop(
         self, populated_db: CalibrationDatabase, dl_settings: DeepLearningSettings
-    ):
+    ) -> None:
         """Test basic training loop."""
         from ptpd_calibration.ml.deep.dataset import create_dataloaders
         from ptpd_calibration.ml.deep.models import CurveMLP
@@ -673,7 +675,7 @@ class TestCurveTrainer:
 
     def test_evaluation(
         self, populated_db: CalibrationDatabase, dl_settings: DeepLearningSettings
-    ):
+    ) -> None:
         """Test model evaluation."""
         from ptpd_calibration.ml.deep.dataset import create_dataloaders
         from ptpd_calibration.ml.deep.models import CurveMLP
@@ -705,7 +707,7 @@ class TestCurveTrainer:
 class TestCharacteristicCurve:
     """Tests for CharacteristicCurve."""
 
-    def test_curve_creation(self):
+    def test_curve_creation(self) -> None:
         """Test characteristic curve creation."""
         from ptpd_calibration.ml.deep.process_sim import CharacteristicCurve
 
@@ -714,7 +716,7 @@ class TestCharacteristicCurve:
         assert curve._initial_gamma == 1.8
         assert curve._initial_dmin == 0.1
 
-    def test_curve_forward(self):
+    def test_curve_forward(self) -> None:
         """Test characteristic curve forward pass."""
         from ptpd_calibration.ml.deep.process_sim import CharacteristicCurve
 
@@ -732,7 +734,7 @@ class TestCharacteristicCurve:
 class TestProcessSimulator:
     """Tests for ProcessSimulator."""
 
-    def test_simulator_creation(self, dl_settings: DeepLearningSettings):
+    def test_simulator_creation(self, dl_settings: DeepLearningSettings) -> None:
         """Test simulator creation."""
         from ptpd_calibration.ml.deep.process_sim import ProcessSimulator
 
@@ -742,7 +744,7 @@ class TestProcessSimulator:
         assert params.gamma > 0
         assert params.dmin >= 0
 
-    def test_negative_to_transmission(self, dl_settings: DeepLearningSettings):
+    def test_negative_to_transmission(self, dl_settings: DeepLearningSettings) -> None:
         """Test negative density to transmission conversion."""
         from ptpd_calibration.ml.deep.process_sim import ProcessSimulator
 
@@ -758,7 +760,7 @@ class TestProcessSimulator:
         assert torch.isclose(transmission[1], torch.tensor(0.1), atol=1e-5)
         assert torch.isclose(transmission[2], torch.tensor(0.01), atol=1e-5)
 
-    def test_full_simulation(self, dl_settings: DeepLearningSettings):
+    def test_full_simulation(self, dl_settings: DeepLearningSettings) -> None:
         """Test full process simulation."""
         from ptpd_calibration.ml.deep.process_sim import ProcessSimulator
 
@@ -770,7 +772,7 @@ class TestProcessSimulator:
         assert print_density.shape == negative_density.shape
         assert torch.all(print_density >= 0.0)
 
-    def test_simulation_with_intermediates(self, dl_settings: DeepLearningSettings):
+    def test_simulation_with_intermediates(self, dl_settings: DeepLearningSettings) -> None:
         """Test simulation returning intermediate values."""
         from ptpd_calibration.ml.deep.process_sim import ProcessSimulator
 
@@ -787,7 +789,7 @@ class TestProcessSimulator:
 class TestProcessParameters:
     """Tests for ProcessParameters."""
 
-    def test_to_tensor(self):
+    def test_to_tensor(self) -> None:
         """Test conversion to tensor."""
         from ptpd_calibration.ml.deep.process_sim import ProcessParameters
 
@@ -795,17 +797,17 @@ class TestProcessParameters:
         tensor = params.to_tensor()
 
         assert tensor.shape == (6,)
-        assert tensor[0] == 1.8
+        assert tensor[0] == pytest.approx(1.8)
 
-    def test_from_tensor(self):
+    def test_from_tensor(self) -> None:
         """Test creation from tensor."""
         from ptpd_calibration.ml.deep.process_sim import ProcessParameters
 
         tensor = torch.tensor([1.8, 0.1, 2.0, 0.85, 0.15, 1.0])
         params = ProcessParameters.from_tensor(tensor)
 
-        assert params.gamma == 1.8
-        assert params.dmin == 0.1
+        assert params.gamma == pytest.approx(1.8)
+        assert params.dmin == pytest.approx(0.1)
 
 
 # =============================================================================
@@ -816,7 +818,7 @@ class TestProcessParameters:
 class TestDeepCurvePredictor:
     """Tests for DeepCurvePredictor."""
 
-    def test_predictor_creation(self, dl_settings: DeepLearningSettings):
+    def test_predictor_creation(self, dl_settings: DeepLearningSettings) -> None:
         """Test predictor creation."""
         from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
 
@@ -827,7 +829,7 @@ class TestDeepCurvePredictor:
 
     def test_predict_without_training_error(
         self, dl_settings: DeepLearningSettings, single_record: CalibrationRecord
-    ):
+    ) -> None:
         """Test that prediction without training raises error."""
         from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
 
@@ -841,7 +843,7 @@ class TestDeepCurvePredictor:
         populated_db: CalibrationDatabase,
         single_record: CalibrationRecord,
         dl_settings: DeepLearningSettings,
-    ):
+    ) -> None:
         """Test full training and prediction workflow."""
         from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
 
@@ -868,7 +870,7 @@ class TestDeepCurvePredictor:
         single_record: CalibrationRecord,
         dl_settings: DeepLearningSettings,
         tmp_path: Path,
-    ):
+    ) -> None:
         """Test saving and loading predictor."""
         from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
 
@@ -901,7 +903,7 @@ class TestDeepCurvePredictor:
         populated_db: CalibrationDatabase,
         single_record: CalibrationRecord,
         dl_settings: DeepLearningSettings,
-    ):
+    ) -> None:
         """Test conversion to CurveData model."""
         from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
 
@@ -924,7 +926,7 @@ class TestDeepCurvePredictor:
         populated_db: CalibrationDatabase,
         single_record: CalibrationRecord,
         dl_settings: DeepLearningSettings,
-    ):
+    ) -> None:
         """Test adjustment suggestions."""
         from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
 
@@ -954,7 +956,7 @@ class TestFullWorkflow:
         populated_db: CalibrationDatabase,
         dl_settings: DeepLearningSettings,
         tmp_path: Path,
-    ):
+    ) -> None:
         """Test complete workflow from data to prediction."""
         from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
 

@@ -13,7 +13,7 @@ The simulator models:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, cast
 
 import numpy as np
 
@@ -151,7 +151,7 @@ class CharacteristicCurve(nn.Module):
     @property
     def dmax(self) -> torch.Tensor:
         """Get Dmax (clamped to valid range)."""
-        return torch.clamp(self.dmax_raw, self.dmin + 0.5, 4.0)
+        return torch.clamp(self.dmax_raw, min=self.dmin + 0.5).clamp(max=4.0)
 
     def forward(self, exposure: torch.Tensor) -> torch.Tensor:
         """
@@ -282,7 +282,7 @@ class ProcessSimulator(nn.Module):
         exposure = self.transmission_to_exposure(transmission)
 
         # Step 3: Exposure to print density
-        print_density = self.characteristic(exposure)
+        print_density = cast(torch.Tensor, self.characteristic(exposure))
 
         if return_intermediates:
             intermediates = {
@@ -334,7 +334,7 @@ class ProcessSimulator(nn.Module):
 
         for _ in range(num_iterations):
             optimizer.zero_grad()
-            simulated = self.forward(negative)
+            simulated = cast(torch.Tensor, self.forward(negative))
             loss = F.mse_loss(simulated, target_density)
             loss.backward()
             optimizer.step()
@@ -464,7 +464,7 @@ class NegativeGenerator(nn.Module):
         negative, curve = self.forward(target_image, metadata)
 
         # Simulate print
-        simulated_print = self.process_sim(negative)
+        simulated_print = cast(torch.Tensor, self.process_sim(negative))
 
         # Compute loss
         reconstruction_loss = F.mse_loss(simulated_print, target_image)

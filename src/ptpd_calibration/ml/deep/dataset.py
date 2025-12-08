@@ -8,7 +8,7 @@ calibration records from the database.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Callable
 
 import numpy as np
 
@@ -100,12 +100,12 @@ class FeatureEncoder:
         # For exposure times, compute mean/std on log-transformed values (standard approach)
         log_exposures = [np.log(e + 1) for e in exposures] if exposures else [np.log(181)]
         log_exposure_mean = np.mean(log_exposures)
-        log_exposure_std = max(np.std(log_exposures), 0.1)  # Minimum std to avoid division issues
+        log_exposure_std = max(float(np.std(log_exposures)), 0.1)  # Minimum std to avoid division issues
 
         humidity_mean = np.mean(humidities) if humidities else 50.0
-        humidity_std = max(np.std(humidities), 1.0) if humidities else 15.0
+        humidity_std = max(float(np.std(humidities)), 1.0) if humidities else 15.0
         temperature_mean = np.mean(temperatures) if temperatures else 21.0
-        temperature_std = max(np.std(temperatures), 1.0) if temperatures else 5.0
+        temperature_std = max(float(np.std(temperatures)), 1.0) if temperatures else 5.0
         contrast_amount_max = max(contrast_amounts) if contrast_amounts else 10.0
 
         # Build feature names
@@ -157,7 +157,7 @@ class FeatureEncoder:
         Returns:
             Feature vector as numpy array.
         """
-        features = []
+        features: list[float] = []
 
         # One-hot encode paper type
         paper_onehot = np.zeros(len(self.paper_to_idx))
@@ -330,7 +330,7 @@ class CalibrationDataset(Dataset):
         target_length: int = 256,
         encoder: Optional[FeatureEncoder] = None,
         augmentation: Optional[DataAugmentation] = None,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
     ):
         """
         Initialize CalibrationDataset.
@@ -388,7 +388,7 @@ class CalibrationDataset(Dataset):
         if len(densities) != self.target_length:
             x_old = np.linspace(0, 1, len(densities))
             x_new = np.linspace(0, 1, self.target_length)
-            densities = np.interp(x_new, x_old, densities)
+            densities = np.interp(x_new, x_old, densities).astype(np.float32)
 
         # Apply augmentation
         if self.augmentation.enabled:
@@ -416,7 +416,7 @@ class CalibrationDataset(Dataset):
         self,
         val_ratio: float = 0.2,
         seed: Optional[int] = None,
-    ) -> tuple["CalibrationDataset", "CalibrationDataset"]:
+    ) -> tuple["SubsetDataset", "SubsetDataset"]:
         """
         Split dataset into train and validation sets.
 

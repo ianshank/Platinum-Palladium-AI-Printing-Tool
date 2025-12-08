@@ -15,7 +15,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import numpy as np
 
@@ -317,7 +317,7 @@ class CurveTrainer:
 
         # Training state
         self.history = TrainingHistory()
-        self.best_model_state = None
+        self.best_model_state: Optional[dict[str, Any]] = None
         self.callbacks: list[Callable] = []
 
     def add_callback(self, callback: Callable) -> None:
@@ -449,8 +449,8 @@ class CurveTrainer:
         num_batches = 0
 
         for features, targets in data_loader:
-            features = features.to(self.device)
-            targets = targets.to(self.device)
+            features = features.to(self.device).float()
+            targets = targets.to(self.device).float()
 
             # Forward pass
             self.optimizer.zero_grad()
@@ -490,8 +490,8 @@ class CurveTrainer:
 
         with torch.no_grad():
             for features, targets in data_loader:
-                features = features.to(self.device)
-                targets = targets.to(self.device)
+                features = features.to(self.device).float()
+                targets = targets.to(self.device).float()
 
                 # Forward pass
                 predictions, _ = self.model(features)
@@ -575,7 +575,7 @@ class CurveTrainer:
 
         with torch.no_grad():
             for features, targets in data_loader:
-                features = features.to(self.device)
+                features = features.to(self.device).float()
                 predictions, _ = self.model(features)
                 all_predictions.append(predictions.cpu().numpy())
                 all_targets.append(targets.cpu().numpy())
