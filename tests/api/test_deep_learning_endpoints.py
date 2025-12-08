@@ -12,10 +12,14 @@ Tests for the deep learning curve prediction API endpoints including:
 - Multi-modal assistant endpoints
 """
 
+import base64
 import importlib.util
+import io
 from unittest.mock import patch
 
+import numpy as np
 import pytest
+from PIL import Image
 
 # Check if PyTorch is available using importlib (cleaner than try/import)
 TORCH_AVAILABLE = importlib.util.find_spec("torch") is not None
@@ -454,7 +458,7 @@ class TestDeepLearningIntegration:
 
 
 # =============================================================================
-# Detection Endpoints (from target branch)
+# Detection Endpoints
 # =============================================================================
 
 
@@ -465,12 +469,6 @@ class TestDetectionEndpoints:
     @pytest.fixture
     def sample_image_base64(self):
         """Create a base64 encoded sample image."""
-        import base64
-        import io
-
-        import numpy as np
-        from PIL import Image
-
         arr = np.random.randint(50, 200, (256, 512, 3), dtype=np.uint8)
         img = Image.fromarray(arr)
         buffer = io.BytesIO()
@@ -569,12 +567,6 @@ class TestQualityAssessmentEndpoints:
     @pytest.fixture
     def sample_image_base64(self):
         """Create a base64 encoded sample image."""
-        import base64
-        import io
-
-        import numpy as np
-        from PIL import Image
-
         arr = np.random.randint(50, 200, (256, 256, 3), dtype=np.uint8)
         img = Image.fromarray(arr)
         buffer = io.BytesIO()
@@ -613,12 +605,6 @@ class TestDefectDetectionEndpoints:
     @pytest.fixture
     def sample_print_base64(self):
         """Create a base64 encoded print image with simulated defects."""
-        import base64
-        import io
-
-        import numpy as np
-        from PIL import Image
-
         arr = np.linspace(50, 200, 256 * 256).reshape(256, 256).astype(np.uint8)
         # Add simulated defects
         arr[100:105, 50:150] = 255  # Scratch
@@ -717,12 +703,6 @@ class TestPrintComparisonEndpoints:
     @pytest.fixture
     def reference_image_base64(self):
         """Create a base64 encoded reference image."""
-        import base64
-        import io
-
-        import numpy as np
-        from PIL import Image
-
         arr = np.linspace(30, 220, 256 * 256).reshape(256, 256).astype(np.uint8)
         img = Image.fromarray(arr, mode="L").convert("RGB")
         buffer = io.BytesIO()
@@ -732,12 +712,6 @@ class TestPrintComparisonEndpoints:
     @pytest.fixture
     def test_image_base64(self):
         """Create a base64 encoded test image with slight differences."""
-        import base64
-        import io
-
-        import numpy as np
-        from PIL import Image
-
         arr = np.linspace(35, 215, 256 * 256).reshape(256, 256).astype(np.uint8)
         noise = np.random.normal(0, 3, arr.shape).astype(np.int16)
         arr = np.clip(arr.astype(np.int16) + noise, 0, 255).astype(np.uint8)
@@ -821,12 +795,6 @@ class TestDiffusionEndpoints:
     @pytest.fixture
     def damaged_image_base64(self):
         """Create a base64 encoded damaged image."""
-        import base64
-        import io
-
-        import numpy as np
-        from PIL import Image
-
         arr = np.linspace(40, 200, 256 * 256).reshape(256, 256).astype(np.uint8)
         # Add damage
         arr[80:85, 50:150] = 255  # Tear
@@ -867,12 +835,6 @@ class TestMultiModalEndpoints:
     @pytest.fixture
     def problem_image_base64(self):
         """Create a base64 encoded problem image."""
-        import base64
-        import io
-
-        import numpy as np
-        from PIL import Image
-
         arr = np.zeros((256, 256), dtype=np.uint8)
         # Create banding pattern
         for i in range(256):
@@ -968,12 +930,6 @@ class TestDeepLearningBatchEndpoints:
     @pytest.fixture
     def batch_images_base64(self):
         """Create multiple base64 encoded images."""
-        import base64
-        import io
-
-        import numpy as np
-        from PIL import Image
-
         images = []
         for i in range(3):
             arr = np.random.randint(50 + i * 20, 200 - i * 20, (128, 128, 3), dtype=np.uint8)
