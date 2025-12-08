@@ -209,3 +209,171 @@ def assert_response_has_fields(response: dict, fields: list[str]) -> None:
     """Assert that a response contains required fields."""
     for field in fields:
         assert field in response, f"Missing field '{field}' in response: {list(response.keys())}"
+
+
+# --- Cyanotype Assertions ---
+
+def assert_cyanotype_recipe_valid(recipe: dict | object) -> None:
+    """Assert that a cyanotype recipe is valid."""
+    if hasattr(recipe, '__dict__'):
+        # It's an object, convert to dict-like access
+        assert recipe.solution_a_ml > 0, "Solution A must be positive"
+        assert recipe.solution_b_ml > 0, "Solution B must be positive"
+        assert recipe.total_volume_ml > 0, "Total volume must be positive"
+        assert recipe.coverage_square_inches > 0, "Coverage must be positive"
+    else:
+        # It's a dict
+        assert recipe.get("solution_a_ml", 0) > 0, "Solution A must be positive"
+        assert recipe.get("solution_b_ml", 0) > 0, "Solution B must be positive"
+
+
+def assert_cyanotype_exposure_valid(exposure: dict | object) -> None:
+    """Assert that a cyanotype exposure result is valid."""
+    if hasattr(exposure, '__dict__'):
+        assert exposure.exposure_time_seconds > 0, "Exposure time must be positive"
+        assert exposure.exposure_time_formatted, "Formatted time must not be empty"
+    else:
+        assert exposure.get("exposure_time_seconds", 0) > 0, "Exposure time must be positive"
+
+
+def assert_cyanotype_solution_ratio_valid(
+    solution_a: float,
+    solution_b: float,
+    formula: str = "classic",
+) -> None:
+    """Assert that cyanotype solution ratio is valid for the formula."""
+    ratio = solution_a / solution_b if solution_b > 0 else 0
+
+    if formula.lower() == "classic":
+        # Classic formula typically uses 1:1 ratio
+        assert 0.8 <= ratio <= 1.2, f"Classic formula ratio should be ~1:1, got {ratio}"
+    elif formula.lower() == "new":
+        # New formula may have different ratios
+        assert ratio > 0, f"Solution ratio must be positive, got {ratio}"
+
+
+def assert_uv_exposure_inverse_square(
+    exposure1: float,
+    distance1: float,
+    exposure2: float,
+    distance2: float,
+    tolerance: float = 0.15,
+) -> None:
+    """Assert that UV exposure follows inverse square law."""
+    expected_ratio = (distance2 / distance1) ** 2
+    actual_ratio = exposure2 / exposure1 if exposure1 > 0 else 0
+
+    assert abs(actual_ratio - expected_ratio) / expected_ratio <= tolerance, (
+        f"Exposure ratio {actual_ratio} doesn't follow inverse square law "
+        f"(expected {expected_ratio})"
+    )
+
+
+# --- Silver Gelatin Assertions ---
+
+def assert_silver_gelatin_chemistry_valid(chemistry: dict | object) -> None:
+    """Assert that silver gelatin processing chemistry is valid."""
+    if hasattr(chemistry, '__dict__'):
+        assert chemistry.developer_volume_ml > 0, "Developer volume must be positive"
+        assert chemistry.stop_bath_volume_ml > 0, "Stop bath volume must be positive"
+        assert chemistry.fixer_volume_ml > 0, "Fixer volume must be positive"
+    else:
+        assert chemistry.get("developer_volume_ml", 0) > 0, "Developer volume must be positive"
+        assert chemistry.get("stop_bath_volume_ml", 0) > 0, "Stop bath volume must be positive"
+        assert chemistry.get("fixer_volume_ml", 0) > 0, "Fixer volume must be positive"
+
+
+def assert_silver_gelatin_exposure_valid(exposure: dict | object) -> None:
+    """Assert that silver gelatin exposure result is valid."""
+    if hasattr(exposure, '__dict__'):
+        assert exposure.exposure_time_seconds > 0, "Exposure time must be positive"
+        assert exposure.exposure_time_formatted, "Formatted time must not be empty"
+    else:
+        assert exposure.get("exposure_time_seconds", 0) > 0, "Exposure time must be positive"
+
+
+def assert_split_filter_valid(split_result: dict) -> None:
+    """Assert that split filter calculation is valid."""
+    assert "shadow_exposure" in split_result, "Missing shadow exposure"
+    assert "highlight_exposure" in split_result, "Missing highlight exposure"
+
+    shadow = split_result["shadow_exposure"]
+    highlight = split_result["highlight_exposure"]
+
+    assert shadow > 0, "Shadow exposure must be positive"
+    assert highlight > 0, "Highlight exposure must be positive"
+
+
+def assert_test_strip_times_valid(times: list[float]) -> None:
+    """Assert that test strip times are valid."""
+    assert len(times) >= 2, f"Need at least 2 test strip times, got {len(times)}"
+
+    for i, time in enumerate(times):
+        assert time > 0, f"Test strip time at index {i} must be positive"
+
+    # Times should be increasing
+    for i in range(1, len(times)):
+        assert times[i] > times[i - 1], (
+            f"Test strip times must be increasing: {times[i-1]} >= {times[i]}"
+        )
+
+
+def assert_fstop_exposure_relationship(
+    exposure1: float,
+    fstop1: float,
+    exposure2: float,
+    fstop2: float,
+    tolerance: float = 0.15,
+) -> None:
+    """Assert that exposure changes correctly with f-stop changes."""
+    # Each full stop doubles/halves light
+    # exposure = k * (f-stop)^2
+    expected_ratio = (fstop2 / fstop1) ** 2
+    actual_ratio = exposure2 / exposure1 if exposure1 > 0 else 0
+
+    assert abs(actual_ratio - expected_ratio) / expected_ratio <= tolerance, (
+        f"Exposure ratio {actual_ratio} doesn't match f-stop relationship "
+        f"(expected {expected_ratio})"
+    )
+
+
+def assert_processing_times_valid(
+    development_time: float,
+    stop_time: float,
+    fix_time: float,
+    paper_base: str = "fiber",
+) -> None:
+    """Assert that processing times are valid for the paper type."""
+    assert development_time > 0, "Development time must be positive"
+    assert stop_time > 0, "Stop time must be positive"
+    assert fix_time > 0, "Fix time must be positive"
+
+    # Typical ranges
+    if paper_base.lower() == "fiber":
+        assert 60 <= development_time <= 300, f"Fiber development time out of range: {development_time}"
+        assert 180 <= fix_time <= 600, f"Fiber fix time out of range: {fix_time}"
+    else:  # RC
+        assert 60 <= development_time <= 180, f"RC development time out of range: {development_time}"
+        assert 60 <= fix_time <= 180, f"RC fix time out of range: {fix_time}"
+
+
+# --- Alternative Process Generic Assertions ---
+
+def assert_alternative_process_result_valid(
+    result: dict | object,
+    process_type: str,
+) -> None:
+    """Assert that an alternative process result is valid based on type."""
+    if process_type.lower() == "cyanotype":
+        if hasattr(result, 'solution_a_ml'):
+            assert_cyanotype_recipe_valid(result)
+        elif hasattr(result, 'exposure_time_seconds'):
+            assert_cyanotype_exposure_valid(result)
+    elif process_type.lower() in ["silver_gelatin", "darkroom"]:
+        if hasattr(result, 'developer_volume_ml'):
+            assert_silver_gelatin_chemistry_valid(result)
+        elif hasattr(result, 'exposure_time_seconds'):
+            assert_silver_gelatin_exposure_valid(result)
+    else:
+        # Generic validation
+        assert result is not None, f"Result for {process_type} should not be None"
