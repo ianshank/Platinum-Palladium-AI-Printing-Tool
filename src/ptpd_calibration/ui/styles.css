@@ -1,0 +1,81 @@
+/* Global Overrides */
+:root {
+    --ptpd-bg: #121212;
+    --ptpd-card: #1E1E1E;
+    --ptpd-border: #333333;
+    --ptpd-text-main: #E5E5E5;
+    --ptpd-text-muted: #A3A3A3;
+    --ptpd-accent: #06B6D4; /* Cyan 500 */
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #0A0A0A; 
+}
+::-webkit-scrollbar-thumb {
+    background: #404040; 
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #525252; 
+}
+
+/* Card Styling for Groups */
+.gradio-container .ptpd-card {
+    background: var(--ptpd-card) !important;
+    border: 1px solid var(--ptpd-border) !important;
+    border-radius: 8px !important;
+    padding: 20px !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    margin-bottom: 16px;
+}
+
+/* Stat Cards */
+.stat-card {
+    background: #262626;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+}
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--ptpd-accent);
+    line-height: 1.2;
+}
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--ptpd-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Tab Navigation */
+.tabs > .tab-nav {
+    border-bottom: 1px solid var(--ptpd-border);
+    background: #0A0A0A;
+}
+.tabs > .tab-nav > button {
+    border: none;
+    color: var(--ptpd-text-muted);
+    font-weight: 500;
+}
+.tabs > .tab-nav > button.selected {
+    color: var(--ptpd-accent);
+    border-bottom: 2px solid var(--ptpd-accent);
+    background: transparent;
+}
+
+/* Remove Footer */
+footer {
+    display: none !important;
+}

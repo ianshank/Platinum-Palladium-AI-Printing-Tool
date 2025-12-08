@@ -148,5 +148,11 @@ calibrations.json
 *.ppt
 agent_memory.json
 
-# Secrets
+# Deep Learning Temp
+.claude/
+.gradio/
+hf_check/
 hf_space_key
+checkpoints/
+nul
+
