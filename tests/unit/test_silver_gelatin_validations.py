@@ -188,7 +188,7 @@ class TestSilverGelatinChemistryValidation:
 
     def test_all_paper_bases(self, calculator):
         """Test all paper bases produce valid results."""
-        for paper_base in PaperBase:
+        for paper_base in list(PaperBase):
             result = calculator.calculate(
                 width_inches=8.0,
                 height_inches=10.0,

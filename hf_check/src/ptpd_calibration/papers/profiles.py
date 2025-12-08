@@ -469,7 +469,6 @@ class PaperDatabase:
         except Exception as e:
             import logging
             logging.warning(f"Failed to load custom papers: {e}")
-            pass
 
     def _save_custom_papers(self) -> None:
         """Save custom papers to file."""
