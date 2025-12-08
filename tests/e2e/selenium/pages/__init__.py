@@ -5,6 +5,8 @@ from .dashboard_page import DashboardPage
 from .calibration_wizard_page import CalibrationWizardPage
 from .chemistry_calculator_page import ChemistryCalculatorPage
 from .ai_assistant_page import AIAssistantPage
+from .cyanotype_calculator_page import CyanotypeCalculatorPage
+from .silver_gelatin_calculator_page import SilverGelatinCalculatorPage
 from .neuro_symbolic_page import NeuroSymbolicPage
 
 __all__ = [
@@ -13,5 +15,7 @@ __all__ = [
     "CalibrationWizardPage",
     "ChemistryCalculatorPage",
     "AIAssistantPage",
+    "CyanotypeCalculatorPage",
+    "SilverGelatinCalculatorPage",
     "NeuroSymbolicPage",
 ]
