@@ -549,6 +549,162 @@ class RecipeSettings(BaseSettings):
     max_tags_per_recipe: int = Field(default=20, ge=1, le=100)
 
 
+class CyanotypeSettings(BaseSettings):
+    """Settings for cyanotype chemistry and exposure calculations.
+
+    Based on traditional cyanotype formulas:
+    - Classic (Sir John Herschel): FAC + Potassium Ferricyanide
+    - New Cyanotype (Mike Ware): Modified iron salts for better results
+    """
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_CYANOTYPE_")
+
+    # Base coating amounts
+    ml_per_square_inch: float = Field(
+        default=0.015,
+        ge=0.005,
+        le=0.05,
+        description="Milliliters of sensitizer per square inch"
+    )
+    drops_per_ml: float = Field(default=20.0, ge=15.0, le=25.0)
+
+    # Default margin
+    default_margin_inches: float = Field(default=0.5, ge=0.0, le=2.0)
+
+    # Solution costs (USD per ml of stock solution)
+    solution_a_cost_per_ml: float = Field(
+        default=0.05,
+        ge=0.0,
+        le=1.0,
+        description="Cost per ml of ferric ammonium citrate solution"
+    )
+    solution_b_cost_per_ml: float = Field(
+        default=0.08,
+        ge=0.0,
+        le=1.0,
+        description="Cost per ml of potassium ferricyanide solution"
+    )
+
+    # Exposure defaults
+    base_sunlight_exposure_minutes: float = Field(
+        default=15.0,
+        ge=5.0,
+        le=60.0,
+        description="Base exposure time in direct sunlight"
+    )
+    base_bl_tube_exposure_minutes: float = Field(
+        default=15.0,
+        ge=5.0,
+        le=60.0,
+        description="Base exposure time with BL fluorescent tubes"
+    )
+
+    # Process characteristics
+    typical_dmax: float = Field(default=1.9, ge=1.0, le=3.0)
+    typical_dmin: float = Field(default=0.12, ge=0.0, le=0.5)
+
+    # Paper recommendations
+    recommended_paper_types: list[str] = Field(
+        default_factory=lambda: ["Arches Platine", "Stonehenge", "Fabriano Artistico"]
+    )
+
+
+class SilverGelatinSettings(BaseSettings):
+    """Settings for silver gelatin darkroom processing.
+
+    Based on standard darkroom chemistry and procedures.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_SILVER_GELATIN_")
+
+    # Developer defaults
+    default_developer: str = Field(
+        default="dektol",
+        description="Default paper developer (dektol, selectol, etc.)"
+    )
+    default_dilution: str = Field(
+        default="1:2",
+        description="Default developer dilution ratio"
+    )
+    default_temperature_c: float = Field(
+        default=20.0,
+        ge=18.0,
+        le=24.0,
+        description="Default developer temperature in Celsius"
+    )
+    default_temperature_f: float = Field(
+        default=68.0,
+        ge=65.0,
+        le=75.0,
+        description="Default developer temperature in Fahrenheit"
+    )
+
+    # Development times (seconds)
+    default_development_time_seconds: int = Field(
+        default=90,
+        ge=30,
+        le=300,
+        description="Default development time in seconds"
+    )
+    stop_bath_time_seconds: int = Field(
+        default=30,
+        ge=15,
+        le=60,
+        description="Stop bath time in seconds"
+    )
+
+    # Fixer settings
+    fixer_time_fb_seconds: int = Field(
+        default=300,
+        ge=120,
+        le=600,
+        description="Fixer time for fiber-based paper (seconds)"
+    )
+    fixer_time_rc_seconds: int = Field(
+        default=120,
+        ge=60,
+        le=300,
+        description="Fixer time for RC paper (seconds)"
+    )
+
+    # Wash settings
+    wash_time_fb_minutes: int = Field(
+        default=60,
+        ge=30,
+        le=120,
+        description="Wash time for fiber-based paper (minutes)"
+    )
+    wash_time_rc_minutes: int = Field(
+        default=4,
+        ge=2,
+        le=10,
+        description="Wash time for RC paper (minutes)"
+    )
+
+    # Chemistry costs (USD per liter of working solution)
+    developer_cost_per_liter: float = Field(default=0.50, ge=0.0, le=5.0)
+    stop_bath_cost_per_liter: float = Field(default=0.10, ge=0.0, le=2.0)
+    fixer_cost_per_liter: float = Field(default=0.30, ge=0.0, le=3.0)
+    hypo_clear_cost_per_liter: float = Field(default=0.20, ge=0.0, le=2.0)
+
+    # Paper recommendations
+    recommended_papers: list[str] = Field(
+        default_factory=lambda: [
+            "Ilford MGIV FB",
+            "Ilford MGIV RC",
+            "Ilford MGFB Warmtone",
+            "Foma Fomabrom",
+            "Bergger Prestige CB"
+        ]
+    )
+
+    # Safelight settings
+    safelight_filter: str = Field(
+        default="OC",
+        description="Recommended safelight filter (OC, OA, etc.)"
+    )
+
+
 class AdvancedFeaturesSettings(BaseSettings):
     """Settings for advanced features like QR codes, style transfer, and process simulation."""
 
@@ -934,6 +1090,10 @@ class Settings(BaseSettings):
     performance: PerformanceSettings = Field(default_factory=PerformanceSettings)
     data_management: DataManagementSettings = Field(default_factory=DataManagementSettings)
     calculations: CalculationsSettings = Field(default_factory=CalculationsSettings)
+
+    # Alternative process settings
+    cyanotype: CyanotypeSettings = Field(default_factory=CyanotypeSettings)
+    silver_gelatin: SilverGelatinSettings = Field(default_factory=SilverGelatinSettings)
 
     @field_validator("calibrations_dir", "exports_dir", mode="before")
     @classmethod
