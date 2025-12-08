@@ -261,10 +261,14 @@ class CyanotypeCalculator:
             CyanotypeRecipe with all calculated values
         """
         # Validate inputs
-        if width_inches <= 0 or height_inches <= 0:
-            raise ValueError("Print dimensions must be positive")
+        if width_inches <= 0:
+            raise ValueError("width must be positive")
+        if height_inches <= 0:
+            raise ValueError("height must be positive")
         if not 0.5 <= concentration_factor <= 2.0:
-            raise ValueError("Concentration factor must be between 0.5 and 2.0")
+            raise ValueError("concentration factor must be between 0.5 and 2.0")
+        if margin_inches is not None and margin_inches < 0:
+            raise ValueError("margin cannot be negative")
 
         # Get margin
         margin = margin_inches if margin_inches is not None else self.settings.default_margin_inches
@@ -346,7 +350,13 @@ class CyanotypeCalculator:
 
         Returns:
             Dictionary with solution preparation instructions
+        
+        Raises:
+            ValueError: If volume is invalid
         """
+        if total_volume_ml <= 0:
+            raise ValueError("total volume must be positive")
+        
         if formula == CyanotypeFormula.CLASSIC:
             return {
                 "solution_a": {

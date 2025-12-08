@@ -49,7 +49,7 @@ class TestCyanotypeChemistryValidation:
         assert isinstance(result, CyanotypeRecipe)
         assert result.solution_a_ml > 0
         assert result.solution_b_ml > 0
-        assert result.total_volume_ml > 0
+        assert result.total_sensitizer_ml > 0
 
     def test_zero_width_raises_error(self, calculator):
         """Test that zero width raises ValueError."""
@@ -152,13 +152,13 @@ class TestCyanotypeChemistryValidation:
         )
         watercolor = calculator.calculate(
             width_inches=8.0, height_inches=10.0,
-            paper_type=CyanotypePaperType.WATERCOLOR,
+            paper_type=CyanotypePaperType.WATERCOLOR_HOT,
         )
 
         # Different papers may absorb different amounts
         # Both should be valid
-        assert cotton.total_volume_ml > 0
-        assert watercolor.total_volume_ml > 0
+        assert cotton.total_sensitizer_ml > 0
+        assert watercolor.total_sensitizer_ml > 0
 
     # --- Output Validation ---
 
@@ -168,8 +168,8 @@ class TestCyanotypeChemistryValidation:
 
         assert isinstance(result.solution_a_ml, float)
         assert isinstance(result.solution_b_ml, float)
-        assert isinstance(result.total_volume_ml, float)
-        assert isinstance(result.coverage_square_inches, float)
+        assert isinstance(result.total_sensitizer_ml, float)
+        assert isinstance(result.coating_area_sq_inches, float)
         assert isinstance(result.formula, CyanotypeFormula)
         assert isinstance(result.paper_type, CyanotypePaperType)
 
@@ -178,7 +178,7 @@ class TestCyanotypeChemistryValidation:
         result = calculator.calculate(width_inches=8.0, height_inches=10.0)
 
         expected_total = result.solution_a_ml + result.solution_b_ml
-        assert result.total_volume_ml == pytest.approx(expected_total, rel=0.01)
+        assert result.total_sensitizer_ml == pytest.approx(expected_total, rel=0.01)
 
     def test_recipe_cost_calculation(self, calculator):
         """Test that cost is calculated correctly when requested."""
@@ -205,9 +205,9 @@ class TestCyanotypeChemistryValidation:
         small = calculator.calculate(width_inches=4.0, height_inches=5.0)
         large = calculator.calculate(width_inches=8.0, height_inches=10.0)
 
-        # Large print has 4x the area
-        area_ratio = (8.0 * 10.0) / (4.0 * 5.0)
-        volume_ratio = large.total_volume_ml / small.total_volume_ml
+        # Large print has more area (accounting for margins)
+        area_ratio = large.coating_area_sq_inches / small.coating_area_sq_inches
+        volume_ratio = large.total_sensitizer_ml / small.total_sensitizer_ml
 
         assert volume_ratio == pytest.approx(area_ratio, rel=0.1)
 
@@ -220,7 +220,7 @@ class TestCyanotypeChemistryValidation:
             width_inches=8.0, height_inches=10.0, concentration_factor=2.0
         )
 
-        assert double.total_volume_ml == pytest.approx(normal.total_volume_ml * 2, rel=0.1)
+        assert double.total_sensitizer_ml == pytest.approx(normal.total_sensitizer_ml * 2, rel=0.1)
 
     # --- Stock Solution Validation ---
 
@@ -259,17 +259,17 @@ class TestCyanotypeChemistryValidation:
         """Test very small print dimensions."""
         result = calculator.calculate(width_inches=1.0, height_inches=1.0)
 
-        assert result.total_volume_ml > 0
-        assert result.total_volume_ml < 1.0  # Should be small but positive
+        assert result.total_sensitizer_ml > 0
+        assert result.total_sensitizer_ml < 1.0  # Should be small but positive
 
     def test_very_large_print_size(self, calculator):
         """Test very large print dimensions."""
         result = calculator.calculate(width_inches=40.0, height_inches=60.0)
 
-        assert result.total_volume_ml > 0
+        assert result.total_sensitizer_ml > 0
         # Should be significantly more than a small print
         small = calculator.calculate(width_inches=4.0, height_inches=5.0)
-        assert result.total_volume_ml > small.total_volume_ml * 10
+        assert result.total_sensitizer_ml > small.total_sensitizer_ml * 10
 
 
 class TestCyanotypeExposureValidation:
@@ -290,17 +290,17 @@ class TestCyanotypeExposureValidation:
         )
 
         assert isinstance(result, CyanotypeExposureResult)
-        assert result.exposure_time_seconds > 0
+        assert result.exposure_seconds > 0
 
     def test_negative_density_validation(self, calculator):
         """Test negative density input validation."""
         # Valid densities
         result = calculator.calculate(negative_density=1.6)
-        assert result.exposure_time_seconds > 0
+        assert result.exposure_seconds > 0
 
         # Edge case: very low density
         result = calculator.calculate(negative_density=0.5)
-        assert result.exposure_time_seconds > 0
+        assert result.exposure_seconds > 0
 
         # Invalid: negative density
         with pytest.raises(ValueError, match="density"):
@@ -313,7 +313,7 @@ class TestCyanotypeExposureValidation:
             result = calculator.calculate(
                 negative_density=1.6, humidity_percent=humidity
             )
-            assert result.exposure_time_seconds > 0
+            assert result.exposure_seconds > 0
 
         # Invalid: negative humidity
         with pytest.raises(ValueError, match="humidity"):
@@ -327,7 +327,7 @@ class TestCyanotypeExposureValidation:
         """Test paper factor validation."""
         # Valid factors
         result = calculator.calculate(negative_density=1.6, paper_factor=1.5)
-        assert result.exposure_time_seconds > 0
+        assert result.exposure_seconds > 0
 
         # Invalid: zero factor
         with pytest.raises(ValueError, match="factor"):
@@ -341,7 +341,7 @@ class TestCyanotypeExposureValidation:
         """Test light source distance validation."""
         # Valid distances
         result = calculator.calculate(negative_density=1.6, distance_inches=8.0)
-        assert result.exposure_time_seconds > 0
+        assert result.exposure_seconds > 0
 
         # Invalid: zero distance
         with pytest.raises(ValueError, match="distance"):
@@ -361,7 +361,7 @@ class TestCyanotypeExposureValidation:
                 uv_source=uv_source,
             )
             assert isinstance(result, CyanotypeExposureResult)
-            assert result.exposure_time_seconds > 0
+            assert result.exposure_seconds > 0
             assert result.uv_source == uv_source
 
     def test_uv_source_speeds_consistency(self):
@@ -374,7 +374,7 @@ class TestCyanotypeExposureValidation:
         """Test that sunlight has different exposure than artificial sources."""
         sunlight = calculator.calculate(
             negative_density=1.6,
-            uv_source=UVSource.SUNLIGHT,
+            uv_source=UVSource.DIRECT_SUNLIGHT,
         )
         bl_tubes = calculator.calculate(
             negative_density=1.6,
@@ -382,10 +382,10 @@ class TestCyanotypeExposureValidation:
         )
 
         # Both should be valid but different
-        assert sunlight.exposure_time_seconds > 0
-        assert bl_tubes.exposure_time_seconds > 0
+        assert sunlight.exposure_seconds > 0
+        assert bl_tubes.exposure_seconds > 0
         # Typically sunlight is faster
-        assert sunlight.exposure_time_seconds != bl_tubes.exposure_time_seconds
+        assert sunlight.exposure_seconds != bl_tubes.exposure_seconds
 
     # --- Formula Effects ---
 
@@ -401,8 +401,8 @@ class TestCyanotypeExposureValidation:
         )
 
         # Both should be valid
-        assert classic.exposure_time_seconds > 0
-        assert new.exposure_time_seconds > 0
+        assert classic.exposure_seconds > 0
+        assert new.exposure_seconds > 0
 
     # --- Output Validation ---
 
@@ -410,8 +410,8 @@ class TestCyanotypeExposureValidation:
         """Test that exposure result contains all expected fields."""
         result = calculator.calculate(negative_density=1.6)
 
-        assert hasattr(result, 'exposure_time_seconds')
-        assert hasattr(result, 'exposure_time_formatted')
+        assert hasattr(result, 'exposure_seconds')
+        assert hasattr(result, 'format_time')
         assert hasattr(result, 'uv_source')
         assert hasattr(result, 'formula')
 
@@ -419,7 +419,7 @@ class TestCyanotypeExposureValidation:
         """Test that formatted exposure time is human-readable."""
         result = calculator.calculate(negative_density=1.6)
 
-        formatted = result.exposure_time_formatted
+        formatted = result.format_time()
         assert isinstance(formatted, str)
         assert len(formatted) > 0
         # Should contain time units
@@ -442,7 +442,7 @@ class TestCyanotypeExposureValidation:
 
         # At 2x distance, exposure should be ~4x (inverse square law)
         expected_ratio = (8.0 / 4.0) ** 2
-        actual_ratio = far.exposure_time_seconds / close.exposure_time_seconds
+        actual_ratio = far.exposure_seconds / close.exposure_seconds
 
         assert actual_ratio == pytest.approx(expected_ratio, rel=0.1)
 
@@ -461,7 +461,7 @@ class TestCyanotypeIntegrationValidation:
             paper_type=CyanotypePaperType.COTTON_RAG,
         )
 
-        assert recipe.total_volume_ml > 0
+        assert recipe.total_sensitizer_ml > 0
 
         # Step 2: Calculate exposure for same formula
         exp_calc = CyanotypeExposureCalculator()
@@ -471,7 +471,7 @@ class TestCyanotypeIntegrationValidation:
             uv_source=UVSource.BL_TUBES,
         )
 
-        assert exposure.exposure_time_seconds > 0
+        assert exposure.exposure_seconds > 0
         assert exposure.formula == recipe.formula
 
     def test_formula_consistency_between_calculators(self):

@@ -330,7 +330,16 @@ class SilverGelatinCalculator:
 
         Returns:
             ProcessingChemistry with all chemistry calculations
+
+        Raises:
+            ValueError: If inputs are invalid
         """
+        if width_inches <= 0:
+            raise ValueError("width must be positive")
+        if height_inches <= 0:
+            raise ValueError("height must be positive")
+        if num_prints <= 0:
+            raise ValueError("number of prints must be positive")
         # Use defaults if not specified
         developer = developer or self.settings.default_developer
         dilution = dilution or self.settings.default_dilution
@@ -419,6 +428,11 @@ class SilverGelatinCalculator:
         Returns:
             List of exposure times
         """
+        if base_exposure_seconds <= 0:
+            raise ValueError("base exposure must be positive")
+        if num_strips <= 0:
+            raise ValueError("number of strips must be positive")
+
         times = []
         half_strips = num_strips // 2
 
@@ -449,6 +463,15 @@ class SilverGelatinCalculator:
         Returns:
             Dictionary with shadow and highlight exposure times
         """
+        if base_exposure_seconds <= 0:
+            raise ValueError("base exposure must be positive")
+        if not (0 <= shadow_grade <= 5):
+            raise ValueError("shadow grade must be between 0 and 5")
+        if not (0 <= highlight_grade <= 5):
+            raise ValueError("highlight grade must be between 0 and 5")
+        if not (0 <= split_ratio <= 1):
+            raise ValueError("split ratio must be between 0 and 1")
+
         shadow_time = base_exposure_seconds * split_ratio
         highlight_time = base_exposure_seconds * (1 - split_ratio)
 

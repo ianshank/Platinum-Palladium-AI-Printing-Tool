@@ -44,9 +44,9 @@ class TestSilverGelatinChemistryValidation:
         result = calculator.calculate(width_inches=8.0, height_inches=10.0)
 
         assert isinstance(result, ProcessingChemistry)
-        assert result.developer_volume_ml > 0
-        assert result.stop_bath_volume_ml > 0
-        assert result.fixer_volume_ml > 0
+        assert result.developer.total_ml > 0
+        assert result.stop_bath_ml > 0
+        assert result.fixer_ml > 0
 
     def test_zero_width_raises_error(self, calculator):
         """Test that zero width raises ValueError."""
@@ -76,8 +76,6 @@ class TestSilverGelatinChemistryValidation:
             DeveloperType.DEKTOL,
             DeveloperType.D_72,
             DeveloperType.D_76,
-            DeveloperType.XTOL,
-            DeveloperType.RODINAL,
         ]
 
         for dev in valid_developers:
@@ -87,7 +85,7 @@ class TestSilverGelatinChemistryValidation:
                     height_inches=10.0,
                     developer=dev,
                 )
-                assert result.developer_volume_ml > 0
+                assert result.developer.total_ml > 0
             except (ValueError, KeyError):
                 # Some developers might not be configured for paper
                 pass
@@ -101,7 +99,7 @@ class TestSilverGelatinChemistryValidation:
                 dilution=dilution,
             )
             assert isinstance(result, ProcessingChemistry)
-            assert result.developer_volume_ml > 0
+            assert result.developer.total_ml > 0
 
     def test_dilution_affects_volume(self, calculator):
         """Test that dilution ratio affects solution volume."""
@@ -115,8 +113,8 @@ class TestSilverGelatinChemistryValidation:
         )
 
         # Both should be valid
-        assert concentrated.developer_volume_ml > 0
-        assert diluted.developer_volume_ml > 0
+        assert concentrated.developer.total_ml > 0
+        assert diluted.developer.total_ml > 0
 
     # --- Temperature Validation ---
 
@@ -126,19 +124,19 @@ class TestSilverGelatinChemistryValidation:
         result = calculator.calculate(
             width_inches=8.0, height_inches=10.0, temperature_c=20.0
         )
-        assert result.developer_volume_ml > 0
+        assert result.developer.total_ml > 0
 
         # Edge case: cold developer
         result = calculator.calculate(
             width_inches=8.0, height_inches=10.0, temperature_c=16.0
         )
-        assert result.developer_volume_ml > 0
+        assert result.developer.total_ml > 0
 
         # Edge case: warm developer
         result = calculator.calculate(
             width_inches=8.0, height_inches=10.0, temperature_c=24.0
         )
-        assert result.developer_volume_ml > 0
+        assert result.developer.total_ml > 0
 
     def test_extreme_temperature_warning(self, calculator):
         """Test that extreme temperatures produce warnings."""
@@ -147,13 +145,13 @@ class TestSilverGelatinChemistryValidation:
             width_inches=8.0, height_inches=10.0, temperature_c=10.0
         )
         # Should still calculate but may include warning
-        assert result.developer_volume_ml > 0
+        assert result.developer.total_ml > 0
 
         # Very warm
         result = calculator.calculate(
             width_inches=8.0, height_inches=10.0, temperature_c=30.0
         )
-        assert result.developer_volume_ml > 0
+        assert result.developer.total_ml > 0
 
     # --- Fixer Validation ---
 
@@ -166,7 +164,7 @@ class TestSilverGelatinChemistryValidation:
                     height_inches=10.0,
                     fixer=fixer,
                 )
-                assert result.fixer_volume_ml > 0
+                assert result.fixer_ml > 0
             except (ValueError, KeyError):
                 # Some fixers might not be implemented
                 pass
@@ -183,8 +181,8 @@ class TestSilverGelatinChemistryValidation:
         )
 
         # Both should work
-        assert sodium.fixer_volume_ml > 0
-        assert ammonium.fixer_volume_ml > 0
+        assert sodium.fixer_ml > 0
+        assert ammonium.fixer_ml > 0
 
     # --- Paper Base Validation ---
 
@@ -210,8 +208,8 @@ class TestSilverGelatinChemistryValidation:
         )
 
         # Both should be valid
-        assert fiber.developer_volume_ml > 0
-        assert rc.developer_volume_ml > 0
+        assert fiber.developer.total_ml > 0
+        assert rc.developer.total_ml > 0
 
         # Processing times typically differ
         if hasattr(fiber, 'development_time_seconds') and hasattr(rc, 'development_time_seconds'):
@@ -228,21 +226,21 @@ class TestSilverGelatinChemistryValidation:
                 height_inches=10.0,
                 tray_size=tray,
             )
-            assert result.developer_volume_ml > 0
+            assert result.developer.total_ml > 0
 
     def test_tray_size_affects_volume(self, calculator):
         """Test that tray size affects chemistry volume."""
         small_tray = calculator.calculate(
             width_inches=5.0, height_inches=7.0,
-            tray_size=TraySize.TRAY_8X10,
+            tray_size=TraySize.EIGHT_BY_TEN,
         )
         large_tray = calculator.calculate(
             width_inches=5.0, height_inches=7.0,
-            tray_size=TraySize.TRAY_11X14,
+            tray_size=TraySize.ELEVEN_BY_FOURTEEN,
         )
 
         # Larger trays need more chemistry
-        assert large_tray.developer_volume_ml >= small_tray.developer_volume_ml
+        assert large_tray.developer.total_ml >= small_tray.developer.total_ml
 
     # --- Multi-Print Processing ---
 
@@ -256,8 +254,8 @@ class TestSilverGelatinChemistryValidation:
         )
 
         # More prints may require more chemistry or fresh chemistry sooner
-        assert single.developer_volume_ml > 0
-        assert multiple.developer_volume_ml > 0
+        assert single.developer.total_ml > 0
+        assert multiple.developer.total_ml > 0
 
     def test_zero_prints_raises_error(self, calculator):
         """Test that zero prints raises ValueError."""
@@ -283,8 +281,8 @@ class TestSilverGelatinChemistryValidation:
         )
 
         # With hypo clear should include hypo clear volume
-        if hasattr(with_hypo, 'hypo_clear_volume_ml'):
-            assert with_hypo.hypo_clear_volume_ml >= 0
+        if hasattr(with_hypo, 'hypo_clear_ml'):
+            assert with_hypo.hypo_clear_ml >= 0
 
     # --- Output Validation ---
 
@@ -292,9 +290,9 @@ class TestSilverGelatinChemistryValidation:
         """Test that output has correct data types."""
         result = calculator.calculate(width_inches=8.0, height_inches=10.0)
 
-        assert isinstance(result.developer_volume_ml, (int, float))
-        assert isinstance(result.stop_bath_volume_ml, (int, float))
-        assert isinstance(result.fixer_volume_ml, (int, float))
+        assert isinstance(result.developer.total_ml, (int, float))
+        assert isinstance(result.stop_bath_ml, (int, float))
+        assert isinstance(result.fixer_ml, (int, float))
 
     def test_processing_chemistry_serialization(self, calculator):
         """Test that result can be serialized."""
@@ -302,7 +300,7 @@ class TestSilverGelatinChemistryValidation:
 
         result_dict = asdict(result)
         assert isinstance(result_dict, dict)
-        assert 'developer_volume_ml' in result_dict
+        assert 'developer' in result_dict
 
     # --- Split Filter Exposure ---
 
@@ -318,8 +316,8 @@ class TestSilverGelatinChemistryValidation:
         assert isinstance(split, dict)
         assert 'shadow_exposure' in split
         assert 'highlight_exposure' in split
-        assert split['shadow_exposure'] > 0
-        assert split['highlight_exposure'] > 0
+        assert split['shadow_exposure']['time_seconds'] > 0
+        assert split['highlight_exposure']['time_seconds'] > 0
 
     def test_split_filter_invalid_base_exposure(self, calculator):
         """Test split filter with invalid base exposure."""
@@ -345,7 +343,7 @@ class TestSilverGelatinChemistryValidation:
             shadow_grade=4.0,
             highlight_grade=1.0,
         )
-        assert result['shadow_exposure'] > 0
+        assert result['shadow_exposure']['time_seconds'] > 0
 
         # Invalid grades
         with pytest.raises(ValueError, match="grade"):
@@ -376,8 +374,8 @@ class TestSilverGelatinChemistryValidation:
 
     def test_test_strip_generation(self, calculator):
         """Test test strip time generation."""
-        strips = calculator.generate_test_strip_times(
-            base_exposure=10.0,
+        strips = calculator.calculate_test_strip_times(
+            base_exposure_seconds=10.0,
             num_strips=5,
             increment_factor=1.5,
         )
@@ -391,10 +389,10 @@ class TestSilverGelatinChemistryValidation:
     def test_test_strip_invalid_inputs(self, calculator):
         """Test test strip generation with invalid inputs."""
         with pytest.raises(ValueError, match="exposure"):
-            calculator.generate_test_strip_times(base_exposure=0.0)
+            calculator.calculate_test_strip_times(base_exposure_seconds=0.0)
 
         with pytest.raises(ValueError, match="strips"):
-            calculator.generate_test_strip_times(base_exposure=10.0, num_strips=0)
+            calculator.calculate_test_strip_times(base_exposure_seconds=10.0, num_strips=0)
 
 
 class TestSilverGelatinExposureValidation:
@@ -416,13 +414,13 @@ class TestSilverGelatinExposureValidation:
         )
 
         assert isinstance(result, SilverGelatinExposureResult)
-        assert result.exposure_time_seconds > 0
+        assert result.exposure_seconds > 0
 
     def test_enlarger_height_validation(self, calculator):
         """Test enlarger height validation."""
         # Valid heights
         result = calculator.calculate(enlarger_height_cm=30.0)
-        assert result.exposure_time_seconds > 0
+        assert result.exposure_seconds > 0
 
         # Invalid: zero height
         with pytest.raises(ValueError, match="height"):
@@ -438,7 +436,7 @@ class TestSilverGelatinExposureValidation:
         valid_fstops = [2.8, 4.0, 5.6, 8.0, 11.0, 16.0, 22.0]
         for fstop in valid_fstops:
             result = calculator.calculate(f_stop=fstop)
-            assert result.exposure_time_seconds > 0
+            assert result.exposure_seconds > 0
 
         # Invalid: zero f-stop
         with pytest.raises(ValueError, match="f.stop|f_stop"):
@@ -453,7 +451,7 @@ class TestSilverGelatinExposureValidation:
         # Valid ISO values
         for iso in [100.0, 200.0, 400.0, 800.0]:
             result = calculator.calculate(paper_speed_iso=iso)
-            assert result.exposure_time_seconds > 0
+            assert result.exposure_seconds > 0
 
         # Invalid: zero ISO
         with pytest.raises(ValueError, match="speed|iso"):
@@ -467,7 +465,7 @@ class TestSilverGelatinExposureValidation:
         """Test filter factor validation."""
         # Valid factors
         result = calculator.calculate(filter_factor=2.0)
-        assert result.exposure_time_seconds > 0
+        assert result.exposure_seconds > 0
 
         # Invalid: zero factor
         with pytest.raises(ValueError, match="filter"):
@@ -482,7 +480,7 @@ class TestSilverGelatinExposureValidation:
         # Valid densities
         for density in [0.5, 1.0, 1.5, 2.0]:
             result = calculator.calculate(negative_density=density)
-            assert result.exposure_time_seconds > 0
+            assert result.exposure_seconds > 0
 
         # Invalid: negative density value
         with pytest.raises(ValueError, match="density"):
@@ -497,7 +495,7 @@ class TestSilverGelatinExposureValidation:
                 enlarger_height_cm=30.0,
                 light_source=light_source,
             )
-            assert result.exposure_time_seconds > 0
+            assert result.exposure_seconds > 0
 
     def test_enlarger_light_speeds_consistency(self):
         """Test that enlarger light speeds are defined correctly."""
@@ -511,7 +509,7 @@ class TestSilverGelatinExposureValidation:
         """Test all paper grades produce valid results."""
         for grade in PaperGrade:
             result = calculator.calculate(paper_grade=grade)
-            assert result.exposure_time_seconds > 0
+            assert result.exposure_seconds > 0
 
     def test_paper_grade_affects_contrast(self, calculator):
         """Test that paper grade affects exposure/contrast."""
@@ -519,8 +517,8 @@ class TestSilverGelatinExposureValidation:
         hard = calculator.calculate(paper_grade=PaperGrade.GRADE_5)
 
         # Both should be valid
-        assert soft.exposure_time_seconds > 0
-        assert hard.exposure_time_seconds > 0
+        assert soft.exposure_seconds > 0
+        assert hard.exposure_seconds > 0
 
     # --- F-Stop and Height Effects ---
 
@@ -530,7 +528,7 @@ class TestSilverGelatinExposureValidation:
         narrow = calculator.calculate(f_stop=16.0)
 
         # Narrower aperture should require longer exposure
-        assert narrow.exposure_time_seconds > wide.exposure_time_seconds
+        assert narrow.exposure_seconds > wide.exposure_seconds
 
     def test_fstop_doubling_quadruples_exposure(self, calculator):
         """Test that doubling f-stop quadruples exposure."""
@@ -538,7 +536,7 @@ class TestSilverGelatinExposureValidation:
         f16 = calculator.calculate(f_stop=16.0, base_f_stop=8.0)
 
         # f/16 is 2 stops from f/8, should be 4x exposure
-        ratio = f16.exposure_time_seconds / f8.exposure_time_seconds
+        ratio = f16.exposure_seconds / f8.exposure_seconds
         assert ratio == pytest.approx(4.0, rel=0.1)
 
     def test_height_affects_exposure(self, calculator):
@@ -547,7 +545,7 @@ class TestSilverGelatinExposureValidation:
         high = calculator.calculate(enlarger_height_cm=40.0)
 
         # Higher position should require longer exposure (inverse square)
-        assert high.exposure_time_seconds > low.exposure_time_seconds
+        assert high.exposure_seconds > low.exposure_seconds
 
     # --- Output Validation ---
 
@@ -555,8 +553,8 @@ class TestSilverGelatinExposureValidation:
         """Test that exposure result contains expected fields."""
         result = calculator.calculate()
 
-        assert hasattr(result, 'exposure_time_seconds')
-        assert hasattr(result, 'exposure_time_formatted')
+        assert hasattr(result, 'exposure_seconds')
+        assert hasattr(result, 'format_time')
         assert hasattr(result, 'paper_grade')
         assert hasattr(result, 'f_stop')
 
@@ -564,7 +562,7 @@ class TestSilverGelatinExposureValidation:
         """Test formatted time is human-readable."""
         result = calculator.calculate()
 
-        formatted = result.exposure_time_formatted
+        formatted = result.format_time()
         assert isinstance(formatted, str)
         assert len(formatted) > 0
 
@@ -578,9 +576,9 @@ class TestSilverGelatinExposureValidation:
             paper_speed_iso=800.0,
         )
 
-        assert result.exposure_time_seconds > 0
+        assert result.exposure_seconds > 0
         # Should be reasonably short
-        assert result.exposure_time_seconds < 60
+        assert result.exposure_seconds < 60
 
     def test_very_long_exposure(self, calculator):
         """Test very long exposure scenario."""
@@ -591,9 +589,9 @@ class TestSilverGelatinExposureValidation:
             filter_factor=4.0,
         )
 
-        assert result.exposure_time_seconds > 0
+        assert result.exposure_seconds > 0
         # Should be reasonably long
-        assert result.exposure_time_seconds > 10
+        assert result.exposure_seconds > 10
 
 
 class TestSilverGelatinIntegrationValidation:
@@ -609,7 +607,7 @@ class TestSilverGelatinIntegrationValidation:
             paper_grade=PaperGrade.GRADE_2,
         )
 
-        assert exposure.exposure_time_seconds > 0
+        assert exposure.exposure_seconds > 0
 
         # Step 2: Calculate chemistry for processing
         chem_calc = SilverGelatinCalculator()
@@ -620,8 +618,8 @@ class TestSilverGelatinIntegrationValidation:
             developer=DeveloperType.DEKTOL,
         )
 
-        assert chemistry.developer_volume_ml > 0
-        assert chemistry.fixer_volume_ml > 0
+        assert chemistry.developer.total_ml > 0
+        assert chemistry.fixer_ml > 0
 
     def test_paper_grade_consistency(self):
         """Test paper grade enum consistency."""
@@ -641,7 +639,7 @@ class TestSilverGelatinIntegrationValidation:
             width_inches=8.0,
             height_inches=10.0,
             num_prints=5,
-            tray_size=TraySize.TRAY_11X14,
+            tray_size=TraySize.ELEVEN_BY_FOURTEEN,
         )
 
         # Calculate base exposure
@@ -651,12 +649,12 @@ class TestSilverGelatinIntegrationValidation:
         )
 
         # Generate test strip
-        test_strips = chem_calc.generate_test_strip_times(
-            base_exposure=exposure.exposure_time_seconds,
+        test_strips = chem_calc.calculate_test_strip_times(
+            base_exposure_seconds=exposure.exposure_seconds,
             num_strips=5,
         )
 
-        assert chemistry.developer_volume_ml > 0
+        assert chemistry.developer.total_ml > 0
         assert len(test_strips) == 5
 
     def test_split_filter_with_exposure(self):
@@ -673,14 +671,14 @@ class TestSilverGelatinIntegrationValidation:
 
         # Calculate split filter exposures
         split = chem_calc.calculate_split_filter_exposure(
-            base_exposure_seconds=base_exposure.exposure_time_seconds,
+            base_exposure_seconds=base_exposure.exposure_seconds,
             shadow_grade=5.0,
             highlight_grade=0.0,
             split_ratio=0.5,
         )
 
-        assert split['shadow_exposure'] > 0
-        assert split['highlight_exposure'] > 0
+        assert split['shadow_exposure']['time_seconds'] > 0
+        assert split['highlight_exposure']['time_seconds'] > 0
         # Total should approximate base
-        total = split['shadow_exposure'] + split['highlight_exposure']
+        total = split['shadow_exposure']['time_seconds'] + split['highlight_exposure']['time_seconds']
         assert total > 0

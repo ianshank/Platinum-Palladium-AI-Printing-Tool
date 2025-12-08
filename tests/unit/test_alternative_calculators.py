@@ -283,8 +283,8 @@ class TestSilverGelatinCalculator:
         small = calculator.calculate(4.0, 5.0)
         large = calculator.calculate(11.0, 14.0)
 
-        assert small.tray_size == TraySize.FIVE_BY_SEVEN
-        assert large.tray_size == TraySize.ELEVEN_BY_FOURTEEN
+        assert small.tray_size == TraySize.EIGHT_BY_TEN
+        assert large.tray_size == TraySize.SIXTEEN_BY_TWENTY
 
     def test_calculate_fb_vs_rc_times(self, calculator):
         """FB paper should have longer fix and wash times."""

@@ -239,7 +239,19 @@ class CyanotypeExposureCalculator:
 
         Returns:
             CyanotypeExposureResult with calculated exposure
+
+        Raises:
+            ValueError: If inputs are invalid
         """
+        if negative_density < 0:
+            raise ValueError("negative density cannot be negative")
+        if not (0 <= humidity_percent <= 100):
+            raise ValueError("humidity must be between 0 and 100")
+        if paper_factor <= 0:
+            raise ValueError("paper factor must be positive")
+        if distance_inches <= 0:
+            raise ValueError("distance must be positive")
+
         notes = []
         base = self.base_exposure_minutes
 
@@ -400,6 +412,7 @@ class SilverGelatinExposureCalculator:
         filter_factor: float = 1.0,  # Multigrade filter factor
         negative_density: float = 1.0,  # Average negative density
         base_f_stop: float = 8.0,
+        light_source: EnlargerLightSource = EnlargerLightSource.TUNGSTEN_INCANDESCENT,
     ) -> SilverGelatinExposureResult:
         """Calculate silver gelatin exposure time.
 
@@ -411,10 +424,26 @@ class SilverGelatinExposureCalculator:
             filter_factor: Multigrade filter factor
             negative_density: Average negative density
             base_f_stop: Reference f-stop
+            light_source: Type of enlarger light source
 
         Returns:
             SilverGelatinExposureResult with calculated exposure
+        
+        Raises:
+            ValueError: If inputs are invalid (negative or zero where not allowed)
         """
+        # Input validation
+        if enlarger_height_cm <= 0:
+            raise ValueError("enlarger height must be positive")
+        if f_stop <= 0:
+            raise ValueError("f-stop must be positive")
+        if paper_speed_iso <= 0:
+            raise ValueError("paper speed (ISO) must be positive")
+        if filter_factor <= 0:
+            raise ValueError("filter factor must be positive")
+        if negative_density < 0:
+            raise ValueError("negative density cannot be negative")
+
         notes = []
         base = self.base_exposure_seconds
 
@@ -440,16 +469,20 @@ class SilverGelatinExposureCalculator:
         if paper_grade == PaperGrade.VARIABLE and filter_factor > 1.5:
             notes.append("High contrast filter - may need split-grade printing")
 
-        # 5. Calculate base exposure before reciprocity
+        # 5. Light source adjustment
+        light_source_speed = ENLARGER_LIGHT_SPEEDS.get(light_source, 1.0)
+
+        # 6. Calculate base exposure before reciprocity
         pre_reciprocity = (
             base *
             magnification_adjustment *
             f_stop_adjustment *
             paper_speed_adjustment *
-            filter_adjustment
+            filter_adjustment *
+            light_source_speed
         )
 
-        # 6. Reciprocity adjustment for long exposures
+        # 7. Reciprocity adjustment for long exposures
         reciprocity_adjustment = self._calculate_reciprocity(pre_reciprocity)
 
         if reciprocity_adjustment > 1.2:
