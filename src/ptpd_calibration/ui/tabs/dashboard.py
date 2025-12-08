@@ -11,19 +11,41 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
         onboarding_state: Gradio state for onboarding.
         session_logger: SessionLogger instance for retrieving stats.
     """
+def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogger):
+    """
+    Build the Dashboard tab.
+    
+    Args:
+        onboarding_state: Gradio state for onboarding.
+        session_logger: SessionLogger instance for retrieving stats.
+    """
     with gr.TabItem("🏠 Dashboard"):
-        gr.Markdown("## Platinum/Palladium Calibration Studio")
-        gr.Markdown("Orchestrate calibration, chemistry, and AI workflows from a single hub.")
+        # Hero Section
+        with gr.Row():
+            gr.Markdown(
+                """
+                # Platinum/Palladium Calibration Studio
+                ### Professional Darkroom Workflow
+                """
+            )
+
+        def make_stat_card(label, value):
+            return f"""
+            <div class="stat-card">
+                <div class="stat-value">{value}</div>
+                <div class="stat-label">{label}</div>
+            </div>
+            """
 
         def compute_dashboard_metrics():
             now = datetime.now()
             week_ago = now - timedelta(days=7)
             summary_rows = []
             total_records = 0
-            recent_records = 0
+            recent_count = 0
             success_count = 0
             total_hours = 0.0
-            active_curve = "Not set"
+            active_curve = "None"
 
             try:
                 sessions = session_logger.list_sessions(limit=5)
@@ -66,7 +88,7 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
 
                     for record in session.records:
                         if record.timestamp >= week_ago:
-                            recent_records += 1
+                            recent_count += 1
                         if record.result in (
                             PrintResult.EXCELLENT,
                             PrintResult.GOOD,
@@ -88,42 +110,38 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
             )
 
             return (
-                recent_records,
-                f"{overall_success_rate:.1f}%",
-                active_curve,
-                f"{total_hours:.1f}h",
+                make_stat_card("Print Volume (7d)", recent_count),
+                make_stat_card("Success Rate", f"{overall_success_rate:.1f}%"),
+                make_stat_card("Active Curve", active_curve),
+                make_stat_card("Total Lab Time", f"{total_hours:.1f}h"),
                 summary_rows,
             )
 
-        with gr.Row():
-            # Quick Stats
-            with gr.Column(scale=1):
-                gr.Markdown("### 📈 Session Stats")
-                with gr.Row():
-                    prints_today = gr.Number(label="Prints (7d)", value=0, interactive=False)
-                    success_rate = gr.Number(label="Success Rate", value=0, interactive=False)
-                with gr.Row():
-                    active_curve_disp = gr.Textbox(label="Active Curve", interactive=False)
-                    session_time = gr.Textbox(label="Total Time", interactive=False)
+        with gr.Group(elem_classes="ptpd-card"):
+            gr.Markdown("### 📈 Lab Statistics")
+            with gr.Row():
+                stat_prints = gr.HTML(make_stat_card("Print Volume (7d)", "-"))
+                stat_success = gr.HTML(make_stat_card("Success Rate", "-"))
+                stat_curve = gr.HTML(make_stat_card("Active Curve", "-"))
+                stat_time = gr.HTML(make_stat_card("Total Lab Time", "-"))
 
-            # Quick Actions
-            with gr.Column(scale=2):
-                gr.Markdown("### ⚡ Quick Actions")
-                with gr.Row():
-                    btn_scan = gr.Button("📷 Read Step Tablet", variant="primary")
-                    btn_chem = gr.Button("📐 Calculate Chemistry")
-                    btn_expo = gr.Button("⏱️ Exposure Calculator")
-                with gr.Row():
-                    btn_neg = gr.Button("🖼️ Create Negative")
-                    btn_ai = gr.Button("💬 Ask AI Assistant")
+        with gr.Group(elem_classes="ptpd-card"):
+            gr.Markdown("### ⚡ Quick Actions")
+            with gr.Row():
+                btn_scan = gr.Button("📷 Read Step Tablet", variant="primary")
+                btn_chem = gr.Button("📐 Calculate Chemistry")
+                btn_expo = gr.Button("⏱️ Exposure Calculator")
+            with gr.Row():
+                btn_neg = gr.Button("🖼️ Create Negative")
+                btn_ai = gr.Button("💬 Ask AI Assistant")
 
-        # Recent Activity
-        gr.Markdown("### 🕐 Recent Sessions")
-        recent_sessions = gr.Dataframe(
-            headers=["Date", "Paper", "Prints", "Success Rate"],
-            interactive=False,
-            value=[],
-        )
+        with gr.Group(elem_classes="ptpd-card"):
+            gr.Markdown("### 🕐 Recent Sessions")
+            recent_sessions = gr.Dataframe(
+                headers=["Date", "Paper", "Prints", "Success Rate"],
+                interactive=False,
+                value=[],
+            )
 
         # Auto-refresh dashboard on load
         dashboard_timer = gr.Timer(value=10) # Refresh every 10 seconds or on load
@@ -131,29 +149,23 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
         dashboard_timer.tick(
             compute_dashboard_metrics,
             outputs=[
-                prints_today,
-                success_rate,
-                active_curve_disp,
-                session_time,
+                stat_prints,
+                stat_success,
+                stat_curve,
+                stat_time,
                 recent_sessions,
             ],
         )
 
-        # Wire up Quick Action buttons (need to know tab IDs to switch tabs)
-        # For now we just return the code. In main app we can link them using Javascript or Tab selection if Gradio supports it (it does via selected=Index)
-        # But easier is to use js to click the tab button.
-        
         # Helper to generate JS click
         def jump_js(tab_index):
+            # Using querySelectorAll is brittle if DOM changes, but works for now.
             return f"() => {{ document.querySelectorAll('.main-tabs button')[{tab_index}].click(); }}"
-
-        # Assuming tab indices: 0=Dashboard, 1=Calibration, 2=Image Prep, 3=Darkroom, 4=AI
-        # And subtabs... this is tricky. Gradio doesn't easily support deep linking to subtabs.
-        # We'll just link to main tabs for now.
         
         btn_scan.click(None, None, None, js=jump_js(1)) # Calibration
-        btn_chem.click(None, None, None, js=jump_js(3)) # Darkroom
-        btn_expo.click(None, None, None, js=jump_js(3)) # Darkroom
-        btn_neg.click(None, None, None, js=jump_js(2)) # Image Prep
-        btn_ai.click(None, None, None, js=jump_js(4))   # AI
+        # Darkroom tab might be at index 3 or 4 depending on tab order
+        btn_chem.click(None, None, None, js=jump_js(4)) # Chemistry (Assuming separate tab now or subtab)
+        btn_expo.click(None, None, None, js=jump_js(4)) 
+        btn_neg.click(None, None, None, js=jump_js(3)) # Image Prep
+        btn_ai.click(None, None, None, js=jump_js(6))   # AI Assistant
 

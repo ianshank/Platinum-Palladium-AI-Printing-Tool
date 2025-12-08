@@ -110,60 +110,8 @@ def build_chemistry_tab():
         
         ratio_slider.change(update_viz, inputs=[ratio_slider], outputs=[ratio_viz])
 
-        def calculate(w, h, pt_ratio, absorbency, method, cont, na2_val):
-            try:
-                calculator = ChemistryCalculator()
-                # pt_ratio is 0-100, convert to 0.0-1.0
-                recipe = calculator.calculate(
-                    width_inches=float(w),
-                    height_inches=float(h),
-                    platinum_ratio=pt_ratio / 100.0,
-                    paper_absorbency=PaperAbsorbency(absorbency),
-                    coating_method=CoatingMethod(method),
-                    contrast_boost=cont / 100.0,
-                    na2_ratio=na2_val / 100.0,
-                )
-                
-                # Generate visual HTML
-                # Simple representation: Drops as circles
-                # Total drops
-                total_drops = recipe.total_drops
-                
-                html = f"""
-                <div style="padding: 10px; background: var(--ptpd-card); border-radius: 8px;">
-                    <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">{total_drops} Total Drops</div>
-                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                """
-                
-                # Helper to add drops
-                def add_drops(name, count, color):
-                    return f"""
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="font-size: 20px; color: {color};">●</div>
-                        <div style="font-weight: bold; font-size: 18px;">{count}</div>
-                        <div style="font-size: 12px; opacity: 0.8;">{name}</div>
-                    </div>
-                    """
-                
-                if recipe.ferric_oxalate_1 > 0:
-                    html += add_drops("FO#1", recipe.ferric_oxalate_1, "#fbbf24") # Amber
-                if recipe.ferric_oxalate_2 > 0:
-                    html += add_drops("FO#2", recipe.ferric_oxalate_2, "#d97706") # Darker Amber
-                if recipe.platinum > 0:
-                    html += add_drops("Pt", recipe.platinum, "#c0c0c0") # Silver
-                if recipe.palladium > 0:
-                    html += add_drops("Pd", recipe.palladium, "#d4a574") # Gold/Bronze
-                if recipe.na2 > 0:
-                    html += add_drops("Na2", recipe.na2, "#ef4444") # Red
-                    
-                html += "</div></div>"
-
-                return html, recipe.format_recipe(), recipe.to_dict()
-            except Exception as e:
-                return f"Error: {str(e)}", str(e), {}
-
         calculate_btn.click(
-            calculate,
+            calculate_recipe_ui,
             inputs=[width, height, ratio_slider, paper_absorbency, coating_method, contrast, na2],
             outputs=[recipe_html, recipe_text, recipe_json]
         )
@@ -173,4 +121,57 @@ def build_chemistry_tab():
         
         # Log to session (placeholder)
         log_btn.click(lambda x: gr.Info("Recipe logged to session!"), inputs=[recipe_json], outputs=[])
+
+
+def calculate_recipe_ui(w, h, pt_ratio, absorbency, method, cont, na2_val):
+    try:
+        calculator = ChemistryCalculator()
+        # pt_ratio is 0-100, convert to 0.0-1.0
+        recipe = calculator.calculate(
+            width_inches=float(w),
+            height_inches=float(h),
+            platinum_ratio=pt_ratio / 100.0,
+            paper_absorbency=PaperAbsorbency(absorbency),
+            coating_method=CoatingMethod(method),
+            contrast_boost=cont / 100.0,
+            na2_ratio=na2_val / 100.0,
+        )
+        
+        # Generate visual HTML
+        # Simple representation: Drops as circles
+        # Total drops
+        total_drops = recipe.total_drops
+        
+        html = f"""
+        <div style="padding: 10px; background: var(--ptpd-card); border-radius: 8px;">
+            <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">{total_drops} Total Drops</div>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        """
+        
+        # Helper to add drops
+        def add_drops(name, count, color):
+            return f"""
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <div style="font-size: 20px; color: {color};">●</div>
+                <div style="font-weight: bold; font-size: 18px;">{count}</div>
+                <div style="font-size: 12px; opacity: 0.8;">{name}</div>
+            </div>
+            """
+        
+        if recipe.ferric_oxalate_drops > 0:
+            html += add_drops("FO#1", recipe.ferric_oxalate_drops, "#fbbf24") # Amber
+        if recipe.ferric_oxalate_contrast_drops > 0:
+            html += add_drops("FO#2", recipe.ferric_oxalate_contrast_drops, "#d97706") # Darker Amber
+        if recipe.platinum_drops > 0:
+            html += add_drops("Pt", recipe.platinum_drops, "#c0c0c0") # Silver
+        if recipe.palladium_drops > 0:
+            html += add_drops("Pd", recipe.palladium_drops, "#d4a574") # Gold/Bronze
+        if recipe.na2_drops > 0:
+            html += add_drops("Na2", recipe.na2_drops, "#ef4444") # Red
+            
+        html += "</div></div>"
+
+        return html, recipe.format_recipe(), recipe.to_dict()
+    except Exception as e:
+        return f"Error: {str(e)}", str(e), {}
 

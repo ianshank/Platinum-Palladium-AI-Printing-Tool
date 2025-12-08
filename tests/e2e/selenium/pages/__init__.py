@@ -1,5 +1,17 @@
 """Page Object Models for Selenium E2E tests."""
 
 from .base_page import BasePage
+from .dashboard_page import DashboardPage
+from .calibration_wizard_page import CalibrationWizardPage
+from .chemistry_calculator_page import ChemistryCalculatorPage
+from .ai_assistant_page import AIAssistantPage
+from .neuro_symbolic_page import NeuroSymbolicPage
 
-__all__ = ["BasePage"]
+__all__ = [
+    "BasePage",
+    "DashboardPage",
+    "CalibrationWizardPage",
+    "ChemistryCalculatorPage",
+    "AIAssistantPage",
+    "NeuroSymbolicPage",
+]

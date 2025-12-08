@@ -825,6 +825,194 @@ class DataManagementSettings(BaseSettings):
     export_path: Optional[Path] = Field(default=None)
 
 
+class NeuroSymbolicSettings(BaseSettings):
+    """Settings for neuro-symbolic AI curve generation and reasoning.
+
+    This module combines neural networks with symbolic reasoning for
+    physically-constrained curve generation and interpretable predictions.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_NEUROSYM_")
+
+    # Constraint Settings
+    monotonicity_weight: float = Field(
+        default=10.0,
+        ge=0.0,
+        le=100.0,
+        description="Weight for monotonicity constraint in loss function"
+    )
+    density_bounds_weight: float = Field(
+        default=5.0,
+        ge=0.0,
+        le=100.0,
+        description="Weight for density bounds constraint"
+    )
+    physics_constraint_weight: float = Field(
+        default=8.0,
+        ge=0.0,
+        le=100.0,
+        description="Weight for physics-based constraints (H&D curve laws)"
+    )
+    smoothness_weight: float = Field(
+        default=2.0,
+        ge=0.0,
+        le=100.0,
+        description="Weight for smoothness regularization"
+    )
+
+    # Density Bounds (configurable physical limits)
+    min_density: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Minimum valid density (paper base)"
+    )
+    max_density: float = Field(
+        default=3.5,
+        ge=1.0,
+        le=5.0,
+        description="Maximum valid density (Dmax)"
+    )
+    expected_dmin_range: tuple[float, float] = Field(
+        default=(0.02, 0.15),
+        description="Expected Dmin range for valid calibrations"
+    )
+    expected_dmax_range: tuple[float, float] = Field(
+        default=(1.8, 3.2),
+        description="Expected Dmax range for valid calibrations"
+    )
+
+    # Optimization Settings
+    optimizer_learning_rate: float = Field(
+        default=0.01,
+        ge=0.0001,
+        le=1.0,
+        description="Learning rate for constrained optimization"
+    )
+    optimizer_max_iterations: int = Field(
+        default=1000,
+        ge=10,
+        le=10000,
+        description="Maximum iterations for curve optimization"
+    )
+    optimizer_tolerance: float = Field(
+        default=1e-6,
+        ge=1e-10,
+        le=1e-2,
+        description="Convergence tolerance for optimization"
+    )
+    optimizer_method: str = Field(
+        default="L-BFGS-B",
+        description="Optimization method (L-BFGS-B, Adam, SGD)"
+    )
+
+    # Knowledge Graph Settings
+    kg_embedding_dim: int = Field(
+        default=64,
+        ge=16,
+        le=512,
+        description="Embedding dimension for knowledge graph entities"
+    )
+    kg_similarity_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Threshold for entity similarity in analogical reasoning"
+    )
+    kg_max_inference_depth: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Maximum depth for graph traversal inference"
+    )
+    kg_enable_learning: bool = Field(
+        default=True,
+        description="Enable learning new relationships from calibration data"
+    )
+
+    # Symbolic Regression Settings
+    sr_max_expression_depth: int = Field(
+        default=5,
+        ge=2,
+        le=10,
+        description="Maximum depth of symbolic expressions"
+    )
+    sr_population_size: int = Field(
+        default=100,
+        ge=20,
+        le=1000,
+        description="Population size for genetic programming"
+    )
+    sr_generations: int = Field(
+        default=50,
+        ge=10,
+        le=500,
+        description="Number of generations for symbolic regression"
+    )
+    sr_mutation_rate: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=1.0,
+        description="Mutation rate for genetic operators"
+    )
+    sr_crossover_rate: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Crossover rate for genetic operators"
+    )
+    sr_parsimony_coefficient: float = Field(
+        default=0.01,
+        ge=0.0,
+        le=1.0,
+        description="Parsimony pressure for simpler expressions"
+    )
+    sr_allowed_operators: list[str] = Field(
+        default_factory=lambda: ["add", "sub", "mul", "div", "pow", "log", "exp", "sqrt"],
+        description="Allowed operators in symbolic expressions"
+    )
+
+    # Physics Model Settings
+    physics_toe_exponent_range: tuple[float, float] = Field(
+        default=(0.3, 0.8),
+        description="Expected toe region exponent range (sqrt-like behavior)"
+    )
+    physics_shoulder_saturation_rate: tuple[float, float] = Field(
+        default=(0.5, 2.0),
+        description="Expected shoulder saturation rate range"
+    )
+    physics_reciprocity_failure_threshold: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=1.0,
+        description="Threshold for reciprocity failure detection"
+    )
+
+    # Uncertainty Quantification
+    uncertainty_num_samples: int = Field(
+        default=100,
+        ge=10,
+        le=1000,
+        description="Number of samples for uncertainty estimation"
+    )
+    uncertainty_confidence_level: float = Field(
+        default=0.95,
+        ge=0.5,
+        le=0.99,
+        description="Confidence level for uncertainty intervals"
+    )
+
+    # Explanation Settings
+    enable_explanations: bool = Field(
+        default=True,
+        description="Generate explanations for predictions"
+    )
+    explanation_verbosity: str = Field(
+        default="medium",
+        description="Explanation verbosity (brief, medium, detailed)"
+    )
+
+
 class CalculationsSettings(BaseSettings):
     """Settings for environmental calculations and cost estimation."""
 
@@ -934,6 +1122,7 @@ class Settings(BaseSettings):
     performance: PerformanceSettings = Field(default_factory=PerformanceSettings)
     data_management: DataManagementSettings = Field(default_factory=DataManagementSettings)
     calculations: CalculationsSettings = Field(default_factory=CalculationsSettings)
+    neuro_symbolic: NeuroSymbolicSettings = Field(default_factory=NeuroSymbolicSettings)
 
     @field_validator("calibrations_dir", "exports_dir", mode="before")
     @classmethod

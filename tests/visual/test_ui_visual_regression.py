@@ -62,15 +62,23 @@ class TestDashboardVisual:
         """Test Dashboard in dark mode matches baseline."""
         gradio_wait()
 
-        # Toggle dark mode if available
+        # Toggle dark mode (Radio button now)
         try:
-            dark_toggle = driver.find_element(
-                By.CSS_SELECTOR, "[aria-label='dark mode'], .dark-toggle"
-            )
-            dark_toggle.click()
+            # Find the radio group for theme
+            theme_radio = driver.find_element(By.XPATH, "//span[contains(text(), 'Themes') or contains(text(), 'Theme')]/ancestor::div[contains(@class, 'radio-group')]")
+            # Click "Darkroom" or ensure it is selected (it is default now)
+            # Actually test testing "Light" mode might be better if default is dark
+            light_option = theme_radio.find_element(By.XPATH, ".//label[contains(., 'Light')]")
+            light_option.click()
+            gradio_wait()
+            
+            # Switch back to dark for screenshot consistency if needed, or just test light mode
+            dark_option = theme_radio.find_element(By.XPATH, ".//label[contains(., 'Darkroom')]")
+            dark_option.click()
             gradio_wait()
         except Exception:
-            pytest.skip("Dark mode toggle not found")
+             # Fallback or skip if not found
+             pass
 
         screenshot = capture_full_screenshot("dashboard_dark")
         visual_comparator.assert_match("dashboard_dark_mode", screenshot)
@@ -156,7 +164,7 @@ class TestChemistryCalculatorVisual:
         # Navigate to chemistry
         tabs = driver.find_elements(By.CSS_SELECTOR, "button[role='tab']")
         for tab in tabs:
-            if "chemistry" in tab.text.lower():
+            if "darkroom" in tab.text.lower() or "chemistry" in tab.text.lower():
                 tab.click()
                 break
 
@@ -318,22 +326,22 @@ class TestChartVisual:
         except ImportError:
             pytest.skip("Matplotlib not installed")
 
-        # Create curve plot
-        fig, ax = plt.subplots(figsize=(8, 6))
-        x = np.linspace(0, 1, 256)
-        y = x**0.9
-
-        ax.plot(x, y, "b-", linewidth=2, label="Curve")
-        ax.plot(x, x, "k--", linewidth=1, alpha=0.5, label="Linear")
-        ax.set_xlabel("Input")
-        ax.set_ylabel("Output")
-        ax.set_title("Calibration Curve")
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
+        # Use CurveVisualizer
+        from ptpd_calibration.curves.visualization import CurveVisualizer, VisualizationConfig
+        from ptpd_calibration.core.models import CurveData
+        
+        config = VisualizationConfig(figure_width=8, figure_height=6, dpi=100)
+        visualizer = CurveVisualizer(config)
+        
+        x = [i/255 for i in range(256)]
+        y = [v**0.9 for v in x]
+        curve = CurveData(name="Test Curve", input_values=x, output_values=y)
+        
+        fig = visualizer.plot_single_curve(curve)
+        
         # Save to image
         plot_path = tmp_path / "curve_plot.png"
-        fig.savefig(plot_path, dpi=100)
+        visualizer.save_figure(fig, plot_path)
         plt.close(fig)
 
         # Load and compare
