@@ -17,6 +17,26 @@ from typing import TYPE_CHECKING, Optional
 logger = logging.getLogger(__name__)
 
 
+def determine_chemistry_type(metal_ratio: float):
+    """
+    Determine chemistry type from metal ratio.
+
+    Args:
+        metal_ratio: Platinum ratio (0.0 to 1.0).
+
+    Returns:
+        ChemistryType enum value.
+    """
+    from ptpd_calibration.core.types import ChemistryType
+
+    if metal_ratio > 0.95:
+        return ChemistryType.PURE_PLATINUM
+    elif metal_ratio < 0.05:
+        return ChemistryType.PURE_PALLADIUM
+    else:
+        return ChemistryType.PLATINUM_PALLADIUM
+
+
 def create_deep_learning_router(database, model_storage: dict):
     """
     Create the deep learning API router.
@@ -63,6 +83,16 @@ def create_deep_learning_router(database, model_storage: dict):
             default=200, ge=50, le=5000, description="Number of synthetic samples"
         )
         validation_split: float = Field(default=0.2, ge=0.1, le=0.4, description="Validation split")
+        # Advanced settings (configurable per Gemini feedback)
+        use_ensemble: bool = Field(default=False, description="Use ensemble of models")
+        device: str = Field(default="cpu", description="Device to train on (cpu/cuda)")
+        num_control_points: int = Field(default=16, ge=4, le=64, description="Number of control points")
+        hidden_dims: list[int] = Field(
+            default=[128, 256, 128], description="Hidden layer dimensions"
+        )
+        early_stopping_patience: int = Field(
+            default=10, ge=1, le=100, description="Early stopping patience"
+        )
 
     class PredictRequest(BaseModel):
         """Request to predict a curve from process parameters."""
@@ -199,19 +229,13 @@ def create_deep_learning_router(database, model_storage: dict):
 
         try:
             from ptpd_calibration.core.models import CalibrationRecord
-            from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
+            from ptpd_calibration.core.types import ContrastAgent, DeveloperType
 
             predictor = model_storage[request.model_name]
 
             # Create calibration record from request
             contrast_agent = ContrastAgent.NA2 if request.contrast_agent.lower() == "na2" else ContrastAgent.NONE
-
-            if request.metal_ratio > 0.95:
-                chemistry_type = ChemistryType.PURE_PLATINUM
-            elif request.metal_ratio < 0.05:
-                chemistry_type = ChemistryType.PURE_PALLADIUM
-            else:
-                chemistry_type = ChemistryType.PLATINUM_PALLADIUM
+            chemistry_type = determine_chemistry_type(request.metal_ratio)
 
             record = CalibrationRecord(
                 paper_type=request.paper_type,
@@ -396,17 +420,17 @@ async def _train_model_task(
         else:
             train_db = database
 
-        # Configure settings
+        # Configure settings from request (addresses Gemini feedback on hardcoded values)
         settings = DeepLearningSettings(
             num_epochs=request.num_epochs,
             batch_size=request.batch_size,
             learning_rate=request.learning_rate,
-            use_ensemble=False,
-            device="cpu",  # Use CPU for API server
-            num_control_points=16,
+            use_ensemble=request.use_ensemble,
+            device=request.device,
+            num_control_points=request.num_control_points,
             lut_size=256,
-            hidden_dims=[128, 256, 128],
-            early_stopping_patience=10,
+            hidden_dims=request.hidden_dims,
+            early_stopping_patience=request.early_stopping_patience,
         )
 
         # Create and train predictor

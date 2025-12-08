@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import numpy as np
 
-from ptpd_calibration.config import DeepLearningSettings, get_settings
+from ptpd_calibration.config import DeepLearningSettings
 from ptpd_calibration.ml.database import CalibrationDatabase
 from ptpd_calibration.ml.deep.exceptions import TrainingError
 

@@ -132,42 +132,14 @@ def viz_curve_cnn() -> None:
 
 def viz_content_aware_net() -> None:
     fig, ax = plt.subplots(figsize=(10, 8))
-    # ax.set_aspect('equal') # Disable equal aspect for U-Net better scaling
     ax.axis('off')
     ax.set_title("ContentAwareCurveNet (U-Net)", pad=20)
-    
-    # Coordinates
-    levels = 4
-    x_enc = [2, 3, 4, 5]
-    x_dec = [8, 7, 6, 5] # Aligned with encoders
-    y_levels = [8, 6, 4, 2] # Depth
-    
+
     # Input
     draw_box(ax, (2, 9.5), (2, 0.8), "Input Image", 'input')
     draw_arrow(ax, (2, 9.1), (2, 8.4))
-    
-    enc_pos = []
-    dec_pos = []
-    
-    # Encoder
-    for i in range(levels):
-        pos = (2 + i*0.8, y_levels[i])
-        enc_pos.append(pos)
-        label = f"Enc {i+1}"
-        sub = f"{32*(2**i)} ch"
-        draw_box(ax, pos, (1.5, 1), label, 'layer', sub)
-        
-        if i < levels - 1:
-            # Pooling arrow down-right
-            next_pos = (2 + (i+1)*0.8, y_levels[i+1] + 0.5)
-            draw_arrow(ax, (pos[0], pos[1]-0.5), next_pos)
 
-    # Bottleneck
-    bot_pos = (2 + (levels)*0.8, 0)
-    # Actually let's make it simpler layout: V shape
-    
-    # Re-doing layout for V-shape U-Net
-    
+    # V-shape U-Net layout
     # Encoder stream
     e_pos = [(2, 8), (2, 6), (2, 4), (2, 2)]
     for i, pos in enumerate(e_pos):

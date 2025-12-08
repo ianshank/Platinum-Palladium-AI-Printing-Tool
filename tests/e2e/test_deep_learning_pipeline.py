@@ -5,6 +5,7 @@ Tests the complete workflow from synthetic data generation through
 model training to prediction and evaluation.
 """
 
+import importlib.util
 import json
 import tempfile
 from pathlib import Path
@@ -17,13 +18,8 @@ from ptpd_calibration.core.models import CalibrationRecord
 from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
 from ptpd_calibration.ml.database import CalibrationDatabase
 
-# Check if PyTorch is available
-try:
-    import torch
-
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
+# Check if PyTorch is available using importlib (cleaner than try/import)
+TORCH_AVAILABLE = importlib.util.find_spec("torch") is not None
 
 
 pytestmark = [
@@ -398,6 +394,8 @@ class TestProcessSimulator:
 
     def test_simulator_forward_pass(self):
         """Test basic simulator forward pass."""
+        import torch
+
         from ptpd_calibration.config import DeepLearningSettings
         from ptpd_calibration.ml.deep.process_sim import ProcessSimulator
 
@@ -414,6 +412,8 @@ class TestProcessSimulator:
 
     def test_simulator_with_learnable_params(self):
         """Test simulator with learnable parameters."""
+        import torch
+
         from ptpd_calibration.config import DeepLearningSettings
         from ptpd_calibration.ml.deep.process_sim import ProcessSimulator
 
@@ -431,6 +431,8 @@ class TestProcessSimulator:
 
     def test_simulator_intermediates(self):
         """Test simulator returns intermediate values."""
+        import torch
+
         from ptpd_calibration.config import DeepLearningSettings
         from ptpd_calibration.ml.deep.process_sim import ProcessSimulator
 

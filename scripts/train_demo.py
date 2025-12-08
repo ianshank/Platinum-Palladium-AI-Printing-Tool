@@ -1,14 +1,18 @@
+"""
+Training demo script for deep learning curve prediction.
 
-import sys
+Usage:
+    Install the package in editable mode first:
+        pip install -e .
+    Then run:
+        python scripts/train_demo.py
+"""
+
 import logging
 from pathlib import Path
 
-# Add src to path just in case
-sys.path.append('src')
-
 from ptpd_calibration.config import DeepLearningSettings
 from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
-from ptpd_calibration.ml.database import CalibrationDatabase
 from ptpd_calibration.ml.deep.synthetic_data import generate_training_data
 
 logging.basicConfig(level=logging.INFO)
