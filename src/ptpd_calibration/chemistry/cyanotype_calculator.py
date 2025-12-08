@@ -24,6 +24,7 @@ from enum import Enum
 from typing import Optional
 
 from ptpd_calibration.core.types import CyanotypeFormula
+from ptpd_calibration.config import CyanotypeSettings
 
 
 class CyanotypePaperType(str, Enum):
@@ -186,29 +187,7 @@ class CyanotypeRecipe:
         return "\n".join(lines)
 
 
-@dataclass
-class CyanotypeSettings:
-    """Settings for cyanotype chemistry calculations."""
 
-    # Base coating amount (ml per square inch)
-    ml_per_square_inch: float = 0.015  # ~1.5ml per 100 sq in
-
-    # Drops per ml
-    drops_per_ml: float = 20.0
-
-    # Solution concentrations (stock solutions)
-    solution_a_concentration: float = 0.25  # 25% FAC solution
-    solution_b_concentration: float = 0.10  # 10% potassium ferricyanide
-
-    # Default margin (inches to subtract for coating area)
-    default_margin_inches: float = 0.5
-
-    # Cost per ml of stock solutions (USD)
-    solution_a_cost_per_ml: float = 0.05  # FAC is relatively inexpensive
-    solution_b_cost_per_ml: float = 0.08  # Potassium ferricyanide
-
-    # Base exposure time in sunlight (minutes) for average conditions
-    base_sunlight_exposure_minutes: float = 15.0
 
 
 class CyanotypeCalculator:

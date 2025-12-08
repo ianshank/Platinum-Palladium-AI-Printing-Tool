@@ -29,6 +29,20 @@ from ptpd_calibration.core.types import (
     PaperGrade,
     PaperSurface,
 )
+from ptpd_calibration.config import SilverGelatinSettings
+
+
+# Standard development times (seconds) for different developers at 20C
+DEFAULT_DEVELOPER_TIMES = {
+    DeveloperType.DEKTOL: 90,
+    DeveloperType.D_72: 90,
+    DeveloperType.SELECTOL: 120,
+    DeveloperType.SELECTOL_SOFT: 150,
+    DeveloperType.ILFORD_MULTIGRADE: 60,
+    DeveloperType.ETHOL_LPD: 90,
+    DeveloperType.ANSCO_130: 120,
+    DeveloperType.AMIDOL: 120,
+}
 
 
 class DilutionRatio(str, Enum):
@@ -250,37 +264,7 @@ class ProcessingChemistry:
         }
 
 
-@dataclass
-class SilverGelatinSettings:
-    """Settings for silver gelatin processing calculations."""
 
-    # Developer defaults
-    default_developer: DeveloperType = DeveloperType.DEKTOL
-    default_dilution: DilutionRatio = DilutionRatio.ONE_TO_TWO
-    default_temperature_c: float = 20.0  # 68F
-
-    # Standard development times (seconds) for different developers at 20C
-    # These are starting points - actual times depend on paper and desired results
-    developer_times: dict = field(default_factory=lambda: {
-        DeveloperType.DEKTOL: 90,
-        DeveloperType.D_72: 90,
-        DeveloperType.SELECTOL: 120,
-        DeveloperType.SELECTOL_SOFT: 150,
-        DeveloperType.ILFORD_MULTIGRADE: 60,
-        DeveloperType.ETHOL_LPD: 90,
-        DeveloperType.ANSCO_130: 120,
-        DeveloperType.AMIDOL: 120,
-    })
-
-    # Fixer times by paper base (seconds)
-    fixer_time_fb: int = 300  # 5 minutes for fiber base
-    fixer_time_rc: int = 120  # 2 minutes for RC
-
-    # Cost per liter of working solution (USD)
-    developer_cost_per_liter: float = 0.50
-    stop_bath_cost_per_liter: float = 0.10
-    fixer_cost_per_liter: float = 0.30
-    hypo_clear_cost_per_liter: float = 0.20
 
 
 class SilverGelatinCalculator:
@@ -341,8 +325,16 @@ class SilverGelatinCalculator:
         if num_prints <= 0:
             raise ValueError("number of prints must be positive")
         # Use defaults if not specified
-        developer = developer or self.settings.default_developer
-        dilution = dilution or self.settings.default_dilution
+        # Use defaults if not specified
+        if developer is None:
+             # Handle string vs Enum if coming from config
+             dev_setting = self.settings.default_developer
+             developer = DeveloperType(dev_setting) if isinstance(dev_setting, str) else dev_setting
+
+        if dilution is None:
+             dil_setting = self.settings.default_dilution
+             dilution = DilutionRatio(dil_setting) if isinstance(dil_setting, str) else dil_setting
+
         temperature_c = temperature_c or self.settings.default_temperature_c
 
         # Auto-select tray size if not specified
@@ -362,8 +354,8 @@ class SilverGelatinCalculator:
 
         # Calculate fixer
         fixer_time = (
-            self.settings.fixer_time_fb if paper_base == PaperBase.FIBER
-            else self.settings.fixer_time_rc
+            self.settings.fixer_time_fb_seconds if paper_base == PaperBase.FIBER
+            else self.settings.fixer_time_rc_seconds
         )
         fixer_capacity = self._calculate_fixer_capacity(tray_volume_ml, paper_base)
 
@@ -509,7 +501,7 @@ class SilverGelatinCalculator:
         water_ml = volume_ml - stock_ml
 
         # Get development time
-        base_time = self.settings.developer_times.get(developer, 90)
+        base_time = DEFAULT_DEVELOPER_TIMES.get(developer, 90)
 
         # Adjust for temperature (10% change per degree from 20C)
         temp_factor = 1.0 + (20.0 - temperature_c) * 0.1

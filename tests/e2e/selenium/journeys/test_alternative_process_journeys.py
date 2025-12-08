@@ -55,7 +55,7 @@ class TestCyanotypePrintingJourney:
 
         # Step 6: Calculate chemistry
         cyanotype_page.click_calculate_chemistry()
-        chemistry_results = cyanotype_page.get_chemistry_results()
+        cyanotype_page.get_chemistry_results()
 
         # Step 7: Calculate exposure for BL tubes (common starter setup)
         cyanotype_page.select_bl_tubes()
@@ -64,7 +64,7 @@ class TestCyanotypePrintingJourney:
         cyanotype_page.set_uv_distance(4.0)
         cyanotype_page.click_calculate_exposure()
 
-        exposure_results = cyanotype_page.get_exposure_results()
+        cyanotype_page.get_exposure_results()
 
         # Verify user received actionable information
         assert not cyanotype_page.is_error_displayed(), "No errors should occur"
@@ -119,12 +119,12 @@ class TestCyanotypePrintingJourney:
         cyanotype_page.set_print_dimensions(8.0, 10.0)
         cyanotype_page.select_classic_formula()
         cyanotype_page.click_calculate_chemistry()
-        classic_results = cyanotype_page.get_chemistry_results()
+        cyanotype_page.get_chemistry_results()
 
         # Step 2: Calculate new formula for comparison
         cyanotype_page.select_new_formula()
         cyanotype_page.click_calculate_chemistry()
-        new_results = cyanotype_page.get_chemistry_results()
+        cyanotype_page.get_chemistry_results()
 
         # Step 3: Compare exposure times
         cyanotype_page.select_bl_tubes()
@@ -215,7 +215,7 @@ class TestSilverGelatinDarkroomJourney:
 
         # Step 7: Calculate chemistry
         silver_gelatin_page.click_calculate_chemistry()
-        chemistry = silver_gelatin_page.get_chemistry_results()
+        silver_gelatin_page.get_chemistry_results()
 
         # Step 8: Calculate initial exposure estimate
         silver_gelatin_page.set_enlarger_height(30.0)
@@ -270,8 +270,8 @@ class TestSilverGelatinDarkroomJourney:
 
         # Step 7: Calculate chemistry
         silver_gelatin_page.click_calculate_chemistry()
-        chemistry = silver_gelatin_page.get_chemistry_results()
-        times = silver_gelatin_page.get_processing_times()
+        silver_gelatin_page.get_chemistry_results()
+        silver_gelatin_page.get_processing_times()
 
         # Step 8: Calculate exposure for high enlargement
         silver_gelatin_page.set_enlarger_height(60.0)  # Higher for large print
@@ -319,7 +319,7 @@ class TestSilverGelatinDarkroomJourney:
             silver_gelatin_page.set_base_exposure(base_exposure)
             silver_gelatin_page.click_calculate_split()
 
-            split_results = silver_gelatin_page.get_split_filter_results()
+            silver_gelatin_page.get_split_filter_results()
         except Exception:
             pass  # Split filter may not be implemented
 
@@ -354,7 +354,7 @@ class TestSilverGelatinDarkroomJourney:
 
         # Step 5: Calculate chemistry for the run
         silver_gelatin_page.click_calculate_chemistry()
-        chemistry = silver_gelatin_page.get_chemistry_results()
+        silver_gelatin_page.get_chemistry_results()
 
         # Verify production planning completed
         assert not silver_gelatin_page.is_error_displayed()
@@ -397,7 +397,7 @@ class TestMultiProcessWorkshopJourney:
         chemistry_page.wait_for_gradio_ready()
         chemistry_page.navigate_to_chemistry()
 
-        ptpd_results = chemistry_page.calculate_recipe(
+        chemistry_page.calculate_recipe(
             width=8.0,
             height=10.0,
             chemistry_type="Platinum/Palladium",
@@ -407,13 +407,13 @@ class TestMultiProcessWorkshopJourney:
         # Step 2: Compare with cyanotype
         cyanotype_page.navigate_to_cyanotype()
 
-        cyanotype_chemistry = cyanotype_page.calculate_chemistry_recipe(
+        cyanotype_page.calculate_chemistry_recipe(
             width=8.0,
             height=10.0,
             formula="Classic",
         )
 
-        cyanotype_exposure = cyanotype_page.calculate_exposure_time(
+        cyanotype_page.calculate_exposure_time(
             negative_density=1.6,
             uv_source="BL Tubes",
         )
@@ -421,13 +421,13 @@ class TestMultiProcessWorkshopJourney:
         # Step 3: Compare with silver gelatin
         silver_gelatin_page.navigate_to_silver_gelatin()
 
-        silver_chemistry = silver_gelatin_page.calculate_processing_chemistry(
+        silver_gelatin_page.calculate_processing_chemistry(
             width=8.0,
             height=10.0,
             paper_base="Fiber",
         )
 
-        silver_exposure = silver_gelatin_page.calculate_enlarger_exposure(
+        silver_gelatin_page.calculate_enlarger_exposure(
             enlarger_height=30.0,
             f_stop=8.0,
         )
@@ -498,7 +498,7 @@ class TestErrorRecoveryJourney:
         cyanotype_page.click_calculate_chemistry()
 
         # Should recover and produce valid results
-        results = cyanotype_page.get_chemistry_results()
+        cyanotype_page.get_chemistry_results()
 
     def test_recovery_from_page_refresh_journey(self, cyanotype_page):
         """

@@ -715,12 +715,7 @@ class SilverGelatinExposureBuilder:
             "grade_4": PaperGrade.GRADE_4,
             "grade_5": PaperGrade.GRADE_5,
         }
-        light_map = {
-            "diffusion": EnlargerLightSource.DIFFUSION,
-            "condenser": EnlargerLightSource.CONDENSER,
-            "cold_light": EnlargerLightSource.COLD_LIGHT,
-            "led": EnlargerLightSource.LED,
-        }
+
 
         return calculator.calculate(
             enlarger_height_cm=self._enlarger_height,
