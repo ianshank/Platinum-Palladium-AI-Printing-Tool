@@ -23,7 +23,6 @@ from ptpd_calibration.ml.deep.exceptions import CheckpointError, TrainingError
 
 if TYPE_CHECKING:
     from ptpd_calibration.config import DeepLearningSettings
-    from ptpd_calibration.ml.deep.dataset import FeatureEncoder
 
 try:
     import torch

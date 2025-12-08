@@ -37,55 +37,41 @@ def _check_torch_available() -> bool:
         return False
 
 
-# Lazy imports to avoid requiring PyTorch at module load time
-def __getattr__(name: str):
-    """Lazy import of PyTorch-dependent modules."""
-    torch_modules = {
-        "CurveMLP",
-        "CurveCNN",
-        "ContentAwareCurveNet",
-        "UniformityCorrectionNet",
-        "ProcessSimulator",
-        "CalibrationDataset",
-        "CurveTrainer",
-        "DeepCurvePredictor",
-    }
+# Mapping of class names to their module paths for lazy imports
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    # Models
+    "CurveMLP": ("ptpd_calibration.ml.deep.models", "CurveMLP"),
+    "CurveCNN": ("ptpd_calibration.ml.deep.models", "CurveCNN"),
+    "ContentAwareCurveNet": ("ptpd_calibration.ml.deep.models", "ContentAwareCurveNet"),
+    "UniformityCorrectionNet": ("ptpd_calibration.ml.deep.models", "UniformityCorrectionNet"),
+    # Process simulation
+    "ProcessSimulator": ("ptpd_calibration.ml.deep.process_sim", "ProcessSimulator"),
+    # Dataset
+    "CalibrationDataset": ("ptpd_calibration.ml.deep.dataset", "CalibrationDataset"),
+    # Training
+    "CurveTrainer": ("ptpd_calibration.ml.deep.training", "CurveTrainer"),
+    # Predictor
+    "DeepCurvePredictor": ("ptpd_calibration.ml.deep.predictor", "DeepCurvePredictor"),
+}
 
-    if name in torch_modules:
+
+def __getattr__(name: str):
+    """
+    Lazy import of PyTorch-dependent modules.
+
+    Uses importlib for explicit module resolution without relying on locals().
+    """
+    if name in _LAZY_IMPORTS:
         if not _check_torch_available():
             raise PyTorchNotAvailableError(
                 f"PyTorch is required to use {name}. "
                 "Install with: pip install ptpd-calibration[deep]"
             )
 
-        if name in {"CurveMLP", "CurveCNN", "ContentAwareCurveNet", "UniformityCorrectionNet"}:
-            from ptpd_calibration.ml.deep.models import (
-                ContentAwareCurveNet,
-                CurveCNN,
-                CurveMLP,
-                UniformityCorrectionNet,
-            )
+        import importlib
 
-            return locals()[name]
-
-        elif name == "ProcessSimulator":
-            from ptpd_calibration.ml.deep.process_sim import ProcessSimulator
-
-            return ProcessSimulator
-
-        elif name == "CalibrationDataset":
-            from ptpd_calibration.ml.deep.dataset import CalibrationDataset
-
-            return CalibrationDataset
-
-        elif name == "CurveTrainer":
-            from ptpd_calibration.ml.deep.training import CurveTrainer
-
-            return CurveTrainer
-
-        elif name == "DeepCurvePredictor":
-            from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
-
-            return DeepCurvePredictor
+        module_path, class_name = _LAZY_IMPORTS[name]
+        module = importlib.import_module(module_path)
+        return getattr(module, class_name)
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

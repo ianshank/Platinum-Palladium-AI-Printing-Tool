@@ -351,13 +351,10 @@ class TestPredictorE2E:
 
         # Different papers should give somewhat different curves
         # (trained model should learn paper-specific characteristics)
+        # Verify predictions exist and have correct shape for all papers
         for p1 in papers:
             for p2 in papers:
                 if p1 != p2:
-                    # Allow for some similarity but not identical
-                    diff = np.mean(
-                        np.abs(predictions[p1].curve - predictions[p2].curve)
-                    )
                     # With limited training, differences may be small
                     # Just verify predictions work for all papers
                     assert len(predictions[p1].curve) == len(predictions[p2].curve)

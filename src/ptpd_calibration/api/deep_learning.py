@@ -238,7 +238,11 @@ def create_deep_learning_router(database, model_storage: dict):
             }
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.exception("Prediction failed: %s", e)
+            raise HTTPException(
+                status_code=500,
+                detail="Prediction failed. Check server logs for details.",
+            )
 
     @router.post("/suggest-adjustments")
     async def suggest_adjustments(request: SuggestAdjustmentsRequest):
@@ -286,7 +290,11 @@ def create_deep_learning_router(database, model_storage: dict):
             }
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.exception("Suggest adjustments failed: %s", e)
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate suggestions. Check server logs for details.",
+            )
 
     @router.get("/models")
     async def list_models():
@@ -348,7 +356,11 @@ def create_deep_learning_router(database, model_storage: dict):
             }
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.exception("Synthetic data generation failed: %s", e)
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate synthetic data. Check server logs for details.",
+            )
 
     return router
 

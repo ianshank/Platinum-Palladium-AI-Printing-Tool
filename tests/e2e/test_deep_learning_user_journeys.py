@@ -235,6 +235,7 @@ class TestExperiencedUserJourney:
 
         predictor = DeepCurvePredictor(settings=settings)
         stats = predictor.train(user_db, num_epochs=10)
+        assert "num_samples" in stats, "Training should return stats including num_samples"
 
         # Step 3: Compare predictions for different papers
         print("Step 3: Comparing predictions across papers...")

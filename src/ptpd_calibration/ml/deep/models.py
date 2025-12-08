@@ -119,33 +119,33 @@ class InterpolationLayer(nn.Module):
         """
         Interpolate control points to full LUT.
 
+        Uses vectorized operations with searchsorted for GPU-efficient interpolation.
+
         Args:
             control_points: Shape (batch, num_control_points).
 
         Returns:
             Interpolated LUT of shape (batch, lut_size).
         """
-        batch_size = control_points.shape[0]
-        device = control_points.device
+        # Vectorized interpolation using searchsorted and advanced indexing
+        # Find indices for all output points at once
+        idx_right = torch.searchsorted(self.control_x, self.output_x)
+        idx_right = torch.clamp(idx_right, 1, self.num_control_points - 1)
+        idx_left = idx_right - 1
 
-        # Use linear interpolation
-        output = torch.zeros(batch_size, self.lut_size, device=device)
+        # Get x values for interpolation
+        x_left = self.control_x[idx_left]  # (lut_size,)
+        x_right = self.control_x[idx_right]  # (lut_size,)
 
-        for i in range(self.lut_size):
-            x = self.output_x[i]
-            # Find surrounding control points
-            idx_right = torch.searchsorted(self.control_x, x)
-            idx_right = torch.clamp(idx_right, 1, self.num_control_points - 1)
-            idx_left = idx_right - 1
+        # Compute interpolation weights
+        t = (self.output_x - x_left) / (x_right - x_left + 1e-6)  # (lut_size,)
 
-            # Linear interpolation
-            x_left = self.control_x[idx_left]
-            x_right = self.control_x[idx_right]
-            t = (x - x_left) / (x_right - x_left + 1e-6)
+        # Gather y values using advanced indexing (batch, lut_size)
+        y_left = control_points[:, idx_left]
+        y_right = control_points[:, idx_right]
 
-            y_left = control_points[:, idx_left]
-            y_right = control_points[:, idx_right]
-            output[:, i] = y_left + t * (y_right - y_left)
+        # Linear interpolation: output = y_left + t * (y_right - y_left)
+        output = y_left + t.unsqueeze(0) * (y_right - y_left)
 
         return output
 

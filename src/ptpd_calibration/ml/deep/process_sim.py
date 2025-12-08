@@ -424,9 +424,6 @@ class NegativeGenerator(nn.Module):
 
         # Look up in curve (interpolate)
         # curve is (batch, lut_size), target_norm is (batch, image_size)
-        batch_size = target_norm.shape[0]
-        lut_size = curve.shape[1]
-
         # Use grid_sample for differentiable lookup
         curve_expanded = curve.unsqueeze(1).unsqueeze(1)  # (batch, 1, 1, lut_size)
         grid_x = target_norm * 2 - 1  # Convert to [-1, 1]

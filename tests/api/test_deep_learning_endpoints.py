@@ -5,11 +5,11 @@ Tests for the deep learning curve prediction API endpoints.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import patch
 
 # Check if PyTorch is available
 try:
-    import torch
+    import torch  # noqa: F401
 
     TORCH_AVAILABLE = True
 except ImportError:
@@ -17,7 +17,7 @@ except ImportError:
 
 # Check if FastAPI is available
 try:
-    from fastapi.testclient import TestClient
+    from fastapi.testclient import TestClient  # noqa: F401
 
     FASTAPI_AVAILABLE = True
 except ImportError:

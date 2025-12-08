@@ -52,9 +52,9 @@ class FeatureEncoder:
     developer_to_idx: dict[str, int] = field(default_factory=dict)
     contrast_agent_to_idx: dict[str, int] = field(default_factory=dict)
 
-    # Normalization statistics
-    exposure_mean: float = 180.0
-    exposure_std: float = 60.0
+    # Normalization statistics (log_exposure uses log-transformed values for proper scaling)
+    log_exposure_mean: float = 5.2  # log(180+1) ≈ 5.2
+    log_exposure_std: float = 0.3  # Typical std for log-transformed exposure times
     humidity_mean: float = 50.0
     humidity_std: float = 15.0
     temperature_mean: float = 21.0
@@ -97,8 +97,11 @@ class FeatureEncoder:
         temperatures = [r.temperature for r in records if r.temperature is not None]
         contrast_amounts = [r.contrast_amount for r in records]
 
-        exposure_mean = np.mean(exposures) if exposures else 180.0
-        exposure_std = max(np.std(exposures), 1.0) if exposures else 60.0
+        # For exposure times, compute mean/std on log-transformed values (standard approach)
+        log_exposures = [np.log(e + 1) for e in exposures] if exposures else [np.log(181)]
+        log_exposure_mean = np.mean(log_exposures)
+        log_exposure_std = max(np.std(log_exposures), 0.1)  # Minimum std to avoid division issues
+
         humidity_mean = np.mean(humidities) if humidities else 50.0
         humidity_std = max(np.std(humidities), 1.0) if humidities else 15.0
         temperature_mean = np.mean(temperatures) if temperatures else 21.0
@@ -123,8 +126,8 @@ class FeatureEncoder:
             chemistry_to_idx=chemistry_to_idx,
             developer_to_idx=developer_to_idx,
             contrast_agent_to_idx=contrast_agent_to_idx,
-            exposure_mean=float(exposure_mean),
-            exposure_std=float(exposure_std),
+            log_exposure_mean=float(log_exposure_mean),
+            log_exposure_std=float(log_exposure_std),
             humidity_mean=float(humidity_mean),
             humidity_std=float(humidity_std),
             temperature_mean=float(temperature_mean),
@@ -200,10 +203,9 @@ class FeatureEncoder:
             if self.contrast_amount_max > 0
             else 0.0
         )
-        features.append(
-            (np.log(record.exposure_time + 1) - np.log(self.exposure_mean + 1))
-            / np.log(self.exposure_std + 1)
-        )
+        # Standard z-score normalization on log-transformed exposure time
+        log_exposure = np.log(record.exposure_time + 1)
+        features.append((log_exposure - self.log_exposure_mean) / self.log_exposure_std)
         features.append(
             ((record.humidity or self.humidity_mean) - self.humidity_mean) / self.humidity_std
         )
@@ -221,8 +223,8 @@ class FeatureEncoder:
             "chemistry_to_idx": self.chemistry_to_idx,
             "developer_to_idx": self.developer_to_idx,
             "contrast_agent_to_idx": self.contrast_agent_to_idx,
-            "exposure_mean": self.exposure_mean,
-            "exposure_std": self.exposure_std,
+            "log_exposure_mean": self.log_exposure_mean,
+            "log_exposure_std": self.log_exposure_std,
             "humidity_mean": self.humidity_mean,
             "humidity_std": self.humidity_std,
             "temperature_mean": self.temperature_mean,
