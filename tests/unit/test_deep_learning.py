@@ -11,6 +11,7 @@ These tests cover:
 Tests are marked with @pytest.mark.deep to allow skipping when PyTorch is unavailable.
 """
 
+import importlib.util
 import json
 import tempfile
 from pathlib import Path
@@ -27,16 +28,10 @@ from ptpd_calibration.ml.deep.exceptions import (
     DatasetError,
     DeepLearningError,
     ModelNotTrainedError,
-    PyTorchNotAvailableError,
 )
 
-# Check if PyTorch is available
-try:
-    import torch
-
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
+# Check if PyTorch is available using importlib (cleaner than try/import per Copilot feedback)
+TORCH_AVAILABLE = importlib.util.find_spec("torch") is not None
 
 # Skip all tests in this module if PyTorch is not available
 pytestmark = [
@@ -220,6 +215,8 @@ class TestCurveMLP:
 
     def test_forward_pass(self, dl_settings: DeepLearningSettings) -> None:
         """Test forward pass produces correct output shapes."""
+        import torch
+
         from ptpd_calibration.ml.deep.models import CurveMLP
 
         num_features = 15
@@ -237,6 +234,8 @@ class TestCurveMLP:
 
     def test_output_monotonicity(self, dl_settings: DeepLearningSettings) -> None:
         """Test that output curves are monotonic."""
+        import torch
+
         from ptpd_calibration.ml.deep.models import CurveMLP
 
         num_features = 15
@@ -251,6 +250,8 @@ class TestCurveMLP:
 
     def test_output_range(self, dl_settings: DeepLearningSettings) -> None:
         """Test that output is in [0, 1] range."""
+        import torch
+
         from ptpd_calibration.ml.deep.models import CurveMLP
 
         num_features = 15
@@ -281,6 +282,8 @@ class TestCurveCNN:
 
     def test_forward_pass(self, dl_settings: DeepLearningSettings) -> None:
         """Test CNN forward pass."""
+        import torch
+
         from ptpd_calibration.ml.deep.models import CurveCNN
 
         model = CurveCNN(num_features=15, lut_size=dl_settings.lut_size)
@@ -295,6 +298,8 @@ class TestMonotonicLayer:
 
     def test_monotonicity_enforcement(self) -> None:
         """Test that layer enforces monotonicity."""
+        import torch
+
         from ptpd_calibration.ml.deep.models import MonotonicLayer
 
         layer = MonotonicLayer(normalize=True)
@@ -310,6 +315,8 @@ class TestMonotonicLayer:
 
     def test_normalization(self) -> None:
         """Test output normalization to [0, 1]."""
+        import torch
+
         from ptpd_calibration.ml.deep.models import MonotonicLayer
 
         layer = MonotonicLayer(normalize=True)
@@ -338,6 +345,8 @@ class TestContentAwareCurveNet:
 
     def test_forward_pass(self) -> None:
         """Test content-aware forward pass."""
+        import torch
+
         from ptpd_calibration.ml.deep.models import ContentAwareCurveNet
 
         model = ContentAwareCurveNet(in_channels=1, base_channels=8, num_levels=2)
@@ -350,6 +359,8 @@ class TestContentAwareCurveNet:
 
     def test_adjustment_range(self) -> None:
         """Test that output is within adjustment range."""
+        import torch
+
         from ptpd_calibration.ml.deep.models import ContentAwareCurveNet
 
         low, high = 0.8, 1.2
@@ -385,6 +396,8 @@ class TestUniformityCorrectionNet:
 
     def test_forward_pass(self) -> None:
         """Test uniformity correction forward pass."""
+        import torch
+
         from ptpd_calibration.ml.deep.models import UniformityCorrectionNet
 
         model = UniformityCorrectionNet(kernel_size=7, sigma=2.0)
@@ -395,6 +408,8 @@ class TestUniformityCorrectionNet:
 
     def test_smoothness(self) -> None:
         """Test that correction map is smooth."""
+        import torch
+
         from ptpd_calibration.ml.deep.models import UniformityCorrectionNet
 
         model = UniformityCorrectionNet(kernel_size=15, sigma=5.0)
@@ -476,6 +491,8 @@ class TestCalibrationDataset:
 
     def test_dataset_getitem(self, populated_db: CalibrationDatabase) -> None:
         """Test getting items from dataset."""
+        import torch
+
         from ptpd_calibration.ml.deep.dataset import CalibrationDataset
 
         dataset = CalibrationDataset(populated_db, target_length=64)
@@ -565,6 +582,8 @@ class TestCurveLoss:
 
     def test_loss_computation(self) -> None:
         """Test loss computation."""
+        import torch
+
         from ptpd_calibration.ml.deep.training import CurveLoss
 
         loss_fn = CurveLoss(
@@ -585,6 +604,8 @@ class TestCurveLoss:
 
     def test_monotonicity_penalty(self) -> None:
         """Test monotonicity penalty is higher for non-monotonic curves."""
+        import torch
+
         from ptpd_calibration.ml.deep.training import CurveLoss
 
         loss_fn = CurveLoss(mse_weight=0.0, monotonicity_weight=1.0, smoothness_weight=0.0)
@@ -637,6 +658,8 @@ class TestCurveTrainer:
 
     def test_trainer_creation(self, dl_settings: DeepLearningSettings) -> None:
         """Test trainer creation."""
+        import torch
+
         from ptpd_calibration.ml.deep.models import CurveMLP
         from ptpd_calibration.ml.deep.training import CurveTrainer
 
@@ -718,6 +741,8 @@ class TestCharacteristicCurve:
 
     def test_curve_forward(self) -> None:
         """Test characteristic curve forward pass."""
+        import torch
+
         from ptpd_calibration.ml.deep.process_sim import CharacteristicCurve
 
         curve = CharacteristicCurve(gamma=1.0, dmin=0.0, dmax=1.0, learnable=False)
@@ -746,6 +771,8 @@ class TestProcessSimulator:
 
     def test_negative_to_transmission(self, dl_settings: DeepLearningSettings) -> None:
         """Test negative density to transmission conversion."""
+        import torch
+
         from ptpd_calibration.ml.deep.process_sim import ProcessSimulator
 
         sim = ProcessSimulator(dl_settings)
@@ -762,6 +789,8 @@ class TestProcessSimulator:
 
     def test_full_simulation(self, dl_settings: DeepLearningSettings) -> None:
         """Test full process simulation."""
+        import torch
+
         from ptpd_calibration.ml.deep.process_sim import ProcessSimulator
 
         sim = ProcessSimulator(dl_settings, learnable=False)
@@ -774,6 +803,8 @@ class TestProcessSimulator:
 
     def test_simulation_with_intermediates(self, dl_settings: DeepLearningSettings) -> None:
         """Test simulation returning intermediate values."""
+        import torch
+
         from ptpd_calibration.ml.deep.process_sim import ProcessSimulator
 
         sim = ProcessSimulator(dl_settings)
@@ -801,6 +832,8 @@ class TestProcessParameters:
 
     def test_from_tensor(self) -> None:
         """Test creation from tensor."""
+        import torch
+
         from ptpd_calibration.ml.deep.process_sim import ProcessParameters
 
         tensor = torch.tensor([1.8, 0.1, 2.0, 0.85, 0.15, 1.0])

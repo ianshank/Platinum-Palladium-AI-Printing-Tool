@@ -5,6 +5,7 @@ These tests simulate real user workflows for the deep learning curve prediction
 feature, ensuring the complete user experience works as expected.
 """
 
+import importlib.util
 import json
 import tempfile
 from pathlib import Path
@@ -17,13 +18,8 @@ from ptpd_calibration.core.models import CalibrationRecord
 from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
 from ptpd_calibration.ml.database import CalibrationDatabase
 
-# Check if PyTorch is available
-try:
-    import torch
-
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
+# Check if PyTorch is available using importlib (cleaner than try/import per Copilot feedback)
+TORCH_AVAILABLE = importlib.util.find_spec("torch") is not None
 
 
 pytestmark = [

@@ -289,9 +289,12 @@ def create_deep_learning_router(database, model_storage: dict):
             import numpy as np
 
             from ptpd_calibration.core.models import CalibrationRecord
-            from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
+            from ptpd_calibration.core.types import ContrastAgent, DeveloperType
 
             predictor = model_storage[request.model_name]
+
+            # Use shared helper function to determine chemistry type (addresses Gemini feedback)
+            chemistry_type = determine_chemistry_type(request.metal_ratio)
 
             record = CalibrationRecord(
                 paper_type=request.paper_type,
@@ -299,7 +302,7 @@ def create_deep_learning_router(database, model_storage: dict):
                 exposure_time=request.exposure_time,
                 contrast_agent=ContrastAgent.NA2,
                 contrast_amount=5.0,
-                chemistry_type=ChemistryType.PLATINUM_PALLADIUM,
+                chemistry_type=chemistry_type,
                 developer=DeveloperType.POTASSIUM_OXALATE,
             )
 

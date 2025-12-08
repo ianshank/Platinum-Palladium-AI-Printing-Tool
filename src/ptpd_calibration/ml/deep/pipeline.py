@@ -245,13 +245,18 @@ class TrainingPipeline:
         self,
         predictor: "DeepCurvePredictor",
     ) -> dict:
-        """Evaluate model on the full database."""
-        from ptpd_calibration.ml.deep.dataset import CalibrationDataset, DataAugmentation
+        """
+        Evaluate model on the full database.
 
-        import torch
+        Delegates to CurveTrainer.evaluate() to avoid duplicate evaluation logic
+        (addresses Gemini code review feedback).
+        """
+        from ptpd_calibration.ml.deep.dataset import CalibrationDataset, DataAugmentation
+        from ptpd_calibration.ml.deep.training import CurveTrainer
+
         from torch.utils.data import DataLoader
 
-        # Create dataset without augmentation
+        # Create dataset without augmentation for clean evaluation
         dataset = CalibrationDataset(
             database=self.database,
             target_length=predictor.settings.lut_size,
@@ -261,45 +266,21 @@ class TrainingPipeline:
 
         loader = DataLoader(dataset, batch_size=32, shuffle=False)
 
-        # Evaluate
-        predictor.model.eval()
-        all_predictions = []
-        all_targets = []
+        # Use shared CurveTrainer.evaluate() to avoid duplicate metric computation logic
+        trainer = CurveTrainer(predictor.model, predictor.settings)
+        metrics = trainer.evaluate(loader)
 
-        with torch.no_grad():
-            for features, targets in loader:
-                features = features.to(predictor.device)
-                predictions, _ = predictor.model(features)
-                all_predictions.append(predictions.cpu().numpy())
-                all_targets.append(targets.numpy())
-
-        predictions = np.concatenate(all_predictions, axis=0)
-        targets = np.concatenate(all_targets, axis=0)
-
-        # Compute metrics
-        mse = float(np.mean((predictions - targets) ** 2))
-        mae = float(np.mean(np.abs(predictions - targets)))
-        max_error = float(np.max(np.abs(predictions - targets)))
-
-        # Monotonicity check
-        diffs = np.diff(predictions, axis=1)
-        monotonicity_rate = float(np.mean(diffs >= -1e-6))
-
-        # Per-sample correlation
-        correlations = []
-        for p, t in zip(predictions, targets):
-            corr = np.corrcoef(p, t)[0, 1]
-            if not np.isnan(corr):
-                correlations.append(corr)
-        mean_correlation = float(np.mean(correlations)) if correlations else 0.0
+        # Map metric names for consistency with pipeline's expected format
+        # CurveTrainer uses 'monotonicity_violations', pipeline expects 'monotonicity_rate'
+        monotonicity_rate = 1.0 - metrics.get("monotonicity_violations", 0.0)
 
         return {
-            "mse": mse,
-            "mae": mae,
-            "max_error": max_error,
+            "mse": metrics["mse"],
+            "mae": metrics["mae"],
+            "max_error": metrics["max_error"],
             "monotonicity_rate": monotonicity_rate,
-            "mean_correlation": mean_correlation,
-            "num_samples": len(predictions),
+            "mean_correlation": metrics["mean_correlation"],
+            "num_samples": metrics["num_samples"],
         }
 
     def run_hyperparameter_search(
