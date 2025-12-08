@@ -11,9 +11,10 @@ torch>=2.1.0
 torchvision>=0.16.0
 
 # Transformers and Hugging Face
-transformers>=4.36.0
-accelerate>=0.25.0
+transformers>=4.57.3
+accelerate>=1.12.0
 safetensors>=0.4.0
+peft>=0.18.0
 
 # Computer Vision Models
 ultralytics>=8.0.0  # YOLOv8
@@ -21,7 +22,7 @@ segment-anything>=1.0  # SAM (Segment Anything)
 timm>=0.9.0  # PyTorch Image Models (for ViT)
 
 # Diffusion Models
-diffusers>=0.25.0
+diffusers>=0.35.2
 
 # Perceptual Similarity
 lpips>=0.1.4

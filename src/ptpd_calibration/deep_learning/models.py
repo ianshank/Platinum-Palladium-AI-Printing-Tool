@@ -307,7 +307,7 @@ class CurvePredictionResult(BaseAIResult):
     # Curve properties
     is_monotonic: bool = Field(default=True, description="Curve is monotonic")
     max_slope: float = Field(default=1.0, ge=0.0, description="Maximum slope")
-    min_slope: float = Field(default=0.0, ge=0.0, description="Minimum slope")
+    min_slope: float = Field(default=0.0, description="Minimum slope")
 
     # Conditioning used
     conditioning_factors: dict[str, Any] = Field(
