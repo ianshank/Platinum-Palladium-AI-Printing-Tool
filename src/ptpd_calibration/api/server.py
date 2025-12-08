@@ -60,6 +60,17 @@ def create_app():
     # State
     database = CalibrationDatabase()
     upload_dir = settings.api.upload_dir or Path(tempfile.mkdtemp())
+    deep_learning_model_storage: dict = {}  # Storage for trained DL models
+
+    # Include deep learning router
+    try:
+        from ptpd_calibration.api.deep_learning import create_deep_learning_router
+
+        deep_router = create_deep_learning_router(database, deep_learning_model_storage)
+        app.include_router(deep_router)
+    except ImportError:
+        # Deep learning dependencies not available
+        pass
 
     # Pydantic models
     class AnalyzeRequest(BaseModel):
