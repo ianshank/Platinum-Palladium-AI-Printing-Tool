@@ -49,6 +49,9 @@ dependencies = [
 ml = [
     "scikit-learn>=1.3.0",
 ]
+deep = [
+    "torch>=2.0.0",
+]
 llm = [
     "anthropic>=0.39.0",
     "openai>=1.0.0",
@@ -64,7 +67,7 @@ ui = [
     "huggingface_hub>=0.25,<1.0",
 ]
 all = [
-    "ptpd-calibration[ml,llm,api,ui]",
+    "ptpd-calibration[ml,deep,llm,api,ui]",
 ]
 dev = [
     "pytest>=8.0.0",
@@ -146,6 +149,7 @@ markers = [
     "slow: Tests that take a long time to run",
     "browser: Tests requiring a browser (Selenium or Playwright)",
     "functional: Functional tests without browser",
+    "deep: Deep learning tests (require PyTorch)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

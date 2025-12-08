@@ -145,6 +145,208 @@ class MLSettings(BaseSettings):
     model_cache_dir: Optional[Path] = Field(default=None)
 
 
+class DeepLearningSettings(BaseSettings):
+    """Settings for deep learning-based curve prediction.
+
+    These settings control PyTorch-based neural network models for
+    learning tone curves from calibration data.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_DL_")
+
+    # Model architecture
+    model_type: str = Field(
+        default="curve_mlp",
+        description="Model type: curve_mlp, curve_cnn, content_aware, uniformity"
+    )
+    num_control_points: int = Field(
+        default=16,
+        ge=4,
+        le=64,
+        description="Number of control points for curve representation"
+    )
+    lut_size: int = Field(
+        default=256,
+        ge=16,
+        le=4096,
+        description="Size of output LUT (lookup table)"
+    )
+
+    # MLP architecture
+    hidden_dims: list[int] = Field(
+        default_factory=lambda: [128, 256, 128],
+        description="Hidden layer dimensions for MLP"
+    )
+    dropout_rate: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=0.5,
+        description="Dropout rate for regularization"
+    )
+    use_batch_norm: bool = Field(
+        default=True,
+        description="Use batch normalization in MLP layers"
+    )
+
+    # Process simulation
+    process_gamma_init: float = Field(
+        default=1.8,
+        ge=0.5,
+        le=4.0,
+        description="Initial gamma value for process simulator"
+    )
+    process_dmin_init: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=0.5,
+        description="Initial Dmin for process simulator"
+    )
+    process_dmax_init: float = Field(
+        default=2.0,
+        ge=1.0,
+        le=4.0,
+        description="Initial Dmax for process simulator"
+    )
+
+    # Uniformity correction
+    uniformity_kernel_size: int = Field(
+        default=31,
+        ge=3,
+        le=101,
+        description="Kernel size for uniformity smoothing (must be odd)"
+    )
+    uniformity_sigma: float = Field(
+        default=10.0,
+        ge=1.0,
+        le=50.0,
+        description="Sigma for Gaussian smoothing in uniformity correction"
+    )
+    uniformity_range: tuple[float, float] = Field(
+        default=(0.8, 1.2),
+        description="Range for multiplicative correction factor"
+    )
+
+    # Training parameters
+    learning_rate: float = Field(
+        default=1e-3,
+        ge=1e-6,
+        le=1.0,
+        description="Learning rate for optimizer"
+    )
+    weight_decay: float = Field(
+        default=1e-4,
+        ge=0.0,
+        le=1e-1,
+        description="L2 regularization weight decay"
+    )
+    batch_size: int = Field(
+        default=32,
+        ge=1,
+        le=512,
+        description="Training batch size"
+    )
+    num_epochs: int = Field(
+        default=100,
+        ge=1,
+        le=10000,
+        description="Maximum number of training epochs"
+    )
+    early_stopping_patience: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Epochs to wait before early stopping"
+    )
+    min_delta: float = Field(
+        default=1e-4,
+        ge=0.0,
+        le=1e-1,
+        description="Minimum improvement for early stopping"
+    )
+
+    # Loss function weights
+    mse_weight: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=10.0,
+        description="Weight for MSE loss component"
+    )
+    monotonicity_weight: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=10.0,
+        description="Weight for monotonicity regularization"
+    )
+    smoothness_weight: float = Field(
+        default=0.05,
+        ge=0.0,
+        le=10.0,
+        description="Weight for smoothness regularization"
+    )
+    perceptual_weight: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=10.0,
+        description="Weight for perceptual loss (Lab deltaE)"
+    )
+
+    # Data augmentation
+    augmentation_enabled: bool = Field(
+        default=True,
+        description="Enable data augmentation during training"
+    )
+    noise_std: float = Field(
+        default=0.02,
+        ge=0.0,
+        le=0.1,
+        description="Standard deviation of noise augmentation"
+    )
+    exposure_jitter: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=0.5,
+        description="Exposure time jitter factor for augmentation"
+    )
+
+    # Inference
+    use_ensemble: bool = Field(
+        default=True,
+        description="Use ensemble of models for prediction"
+    )
+    num_ensemble_models: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Number of models in ensemble"
+    )
+    mc_dropout_samples: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Number of MC dropout samples for uncertainty"
+    )
+
+    # Device settings
+    device: str = Field(
+        default="auto",
+        description="Device for training: auto, cpu, cuda, mps"
+    )
+    mixed_precision: bool = Field(
+        default=False,
+        description="Use mixed precision (FP16) training"
+    )
+
+    # Persistence
+    checkpoint_dir: Optional[Path] = Field(
+        default=None,
+        description="Directory for model checkpoints"
+    )
+    save_best_only: bool = Field(
+        default=True,
+        description="Only save best model checkpoint"
+    )
+
+
 class LLMSettings(BaseSettings):
     """Settings for LLM integration.
 
@@ -915,6 +1117,7 @@ class Settings(BaseSettings):
     extraction: ExtractionSettings = Field(default_factory=ExtractionSettings)
     curves: CurveSettings = Field(default_factory=CurveSettings)
     ml: MLSettings = Field(default_factory=MLSettings)
+    deep_learning: DeepLearningSettings = Field(default_factory=DeepLearningSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
     agent: AgentSettings = Field(default_factory=AgentSettings)
     api: APISettings = Field(default_factory=APISettings)
@@ -958,6 +1161,8 @@ class Settings(BaseSettings):
             self.exports_dir.mkdir(parents=True, exist_ok=True)
         if self.ml.model_cache_dir:
             self.ml.model_cache_dir.mkdir(parents=True, exist_ok=True)
+        if self.deep_learning.checkpoint_dir:
+            self.deep_learning.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
 
 # Global settings instance - lazy loaded
