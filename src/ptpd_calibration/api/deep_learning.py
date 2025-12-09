@@ -10,12 +10,101 @@ Provides REST API endpoints for:
 from __future__ import annotations
 
 import logging
-import tempfile
-from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# Check essential dependencies
+try:
+    import torch
+    TORCH_AVAILABLE = True
+    TORCH_VERSION = torch.__version__
+except ImportError:
+    TORCH_AVAILABLE = False
+    TORCH_VERSION = None
+
+# Check API dependencies
+try:
+    from fastapi import APIRouter, HTTPException, BackgroundTasks
+    from pydantic import BaseModel, Field
+    API_AVAILABLE = True
+except ImportError:
+    API_AVAILABLE = False
+    # Define dummy bases to prevent ImportErrors on module load if dependencies missing
+    class BaseModel: pass  
+    def Field(*args, **kwargs): return None
+
+
+# =============================================================================
+# Pydantic Models (Top-level for introspection)
+# =============================================================================
+
+class TrainRequest(BaseModel):
+    """Request to train a deep learning model."""
+
+    model_name: str = Field(default="default", description="Name for the trained model")
+    num_epochs: int = Field(default=50, ge=1, le=1000, description="Number of training epochs")
+    batch_size: int = Field(default=32, ge=1, le=256, description="Training batch size")
+    learning_rate: float = Field(default=1e-3, ge=1e-6, le=1.0, description="Learning rate")
+    use_synthetic_data: bool = Field(
+        default=False, description="Generate synthetic training data"
+    )
+    num_synthetic_samples: int = Field(
+        default=200, ge=50, le=5000, description="Number of synthetic samples"
+    )
+    validation_split: float = Field(default=0.2, ge=0.1, le=0.4, description="Validation split")
+    # Advanced settings (configurable per Gemini feedback)
+    use_ensemble: bool = Field(default=False, description="Use ensemble of models")
+    device: str = Field(default="cpu", description="Device to train on (cpu/cuda)")
+    num_control_points: int = Field(default=16, ge=4, le=64, description="Number of control points")
+    hidden_dims: list[int] = Field(
+        default=[128, 256, 128], description="Hidden layer dimensions"
+    )
+    early_stopping_patience: int = Field(
+        default=10, ge=1, le=100, description="Early stopping patience"
+    )
+
+
+class PredictRequest(BaseModel):
+    """Request to predict a curve from process parameters."""
+
+    model_name: str = Field(default="default", description="Name of the model to use")
+    paper_type: str = Field(..., description="Paper type")
+    metal_ratio: float = Field(default=0.5, ge=0.0, le=1.0, description="Platinum ratio")
+    exposure_time: float = Field(default=180.0, ge=1.0, description="Exposure time (seconds)")
+    contrast_agent: str = Field(default="na2", description="Contrast agent type")
+    contrast_amount: float = Field(default=5.0, ge=0.0, description="Contrast agent amount")
+    humidity: Optional[float] = Field(default=50.0, ge=0.0, le=100.0, description="Humidity %")
+    temperature: Optional[float] = Field(
+        default=21.0, ge=-20.0, le=50.0, description="Temperature °C"
+    )
+    return_uncertainty: bool = Field(default=True, description="Return uncertainty estimate")
+
+
+class SuggestAdjustmentsRequest(BaseModel):
+    """Request to get adjustment suggestions."""
+
+    model_name: str = Field(default="default", description="Model to use")
+    paper_type: str = Field(..., description="Paper type")
+    metal_ratio: float = Field(default=0.5, ge=0.0, le=1.0)
+    exposure_time: float = Field(default=180.0, ge=1.0)
+    target_curve: list[float] = Field(..., description="Target curve values")
+
+
+class TrainingSummary(BaseModel):
+    """Summary of training progress."""
+
+    model_name: str
+    status: str
+    epochs_completed: int = 0
+    best_val_loss: Optional[float] = None
+    training_time: Optional[float] = None
+    error: Optional[str] = None
+
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
 
 def determine_chemistry_type(metal_ratio: float):
     """
@@ -37,7 +126,11 @@ def determine_chemistry_type(metal_ratio: float):
         return ChemistryType.PLATINUM_PALLADIUM
 
 
-def create_deep_learning_router(database, model_storage: dict):
+# =============================================================================
+# Router Factory
+# =============================================================================
+
+def create_deep_learning_router(database, model_storage: dict):  # type: ignore[no-untyped-def]
     """
     Create the deep learning API router.
 
@@ -48,85 +141,12 @@ def create_deep_learning_router(database, model_storage: dict):
     Returns:
         FastAPI APIRouter with deep learning endpoints.
     """
-    try:
-        from fastapi import APIRouter, HTTPException, BackgroundTasks
-        from pydantic import BaseModel, Field
-    except ImportError:
+    if not API_AVAILABLE:
         raise ImportError(
             "FastAPI is required. Install with: pip install ptpd-calibration[api]"
         )
 
     router = APIRouter(prefix="/api/deep", tags=["deep-learning"])
-
-    # Check PyTorch availability
-    try:
-        import torch
-
-        TORCH_AVAILABLE = True
-        TORCH_VERSION = torch.__version__
-    except ImportError:
-        TORCH_AVAILABLE = False
-        TORCH_VERSION = None
-
-    # Pydantic models for request/response
-    class TrainRequest(BaseModel):
-        """Request to train a deep learning model."""
-
-        model_name: str = Field(default="default", description="Name for the trained model")
-        num_epochs: int = Field(default=50, ge=1, le=1000, description="Number of training epochs")
-        batch_size: int = Field(default=32, ge=1, le=256, description="Training batch size")
-        learning_rate: float = Field(default=1e-3, ge=1e-6, le=1.0, description="Learning rate")
-        use_synthetic_data: bool = Field(
-            default=False, description="Generate synthetic training data"
-        )
-        num_synthetic_samples: int = Field(
-            default=200, ge=50, le=5000, description="Number of synthetic samples"
-        )
-        validation_split: float = Field(default=0.2, ge=0.1, le=0.4, description="Validation split")
-        # Advanced settings (configurable per Gemini feedback)
-        use_ensemble: bool = Field(default=False, description="Use ensemble of models")
-        device: str = Field(default="cpu", description="Device to train on (cpu/cuda)")
-        num_control_points: int = Field(default=16, ge=4, le=64, description="Number of control points")
-        hidden_dims: list[int] = Field(
-            default=[128, 256, 128], description="Hidden layer dimensions"
-        )
-        early_stopping_patience: int = Field(
-            default=10, ge=1, le=100, description="Early stopping patience"
-        )
-
-    class PredictRequest(BaseModel):
-        """Request to predict a curve from process parameters."""
-
-        model_name: str = Field(default="default", description="Name of the model to use")
-        paper_type: str = Field(..., description="Paper type")
-        metal_ratio: float = Field(default=0.5, ge=0.0, le=1.0, description="Platinum ratio")
-        exposure_time: float = Field(default=180.0, ge=1.0, description="Exposure time (seconds)")
-        contrast_agent: str = Field(default="na2", description="Contrast agent type")
-        contrast_amount: float = Field(default=5.0, ge=0.0, description="Contrast agent amount")
-        humidity: Optional[float] = Field(default=50.0, ge=0.0, le=100.0, description="Humidity %")
-        temperature: Optional[float] = Field(
-            default=21.0, ge=-20.0, le=50.0, description="Temperature °C"
-        )
-        return_uncertainty: bool = Field(default=True, description="Return uncertainty estimate")
-
-    class SuggestAdjustmentsRequest(BaseModel):
-        """Request to get adjustment suggestions."""
-
-        model_name: str = Field(default="default", description="Model to use")
-        paper_type: str = Field(..., description="Paper type")
-        metal_ratio: float = Field(default=0.5, ge=0.0, le=1.0)
-        exposure_time: float = Field(default=180.0, ge=1.0)
-        target_curve: list[float] = Field(..., description="Target curve values")
-
-    class TrainingSummary(BaseModel):
-        """Summary of training progress."""
-
-        model_name: str
-        status: str
-        epochs_completed: int = 0
-        best_val_loss: Optional[float] = None
-        training_time: Optional[float] = None
-        error: Optional[str] = None
 
     # Training state storage
     training_status: dict[str, TrainingSummary] = {}
@@ -393,11 +413,11 @@ def create_deep_learning_router(database, model_storage: dict):
 
 
 async def _train_model_task(
-    request,
-    database,
+    request: TrainRequest,
+    database,  # type: ignore[no-untyped-def]
     model_storage: dict,
     training_status: dict,
-):
+) -> None:
     """Background task to train a model."""
     import time
 
