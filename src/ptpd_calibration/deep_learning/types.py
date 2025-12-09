@@ -353,11 +353,18 @@ class RecipeCategory(str, Enum):
 class PerceptualMetric(str, Enum):
     """Perceptual similarity metrics."""
 
+    # Structural metrics
+    SSIM = "ssim"
+    MS_SSIM = "ms_ssim"
+
+    # Deep learning-based metrics
     LPIPS_ALEX = "lpips_alex"
     LPIPS_VGG = "lpips_vgg"
     LPIPS_SQUEEZE = "lpips_squeeze"
     DISTS = "dists"
     PIEAPP = "pieapp"
+
+    # Feature-based metrics
     FSIM = "fsim"
     VSI = "vsi"
     GMSD = "gmsd"

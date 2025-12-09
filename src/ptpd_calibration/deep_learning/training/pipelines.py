@@ -37,12 +37,23 @@ try:
     from torch.utils.data import DataLoader, TensorDataset
 
     TORCH_AVAILABLE = True
+
+    # Use the actual torch.no_grad decorator
+    def no_grad_decorator():
+        return torch.no_grad()
+
 except ImportError:
     TORCH_AVAILABLE = False
     torch = None  # type: ignore
     nn = None  # type: ignore
     DataLoader = None  # type: ignore
     TensorDataset = None  # type: ignore
+
+    # No-op decorator when torch is not available
+    def no_grad_decorator():
+        def decorator(func):
+            return func
+        return decorator
 
 from ptpd_calibration.deep_learning.training.data_generators import (
     CurveDataGenerator,
@@ -452,7 +463,7 @@ class BaseTrainingPipeline(ABC, Generic[ModelT]):
 
         return avg_loss, avg_metrics
 
-    @torch.no_grad()
+    @no_grad_decorator()
     def _validate(
         self,
         model: nn.Module,

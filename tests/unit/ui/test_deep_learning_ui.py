@@ -22,31 +22,34 @@ class TestDeepLearningUIConfiguration:
         from ptpd_calibration.deep_learning.config import DetectionModelSettings
         from ptpd_calibration.deep_learning.types import DetectionBackend
 
-        # Valid configuration
+        # Valid configuration - use correct field name yolo_confidence_threshold
         settings = DetectionModelSettings(
             detection_backend=DetectionBackend.YOLOV8,
-            confidence_threshold=0.5,
+            yolo_confidence_threshold=0.5,
             device="cpu",
         )
-        assert settings.confidence_threshold == 0.5
+        assert settings.yolo_confidence_threshold == 0.5
 
         # Test boundary values
-        settings_low = DetectionModelSettings(confidence_threshold=0.1)
-        assert settings_low.confidence_threshold == 0.1
+        settings_low = DetectionModelSettings(yolo_confidence_threshold=0.1)
+        assert settings_low.yolo_confidence_threshold == 0.1
 
-        settings_high = DetectionModelSettings(confidence_threshold=0.99)
-        assert settings_high.confidence_threshold == 0.99
+        settings_high = DetectionModelSettings(yolo_confidence_threshold=0.99)
+        assert settings_high.yolo_confidence_threshold == 0.99
 
     def test_quality_settings_metric_selection(self):
         """Test image quality settings metric selection."""
         from ptpd_calibration.deep_learning.config import ImageQualitySettings
         from ptpd_calibration.deep_learning.types import IQAMetric
 
+        # Use correct field names: primary_metric and secondary_metrics
         settings = ImageQualitySettings(
-            metrics=[IQAMetric.MUSIQ, IQAMetric.NIMA, IQAMetric.BRISQUE]
+            primary_metric=IQAMetric.MUSIQ,
+            secondary_metrics=[IQAMetric.CLIP_IQA, IQAMetric.BRISQUE]
         )
-        assert len(settings.metrics) == 3
-        assert IQAMetric.MUSIQ in settings.metrics
+        assert settings.primary_metric == IQAMetric.MUSIQ
+        assert len(settings.secondary_metrics) == 2
+        assert IQAMetric.CLIP_IQA in settings.secondary_metrics
 
     def test_diffusion_settings_scheduler_options(self):
         """Test diffusion settings scheduler selection."""
@@ -77,35 +80,36 @@ class TestDeepLearningUIResultDisplay:
             DeepDetectionResult,
         )
 
+        # Use correct field names: index instead of zone_number, proper bbox tuple
         patches = [
             DetectedPatch(
-                zone_number=i,
-                bbox=[i * 25, 10, 25, 100],
+                index=i,
+                bbox=(i * 25, 10, 25, 100),  # Use tuple format
                 mask=None,
-                density=0.1 + i * 0.08,
                 confidence=0.95 - i * 0.01,
             )
             for i in range(21)
         ]
 
+        # Use correct field names for DeepDetectionResult
         result = DeepDetectionResult(
             patches=patches,
-            extraction=None,
-            processing_time_ms=150.0,
+            tablet_bbox=(0, 0, 525, 120),
+            tablet_confidence=0.98,
+            num_patches=21,
             model_version="yolov8-v1",
-            confidence_threshold=0.5,
+            inference_time_ms=150.0,
         )
 
         # Verify display-ready data
         assert len(result.patches) == 21
-        assert result.processing_time_ms > 0
+        assert result.inference_time_ms > 0
         assert result.model_version is not None
 
         # Check patch formatting
         for i, patch in enumerate(result.patches):
-            assert patch.zone_number == i
+            assert patch.index == i
             assert 0 <= patch.confidence <= 1
-            assert patch.density >= 0
 
     def test_quality_result_score_display(self):
         """Test quality score display formatting."""
@@ -115,25 +119,35 @@ class TestDeepLearningUIResultDisplay:
         )
         from ptpd_calibration.deep_learning.types import QualityLevel
 
+        # Zone names for 11 zones (0-10)
+        zone_names = [
+            "Deep Shadow", "Shadow", "Dark Mid-Shadow", "Mid-Shadow",
+            "Lower Midtone", "Middle Gray", "Upper Midtone",
+            "Light", "Highlight", "Bright Highlight", "Pure White"
+        ]
+
+        # Use correct field names and ranges (0-1 for scores)
         zone_scores = [
             ZoneQualityScore(
-                zone_number=i,
-                score=80.0 + i * 1.5,
+                zone=i,
+                zone_name=zone_names[i],
+                score=0.80 + i * 0.015,  # Score in 0-1 range
+                pixel_percentage=9.1,  # Required field
                 issues=[],
             )
             for i in range(11)
         ]
 
         result = ImageQualityResult(
-            overall_score=85.0,
+            overall_score=0.85,  # Score in 0-1 range
             zone_scores=zone_scores,
             quality_level=QualityLevel.GOOD,
             recommendations=["Excellent shadow detail"],
-            processing_time_ms=100.0,
+            inference_time_ms=100.0,  # Use correct field name
         )
 
         # Verify display formatting
-        assert 0 <= result.overall_score <= 100
+        assert 0 <= result.overall_score <= 1
         assert result.quality_level is not None
         assert len(result.zone_scores) == 11
 
@@ -141,7 +155,7 @@ class TestDeepLearningUIResultDisplay:
         quality_display = {
             QualityLevel.EXCELLENT: "Excellent",
             QualityLevel.GOOD: "Good",
-            QualityLevel.FAIR: "Fair",
+            QualityLevel.ACCEPTABLE: "Acceptable",
             QualityLevel.POOR: "Poor",
         }
         assert result.quality_level in quality_display
@@ -150,27 +164,27 @@ class TestDeepLearningUIResultDisplay:
         """Test curve prediction result display."""
         from ptpd_calibration.deep_learning.models import CurvePredictionResult
 
+        input_vals = list(np.linspace(0, 1, 256))
+        output_vals = list(np.power(np.linspace(0, 1, 256), 0.8))
+
+        # Use correct field names per the model schema
         result = CurvePredictionResult(
-            input_values=list(np.linspace(0, 1, 256)),
-            output_values=list(np.power(np.linspace(0, 1, 256), 0.8)),
-            confidence_intervals=[
-                (v - 0.02, v + 0.02)
-                for v in np.power(np.linspace(0, 1, 256), 0.8)
-            ],
-            uncertainty_per_zone=[0.02] * 21,
+            input_values=input_vals,
+            output_values=output_vals,
+            num_points=256,  # Required field
+            uncertainty=[0.02] * 256,  # Per-point uncertainty
+            mean_uncertainty=0.02,
+            confidence=0.95,
             model_version="curve-transformer-v1",
-            processing_time_ms=50.0,
+            inference_time_ms=50.0,
         )
 
         # Verify data is plot-ready
         assert len(result.input_values) == 256
         assert len(result.output_values) == 256
-        assert len(result.confidence_intervals) == 256
-        assert len(result.uncertainty_per_zone) == 21
-
-        # Check confidence intervals are valid
-        for i, (lower, upper) in enumerate(result.confidence_intervals):
-            assert lower <= result.output_values[i] <= upper
+        assert result.num_points == 256
+        assert result.uncertainty is not None
+        assert len(result.uncertainty) == 256
 
     def test_defect_result_annotation_display(self):
         """Test defect detection result annotation display."""
@@ -184,29 +198,29 @@ class TestDeepLearningUIResultDisplay:
             DetectedDefect(
                 defect_type=DefectType.SCRATCH,
                 severity=DefectSeverity.MODERATE,
-                bbox=[50, 100, 150, 10],
+                bbox=(50, 100, 150, 10),  # Use tuple
                 confidence=0.92,
-                description="Linear scratch in Zone III",
+                remediation="Linear scratch in Zone III - consider re-coating",
             ),
             DetectedDefect(
-                defect_type=DefectType.SPOT,
+                defect_type=DefectType.DUST,  # Correct enum value
                 severity=DefectSeverity.MINOR,
-                bbox=[200, 150, 30, 30],
+                bbox=(200, 150, 30, 30),
                 confidence=0.85,
-                description="Small dust spot",
+                remediation="Small dust spot - can be removed in post",
             ),
         ]
 
         result = DefectDetectionResult(
             defects=defects,
-            overall_quality_score=75.0,
-            defect_count=2,
+            num_defects=2,  # Correct field name
+            overall_severity=DefectSeverity.MODERATE,
             recommendations=["Clean coating brush", "Check for dust"],
-            processing_time_ms=200.0,
+            inference_time_ms=200.0,
         )
 
         # Verify annotation data
-        assert result.defect_count == len(result.defects)
+        assert result.num_defects == len(result.defects)
         for defect in result.defects:
             assert len(defect.bbox) == 4
             assert defect.defect_type is not None
@@ -407,17 +421,18 @@ class TestDeepLearningUIAccessibility:
         from ptpd_calibration.deep_learning.types import QualityLevel
 
         result = ImageQualityResult(
-            overall_score=85.0,
+            overall_score=0.85,  # Score in 0-1 range
             zone_scores=[],
             quality_level=QualityLevel.GOOD,
             recommendations=["Good overall quality"],
-            processing_time_ms=100.0,
+            inference_time_ms=100.0,  # Correct field name
         )
 
         # Generate accessible description
+        score_percent = int(result.overall_score * 100)
         description = (
             f"Image quality assessment complete. "
-            f"Overall score: {result.overall_score:.0f} out of 100. "
+            f"Overall score: {score_percent} out of 100. "
             f"Quality level: {result.quality_level.value if result.quality_level else 'Unknown'}. "
         )
         if result.recommendations:
@@ -473,15 +488,15 @@ class TestDeepLearningUIStateSync:
 
         # Get default settings
         settings = get_deep_learning_settings()
-        original_threshold = settings.detection.confidence_threshold
+        original_threshold = settings.detection.yolo_confidence_threshold
 
-        # Simulate settings change
+        # Simulate settings change - use correct field name
         new_settings = DetectionModelSettings(
-            confidence_threshold=0.7,
+            yolo_confidence_threshold=0.7,
         )
-        assert new_settings.confidence_threshold == 0.7
+        assert new_settings.yolo_confidence_threshold == 0.7
 
         # Verify settings can be serialized for persistence
         settings_dict = new_settings.model_dump()
-        assert "confidence_threshold" in settings_dict
-        assert settings_dict["confidence_threshold"] == 0.7
+        assert "yolo_confidence_threshold" in settings_dict
+        assert settings_dict["yolo_confidence_threshold"] == 0.7
