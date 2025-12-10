@@ -145,16 +145,16 @@ def build_chemistry_tab():
                     </div>
                     """
                 
-                if recipe.ferric_oxalate_1 > 0:
-                    html += add_drops("FO#1", recipe.ferric_oxalate_1, "#fbbf24") # Amber
-                if recipe.ferric_oxalate_2 > 0:
-                    html += add_drops("FO#2", recipe.ferric_oxalate_2, "#d97706") # Darker Amber
-                if recipe.platinum > 0:
-                    html += add_drops("Pt", recipe.platinum, "#c0c0c0") # Silver
-                if recipe.palladium > 0:
-                    html += add_drops("Pd", recipe.palladium, "#d4a574") # Gold/Bronze
-                if recipe.na2 > 0:
-                    html += add_drops("Na2", recipe.na2, "#ef4444") # Red
+                if recipe.ferric_oxalate_drops > 0:
+                    html += add_drops("FO#1", recipe.ferric_oxalate_drops, "#fbbf24") # Amber
+                if recipe.ferric_oxalate_contrast_drops > 0:
+                    html += add_drops("FO#2", recipe.ferric_oxalate_contrast_drops, "#d97706") # Darker Amber
+                if recipe.platinum_drops > 0:
+                    html += add_drops("Pt", recipe.platinum_drops, "#c0c0c0") # Silver
+                if recipe.palladium_drops > 0:
+                    html += add_drops("Pd", recipe.palladium_drops, "#d4a574") # Gold/Bronze
+                if recipe.na2_drops > 0:
+                    html += add_drops("Na2", recipe.na2_drops, "#ef4444") # Red
                     
                 html += "</div></div>"
 
