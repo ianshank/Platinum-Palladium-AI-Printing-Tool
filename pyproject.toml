@@ -66,8 +66,13 @@ ui = [
     "gradio>=4.0.0",
     "huggingface_hub>=0.25,<1.0",
 ]
+mcp = [
+    "httpx>=0.27.0",              # HTTP client for LM Studio API
+    "websockets>=12.0",           # WebSocket transport support
+    "python-dotenv>=1.0.0",       # Environment file loading
+]
 all = [
-    "ptpd-calibration[ml,deep,llm,api,ui]",
+    "ptpd-calibration[ml,deep,llm,api,ui,mcp]",
 ]
 dev = [
     "pytest>=8.0.0",
@@ -116,6 +121,7 @@ test = [
 [project.scripts]
 ptpd = "ptpd_calibration.cli:main"
 ptpd-server = "ptpd_calibration.api.server:main"
+ptpd-mcp = "ptpd_calibration.mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool"
@@ -144,6 +150,7 @@ markers = [
     "e2e: End-to-end tests (require running app)",
     "selenium: Selenium browser tests (require WebDriver)",
     "api: API endpoint tests",
+    "mcp: MCP server and LM Studio integration tests",
     "performance: Performance and benchmark tests",
     "visual: Visual regression tests",
     "slow: Tests that take a long time to run",
@@ -189,6 +196,7 @@ source = ["src/ptpd_calibration"]
 omit = [
     "*/ui/*",           # UI modules require integration tests
     "*/api/server.py",  # API server requires integration tests
+    "*/mcp/server.py",  # MCP server requires integration tests
 ]
 
 [tool.coverage.report]
