@@ -227,7 +227,7 @@ def pytest_runtest_makereport(item, call):
 
 
 @pytest.fixture
-def wait(driver) -> WebDriverWait:
+def wait(driver) -> "WebDriverWait":
     """Create a WebDriverWait instance with default timeout."""
     return WebDriverWait(driver, DEFAULT_TIMEOUT)
 

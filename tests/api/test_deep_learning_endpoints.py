@@ -154,6 +154,32 @@ def batch_images_base64() -> list[str]:
     return images
 
 
+@pytest.fixture
+def damaged_image_base64() -> str:
+    """Create a base64 encoded damaged image."""
+    arr = np.linspace(40, 200, 256 * 256).reshape(256, 256).astype(np.uint8)
+    # Add damage
+    arr[80:85, 50:150] = 255  # Tear
+    rgb = np.stack([arr, arr, arr], axis=2)
+    img = Image.fromarray(rgb)
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode()
+
+
+@pytest.fixture
+def problem_image_base64() -> str:
+    """Create a base64 encoded problem image."""
+    arr = np.zeros((256, 256), dtype=np.uint8)
+    # Create banding pattern
+    for i in range(256):
+        arr[i, :] = 100 + int(30 * np.sin(i * 0.15))
+    img = Image.fromarray(arr, mode="L")
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode()
+
+
 # =============================================================================
 # Core Training/Model Endpoints
 # =============================================================================
@@ -201,11 +227,7 @@ class TestDeepLearningTrainEndpoint:
     def test_train_without_pytorch_returns_error(self, client: Any, train_request_data: dict) -> None:
         """Test training without PyTorch returns 503."""
         with patch.dict("sys.modules", {"torch": None}):
-            # We also need to patch TORCH_AVAILABLE in the module if it was checked at import time
-            # But the endpoint checks it at runtime usually
             response = client.post("/api/deep/train", json=train_request_data)
-            # Depending on how the mock works and if torch was already imported, results may vary
-            # This test is a bit fragile if not mocked perfectly, so we accept 200 if torch is actually present
             assert response.status_code in [200, 503]
 
     @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
@@ -232,17 +254,17 @@ class TestDeepLearningTrainEndpoint:
         """Test training with invalid epoch count."""
         response = client.post(
             "/api/deep/train",
-            json={"num_epochs": 2000, "use_synthetic_data": True},  # Exceeds max
+            json={"num_epochs": 2000, "use_synthetic_data": True},
         )
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
     def test_train_invalid_batch_size(self, client: Any) -> None:
         """Test training with invalid batch size."""
         response = client.post(
             "/api/deep/train",
-            json={"batch_size": 500, "use_synthetic_data": True},  # Exceeds max
+            json={"batch_size": 500, "use_synthetic_data": True},
         )
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
 
 @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
@@ -257,10 +279,7 @@ class TestDeepLearningTrainStatusEndpoint:
     @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
     def test_status_after_training_started(self, client: Any, train_request_data: dict) -> None:
         """Test status after training has been started."""
-        # Start training
         client.post("/api/deep/train", json=train_request_data)
-
-        # Check status
         response = client.get(f"/api/deep/train/{train_request_data['model_name']}/status")
 
         assert response.status_code == 200
@@ -278,7 +297,6 @@ class TestDeepLearningPredictEndpoint:
         data = predict_request_data.copy()
         data["model_name"] = "nonexistent_model_predict"
         response = client.post("/api/deep/predict", json=data)
-        # Either 404 (model not found) or 503 (no PyTorch)
         assert response.status_code in [404, 503]
 
     def test_predict_missing_paper_type(self, client: Any) -> None:
@@ -287,7 +305,7 @@ class TestDeepLearningPredictEndpoint:
             "/api/deep/predict",
             json={"model_name": "test", "metal_ratio": 0.5},
         )
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
     def test_predict_invalid_metal_ratio(self, client: Any) -> None:
         """Test prediction with invalid metal ratio."""
@@ -296,10 +314,10 @@ class TestDeepLearningPredictEndpoint:
             json={
                 "model_name": "test",
                 "paper_type": "Test Paper",
-                "metal_ratio": 1.5,  # Out of range [0, 1]
+                "metal_ratio": 1.5,
             },
         )
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
     def test_predict_invalid_humidity(self, client: Any) -> None:
         """Test prediction with invalid humidity."""
@@ -309,10 +327,10 @@ class TestDeepLearningPredictEndpoint:
                 "model_name": "test",
                 "paper_type": "Test Paper",
                 "metal_ratio": 0.5,
-                "humidity": 150.0,  # Out of range [0, 100]
+                "humidity": 150.0,
             },
         )
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
 
 @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
@@ -323,21 +341,16 @@ class TestDeepLearningSuggestAdjustmentsEndpoint:
         """Test suggestion with non-existent model returns 404."""
         data = suggest_adjustments_request.copy()
         data["model_name"] = "nonexistent_model_suggest"
-        response = client.post(
-            "/api/deep/suggest-adjustments", json=data
-        )
+        response = client.post("/api/deep/suggest-adjustments", json=data)
         assert response.status_code in [404, 503]
 
     def test_suggest_missing_target_curve(self, client: Any) -> None:
         """Test suggestion without required target_curve."""
         response = client.post(
             "/api/deep/suggest-adjustments",
-            json={
-                "model_name": "test",
-                "paper_type": "Test Paper",
-            },
+            json={"model_name": "test", "paper_type": "Test Paper"},
         )
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
 
 @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
@@ -371,7 +384,7 @@ class TestDeepLearningGenerateSyntheticEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-        assert data["records_added"] == 100  # Default
+        assert data["records_added"] == 100
         assert "total_records" in data
 
     @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
@@ -391,7 +404,6 @@ class TestDeepLearningGenerateSyntheticEndpoint:
 
         assert response1.status_code == 200
         assert response2.status_code == 200
-        # Both should add records (seed affects content, not count)
         assert response1.json()["records_added"] == 10
         assert response2.json()["records_added"] == 10
 
@@ -407,14 +419,12 @@ class TestDeepLearningEndpointValidation:
 
     def test_train_learning_rate_bounds(self, client: Any) -> None:
         """Test learning rate validation."""
-        # Too small
         response = client.post(
             "/api/deep/train",
             json={"learning_rate": 1e-8, "use_synthetic_data": True},
         )
         assert response.status_code == 422
 
-        # Too large
         response = client.post(
             "/api/deep/train",
             json={"learning_rate": 2.0, "use_synthetic_data": True},
@@ -423,14 +433,12 @@ class TestDeepLearningEndpointValidation:
 
     def test_train_validation_split_bounds(self, client: Any) -> None:
         """Test validation split bounds."""
-        # Too small
         response = client.post(
             "/api/deep/train",
             json={"validation_split": 0.05, "use_synthetic_data": True},
         )
         assert response.status_code == 422
 
-        # Too large
         response = client.post(
             "/api/deep/train",
             json={"validation_split": 0.5, "use_synthetic_data": True},
@@ -444,15 +452,14 @@ class TestDeepLearningEndpointValidation:
             json={
                 "model_name": "test",
                 "paper_type": "Test",
-                "exposure_time": 0.5,  # Below minimum of 1.0
+                "exposure_time": 0.5,
             },
         )
         assert response.status_code == 422
 
 
 # =============================================================================
-# Advanced/Future Feature Endpoints (From Claude Branch)
-# Note: Renamed to match /api/deep prefix standard
+# Detection Endpoints
 # =============================================================================
 
 
@@ -467,10 +474,7 @@ class TestDetectionEndpoints:
             "confidence_threshold": 0.5,
         }
 
-        # Updated prefix from /api/deep-learning/detect to /api/deep/detect
         response = client.post("/api/deep/detect", json=request_data)
-
-        # 404 is acceptable here as feature might not be fully implemented yet
         assert response.status_code in [200, 404, 500, 503]
 
         if response.status_code == 200:
@@ -500,10 +504,20 @@ class TestDetectionEndpoints:
         response = client.post("/api/deep/detect", json=request_data)
         assert response.status_code in [400, 422, 404, 500]
 
+    def test_detect_empty_request(self, client: Any) -> None:
+        """Test detection with empty request."""
+        response = client.post("/api/deep/detect", json={})
+        assert response.status_code in [400, 422, 404]
+
+
+# =============================================================================
+# Curve Prediction Endpoints
+# =============================================================================
+
 
 @pytest.mark.api
-class TestCurvePredictionEndpointsExtension:
-    """Tests for extended neural curve prediction endpoints."""
+class TestCurvePredictionEndpoints:
+    """Tests for neural curve prediction API endpoints."""
 
     def test_predict_curve_from_densities(self, client: Any) -> None:
         """Test curve prediction from density measurements."""
@@ -516,6 +530,10 @@ class TestCurvePredictionEndpointsExtension:
         response = client.post("/api/deep/predict-curve", json=request_data)
         assert response.status_code in [200, 404, 500, 503]
 
+        if response.status_code == 200:
+            data = response.json()
+            assert "output_values" in data or "curve" in data
+
     def test_predict_curve_with_uncertainty(self, client: Any) -> None:
         """Test curve prediction with uncertainty estimation."""
         request_data = {
@@ -526,6 +544,20 @@ class TestCurvePredictionEndpointsExtension:
 
         response = client.post("/api/deep/predict-curve", json=request_data)
         assert response.status_code in [200, 404, 500, 503]
+
+    def test_predict_curve_invalid_densities(self, client: Any) -> None:
+        """Test curve prediction with invalid density values."""
+        request_data = {
+            "densities": [-0.5, 0.5, 3.0],
+        }
+
+        response = client.post("/api/deep/predict-curve", json=request_data)
+        assert response.status_code in [200, 400, 422, 404, 500]
+
+
+# =============================================================================
+# Quality Assessment Endpoints
+# =============================================================================
 
 
 @pytest.mark.api
@@ -545,6 +577,22 @@ class TestQualityAssessmentEndpoints:
             data = response.json()
             assert "overall_score" in data or "quality" in data
 
+    def test_assess_quality_with_metrics(self, client: Any, sample_image_base64: str) -> None:
+        """Test quality assessment with specific metrics."""
+        request_data = {
+            "image_base64": sample_image_base64,
+            "metrics": ["musiq", "nima", "brisque"],
+            "include_zone_analysis": True,
+        }
+
+        response = client.post("/api/deep/assess-quality", json=request_data)
+        assert response.status_code in [200, 404, 500, 503]
+
+
+# =============================================================================
+# Defect Detection Endpoints
+# =============================================================================
+
 
 @pytest.mark.api
 class TestDefectDetectionEndpoints:
@@ -562,6 +610,22 @@ class TestDefectDetectionEndpoints:
         if response.status_code == 200:
             data = response.json()
             assert "defects" in data or "defect_count" in data
+
+    def test_detect_defects_with_sensitivity(self, client: Any, sample_print_base64: str) -> None:
+        """Test defect detection with custom sensitivity."""
+        request_data = {
+            "image_base64": sample_print_base64,
+            "sensitivity": "high",
+            "defect_types": ["scratch", "spot", "uneven_coating"],
+        }
+
+        response = client.post("/api/deep/detect-defects", json=request_data)
+        assert response.status_code in [200, 404, 500, 503]
+
+
+# =============================================================================
+# Recipe Recommendation Endpoints
+# =============================================================================
 
 
 @pytest.mark.api
@@ -585,6 +649,39 @@ class TestRecipeRecommendationEndpoints:
             data = response.json()
             assert "recommendations" in data or "recipe" in data
 
+    def test_recommend_recipe_with_constraints(self, client: Any) -> None:
+        """Test recipe recommendation with constraints."""
+        request_data = {
+            "paper_type": "Bergger COT320",
+            "desired_characteristics": {
+                "contrast": "normal",
+                "tone": "neutral",
+            },
+            "constraints": {
+                "max_platinum_ratio": 0.6,
+                "developer": "ammonium_citrate",
+            },
+            "num_recommendations": 5,
+        }
+
+        response = client.post("/api/deep/recommend-recipe", json=request_data)
+        assert response.status_code in [200, 404, 500, 503]
+
+    def test_recommend_recipe_invalid_paper(self, client: Any) -> None:
+        """Test recipe recommendation with unknown paper."""
+        request_data = {
+            "paper_type": "Unknown Paper Type XYZ",
+            "desired_characteristics": {"contrast": "normal"},
+        }
+
+        response = client.post("/api/deep/recommend-recipe", json=request_data)
+        assert response.status_code in [200, 400, 404, 500]
+
+
+# =============================================================================
+# Print Comparison Endpoints
+# =============================================================================
+
 
 @pytest.mark.api
 class TestPrintComparisonEndpoints:
@@ -601,6 +698,29 @@ class TestPrintComparisonEndpoints:
 
         response = client.post("/api/deep/compare-prints", json=request_data)
         assert response.status_code in [200, 404, 500, 503]
+
+        if response.status_code == 200:
+            data = response.json()
+            assert "similarity" in data or "perceptual_distance" in data
+
+    def test_compare_prints_with_options(
+        self, client: Any, reference_image_base64: str, test_image_base64: str
+    ) -> None:
+        """Test print comparison with options."""
+        request_data = {
+            "reference_image_base64": reference_image_base64,
+            "test_image_base64": test_image_base64,
+            "metrics": ["lpips", "ssim"],
+            "zone_analysis": True,
+        }
+
+        response = client.post("/api/deep/compare-prints", json=request_data)
+        assert response.status_code in [200, 404, 500, 503]
+
+
+# =============================================================================
+# UV Exposure Endpoints
+# =============================================================================
 
 
 @pytest.mark.api
@@ -619,37 +739,68 @@ class TestUVExposureEndpoints:
         response = client.post("/api/deep/predict-exposure", json=request_data)
         assert response.status_code in [200, 404, 500, 503]
 
+        if response.status_code == 200:
+            data = response.json()
+            assert "predicted_time" in data or "exposure_minutes" in data
+
+    def test_predict_exposure_with_all_factors(self, client: Any) -> None:
+        """Test exposure prediction with all environmental factors."""
+        request_data = {
+            "paper_type": "Bergger COT320",
+            "negative_density": 1.8,
+            "humidity_percent": 65,
+            "temperature_celsius": 24,
+            "chemistry_age_days": 3,
+            "coating_weight": "heavy",
+            "light_source": "uv_led",
+            "include_uncertainty": True,
+        }
+
+        response = client.post("/api/deep/predict-exposure", json=request_data)
+        assert response.status_code in [200, 404, 500, 503]
+
+
+# =============================================================================
+# Diffusion Model Endpoints
+# =============================================================================
+
 
 @pytest.mark.api
 class TestDiffusionEndpoints:
     """Tests for diffusion model enhancement API endpoints."""
 
-    def test_enhance_image_basic(self, client: Any, sample_image_base64: str) -> None:
+    def test_enhance_image_basic(self, client: Any, damaged_image_base64: str) -> None:
         """Test basic image enhancement."""
         request_data = {
-            "image_base64": sample_image_base64,
+            "image_base64": damaged_image_base64,
             "enhancement_mode": "restore",
         }
 
         response = client.post("/api/deep/enhance", json=request_data)
         assert response.status_code in [200, 404, 500, 503]
 
+    def test_inpaint_region(self, client: Any, damaged_image_base64: str) -> None:
+        """Test inpainting a specific region."""
+        request_data = {
+            "image_base64": damaged_image_base64,
+            "enhancement_mode": "inpaint",
+            "mask_regions": [
+                {"x": 50, "y": 80, "width": 100, "height": 5},
+            ],
+        }
+
+        response = client.post("/api/deep/enhance", json=request_data)
+        assert response.status_code in [200, 404, 500, 503]
+
+
+# =============================================================================
+# Multi-Modal Endpoints
+# =============================================================================
+
 
 @pytest.mark.api
 class TestMultiModalEndpoints:
     """Tests for multi-modal AI assistant API endpoints."""
-
-    @pytest.fixture
-    def problem_image_base64(self) -> str:
-        """Create a base64 encoded problem image."""
-        arr = np.zeros((256, 256), dtype=np.uint8)
-        # Create banding pattern
-        for i in range(256):
-            arr[i, :] = 100 + int(30 * np.sin(i * 0.15))
-        img = Image.fromarray(arr, mode="L")
-        buffer = io.BytesIO()
-        img.save(buffer, format="PNG")
-        return base64.b64encode(buffer.getvalue()).decode()
 
     def test_analyze_with_image(self, client: Any, problem_image_base64: str) -> None:
         """Test visual analysis with image."""
@@ -659,6 +810,105 @@ class TestMultiModalEndpoints:
         }
 
         response = client.post("/api/deep/multimodal/analyze", json=request_data)
+        assert response.status_code in [200, 404, 500, 503]
+
+        if response.status_code == 200:
+            data = response.json()
+            assert "response" in data or "analysis" in data
+
+    def test_analyze_text_only(self, client: Any) -> None:
+        """Test text-only analysis."""
+        request_data = {
+            "message": "What causes uneven coating in platinum printing?",
+        }
+
+        response = client.post("/api/deep/multimodal/analyze", json=request_data)
+        assert response.status_code in [200, 404, 500, 503]
+
+
+# =============================================================================
+# Federated Learning Endpoints
+# =============================================================================
+
+
+@pytest.mark.api
+class TestFederatedLearningEndpoints:
+    """Tests for federated learning API endpoints."""
+
+    def test_federated_status(self, client: Any) -> None:
+        """Test federated learning status endpoint."""
+        response = client.get("/api/deep/federated/status")
+        assert response.status_code in [200, 404, 503]
+
+        if response.status_code == 200:
+            data = response.json()
+            assert "enabled" in data
+
+    def test_contribute_local_update(self, client: Any) -> None:
+        """Test contributing a local model update."""
+        request_data = {
+            "model_type": "curve_predictor",
+            "num_samples": 100,
+            "metrics": {
+                "local_loss": 0.05,
+                "local_accuracy": 0.92,
+            },
+        }
+
+        response = client.post("/api/deep/federated/contribute", json=request_data)
+        assert response.status_code in [200, 401, 403, 404, 503]
+
+
+# =============================================================================
+# Health Endpoints
+# =============================================================================
+
+
+@pytest.mark.api
+class TestDeepLearningHealthEndpoints:
+    """Tests for deep learning health and status endpoints."""
+
+    def test_gpu_status(self, client: Any) -> None:
+        """Test GPU availability status."""
+        response = client.get("/api/deep/gpu-status")
+        assert response.status_code in [200, 404, 503]
+
+        if response.status_code == 200:
+            data = response.json()
+            assert "available" in data or "gpu" in data
+
+
+# =============================================================================
+# Batch Processing Endpoints
+# =============================================================================
+
+
+@pytest.mark.api
+class TestDeepLearningBatchEndpoints:
+    """Tests for batch processing endpoints."""
+
+    def test_batch_quality_assessment(self, client: Any, batch_images_base64: list[str]) -> None:
+        """Test batch quality assessment."""
+        request_data = {
+            "images": [
+                {"id": f"img_{i}", "image_base64": img}
+                for i, img in enumerate(batch_images_base64)
+            ],
+        }
+
+        response = client.post("/api/deep/batch/assess-quality", json=request_data)
+        assert response.status_code in [200, 404, 500, 503]
+
+    def test_batch_defect_detection(self, client: Any, batch_images_base64: list[str]) -> None:
+        """Test batch defect detection."""
+        request_data = {
+            "images": [
+                {"id": f"print_{i}", "image_base64": img}
+                for i, img in enumerate(batch_images_base64)
+            ],
+        }
+
+        response = client.post("/api/deep/batch/detect-defects", json=request_data)
         assert response.status_code in [200, 404, 500, 503]
 
 
@@ -679,7 +929,6 @@ class TestDeepLearningIntegration:
         # 1. Check initial status
         status_response = client.get("/api/deep/status")
         assert status_response.status_code == 200
-        # assert status_response.json()["models_loaded"] == []
 
         # 2. Generate synthetic data
         synth_response = client.post("/api/deep/generate-synthetic?num_samples=50")
@@ -700,11 +949,8 @@ class TestDeepLearningIntegration:
         assert train_response.json()["status"] == "starting"
 
         # 4. Check training status
-        for _ in range(30):  # Wait up to 30 seconds
-            status_response = client.get(
-                "/api/deep/train/integration_test_model/status"
-            )
-            # Break if done
+        for _ in range(30):
+            status_response = client.get("/api/deep/train/integration_test_model/status")
             status = status_response.json()["status"]
             if status in ["completed", "failed"]:
                 break
@@ -727,6 +973,6 @@ class TestDeepLearningIntegration:
         # Missing required fields
         response = client.post(
             "/api/deep/predict",
-            json={},  # Missing paper_type
+            json={},
         )
         assert response.status_code == 422

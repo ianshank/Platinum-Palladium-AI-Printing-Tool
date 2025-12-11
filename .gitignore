@@ -147,3 +147,12 @@ calibrations.json
 *.quad
 *.ppt
 agent_memory.json
+
+# Deep Learning Temp
+.claude/
+.gradio/
+hf_check/
+hf_space_key
+checkpoints/
+nul
+

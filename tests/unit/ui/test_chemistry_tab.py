@@ -34,3 +34,24 @@ def test_chemistry_logic_coverage():
          patch('gradio.Dropdown'), patch('gradio.Textbox'), patch('gradio.JSON'):
         build_chemistry_tab()
 
+def test_calculate_recipe_ui_attribute_access():
+    """Test that calculate_recipe_ui uses correct attributes on ChemistryRecipe."""
+    from ptpd_calibration.ui.tabs.chemistry import calculate_recipe_ui
+    
+    # We use real calculator here to ensure integration works with real data class
+    # This prevents regression of 'AttributeError: ferric_oxalate_1'
+    
+    html, text, data = calculate_recipe_ui(
+        w=8, h=10, 
+        pt_ratio=50, 
+        absorbency="medium", 
+        method="brush", 
+        cont=0, 
+        na2_val=0
+    )
+    
+    assert "Error:" not in html
+    assert "Total Drops" in html
+    assert "FO#1" in html
+    assert isinstance(data, dict)
+    assert "drops" in data
