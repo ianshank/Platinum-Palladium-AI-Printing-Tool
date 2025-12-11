@@ -15,7 +15,6 @@ import numpy as np
 from ptpd_calibration.ml.deep.exceptions import DatasetError
 
 if TYPE_CHECKING:
-    from ptpd_calibration.config import DeepLearningSettings
     from ptpd_calibration.core.models import CalibrationRecord
     from ptpd_calibration.ml.database import CalibrationDatabase
 

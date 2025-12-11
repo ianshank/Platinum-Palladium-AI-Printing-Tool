@@ -223,7 +223,7 @@ class TestTrainingPipeline:
         )
 
         pipeline = TrainingPipeline(db, output_dir=temp_output_dir)
-        result = pipeline.run_experiment(config)
+        _result = pipeline.run_experiment(config)  # noqa: F841 - run to create result file
 
         # Save and reload result
         result_path = temp_output_dir / "serialization_test" / "result.json"
