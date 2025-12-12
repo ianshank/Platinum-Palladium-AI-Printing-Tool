@@ -238,6 +238,32 @@ try:
 except ImportError:
     pass
 
+# Calibration feedback loop
+try:
+    from ptpd_calibration.calibration import (
+        # Curve adjustment
+        CalibrationProfile,
+        CurveCalibrator,
+        QuadCurveParser,
+        CALIBRATION_PROFILES,
+        adjust_curve_for_paper,
+        refine_curve_from_print,
+        get_available_calibration_profiles,
+        get_calibration_profile,
+        # Print analysis
+        PrintAnalysis,
+        PrintAnalyzer,
+        CalibrationSession,
+        CalibrationIteration,
+        TargetDensities,
+        # Database
+        CalibrationDatabase as CalibrationHistoryDatabase,
+        CalibrationRecord as CalibrationHistoryRecord,
+        CalibrationSessionRecord,
+    )
+except ImportError:
+    pass
+
 __all__ = [
     # Version
     "__version__",
@@ -364,4 +390,21 @@ __all__ = [
     "CacheManager",
     "ResourceMonitor",
     "PerformanceReport",
+    # Calibration feedback loop
+    "CalibrationProfile",
+    "CurveCalibrator",
+    "QuadCurveParser",
+    "CALIBRATION_PROFILES",
+    "adjust_curve_for_paper",
+    "refine_curve_from_print",
+    "get_available_calibration_profiles",
+    "get_calibration_profile",
+    "PrintAnalysis",
+    "PrintAnalyzer",
+    "CalibrationSession",
+    "CalibrationIteration",
+    "TargetDensities",
+    "CalibrationHistoryDatabase",
+    "CalibrationHistoryRecord",
+    "CalibrationSessionRecord",
 ]
