@@ -427,6 +427,60 @@ class AgentSettings(BaseSettings):
     reflection_frequency: int = Field(default=3, ge=1, le=10)
 
 
+class RouterSettings(BaseSettings):
+    """Configuration settings for the task router."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_ROUTER_")
+
+    # Complexity classification thresholds
+    simple_max_words: int = Field(
+        default=10,
+        ge=3,
+        le=50,
+        description="Maximum words for a task to be considered simple",
+    )
+    autonomous_min_words: int = Field(
+        default=20,
+        ge=10,
+        le=100,
+        description="Minimum words for a task to potentially be autonomous",
+    )
+
+    # LLM-based classification
+    use_llm_classification: bool = Field(
+        default=False,
+        description="Use LLM for ambiguous task classification",
+    )
+    llm_classification_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold below which to use LLM classification",
+    )
+
+    # Pattern matching
+    case_sensitive_matching: bool = Field(
+        default=False,
+        description="Use case-sensitive pattern matching",
+    )
+
+    # Capability escalation
+    allow_escalation: bool = Field(
+        default=True,
+        description="Allow automatic escalation to higher complexity if needed",
+    )
+    escalation_on_failure: bool = Field(
+        default=True,
+        description="Escalate to higher complexity on task failure",
+    )
+
+    # Logging
+    log_routing_decisions: bool = Field(
+        default=True,
+        description="Log routing decisions for debugging",
+    )
+
+
 class APISettings(BaseSettings):
     """Settings for API server."""
 
@@ -1464,6 +1518,7 @@ class Settings(BaseSettings):
     deep_learning: DeepLearningSettings = Field(default_factory=DeepLearningSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
     agent: AgentSettings = Field(default_factory=AgentSettings)
+    router: RouterSettings = Field(default_factory=RouterSettings)
     api: APISettings = Field(default_factory=APISettings)
     visualization: VisualizationSettings = Field(default_factory=VisualizationSettings)
     wedge_analysis: WedgeAnalysisSettings = Field(default_factory=WedgeAnalysisSettings)
