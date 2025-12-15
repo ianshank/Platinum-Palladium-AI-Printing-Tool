@@ -26,6 +26,8 @@ export type {
   AdjustmentTypeId,
 } from './tablet.config';
 
+declare const __APP_VERSION__: string | undefined;
+
 /**
  * Application-wide constants.
  * These should not be environment-specific.
@@ -59,5 +61,3 @@ export const APP_CONSTANTS = {
     USER_PREFERENCES: 'ptpd-user-preferences',
   },
 } as const;
-
-declare const __APP_VERSION__: string | undefined;

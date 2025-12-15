@@ -105,7 +105,6 @@ test.describe('User Journey: Complete Calibration Workflow', () => {
 
   test('user can cancel calibration and return to dashboard', async ({ page }) => {
     const dashboard = new DashboardPage(page);
-    const calibration = new CalibrationPage(page);
 
     await dashboard.goto();
     await dashboard.startNewCalibration();

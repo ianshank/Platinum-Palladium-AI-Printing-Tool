@@ -2,7 +2,6 @@
 Curve manipulation unit tests.
 """
 
-import pytest
 import numpy as np
 from typing import Any
 

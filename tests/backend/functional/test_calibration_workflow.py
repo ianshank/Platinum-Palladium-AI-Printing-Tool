@@ -3,10 +3,8 @@ Functional tests for the calibration workflow.
 Tests complete business workflows end-to-end within the backend.
 """
 
-import pytest
 import numpy as np
 from typing import Any
-from pathlib import Path
 
 
 class TestCalibrationWorkflow:

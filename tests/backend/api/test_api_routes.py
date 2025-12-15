@@ -1,10 +1,13 @@
 """
 API route tests for the FastAPI backend.
+
+This module contains both structure/contract tests (using local dictionaries)
+and integration tests (using FastAPI TestClient for actual HTTP requests).
 """
 
 import pytest
 from typing import Any
-from unittest.mock import MagicMock, patch
+from fastapi.testclient import TestClient
 
 
 class TestHealthEndpoint:
@@ -23,6 +26,25 @@ class TestHealthEndpoint:
         response = {"status": "healthy", "version": "1.0.0"}
 
         assert response["version"] is not None
+
+    # Integration tests using TestClient
+    def test_health_endpoint_with_client(self, client: TestClient) -> None:
+        """Test actual health endpoint HTTP request."""
+        response = client.get("/api/health")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+
+    def test_root_endpoint(self, client: TestClient) -> None:
+        """Test root endpoint returns API info."""
+        response = client.get("/")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+        assert "version" in data
+        assert data["version"] == "1.0.0"
 
 
 class TestCurvesAPI:
@@ -102,6 +124,116 @@ class TestCurvesAPI:
 
         assert abs(sum(request["weights"]) - 1.0) < 0.01
 
+    # Integration tests using TestClient
+    def test_generate_curve_endpoint(
+        self, client: TestClient, sample_densities: list[float]
+    ) -> None:
+        """Test curve generation via HTTP request."""
+        request_data = {
+            "densities": sample_densities,
+            "name": "Test Curve",
+            "curve_type": "linear",
+        }
+        response = client.post("/api/curves/generate", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "curve_id" in data
+        assert data["name"] == "Test Curve"
+        assert "num_points" in data
+        assert "input_values" in data
+        assert "output_values" in data
+
+    def test_get_stored_curve(
+        self, client: TestClient, sample_densities: list[float]
+    ) -> None:
+        """Test retrieving a stored curve by ID."""
+        # First, create a curve
+        create_response = client.post(
+            "/api/curves/generate",
+            json={
+                "densities": sample_densities,
+                "name": "Retrievable Curve",
+                "curve_type": "linear",
+            },
+        )
+        curve_id = create_response.json()["curve_id"]
+
+        # Now retrieve it
+        get_response = client.get(f"/api/curves/{curve_id}")
+
+        assert get_response.status_code == 200
+        data = get_response.json()
+        assert data["curve_id"] == curve_id
+        assert data["name"] == "Retrievable Curve"
+        assert "input_values" in data
+        assert "output_values" in data
+
+    def test_get_nonexistent_curve_returns_404(self, client: TestClient) -> None:
+        """Test that requesting nonexistent curve returns 404."""
+        response = client.get("/api/curves/nonexistent-id")
+
+        assert response.status_code == 404
+
+    def test_modify_curve_endpoint(
+        self, client: TestClient, sample_curve_data: dict[str, Any]
+    ) -> None:
+        """Test curve modification via HTTP request."""
+        request_data = {
+            "input_values": sample_curve_data["input_values"],
+            "output_values": sample_curve_data["output_values"],
+            "name": "Modified Curve",
+            "adjustment_type": "brightness",
+            "amount": 0.1,
+        }
+        response = client.post("/api/curves/modify", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "curve_id" in data
+        assert data["adjustment_applied"] == "brightness"
+
+    def test_smooth_curve_endpoint(
+        self, client: TestClient, sample_curve_data: dict[str, Any]
+    ) -> None:
+        """Test curve smoothing via HTTP request."""
+        request_data = {
+            "input_values": sample_curve_data["input_values"],
+            "output_values": sample_curve_data["output_values"],
+            "name": "Smoothed Curve",
+            "method": "gaussian",
+            "strength": 0.5,
+            "preserve_endpoints": True,
+        }
+        response = client.post("/api/curves/smooth", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["method_applied"] == "gaussian"
+
+    def test_blend_curves_endpoint(
+        self, client: TestClient, sample_curve_data: dict[str, Any]
+    ) -> None:
+        """Test curve blending via HTTP request."""
+        request_data = {
+            "curve1_inputs": sample_curve_data["input_values"],
+            "curve1_outputs": sample_curve_data["output_values"],
+            "curve2_inputs": sample_curve_data["input_values"],
+            "curve2_outputs": sample_curve_data["input_values"],  # linear curve
+            "name": "Blended Curve",
+            "mode": "weighted",
+            "weight": 0.5,
+        }
+        response = client.post("/api/curves/blend", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["mode_applied"] == "weighted"
+
 
 class TestScanAPI:
     """Tests for scan processing API endpoints."""
@@ -167,6 +299,44 @@ class TestScanAPI:
         assert "recommendations" in response["analysis"]
         assert isinstance(response["analysis"]["recommendations"], list)
 
+    # Integration tests using TestClient
+    def test_upload_scan_endpoint(
+        self, client: TestClient, sample_step_tablet_image
+    ) -> None:
+        """Test scan upload via HTTP request."""
+        from pathlib import Path
+
+        with open(sample_step_tablet_image, "rb") as f:
+            files = {"file": ("step_tablet.png", f, "image/png")}
+            data = {"tablet_type": "stouffer_21"}
+            response = client.post("/api/scan/upload", files=files, data=data)
+
+        assert response.status_code == 200
+        result = response.json()
+        assert result["success"] is True
+        assert "extraction_id" in result
+        assert "num_patches" in result
+        assert "densities" in result
+        assert "dmax" in result
+        assert "dmin" in result
+
+    def test_analyze_densities_endpoint(
+        self, client: TestClient, sample_densities: list[float]
+    ) -> None:
+        """Test density analysis via HTTP request."""
+        request_data = {"densities": sample_densities}
+        response = client.post("/api/analyze", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "dmin" in data
+        assert "dmax" in data
+        assert "range" in data
+        assert "is_monotonic" in data
+        assert "max_error" in data
+        assert "rms_error" in data
+        assert "suggestions" in data
+
 
 class TestChemistryAPI:
     """Tests for chemistry calculation API endpoints."""
@@ -214,6 +384,73 @@ class TestChemistryAPI:
 
         assert isinstance(response["recipes"], list)
 
+    # Integration tests using TestClient
+    def test_list_calibrations_endpoint(self, client: TestClient) -> None:
+        """Test listing calibrations via HTTP request."""
+        response = client.get("/api/calibrations")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "count" in data
+        assert "records" in data
+        assert isinstance(data["records"], list)
+
+    def test_create_calibration_endpoint(self, client: TestClient) -> None:
+        """Test creating a calibration via HTTP request."""
+        request_data = {
+            "paper_type": "Arches Platine",
+            "exposure_time": 180.0,
+            "metal_ratio": 0.5,
+            "contrast_agent": "na2",
+            "contrast_amount": 5.0,
+            "developer": "potassium_oxalate",
+            "chemistry_type": "platinum_palladium",
+            "densities": [0.1 + i * 0.1 for i in range(21)],
+            "notes": "Test calibration",
+        }
+        response = client.post("/api/calibrations", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "id" in data
+        assert data["message"] == "Calibration saved"
+
+    def test_get_calibration_endpoint(self, client: TestClient) -> None:
+        """Test retrieving a calibration by ID via HTTP request."""
+        # First, create a calibration
+        create_response = client.post(
+            "/api/calibrations",
+            json={
+                "paper_type": "Test Paper",
+                "exposure_time": 200.0,
+                "metal_ratio": 0.6,
+                "contrast_agent": "none",
+                "contrast_amount": 0.0,
+                "developer": "potassium_oxalate",
+                "chemistry_type": "platinum_palladium",
+                "densities": [0.2, 0.4, 0.6, 0.8, 1.0],
+            },
+        )
+        calibration_id = create_response.json()["id"]
+
+        # Now retrieve it
+        get_response = client.get(f"/api/calibrations/{calibration_id}")
+
+        assert get_response.status_code == 200
+        data = get_response.json()
+        assert data["paper_type"] == "Test Paper"
+        assert data["exposure_time"] == 200.0
+
+    def test_get_statistics_endpoint(self, client: TestClient) -> None:
+        """Test getting database statistics via HTTP request."""
+        response = client.get("/api/statistics")
+
+        assert response.status_code == 200
+        # Statistics endpoint returns various metrics
+        data = response.json()
+        assert isinstance(data, dict)
+
 
 class TestChatAPI:
     """Tests for AI chat API endpoints."""
@@ -254,6 +491,49 @@ class TestChatAPI:
         ]
 
         assert len(quick_prompts) >= 3
+
+    # Integration tests using TestClient
+    @pytest.mark.skip(reason="LLM dependencies may not be available in test environment")
+    def test_chat_endpoint(self, client: TestClient) -> None:
+        """Test chat endpoint via HTTP request (requires LLM setup)."""
+        request_data = {
+            "message": "How do I improve contrast?",
+            "include_history": True,
+        }
+        response = client.post("/api/chat", json=request_data)
+
+        # May return 500 if LLM not configured, which is acceptable
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            data = response.json()
+            assert "response" in data
+
+    @pytest.mark.skip(reason="LLM dependencies may not be available in test environment")
+    def test_recipe_suggestion_endpoint(self, client: TestClient) -> None:
+        """Test recipe suggestion endpoint via HTTP request."""
+        request_data = {
+            "paper_type": "Arches Platine",
+            "characteristics": "High contrast with deep blacks",
+        }
+        response = client.post("/api/chat/recipe", json=request_data)
+
+        # May return 500 if LLM not configured
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            data = response.json()
+            assert "response" in data
+
+    @pytest.mark.skip(reason="LLM dependencies may not be available in test environment")
+    def test_troubleshoot_endpoint(self, client: TestClient) -> None:
+        """Test troubleshooting endpoint via HTTP request."""
+        request_data = {"problem": "Uneven coating on paper"}
+        response = client.post("/api/chat/troubleshoot", json=request_data)
+
+        # May return 500 if LLM not configured
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            data = response.json()
+            assert "response" in data
 
 
 class TestSessionsAPI:
@@ -327,6 +607,33 @@ class TestAPIErrorHandling:
         # Should not contain stack trace or internal details
         assert "traceback" not in error_response
         assert "stack" not in error_response
+
+    # Integration tests using TestClient
+    def test_404_on_invalid_endpoint(self, client: TestClient) -> None:
+        """Test that invalid endpoints return 404."""
+        response = client.get("/api/nonexistent/endpoint")
+
+        assert response.status_code == 404
+
+    def test_422_on_invalid_request_body(self, client: TestClient) -> None:
+        """Test validation error on invalid request."""
+        # Missing required fields
+        invalid_request = {"invalid_field": "test"}
+        response = client.post("/api/calibrations", json=invalid_request)
+
+        assert response.status_code == 422
+
+    def test_400_on_invalid_curve_generation(self, client: TestClient) -> None:
+        """Test 400 error on invalid curve generation request."""
+        # Empty densities should cause an error
+        invalid_request = {
+            "densities": [],
+            "name": "Test",
+            "curve_type": "linear",
+        }
+        response = client.post("/api/curves/generate", json=invalid_request)
+
+        assert response.status_code in [400, 422]
 
 
 class TestAPIAuthentication:

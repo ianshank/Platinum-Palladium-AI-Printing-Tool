@@ -204,7 +204,7 @@ export function AIAssistant() {
     if (!text || chatMutation.isPending) return;
 
     const userMessage: Message = {
-      id: `user-${Date.now()}`,
+      id: `user-${Date.now()}-${Math.random().toString(36)}`,
       role: 'user',
       content: text,
     };
@@ -215,14 +215,14 @@ export function AIAssistant() {
     try {
       const response = await chatMutation.mutateAsync({ message: text });
       const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
+        id: `assistant-${Date.now()}-${Math.random().toString(36)}`,
         role: 'assistant',
         content: response,
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch {
       const errorMessage: Message = {
-        id: `error-${Date.now()}`,
+        id: `error-${Date.now()}-${Math.random().toString(36)}`,
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
       };

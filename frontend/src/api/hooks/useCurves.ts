@@ -3,7 +3,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../client';
+import { apiClient, uploadFile } from '../client';
 import { queryKeys } from '../queryClient';
 import { apiConfig } from '@/config/api.config';
 import type {
@@ -155,18 +155,11 @@ export const useEnhanceCurve = () => {
 export const useUploadQuadFile = () => {
   return useMutation({
     mutationFn: async ({ file, channel }: { file: File; channel?: string }) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (channel) {
-        formData.append('channel', channel);
-      }
-
-      const { data } = await apiClient.post(
+      const additionalData = channel ? { channel } : undefined;
+      const { data } = await uploadFile(
         apiConfig.endpoints.curves.uploadQuad,
-        formData,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        }
+        file,
+        additionalData
       );
       return data;
     },

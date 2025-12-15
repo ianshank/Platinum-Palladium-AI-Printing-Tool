@@ -3,7 +3,7 @@
  */
 
 import styled, { css } from 'styled-components';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useUIStore } from '@/store';
 import { env } from '@/config/env';
 import { media } from '@/theme';
@@ -19,6 +19,8 @@ const SidebarContainer = styled.aside<{ $collapsed: boolean }>`
   transition: width ${({ theme }) => theme.transitions.normal};
   z-index: ${({ theme }) => theme.zIndex.sticky};
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 
   @media (max-width: 1023px) {
     transform: translateX(${({ $collapsed }) => ($collapsed ? '-100%' : '0')});

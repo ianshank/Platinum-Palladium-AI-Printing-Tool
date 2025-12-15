@@ -195,9 +195,8 @@ export function CalibrationWizard() {
 
       <StepperContainer>
         {steps.map((step, index) => (
-          <>
+          <React.Fragment key={step.number}>
             <Step
-              key={step.number}
               $active={currentStep === step.number}
               $completed={step.number < currentStep}
             >
@@ -216,7 +215,7 @@ export function CalibrationWizard() {
             {index < steps.length - 1 && (
               <StepConnector $completed={step.number < currentStep} />
             )}
-          </>
+          </React.Fragment>
         ))}
       </StepperContainer>
 

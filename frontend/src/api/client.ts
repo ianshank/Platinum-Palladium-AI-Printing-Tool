@@ -149,6 +149,11 @@ export const downloadFile = async (url: string, filename: string) => {
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = filename;
+
+  // Temporarily add to DOM for cross-browser reliability
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
+
   URL.revokeObjectURL(link.href);
 };

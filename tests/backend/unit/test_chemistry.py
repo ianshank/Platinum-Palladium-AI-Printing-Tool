@@ -172,9 +172,9 @@ class TestChemistryCalculations:
 
     def test_invalid_dimensions_handling(self) -> None:
         """Test handling of invalid dimensions."""
+        width = -5
+        height = 10
         with pytest.raises(ValueError):
-            width = -5
-            height = 10
             if width <= 0 or height <= 0:
                 raise ValueError("Dimensions must be positive")
 

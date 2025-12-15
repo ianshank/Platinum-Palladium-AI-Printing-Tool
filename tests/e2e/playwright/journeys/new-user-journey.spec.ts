@@ -45,7 +45,6 @@ test.describe('User Journey: New User Exploration', () => {
     await test.step('User checks out calibration wizard', async () => {
       await dashboard.startNewCalibration();
 
-      const calibration = new CalibrationPage(page);
       await expect(page.locator('h1')).toContainText(/Calibration/);
 
       // User sees the wizard steps

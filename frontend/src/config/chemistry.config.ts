@@ -95,3 +95,4 @@ export type CoatingMethod = keyof typeof chemistryConfig.coatingMethodMultiplier
 export type MetalPresetId =
   (typeof chemistryConfig.metalPresets)[number]['id'];
 export type PaperSizeId = (typeof chemistryConfig.paperSizes)[number]['id'];
+export type ContrastAgentId = (typeof chemistryConfig.contrastAgents)[number]['id'];

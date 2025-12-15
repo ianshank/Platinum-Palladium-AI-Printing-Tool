@@ -5,6 +5,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '../client';
 import { apiConfig } from '@/config/api.config';
+import { tabletConfig } from '@/config/tablet.config';
 import type { ScanUploadResponse, AnalyzeRequest, AnalyzeResponse } from '@/types';
 
 /**
@@ -79,14 +80,14 @@ export const assessScanQuality = (
 
   // Check density range
   const range = response.range;
-  if (range < 1.5) {
+  if (range < tabletConfig.quality.minDensityRange) {
     issues.push({
       type: 'error',
       message: `Density range is low (${range.toFixed(2)})`,
       suggestion: 'Increase exposure time or development time',
     });
     score -= 25;
-  } else if (range < 1.8) {
+  } else if (range < tabletConfig.quality.minDmax) {
     issues.push({
       type: 'warning',
       message: `Density range is slightly low (${range.toFixed(2)})`,
@@ -96,7 +97,7 @@ export const assessScanQuality = (
   }
 
   // Check Dmin
-  if (response.dmin > 0.15) {
+  if (response.dmin > tabletConfig.quality.maxDmin) {
     issues.push({
       type: 'warning',
       message: `Dmin is elevated (${response.dmin.toFixed(2)})`,
@@ -106,7 +107,7 @@ export const assessScanQuality = (
   }
 
   // Check Dmax
-  if (response.dmax < 1.8) {
+  if (response.dmax < tabletConfig.quality.minDmax) {
     issues.push({
       type: 'warning',
       message: `Dmax is low (${response.dmax.toFixed(2)})`,

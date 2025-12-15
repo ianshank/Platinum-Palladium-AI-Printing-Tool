@@ -5,7 +5,7 @@
 
 import { useState, useMemo } from 'react';
 import styled from 'styled-components';
-import { chemistryConfig } from '@/config/chemistry.config';
+import { chemistryConfig, type ContrastAgentId } from '@/config/chemistry.config';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -229,7 +229,7 @@ export function ChemistryCalculator() {
   const [platinumRatio, setPlatinumRatio] = useState(0.5);
   const [absorbency, setAbsorbency] = useState<'low' | 'medium' | 'high'>('medium');
   const [coatingMethod, setCoatingMethod] = useState<'brush' | 'rod' | 'puddle_pusher'>('brush');
-  const [contrastBoost, setContrastBoost] = useState(0);
+  const [contrastAgent, setContrastAgent] = useState<ContrastAgentId>('none');
 
   const recipe = useMemo(() => {
     const margin = chemistryConfig.coating.defaultMarginInches;
@@ -246,14 +246,26 @@ export function ChemistryCalculator() {
     const ferricOxalateTotal = adjustedDrops / 2;
     const metalTotal = adjustedDrops / 2;
 
-    const foContrastDrops = ferricOxalateTotal * contrastBoost;
-    const foStandardDrops = ferricOxalateTotal - foContrastDrops;
+    // Get the selected contrast agent configuration
+    const selectedContrastAgent = chemistryConfig.contrastAgents.find(
+      agent => agent.id === contrastAgent
+    ) || chemistryConfig.contrastAgents[0];
 
+    // Calculate contrast agent drops based on selection
+    let foContrastDrops = 0;
+    let na2Drops = 0;
+
+    if (contrastAgent === 'potassium_chlorate') {
+      // Potassium chlorate uses FO#2 for contrast
+      foContrastDrops = metalTotal * selectedContrastAgent.dropsRatio;
+    } else if (contrastAgent === 'na2') {
+      // Na2 (Sodium Chloroplatinate) is a separate chemical
+      na2Drops = metalTotal * selectedContrastAgent.dropsRatio;
+    }
+
+    const foStandardDrops = ferricOxalateTotal - foContrastDrops;
     const platinumDrops = metalTotal * platinumRatio;
     const palladiumDrops = metalTotal * (1 - platinumRatio);
-
-    const na2Ratio = 0.25;
-    const na2Drops = metalTotal * na2Ratio;
 
     const totalDrops = foStandardDrops + foContrastDrops + palladiumDrops + platinumDrops + na2Drops;
 
@@ -276,7 +288,7 @@ export function ChemistryCalculator() {
       cost,
       coatingArea,
     };
-  }, [width, height, platinumRatio, absorbency, coatingMethod, contrastBoost]);
+  }, [width, height, platinumRatio, absorbency, coatingMethod, contrastAgent]);
 
   const handleSizeSelect = (w: number, h: number) => {
     setWidth(w);
@@ -379,6 +391,21 @@ export function ChemistryCalculator() {
               <option value="brush">Hake Brush</option>
               <option value="rod">Glass Rod</option>
               <option value="puddle_pusher">Puddle Pusher</option>
+            </Select>
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="contrast-agent">Contrast Agent</Label>
+            <Select
+              id="contrast-agent"
+              value={contrastAgent}
+              onChange={(e) => setContrastAgent(e.target.value as ContrastAgentId)}
+            >
+              {chemistryConfig.contrastAgents.map((agent) => (
+                <option key={agent.id} value={agent.id}>
+                  {agent.label}
+                </option>
+              ))}
             </Select>
           </FormGroup>
         </Card>
