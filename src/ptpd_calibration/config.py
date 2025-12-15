@@ -21,6 +21,8 @@ class LLMProvider(str, Enum):
 
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
+    LM_STUDIO = "lm_studio"
+    OLLAMA = "ollama"
 
 
 class ExportFormat(str, Enum):
@@ -382,6 +384,38 @@ class LLMSettings(BaseSettings):
     anthropic_model: str = Field(default="claude-sonnet-4-20250514")
     openai_model: str = Field(default="gpt-4o")
 
+    # LM Studio settings (local inference)
+    lm_studio_base_url: str = Field(
+        default="http://localhost:1234/v1",
+        description="LM Studio server base URL"
+    )
+    lm_studio_model: str = Field(
+        default="local-model",
+        description="Model identifier for LM Studio (usually 'local-model')"
+    )
+    lm_studio_timeout: int = Field(
+        default=120,
+        ge=10,
+        le=600,
+        description="Timeout for LM Studio requests in seconds"
+    )
+
+    # Ollama settings (local inference)
+    ollama_base_url: str = Field(
+        default="http://localhost:11434/v1",
+        description="Ollama server base URL (OpenAI-compatible endpoint)"
+    )
+    ollama_model: str = Field(
+        default="llama3.2",
+        description="Ollama model name"
+    )
+    ollama_timeout: int = Field(
+        default=120,
+        ge=10,
+        le=600,
+        description="Timeout for Ollama requests in seconds"
+    )
+
     # Request parameters
     max_tokens: int = Field(default=4096, ge=100, le=32000)
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
@@ -392,14 +426,53 @@ class LLMSettings(BaseSettings):
     retry_delay_seconds: float = Field(default=1.0, ge=0.1, le=30.0)
 
     def get_active_api_key(self) -> Optional[str]:
-        """Get the active API key with runtime key taking precedence."""
+        """Get the active API key with runtime key taking precedence.
+
+        For local providers (LM Studio, Ollama), returns 'not-needed' as
+        they don't require API keys.
+        """
         if self.runtime_api_key:
             return self.runtime_api_key
         if self.provider == LLMProvider.ANTHROPIC:
             return self.anthropic_api_key or self.api_key
         elif self.provider == LLMProvider.OPENAI:
             return self.openai_api_key or self.api_key
+        elif self.provider in (LLMProvider.LM_STUDIO, LLMProvider.OLLAMA):
+            # Local providers don't require API keys
+            return "not-needed"
         return self.api_key
+
+    def is_local_provider(self) -> bool:
+        """Check if the current provider is a local inference server."""
+        return self.provider in (LLMProvider.LM_STUDIO, LLMProvider.OLLAMA)
+
+    def get_base_url(self) -> Optional[str]:
+        """Get the base URL for the current provider."""
+        if self.provider == LLMProvider.LM_STUDIO:
+            return self.lm_studio_base_url
+        elif self.provider == LLMProvider.OLLAMA:
+            return self.ollama_base_url
+        return None
+
+    def get_model_name(self) -> str:
+        """Get the model name for the current provider."""
+        if self.provider == LLMProvider.ANTHROPIC:
+            return self.anthropic_model
+        elif self.provider == LLMProvider.OPENAI:
+            return self.openai_model
+        elif self.provider == LLMProvider.LM_STUDIO:
+            return self.lm_studio_model
+        elif self.provider == LLMProvider.OLLAMA:
+            return self.ollama_model
+        return "unknown"
+
+    def get_timeout(self) -> int:
+        """Get the timeout for the current provider."""
+        if self.provider == LLMProvider.LM_STUDIO:
+            return self.lm_studio_timeout
+        elif self.provider == LLMProvider.OLLAMA:
+            return self.ollama_timeout
+        return self.timeout_seconds
 
 
 class AgentSettings(BaseSettings):
