@@ -506,7 +506,7 @@ class TestRouterIntegration:
         ("troubleshoot blocked shadows", TaskCategory.TROUBLESHOOTING),
         ("fix my muddy print", TaskCategory.TROUBLESHOOTING),
         ("analyze density", TaskCategory.ANALYSIS),
-        ("compare calibrations", TaskCategory.ANALYSIS),
+        ("compare calibrations", TaskCategory.CALIBRATION),  # Comparing calibrations is calibration-related
         ("predict exposure", TaskCategory.PREDICTION),
         ("suggest parameters", TaskCategory.PREDICTION),
         ("create recipe", TaskCategory.RECIPE),
