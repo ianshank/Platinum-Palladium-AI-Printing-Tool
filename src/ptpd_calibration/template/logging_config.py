@@ -147,40 +147,47 @@ class StructuredLogger:
         self._logger = logger or logging.getLogger(name)
         self.name = name
 
+    # Reserved parameter names that should not be passed through as kwargs
+    _RESERVED_PARAMS = frozenset({"level", "exc_info", "msg", "message"})
+
+    def _filter_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Filter out reserved parameter names from kwargs."""
+        return {k: v for k, v in kwargs.items() if k not in self._RESERVED_PARAMS}
+
     def _log(
         self,
         level: int,
         message: str,
         exc_info: bool = False,
-        **kwargs: Any
+        extra_data: Optional[dict[str, Any]] = None,
     ) -> None:
         """Internal log method with extra data."""
-        extra = {"extra_data": kwargs} if kwargs else {}
+        extra = {"extra_data": extra_data} if extra_data else {}
         self._logger.log(level, message, exc_info=exc_info, extra=extra)
 
     def debug(self, message: str, **kwargs: Any) -> None:
         """Log debug message."""
-        self._log(logging.DEBUG, message, **kwargs)
+        self._log(logging.DEBUG, message, extra_data=self._filter_kwargs(kwargs))
 
     def info(self, message: str, **kwargs: Any) -> None:
         """Log info message."""
-        self._log(logging.INFO, message, **kwargs)
+        self._log(logging.INFO, message, extra_data=self._filter_kwargs(kwargs))
 
     def warning(self, message: str, **kwargs: Any) -> None:
         """Log warning message."""
-        self._log(logging.WARNING, message, **kwargs)
+        self._log(logging.WARNING, message, extra_data=self._filter_kwargs(kwargs))
 
     def error(self, message: str, exc_info: bool = False, **kwargs: Any) -> None:
         """Log error message."""
-        self._log(logging.ERROR, message, exc_info=exc_info, **kwargs)
+        self._log(logging.ERROR, message, exc_info=exc_info, extra_data=self._filter_kwargs(kwargs))
 
     def critical(self, message: str, exc_info: bool = False, **kwargs: Any) -> None:
         """Log critical message."""
-        self._log(logging.CRITICAL, message, exc_info=exc_info, **kwargs)
+        self._log(logging.CRITICAL, message, exc_info=exc_info, extra_data=self._filter_kwargs(kwargs))
 
     def exception(self, message: str, **kwargs: Any) -> None:
         """Log exception with traceback."""
-        self._log(logging.ERROR, message, exc_info=True, **kwargs)
+        self._log(logging.ERROR, message, exc_info=True, extra_data=self._filter_kwargs(kwargs))
 
     @contextmanager
     def timed(
