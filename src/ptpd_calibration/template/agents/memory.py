@@ -14,11 +14,10 @@ import hashlib
 import json
 import time
 from collections import deque
-from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -54,14 +53,14 @@ class MemoryEntry(BaseModel):
 
     # Metadata
     importance: float = Field(default=0.5, ge=0.0, le=1.0)
-    source: Optional[str] = None
-    task_id: Optional[str] = None
+    source: str | None = None
+    task_id: str | None = None
     tags: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     # Retrieval tracking
     access_count: int = 0
-    last_accessed: Optional[datetime] = None
+    last_accessed: datetime | None = None
 
     def access(self) -> None:
         """Record memory access."""
@@ -109,7 +108,7 @@ class AgentMemory:
     def __init__(
         self,
         working_size: int = 20,
-        long_term_path: Optional[Path] = None,
+        long_term_path: Path | None = None,
         auto_consolidate: bool = True,
         consolidate_threshold: int = 50,
     ):
@@ -150,10 +149,10 @@ class AgentMemory:
         content: str,
         memory_type: MemoryType,
         importance: float = 0.5,
-        task_id: Optional[str] = None,
-        source: Optional[str] = None,
-        tags: Optional[list[str]] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        task_id: str | None = None,
+        source: str | None = None,
+        tags: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> MemoryEntry:
         """
         Add a memory entry.
@@ -221,7 +220,7 @@ class AgentMemory:
     def get_recent(
         self,
         limit: int = 10,
-        memory_type: Optional[MemoryType] = None,
+        memory_type: MemoryType | None = None,
     ) -> list[MemoryEntry]:
         """
         Get recent memories from working memory.
@@ -244,7 +243,7 @@ class AgentMemory:
     def get_by_type(
         self,
         memory_type: MemoryType,
-        limit: Optional[int] = None,
+        limit: int | None = None,
     ) -> list[MemoryEntry]:
         """Get memories by type."""
         entries = self._by_type.get(memory_type, [])
@@ -255,7 +254,7 @@ class AgentMemory:
     def get_by_task(
         self,
         task_id: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
     ) -> list[MemoryEntry]:
         """Get memories for a specific task."""
         entries = self._by_task.get(task_id, [])
@@ -349,7 +348,7 @@ class AgentMemory:
         self,
         max_entries: int = 10,
         max_chars: int = 2000,
-        include_types: Optional[list[MemoryType]] = None,
+        include_types: list[MemoryType] | None = None,
     ) -> str:
         """
         Get formatted context string for agent prompt.

@@ -13,12 +13,12 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import traceback
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Generator, Optional, Type, TypeVar, Union
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
@@ -64,8 +64,8 @@ class ErrorContext:
     operation: str
     component: str
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    request_id: Optional[str] = None
-    user_id: Optional[str] = None
+    request_id: str | None = None
+    user_id: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -88,13 +88,13 @@ class TemplateError(Exception):
 
     def __init__(
         self,
-        message: Optional[str] = None,
+        message: str | None = None,
         *,
-        error_code: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
-        cause: Optional[Exception] = None,
-        context: Optional[ErrorContext] = None,
-        user_message: Optional[str] = None,
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
+        cause: Exception | None = None,
+        context: ErrorContext | None = None,
+        user_message: str | None = None,
         recoverable: bool = True,
     ):
         """
@@ -180,11 +180,11 @@ class ValidationError(TemplateError):
 
     def __init__(
         self,
-        message: Optional[str] = None,
+        message: str | None = None,
         *,
-        field: Optional[str] = None,
-        value: Optional[Any] = None,
-        constraints: Optional[list[str]] = None,
+        field: str | None = None,
+        value: Any | None = None,
+        constraints: list[str] | None = None,
         **kwargs: Any,
     ):
         """Initialize validation error."""
@@ -210,10 +210,10 @@ class TimeoutError(TemplateError):
 
     def __init__(
         self,
-        message: Optional[str] = None,
+        message: str | None = None,
         *,
-        operation: Optional[str] = None,
-        timeout_seconds: Optional[float] = None,
+        operation: str | None = None,
+        timeout_seconds: float | None = None,
         **kwargs: Any,
     ):
         """Initialize timeout error."""
@@ -237,11 +237,11 @@ class ResourceError(TemplateError):
 
     def __init__(
         self,
-        message: Optional[str] = None,
+        message: str | None = None,
         *,
-        resource_type: Optional[str] = None,
-        limit: Optional[Any] = None,
-        current: Optional[Any] = None,
+        resource_type: str | None = None,
+        limit: Any | None = None,
+        current: Any | None = None,
         **kwargs: Any,
     ):
         """Initialize resource error."""
@@ -305,8 +305,8 @@ class ErrorResponse(BaseModel):
     category: str
     recoverable: bool
     timestamp: str
-    details: Optional[dict[str, Any]] = None
-    trace_id: Optional[str] = None
+    details: dict[str, Any] | None = None
+    trace_id: str | None = None
 
 
 class ErrorBoundary:
@@ -334,8 +334,8 @@ class ErrorBoundary:
         *,
         default_return: Any = None,
         reraise: bool = False,
-        on_error: Optional[Callable[[TemplateError], None]] = None,
-        suppress_exceptions: Optional[list[Type[Exception]]] = None,
+        on_error: Callable[[TemplateError], None] | None = None,
+        suppress_exceptions: list[type[Exception]] | None = None,
         convert_exceptions: bool = True,
         log_errors: bool = True,
     ):
@@ -507,8 +507,8 @@ def retry_on_error(
     max_retries: int = 3,
     retry_delay: float = 1.0,
     exponential_backoff: bool = True,
-    retry_exceptions: Optional[list[Type[Exception]]] = None,
-    on_retry: Optional[Callable[[Exception, int], None]] = None,
+    retry_exceptions: list[type[Exception]] | None = None,
+    on_retry: Callable[[Exception, int], None] | None = None,
 ) -> Callable[[F], F]:
     """
     Decorator for automatic retry on errors.
@@ -530,7 +530,7 @@ def retry_on_error(
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_error: Optional[Exception] = None
+            last_error: Exception | None = None
 
             for attempt in range(max_retries + 1):
                 try:
@@ -558,7 +558,7 @@ def retry_on_error(
 
         @functools.wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_error: Optional[Exception] = None
+            last_error: Exception | None = None
 
             for attempt in range(max_retries + 1):
                 try:
@@ -591,7 +591,7 @@ def retry_on_error(
 
 
 # FastAPI exception handler integration
-def create_fastapi_exception_handlers() -> dict[Type[Exception], Callable]:
+def create_fastapi_exception_handlers() -> dict[type[Exception], Callable]:
     """
     Create FastAPI exception handlers.
 

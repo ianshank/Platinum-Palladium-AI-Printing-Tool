@@ -23,10 +23,10 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 from dataclasses import dataclass, field
-from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 from ptpd_calibration.config import Settings, get_settings
 from ptpd_calibration.template.config import (
@@ -34,12 +34,9 @@ from ptpd_calibration.template.config import (
     FeatureFlags,
     TemplateConfig,
     configure_template,
-    get_template_config,
 )
 from ptpd_calibration.template.errors import (
     ErrorBoundary,
-    TemplateError,
-    create_fastapi_exception_handlers,
 )
 from ptpd_calibration.template.health import HealthCheck, HealthStatus
 from ptpd_calibration.template.logging_config import (
@@ -83,8 +80,9 @@ class AppContext:
         return path
 
 
-# Global application context
-_app_context: Optional[AppContext] = None
+# Global application context with thread-safe access
+_app_context: AppContext | None = None
+_app_context_lock = threading.Lock()
 
 
 def _detect_environment() -> EnvironmentType:
@@ -272,8 +270,8 @@ def _register_health_checks(health: HealthCheck, settings: Settings) -> None:
 
 
 def initialize_app(
-    settings: Optional[Settings] = None,
-    environment: Optional[EnvironmentType] = None,
+    settings: Settings | None = None,
+    environment: EnvironmentType | None = None,
 ) -> AppContext:
     """
     Initialize the application with all template system components.
@@ -366,21 +364,30 @@ def get_app_context() -> AppContext:
     """
     Get the application context, initializing if necessary.
 
+    Thread-safe implementation using double-checked locking pattern.
+
     Returns:
         AppContext with all initialized components
     """
     global _app_context
 
-    if _app_context is None or not _app_context.initialized:
-        return initialize_app()
+    # Fast path: context already initialized
+    if _app_context is not None and _app_context.initialized:
+        return _app_context
 
-    return _app_context
+    # Slow path: acquire lock and initialize
+    with _app_context_lock:
+        # Double-check after acquiring lock
+        if _app_context is None or not _app_context.initialized:
+            return initialize_app()
+        return _app_context
 
 
 def reset_app_context() -> None:
     """Reset the application context (for testing)."""
     global _app_context
-    _app_context = None
+    with _app_context_lock:
+        _app_context = None
 
 
 # Convenience functions for common operations
@@ -419,9 +426,9 @@ def create_component_boundary(
 
 
 def with_request_context(
-    request_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-    operation: Optional[str] = None,
+    request_id: str | None = None,
+    user_id: str | None = None,
+    operation: str | None = None,
 ) -> LogContext:
     """
     Create a log context for a request.

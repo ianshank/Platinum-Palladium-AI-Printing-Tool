@@ -11,8 +11,9 @@ Provides builder patterns for creating Gradio UIs with:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Generic, Optional, TypeVar
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -42,7 +43,7 @@ class TabConfig(BaseModel):
 
     id: str
     label: str
-    icon: Optional[str] = None
+    icon: str | None = None
     description: str = ""
     enabled: bool = True
     visible: bool = True
@@ -64,7 +65,7 @@ class UIComponentBuilder:
         submit_btn = builder.button("Submit", variant="primary")
     """
 
-    def __init__(self, theme: Optional[UITheme] = None):
+    def __init__(self, theme: UITheme | None = None):
         """Initialize component builder."""
         self.theme = theme or UITheme()
         self._components: list[Any] = []
@@ -114,7 +115,7 @@ class UIComponentBuilder:
         label: str,
         variant: str = "secondary",
         size: str = "md",
-        icon: Optional[str] = None,
+        icon: str | None = None,
         **kwargs: Any,
     ) -> Any:
         """Create a button component."""
@@ -135,7 +136,7 @@ class UIComponentBuilder:
         self,
         label: str,
         choices: list[str],
-        value: Optional[str] = None,
+        value: str | None = None,
         multiselect: bool = False,
         **kwargs: Any,
     ) -> Any:
@@ -216,7 +217,7 @@ class UIComponentBuilder:
     def file_input(
         self,
         label: str = "File",
-        file_types: Optional[list[str]] = None,
+        file_types: list[str] | None = None,
         **kwargs: Any,
     ) -> Any:
         """Create a file input component."""
@@ -330,7 +331,7 @@ class TabBuilder(ABC):
     def __init__(
         self,
         config: TabConfig,
-        theme: Optional[UITheme] = None,
+        theme: UITheme | None = None,
     ):
         """Initialize tab builder."""
         self.config = config
@@ -394,7 +395,7 @@ class TabBuilder(ABC):
     def wrap_handler(
         self,
         handler: Callable,
-        name: Optional[str] = None,
+        name: str | None = None,
     ) -> Callable:
         """Wrap an event handler with error handling."""
         return create_gradio_error_wrapper(
@@ -408,14 +409,14 @@ class AppConfig:
 
     title: str = "Application"
     description: str = ""
-    theme: Optional[UITheme] = None
+    theme: UITheme | None = None
     analytics_enabled: bool = False
     show_api: bool = False
     share: bool = False
     server_name: str = "0.0.0.0"
     server_port: int = 7860
-    favicon_path: Optional[str] = None
-    css: Optional[str] = None
+    favicon_path: str | None = None
+    css: str | None = None
 
 
 class GradioAppBuilder:
@@ -445,27 +446,27 @@ class GradioAppBuilder:
         self.config = config
         self.theme = config.theme or UITheme()
         self._tabs: list[TabBuilder] = []
-        self._header_content: Optional[str] = None
-        self._footer_content: Optional[str] = None
+        self._header_content: str | None = None
+        self._footer_content: str | None = None
         self._custom_css: list[str] = []
         self._app = None
 
-    def add_tab(self, tab: TabBuilder) -> "GradioAppBuilder":
+    def add_tab(self, tab: TabBuilder) -> GradioAppBuilder:
         """Add a tab to the application."""
         self._tabs.append(tab)
         return self
 
-    def set_header(self, content: str) -> "GradioAppBuilder":
+    def set_header(self, content: str) -> GradioAppBuilder:
         """Set header markdown content."""
         self._header_content = content
         return self
 
-    def set_footer(self, content: str) -> "GradioAppBuilder":
+    def set_footer(self, content: str) -> GradioAppBuilder:
         """Set footer markdown content."""
         self._footer_content = content
         return self
 
-    def add_css(self, css: str) -> "GradioAppBuilder":
+    def add_css(self, css: str) -> GradioAppBuilder:
         """Add custom CSS."""
         self._custom_css.append(css)
         return self
@@ -571,8 +572,8 @@ class StateManager:
 
     def __init__(self):
         """Initialize state manager."""
-        self._state: Dict[str, Any] = {}
-        self._callbacks: Dict[str, list[Callable]] = {}
+        self._state: dict[str, Any] = {}
+        self._callbacks: dict[str, list[Callable]] = {}
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get a state value."""
@@ -602,11 +603,11 @@ class StateManager:
         if key in self._callbacks and callback in self._callbacks[key]:
             self._callbacks[key].remove(callback)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Export state as dictionary."""
         return dict(self._state)
 
-    def from_dict(self, data: Dict[str, Any]) -> None:
+    def from_dict(self, data: dict[str, Any]) -> None:
         """Import state from dictionary."""
         for key, value in data.items():
             self.set(key, value)

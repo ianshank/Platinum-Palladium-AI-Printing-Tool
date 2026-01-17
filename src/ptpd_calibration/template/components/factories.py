@@ -6,9 +6,9 @@ Provides generic factory patterns for creating components dynamically.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Generic, Optional, Type, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
 
@@ -57,17 +57,17 @@ class ComponentFactory(Generic[T]):
         Args:
             singleton: If True, cache and reuse instances
         """
-        self._creators: Dict[str, Callable[..., T]] = {}
+        self._creators: dict[str, Callable[..., T]] = {}
         self._singleton = singleton
-        self._instances: Dict[str, T] = {}
-        self._configs: Dict[str, Any] = {}
+        self._instances: dict[str, T] = {}
+        self._configs: dict[str, Any] = {}
 
     def register(
         self,
         name: str,
-        creator: Callable[..., T] | Type[T],
-        config: Optional[Any] = None,
-    ) -> "ComponentFactory[T]":
+        creator: Callable[..., T] | type[T],
+        config: Any | None = None,
+    ) -> ComponentFactory[T]:
         """
         Register a component creator.
 
@@ -86,7 +86,7 @@ class ComponentFactory(Generic[T]):
         logger.debug(f"Registered component: {name}")
         return self
 
-    def unregister(self, name: str) -> Optional[Callable[..., T]]:
+    def unregister(self, name: str) -> Callable[..., T] | None:
         """Unregister a component creator."""
         creator = self._creators.pop(name, None)
         self._configs.pop(name, None)
@@ -96,7 +96,7 @@ class ComponentFactory(Generic[T]):
     def create(
         self,
         name: str,
-        config: Optional[Any] = None,
+        config: Any | None = None,
         **kwargs: Any,
     ) -> T:
         """
@@ -143,7 +143,7 @@ class ComponentFactory(Generic[T]):
     def get_or_create(
         self,
         name: str,
-        config: Optional[Any] = None,
+        config: Any | None = None,
         **kwargs: Any,
     ) -> T:
         """Get existing instance or create new one."""
@@ -169,8 +169,8 @@ class ServiceDefinition:
     """Definition of a service for the factory."""
 
     name: str
-    service_class: Type[Any]
-    config_class: Optional[Type[BaseModel]] = None
+    service_class: type[Any]
+    config_class: type[BaseModel] | None = None
     dependencies: list[str] = field(default_factory=list)
     singleton: bool = True
     lazy: bool = True
@@ -209,16 +209,16 @@ class ServiceFactory:
 
     def __init__(self):
         """Initialize service factory."""
-        self._definitions: Dict[str, ServiceDefinition] = {}
-        self._instances: Dict[str, Any] = {}
-        self._configs: Dict[str, BaseModel] = {}
+        self._definitions: dict[str, ServiceDefinition] = {}
+        self._instances: dict[str, Any] = {}
+        self._configs: dict[str, BaseModel] = {}
         self._initializing: set[str] = set()
 
     def register(
         self,
         definition: ServiceDefinition,
-        config: Optional[BaseModel] = None,
-    ) -> "ServiceFactory":
+        config: BaseModel | None = None,
+    ) -> ServiceFactory:
         """
         Register a service definition.
 
@@ -240,7 +240,7 @@ class ServiceFactory:
         )
         return self
 
-    def configure(self, name: str, config: BaseModel) -> "ServiceFactory":
+    def configure(self, name: str, config: BaseModel) -> ServiceFactory:
         """Configure a registered service."""
         if name not in self._definitions:
             raise KeyError(f"Service not registered: {name}")
@@ -290,7 +290,7 @@ class ServiceFactory:
 
         try:
             # Create dependencies first
-            deps: Dict[str, Any] = {}
+            deps: dict[str, Any] = {}
             for dep_name in definition.dependencies:
                 deps[dep_name] = self.get(dep_name)
 
@@ -329,7 +329,7 @@ class ServiceFactory:
         """List registered services."""
         return list(self._definitions.keys())
 
-    def get_dependency_graph(self) -> Dict[str, list[str]]:
+    def get_dependency_graph(self) -> dict[str, list[str]]:
         """Get service dependency graph."""
         return {
             name: definition.dependencies
@@ -352,7 +352,7 @@ class ServiceFactory:
                 instance = self._instances[name]
                 if hasattr(instance, "close"):
                     try:
-                        if hasattr(instance.close, "__call__"):
+                        if callable(instance.close):
                             result = instance.close()
                             if hasattr(result, "__await__"):
                                 await result
@@ -389,7 +389,7 @@ class EndpointConfig(BaseModel):
 
     path: str
     methods: list[str] = ["GET"]
-    name: Optional[str] = None
+    name: str | None = None
     description: str = ""
     tags: list[str] = []
     deprecated: bool = False
@@ -447,7 +447,7 @@ class EndpointFactory:
 
         return decorator
 
-    def add_middleware(self, middleware: Callable) -> "EndpointFactory":
+    def add_middleware(self, middleware: Callable) -> EndpointFactory:
         """Add middleware to all endpoints."""
         self._middleware.append(middleware)
         return self

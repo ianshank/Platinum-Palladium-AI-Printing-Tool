@@ -16,11 +16,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
-from ptpd_calibration.template.errors import TemplateError, TimeoutError
+from ptpd_calibration.template.errors import TemplateError
 from ptpd_calibration.template.logging_config import LogContext, get_logger
 
 logger = get_logger(__name__)
@@ -52,9 +52,9 @@ class AgentContext(BaseModel):
 
     # Identification
     task_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    session_id: Optional[str] = None
-    user_id: Optional[str] = None
-    parent_task_id: Optional[str] = None
+    session_id: str | None = None
+    user_id: str | None = None
+    parent_task_id: str | None = None
 
     # Task information
     task_type: str = "default"
@@ -114,9 +114,9 @@ class AgentResult(BaseModel, Generic[OutputT]):
     state: AgentState
 
     # Output
-    output: Optional[OutputT] = None
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    output: OutputT | None = None
+    error: str | None = None
+    error_code: str | None = None
 
     # Metrics
     iterations_used: int = 0
@@ -134,7 +134,7 @@ class AgentResult(BaseModel, Generic[OutputT]):
         cls,
         output: OutputT,
         **kwargs: Any,
-    ) -> "AgentResult[OutputT]":
+    ) -> AgentResult[OutputT]:
         """Create a successful result."""
         return cls(
             success=True,
@@ -147,9 +147,9 @@ class AgentResult(BaseModel, Generic[OutputT]):
     def failure_result(
         cls,
         error: str,
-        error_code: Optional[str] = None,
+        error_code: str | None = None,
         **kwargs: Any,
-    ) -> "AgentResult[OutputT]":
+    ) -> AgentResult[OutputT]:
         """Create a failure result."""
         return cls(
             success=False,
@@ -252,7 +252,7 @@ class AgentBase(ABC, Generic[InputT, OutputT]):
         self._tools[name] = tool
         self._logger.debug(f"Registered tool: {name}")
 
-    def get_tool(self, name: str) -> Optional[Any]:
+    def get_tool(self, name: str) -> Any | None:
         """Get a registered tool."""
         return self._tools.get(name)
 
@@ -279,8 +279,8 @@ class AgentBase(ABC, Generic[InputT, OutputT]):
     async def run(
         self,
         input_data: InputT,
-        context: Optional[AgentContext] = None,
-        timeout: Optional[float] = None,
+        context: AgentContext | None = None,
+        timeout: float | None = None,
     ) -> AgentResult[OutputT]:
         """
         Run the agent with full lifecycle management.
@@ -395,7 +395,7 @@ class AgentBase(ABC, Generic[InputT, OutputT]):
             if self.state == AgentState.EXECUTING:
                 self.state = AgentState.COMPLETED
 
-    async def __aenter__(self) -> "AgentBase[InputT, OutputT]":
+    async def __aenter__(self) -> AgentBase[InputT, OutputT]:
         """Async context manager entry."""
         await self.initialize()
         return self

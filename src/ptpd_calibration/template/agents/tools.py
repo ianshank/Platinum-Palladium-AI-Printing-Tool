@@ -12,15 +12,14 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from functools import wraps
-from typing import Any, Callable, Generic, Optional, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field
 
 from ptpd_calibration.template.errors import ValidationError
 from ptpd_calibration.template.logging_config import get_logger
@@ -51,10 +50,10 @@ class ToolParameter(BaseModel):
     type: str  # Python type as string
     description: str
     required: bool = True
-    default: Optional[Any] = None
-    enum: Optional[list[Any]] = None
-    min_value: Optional[float] = None
-    max_value: Optional[float] = None
+    default: Any | None = None
+    enum: list[Any] | None = None
+    min_value: float | None = None
+    max_value: float | None = None
 
 
 class ToolSchema(BaseModel):
@@ -74,18 +73,18 @@ class ToolResult(BaseModel, Generic[T]):
     """Result from tool execution."""
 
     success: bool
-    output: Optional[T] = None
-    error: Optional[str] = None
+    output: T | None = None
+    error: str | None = None
     execution_time_ms: float = 0.0
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @classmethod
-    def success_result(cls, output: T, **metadata: Any) -> "ToolResult[T]":
+    def success_result(cls, output: T, **metadata: Any) -> ToolResult[T]:
         """Create successful result."""
         return cls(success=True, output=output, metadata=metadata)
 
     @classmethod
-    def error_result(cls, error: str, **metadata: Any) -> "ToolResult[T]":
+    def error_result(cls, error: str, **metadata: Any) -> ToolResult[T]:
         """Create error result."""
         return cls(success=False, error=error, metadata=metadata)
 
@@ -113,7 +112,7 @@ class Tool:
     _call_count: int = field(default=0, repr=False)
     _total_time_ms: float = field(default=0.0, repr=False)
     _error_count: int = field(default=0, repr=False)
-    _last_called: Optional[datetime] = field(default=None, repr=False)
+    _last_called: datetime | None = field(default=None, repr=False)
 
     @property
     def name(self) -> str:
@@ -301,10 +300,10 @@ class Tool:
 
 
 def tool(
-    name: Optional[str] = None,
-    description: Optional[str] = None,
+    name: str | None = None,
+    description: str | None = None,
     category: ToolCategory = ToolCategory.UTILITY,
-    tags: Optional[list[str]] = None,
+    tags: list[str] | None = None,
     validate: bool = True,
     track: bool = True,
 ) -> Callable[[F], Tool]:
@@ -416,7 +415,7 @@ class ToolRegistry:
         self._by_category[tool.schema.category].append(tool.name)
         self._logger.debug(f"Registered tool: {tool.name}")
 
-    def remove(self, name: str) -> Optional[Tool]:
+    def remove(self, name: str) -> Tool | None:
         """Remove a tool from the registry."""
         tool = self._tools.pop(name, None)
         if tool:
@@ -424,7 +423,7 @@ class ToolRegistry:
             self._logger.debug(f"Removed tool: {name}")
         return tool
 
-    def get(self, name: str) -> Optional[Tool]:
+    def get(self, name: str) -> Tool | None:
         """Get a tool by name."""
         return self._tools.get(name)
 
@@ -434,8 +433,8 @@ class ToolRegistry:
 
     def list_tools(
         self,
-        category: Optional[ToolCategory] = None,
-        tags: Optional[list[str]] = None,
+        category: ToolCategory | None = None,
+        tags: list[str] | None = None,
     ) -> list[Tool]:
         """List tools, optionally filtered by category or tags."""
         tools = list(self._tools.values())
@@ -453,10 +452,10 @@ class ToolRegistry:
 
     def register(
         self,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
         category: ToolCategory = ToolCategory.UTILITY,
-        tags: Optional[list[str]] = None,
+        tags: list[str] | None = None,
     ) -> Callable[[F], F]:
         """
         Decorator to register a function as a tool.
@@ -526,7 +525,7 @@ class ToolRegistry:
 
 
 # Global registry instance
-_global_registry: Optional[ToolRegistry] = None
+_global_registry: ToolRegistry | None = None
 
 
 def get_global_registry() -> ToolRegistry:
@@ -538,10 +537,10 @@ def get_global_registry() -> ToolRegistry:
 
 
 def register_global_tool(
-    name: Optional[str] = None,
-    description: Optional[str] = None,
+    name: str | None = None,
+    description: str | None = None,
     category: ToolCategory = ToolCategory.UTILITY,
-    tags: Optional[list[str]] = None,
+    tags: list[str] | None = None,
 ) -> Callable[[F], F]:
     """Register a tool in the global registry."""
     return get_global_registry().register(

@@ -11,12 +11,12 @@ Provides coordination for multiple agents with:
 from __future__ import annotations
 
 import asyncio
-import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -25,11 +25,9 @@ from ptpd_calibration.template.agents.base import (
     AgentConfig,
     AgentContext,
     AgentResult,
-    AgentState,
 )
 from ptpd_calibration.template.agents.memory import AgentMemory, MemoryType
-from ptpd_calibration.template.errors import TemplateError
-from ptpd_calibration.template.logging_config import LogContext, get_logger
+from ptpd_calibration.template.logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -80,11 +78,11 @@ class Task:
     status: TaskStatus = TaskStatus.PENDING
 
     # Execution
-    assigned_agent: Optional[str] = None
-    result: Optional[AgentResult] = None
+    assigned_agent: str | None = None
+    result: AgentResult | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     # Configuration
     timeout_seconds: float = 60.0
@@ -111,8 +109,8 @@ class PlanStep(BaseModel):
     parallel_with: list[str] = Field(default_factory=list)
 
     # Results
-    result: Optional[Any] = None
-    error: Optional[str] = None
+    result: Any | None = None
+    error: str | None = None
 
 
 class ExecutionPlan(BaseModel):
@@ -131,8 +129,8 @@ class ExecutionPlan(BaseModel):
         name: str,
         task_type: str,
         input_data: Any = None,
-        depends_on: Optional[list[str]] = None,
-        parallel_with: Optional[list[str]] = None,
+        depends_on: list[str] | None = None,
+        parallel_with: list[str] | None = None,
     ) -> PlanStep:
         """Add a step to the plan."""
         step = PlanStep(
@@ -208,7 +206,7 @@ class TaskRouter:
         """Add a conditional routing rule."""
         self._rules.append((condition, agent_name))
 
-    def route(self, task: Task, available_agents: list[str]) -> Optional[str]:
+    def route(self, task: Task, available_agents: list[str]) -> str | None:
         """
         Route a task to an agent.
 
@@ -284,8 +282,8 @@ class AgentCoordinator:
     def __init__(
         self,
         max_parallel_agents: int = 3,
-        shared_memory: Optional[AgentMemory] = None,
-        router: Optional[TaskRouter] = None,
+        shared_memory: AgentMemory | None = None,
+        router: TaskRouter | None = None,
     ):
         """
         Initialize coordinator.
@@ -318,7 +316,7 @@ class AgentCoordinator:
         self,
         name: str,
         agent: AgentBase,
-        config: Optional[AgentConfig] = None,
+        config: AgentConfig | None = None,
     ) -> None:
         """
         Register an agent.
@@ -336,13 +334,13 @@ class AgentCoordinator:
 
         self._logger.info(f"Registered agent: {name}")
 
-    def unregister_agent(self, name: str) -> Optional[AgentBase]:
+    def unregister_agent(self, name: str) -> AgentBase | None:
         """Unregister an agent."""
         agent = self._agents.pop(name, None)
         self._agent_configs.pop(name, None)
         return agent
 
-    def get_agent(self, name: str) -> Optional[AgentBase]:
+    def get_agent(self, name: str) -> AgentBase | None:
         """Get an agent by name."""
         return self._agents.get(name)
 
@@ -370,7 +368,7 @@ class AgentCoordinator:
     async def run_task(
         self,
         task: Task,
-        agent_name: Optional[str] = None,
+        agent_name: str | None = None,
     ) -> AgentResult:
         """
         Run a single task.
@@ -481,7 +479,7 @@ class AgentCoordinator:
 
         # Convert exceptions to failure results
         final_results = []
-        for i, result in enumerate(results):
+        for _i, result in enumerate(results):
             if isinstance(result, Exception):
                 final_results.append(
                     AgentResult.failure_result(
@@ -534,9 +532,7 @@ class AgentCoordinator:
             current_group: list[PlanStep] = []
 
             for step in ready:
-                if not current_group:
-                    current_group.append(step)
-                elif any(s.id in step.parallel_with for s in current_group):
+                if not current_group or any(s.id in step.parallel_with for s in current_group):
                     current_group.append(step)
                 else:
                     parallel_groups.append(current_group)
@@ -583,7 +579,7 @@ class AgentCoordinator:
 
                     group_results = await self.run_parallel(tasks)
 
-                    for step, result in zip(group, group_results):
+                    for step, result in zip(group, group_results, strict=False):
                         results[step.id] = result
 
                         if result.success:
@@ -619,7 +615,7 @@ class AgentCoordinator:
         """Create a new execution plan."""
         return ExecutionPlan(name=name, description=description)
 
-    def get_task_status(self, task_id: str) -> Optional[TaskStatus]:
+    def get_task_status(self, task_id: str) -> TaskStatus | None:
         """Get status of a task."""
         if task_id in self._running_tasks:
             return self._running_tasks[task_id].status
@@ -640,7 +636,7 @@ class AgentCoordinator:
                 }
                 for name, (agent, config) in zip(
                     self._agents.keys(),
-                    zip(self._agents.values(), self._agent_configs.values()),
+                    zip(self._agents.values(), self._agent_configs.values(), strict=False), strict=False,
                 )
             },
             "tasks": {
@@ -650,7 +646,7 @@ class AgentCoordinator:
             "memory": self.memory.get_stats(),
         }
 
-    async def __aenter__(self) -> "AgentCoordinator":
+    async def __aenter__(self) -> AgentCoordinator:
         """Async context manager entry."""
         await self.initialize_all()
         return self

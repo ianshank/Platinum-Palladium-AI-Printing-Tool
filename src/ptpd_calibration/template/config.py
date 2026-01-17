@@ -11,7 +11,7 @@ import os
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -37,7 +37,7 @@ class LoggingConfig(BaseModel):
     )
     json_format: bool = Field(default=False, description="Use JSON structured logging")
     file_enabled: bool = Field(default=True, description="Enable file logging")
-    file_path: Optional[Path] = Field(default=None, description="Log file path")
+    file_path: Path | None = Field(default=None, description="Log file path")
     max_bytes: int = Field(default=10_485_760, description="Max log file size (10MB)")
     backup_count: int = Field(default=5, description="Number of backup files")
     console_enabled: bool = Field(default=True, description="Enable console logging")
@@ -69,11 +69,16 @@ class ResourceLimits(BaseModel):
 class SecurityConfig(BaseModel):
     """Security configuration."""
 
-    api_key_required: bool = Field(default=False, description="Require API key")
+    # SECURITY NOTE: Default to False for development, override to True in production
+    api_key_required: bool = Field(default=False, description="Require API key for protected endpoints")
     rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
     rate_limit_requests: int = Field(default=100, description="Requests per window")
     rate_limit_window_seconds: int = Field(default=60, description="Rate limit window")
-    cors_origins: list[str] = Field(default=["*"], description="CORS allowed origins")
+    # SECURITY NOTE: Default allows localhost only; configure for production deployment
+    cors_origins: list[str] = Field(
+        default=["http://localhost:7860", "http://127.0.0.1:7860"],
+        description="CORS allowed origins (restrict for production)",
+    )
     validate_inputs: bool = Field(default=True, description="Validate all inputs")
     sanitize_outputs: bool = Field(default=True, description="Sanitize outputs")
 
@@ -90,7 +95,7 @@ class FeatureFlags(BaseModel):
     enable_advanced_features: bool = Field(default=True, description="Enable advanced features")
 
     @classmethod
-    def minimal(cls) -> "FeatureFlags":
+    def minimal(cls) -> FeatureFlags:
         """Create minimal feature set for constrained environments."""
         return cls(
             enable_deep_learning=False,
@@ -106,16 +111,16 @@ class FeatureFlags(BaseModel):
 class HuggingfaceConfig(BaseModel):
     """Huggingface Spaces specific configuration."""
 
-    space_id: Optional[str] = Field(default=None, description="HF Space ID")
+    space_id: str | None = Field(default=None, description="HF Space ID")
     is_space: bool = Field(default=False, description="Running in HF Space")
-    persistent_storage_path: Optional[Path] = Field(
+    persistent_storage_path: Path | None = Field(
         default=None,
         description="Persistent storage path (if enabled)"
     )
     use_zero_gpu: bool = Field(default=False, description="Use ZeroGPU")
 
     @model_validator(mode="after")
-    def detect_huggingface_environment(self) -> "HuggingfaceConfig":
+    def detect_huggingface_environment(self) -> HuggingfaceConfig:
         """Auto-detect Huggingface environment."""
         if os.environ.get("SPACE_ID"):
             self.space_id = os.environ.get("SPACE_ID")
@@ -232,8 +237,8 @@ class TemplateConfig(BaseSettings):
         default=Path.home() / ".app_data",
         description="Data directory"
     )
-    cache_dir: Optional[Path] = Field(default=None, description="Cache directory")
-    temp_dir: Optional[Path] = Field(default=None, description="Temp directory")
+    cache_dir: Path | None = Field(default=None, description="Cache directory")
+    temp_dir: Path | None = Field(default=None, description="Temp directory")
 
     @field_validator("environment", mode="before")
     @classmethod
@@ -244,7 +249,7 @@ class TemplateConfig(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def configure_for_environment(self) -> "TemplateConfig":
+    def configure_for_environment(self) -> TemplateConfig:
         """Apply environment-specific defaults."""
         if self.environment == EnvironmentType.HUGGINGFACE or self.huggingface.is_space:
             self._configure_huggingface()
@@ -283,12 +288,17 @@ class TemplateConfig(BaseSettings):
         self.ui.server_name = "0.0.0.0"
 
     def _configure_production(self) -> None:
-        """Configure for production."""
+        """Configure for production with enhanced security."""
         self.debug = False
         self.logging.level = "WARNING"
         self.logging.json_format = True
+        # Enhanced security for production
         self.security.validate_inputs = True
         self.security.sanitize_outputs = True
+        self.security.api_key_required = True
+        # CORS should be explicitly configured for production domain
+        # Default to empty (block all) - must be configured per deployment
+        self.security.cors_origins = []
         self.ui.show_api_info = False
 
     def _configure_testing(self) -> None:
@@ -328,7 +338,7 @@ class TemplateConfig(BaseSettings):
 
 
 # Global configuration instance
-_config: Optional[TemplateConfig] = None
+_config: TemplateConfig | None = None
 
 
 @lru_cache(maxsize=1)

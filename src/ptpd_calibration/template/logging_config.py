@@ -17,21 +17,22 @@ import sys
 import time
 import traceback
 import uuid
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime
 from functools import wraps
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
 # Context variables for request tracing
-_request_id: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
-_session_id: ContextVar[Optional[str]] = ContextVar("session_id", default=None)
-_user_id: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
-_operation: ContextVar[Optional[str]] = ContextVar("operation", default=None)
+_request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
+_session_id: ContextVar[str | None] = ContextVar("session_id", default=None)
+_user_id: ContextVar[str | None] = ContextVar("user_id", default=None)
+_operation: ContextVar[str | None] = ContextVar("operation", default=None)
 
 # Type variable for decorated functions
 F = TypeVar("F", bound=Callable[..., Any])
@@ -44,14 +45,14 @@ class LogRecord(BaseModel):
     level: str
     logger: str
     message: str
-    request_id: Optional[str] = None
-    session_id: Optional[str] = None
-    user_id: Optional[str] = None
-    operation: Optional[str] = None
-    duration_ms: Optional[float] = None
+    request_id: str | None = None
+    session_id: str | None = None
+    user_id: str | None = None
+    operation: str | None = None
+    duration_ms: float | None = None
     extra: dict[str, Any] = {}
-    exception: Optional[str] = None
-    traceback: Optional[str] = None
+    exception: str | None = None
+    traceback: str | None = None
 
 
 class JSONFormatter(logging.Formatter):
@@ -142,7 +143,7 @@ class StructuredLogger:
             do_something()
     """
 
-    def __init__(self, name: str, logger: Optional[logging.Logger] = None):
+    def __init__(self, name: str, logger: logging.Logger | None = None):
         """Initialize structured logger."""
         self._logger = logger or logging.getLogger(name)
         self.name = name
@@ -159,7 +160,7 @@ class StructuredLogger:
         level: int,
         message: str,
         exc_info: bool = False,
-        extra_data: Optional[dict[str, Any]] = None,
+        extra_data: dict[str, Any] | None = None,
     ) -> None:
         """Internal log method with extra data."""
         extra = {"extra_data": extra_data} if extra_data else {}
@@ -261,10 +262,10 @@ class LogContext:
 
     def __init__(
         self,
-        request_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        operation: Optional[str] = None,
+        request_id: str | None = None,
+        session_id: str | None = None,
+        user_id: str | None = None,
+        operation: str | None = None,
         auto_request_id: bool = False,
     ):
         """Initialize log context."""
@@ -274,7 +275,7 @@ class LogContext:
         self.operation = operation
         self._tokens: list[Any] = []
 
-    def __enter__(self) -> "LogContext":
+    def __enter__(self) -> LogContext:
         """Enter context and set variables."""
         if self.request_id:
             self._tokens.append(_request_id.set(self.request_id))
@@ -367,10 +368,10 @@ def get_logger(name: str) -> StructuredLogger:
 
 def setup_logging(
     level: str = "INFO",
-    format_string: Optional[str] = None,
+    format_string: str | None = None,
     json_format: bool = False,
     file_enabled: bool = False,
-    file_path: Optional[Path] = None,
+    file_path: Path | None = None,
     max_bytes: int = 10_485_760,
     backup_count: int = 5,
     console_enabled: bool = True,

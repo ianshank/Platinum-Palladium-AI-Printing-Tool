@@ -16,15 +16,13 @@ import time
 import uuid
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Callable, Dict, Generic, Optional, TypeVar
-
-from pydantic import BaseModel
+from typing import Any, Generic, TypeVar
 
 from ptpd_calibration.template.errors import TemplateError, TimeoutError
-from ptpd_calibration.template.logging_config import LogContext, get_logger
+from ptpd_calibration.template.logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -40,9 +38,9 @@ class RequestContext:
 
     request_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     start_time: float = field(default_factory=time.perf_counter)
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    user_id: str | None = None
+    session_id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class MiddlewareBase(ABC, Generic[RequestT, ResponseT]):
@@ -57,7 +55,7 @@ class MiddlewareBase(ABC, Generic[RequestT, ResponseT]):
         self,
         request: RequestT,
         context: RequestContext,
-    ) -> Optional[RequestT]:
+    ) -> RequestT | None:
         """
         Process incoming request.
 
@@ -78,7 +76,7 @@ class MiddlewareBase(ABC, Generic[RequestT, ResponseT]):
         self,
         error: Exception,
         context: RequestContext,
-    ) -> Optional[ResponseT]:
+    ) -> ResponseT | None:
         """
         Process an error.
 
@@ -127,7 +125,7 @@ class MiddlewareChain:
         """Initialize empty middleware chain."""
         self._middleware: list[MiddlewareBase] = []
 
-    def add(self, middleware: MiddlewareBase) -> "MiddlewareChain":
+    def add(self, middleware: MiddlewareBase) -> MiddlewareChain:
         """Add middleware to the chain."""
         self._middleware.append(middleware)
         return self
@@ -247,7 +245,7 @@ class LoggingMiddleware(MiddlewareBase[Any, Any]):
         context: RequestContext,
     ) -> Any:
         """Log incoming request."""
-        log_data: Dict[str, Any] = {
+        log_data: dict[str, Any] = {
             "request_id": context.request_id,
             "type": type(request).__name__,
         }
@@ -266,7 +264,7 @@ class LoggingMiddleware(MiddlewareBase[Any, Any]):
         """Log outgoing response."""
         duration_ms = (time.perf_counter() - context.start_time) * 1000
 
-        log_data: Dict[str, Any] = {
+        log_data: dict[str, Any] = {
             "request_id": context.request_id,
             "duration_ms": duration_ms,
             "type": type(response).__name__,
@@ -316,7 +314,7 @@ class TimeoutMiddleware(MiddlewareBase[Any, Any]):
             timeout_seconds: Request timeout in seconds
         """
         self.timeout_seconds = timeout_seconds
-        self._tasks: Dict[str, asyncio.Task] = {}
+        self._tasks: dict[str, asyncio.Task] = {}
 
     async def process_request(
         self,
@@ -365,7 +363,7 @@ class RateLimitMiddleware(MiddlewareBase[Any, Any]):
         self,
         max_requests: int = 100,
         window_seconds: int = 60,
-        key_func: Optional[Callable[[Any, RequestContext], str]] = None,
+        key_func: Callable[[Any, RequestContext], str] | None = None,
     ):
         """
         Initialize rate limit middleware.
@@ -378,11 +376,12 @@ class RateLimitMiddleware(MiddlewareBase[Any, Any]):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self.key_func = key_func or self._default_key
-        self._requests: Dict[str, list[float]] = defaultdict(list)
+        self._requests: dict[str, list[float]] = defaultdict(list)
 
     def _default_key(self, request: Any, context: RequestContext) -> str:
-        """Default key function using request ID prefix."""
-        return context.user_id or context.session_id or "global"
+        """Default key function using user/session/request ID for isolation."""
+        # Use request_id as last resort to avoid all anonymous users sharing limits
+        return context.user_id or context.session_id or context.request_id or "anonymous"
 
     def _clean_old_requests(self, key: str, now: float) -> None:
         """Remove requests outside the window."""
@@ -436,7 +435,7 @@ class RateLimitMiddleware(MiddlewareBase[Any, Any]):
         """Add rate limit headers (if response supports it)."""
         return response
 
-    def get_status(self, key: str) -> Dict[str, Any]:
+    def get_status(self, key: str) -> dict[str, Any]:
         """Get rate limit status for a key."""
         now = time.time()
         self._clean_old_requests(key, now)
@@ -458,9 +457,9 @@ class AuthenticationMiddleware(MiddlewareBase[Any, Any]):
 
     def __init__(
         self,
-        api_keys: Optional[set[str]] = None,
+        api_keys: set[str] | None = None,
         key_header: str = "X-API-Key",
-        key_extractor: Optional[Callable[[Any], Optional[str]]] = None,
+        key_extractor: Callable[[Any], str | None] | None = None,
         allow_anonymous: bool = False,
     ):
         """
@@ -499,7 +498,9 @@ class AuthenticationMiddleware(MiddlewareBase[Any, Any]):
                     error_code="INVALID_API_KEY",
                 )
             context.metadata["authenticated"] = True
-            context.user_id = api_key[:8]  # Use key prefix as user ID
+            # Use hash of API key for user ID to avoid exposing key prefix
+            import hashlib
+            context.user_id = hashlib.sha256(api_key.encode()).hexdigest()[:16]
 
         elif not self.allow_anonymous:
             raise TemplateError(
@@ -536,7 +537,7 @@ class CachingMiddleware(MiddlewareBase[Any, Any]):
         self,
         ttl_seconds: int = 300,
         max_size: int = 1000,
-        key_func: Optional[Callable[[Any], str]] = None,
+        key_func: Callable[[Any], str] | None = None,
     ):
         """
         Initialize caching middleware.
@@ -549,7 +550,7 @@ class CachingMiddleware(MiddlewareBase[Any, Any]):
         self.ttl_seconds = ttl_seconds
         self.max_size = max_size
         self.key_func = key_func or (lambda r: str(hash(str(r))))
-        self._cache: Dict[str, tuple[Any, float]] = {}
+        self._cache: dict[str, tuple[Any, float]] = {}
 
     async def process_request(
         self,
@@ -602,7 +603,7 @@ class CachingMiddleware(MiddlewareBase[Any, Any]):
         """Clear the cache."""
         self._cache.clear()
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         now = time.time()
         valid_entries = sum(1 for _, (_, exp) in self._cache.items() if exp > now)

@@ -104,11 +104,12 @@ class TestSecurityConfig:
     """Tests for SecurityConfig."""
 
     def test_default_security(self) -> None:
-        """Test default security configuration."""
+        """Test default security configuration (localhost-only CORS for security)."""
         config = SecurityConfig()
         assert config.api_key_required is False
         assert config.rate_limit_enabled is True
-        assert config.cors_origins == ["*"]
+        # Secure default: localhost only instead of wildcard "*"
+        assert config.cors_origins == ["http://localhost:7860", "http://127.0.0.1:7860"]
 
     def test_strict_security(self) -> None:
         """Test strict security configuration."""

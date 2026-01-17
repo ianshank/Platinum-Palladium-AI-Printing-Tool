@@ -11,16 +11,13 @@ Provides health check endpoints and monitoring for:
 from __future__ import annotations
 
 import asyncio
-import os
-import platform
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from functools import lru_cache
-from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -43,8 +40,8 @@ class ComponentHealth(BaseModel):
 
     name: str
     status: HealthStatus
-    message: Optional[str] = None
-    latency_ms: Optional[float] = None
+    message: str | None = None
+    latency_ms: float | None = None
     last_check: datetime = Field(default_factory=datetime.utcnow)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -55,12 +52,12 @@ class SystemMetrics(BaseModel):
     memory_used_mb: float
     memory_available_mb: float
     memory_percent: float
-    cpu_percent: Optional[float] = None
-    disk_used_gb: Optional[float] = None
-    disk_available_gb: Optional[float] = None
-    disk_percent: Optional[float] = None
-    open_file_descriptors: Optional[int] = None
-    thread_count: Optional[int] = None
+    cpu_percent: float | None = None
+    disk_used_gb: float | None = None
+    disk_available_gb: float | None = None
+    disk_percent: float | None = None
+    open_file_descriptors: int | None = None
+    thread_count: int | None = None
 
 
 class HealthReport(BaseModel):
@@ -72,7 +69,7 @@ class HealthReport(BaseModel):
     uptime_seconds: float
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     components: list[ComponentHealth] = Field(default_factory=list)
-    metrics: Optional[SystemMetrics] = None
+    metrics: SystemMetrics | None = None
     features: dict[str, bool] = Field(default_factory=dict)
 
 
@@ -94,7 +91,7 @@ class HealthChecker:
     critical: bool = False
     timeout_seconds: float = 5.0
     cache_seconds: float = 10.0
-    _last_result: Optional[ComponentHealth] = field(default=None, repr=False)
+    _last_result: ComponentHealth | None = field(default=None, repr=False)
     _last_check_time: float = field(default=0.0, repr=False)
 
 
@@ -117,7 +114,7 @@ class HealthCheck:
         report = await health.check_all()
     """
 
-    _instance: Optional["HealthCheck"] = None
+    _instance: HealthCheck | None = None
     _start_time: float = time.time()
 
     def __init__(
@@ -137,7 +134,7 @@ class HealthCheck:
         self._register_builtin_checks()
 
     @classmethod
-    def get_instance(cls) -> "HealthCheck":
+    def get_instance(cls) -> HealthCheck:
         """Get singleton instance."""
         if cls._instance is None:
             cls._instance = HealthCheck()
@@ -149,7 +146,7 @@ class HealthCheck:
         app_name: str,
         version: str,
         environment: str,
-    ) -> "HealthCheck":
+    ) -> HealthCheck:
         """Configure and return singleton instance."""
         cls._instance = HealthCheck(
             app_name=app_name,
@@ -271,7 +268,7 @@ class HealthCheck:
 
         return health
 
-    async def check_component(self, name: str) -> Optional[ComponentHealth]:
+    async def check_component(self, name: str) -> ComponentHealth | None:
         """Check a specific component."""
         if name not in self._checkers:
             return None
