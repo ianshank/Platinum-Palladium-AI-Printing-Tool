@@ -2,13 +2,85 @@
 Gradio-based user interface for PTPD Calibration System.
 
 Provides comprehensive curve display, step wedge analysis, and calibration tools.
+
+Uses template system for:
+- Structured logging with operation context
+- Error handling with boundaries
+- User-friendly error messages
 """
 
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Optional, TypeVar
 from datetime import datetime, timedelta
+from functools import wraps
 
 import numpy as np
+
+# Template system imports
+from ptpd_calibration.bootstrap import (
+    get_app_context,
+    get_app_logger,
+    with_request_context,
+    create_component_boundary,
+)
+from ptpd_calibration.template.errors import (
+    TemplateError,
+    ValidationError,
+    create_gradio_error_wrapper,
+)
+from ptpd_calibration.template.logging_config import LogContext
+
+# Type variable for generic handler wrapping
+F = TypeVar("F", bound=Callable[..., Any])
+
+# Initialize template components
+_ui_logger = get_app_logger("ptpd_calibration.ui")
+_ui_boundary = create_component_boundary("gradio_ui", default_return=None)
+
+
+def _wrap_gradio_handler(handler_name: str) -> Callable[[F], F]:
+    """
+    Create a decorator that wraps Gradio handlers with error handling and logging.
+
+    Args:
+        handler_name: Name for logging the handler
+
+    Returns:
+        Decorator function
+    """
+    def decorator(func: F) -> F:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            with with_request_context(operation=handler_name):
+                try:
+                    _ui_logger.debug(f"Handler started: {handler_name}")
+                    result = func(*args, **kwargs)
+                    _ui_logger.debug(f"Handler completed: {handler_name}")
+                    return result
+                except ValidationError as e:
+                    _ui_logger.warning(
+                        f"Validation error in {handler_name}",
+                        error=str(e),
+                        details=e.details,
+                    )
+                    return {"error": e.user_message or str(e)}
+                except TemplateError as e:
+                    _ui_logger.error(
+                        f"Error in {handler_name}",
+                        error=str(e),
+                        error_code=e.error_code,
+                    )
+                    return {"error": e.user_message or "An error occurred. Please try again."}
+                except Exception as e:
+                    _ui_logger.error(
+                        f"Unexpected error in {handler_name}",
+                        error=str(e),
+                        exc_info=True,
+                    )
+                    return {"error": "An unexpected error occurred. Please check the logs."}
+        return wrapper  # type: ignore
+    return decorator
+
 
 # Import new modular tabs
 from ptpd_calibration.ui.tabs.dashboard import build_dashboard_tab as build_dashboard_new
@@ -68,9 +140,12 @@ def create_gradio_app(share: bool = False):
     Returns:
         Gradio Blocks interface.
     """
+    _ui_logger.info("Creating Gradio application", share=share)
+
     try:
         import gradio as gr
     except ImportError:
+        _ui_logger.error("Gradio not installed")
         raise ImportError(
             "Gradio is required for UI. Install with: pip install ptpd-calibration[ui]"
         )
@@ -3951,6 +4026,10 @@ def create_gradio_app(share: bool = False):
 
             build_about_tab(tab_label="ℹ️ About")
 
+    _ui_logger.info(
+        "Gradio application created",
+        tabs=["Dashboard", "Calibration", "Image Prep", "Darkroom", "AI Tools", "About"],
+    )
     return app
 
 
@@ -3963,8 +4042,23 @@ def launch_ui(share: bool = True, port: int = 7860, server_name: str = "0.0.0.0"
         port: Port to run on.
         server_name: Server name to bind to.
     """
-    app = create_gradio_app(share=share)
-    app.launch(share=share, server_port=port, server_name=server_name, show_api=False)
+    _ui_logger.info(
+        "Launching Gradio UI",
+        share=share,
+        port=port,
+        server_name=server_name,
+    )
+
+    try:
+        app = create_gradio_app(share=share)
+        app.launch(share=share, server_port=port, server_name=server_name, show_api=False)
+    except Exception as e:
+        _ui_logger.error(
+            "Failed to launch Gradio UI",
+            error=str(e),
+            exc_info=True,
+        )
+        raise
 
 
 if __name__ == "__main__":

@@ -1,5 +1,11 @@
 """
 FastAPI server for PTPD Calibration System.
+
+Uses template system for:
+- Structured logging with request tracing
+- Error handling with boundaries
+- Health check endpoints
+- Middleware integration
 """
 
 import asyncio
@@ -12,9 +18,9 @@ from ptpd_calibration.config import get_settings
 
 
 def create_app():
-    """Create the FastAPI application."""
+    """Create the FastAPI application with template system integration."""
     try:
-        from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+        from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import FileResponse, JSONResponse
         from pydantic import BaseModel
@@ -40,15 +46,46 @@ def create_app():
     from ptpd_calibration.detection import StepTabletReader
     from ptpd_calibration.ml import CalibrationDatabase
 
-    # Initialize app
+    # Import template system components
+    from ptpd_calibration.bootstrap import (
+        get_app_context,
+        get_app_logger,
+        with_request_context,
+        create_component_boundary,
+    )
+    from ptpd_calibration.template.errors import (
+        TemplateError,
+        ValidationError,
+        create_fastapi_exception_handlers,
+    )
+    from ptpd_calibration.template.health import health_check_endpoint
+
+    # Initialize app context and logger
+    app_context = get_app_context()
+    logger = get_app_logger("ptpd_calibration.api")
     settings = get_settings()
+
+    # Create error boundary for API operations
+    api_boundary = create_component_boundary("api", default_return=None)
+
     app = FastAPI(
-        title="PTPD Calibration API",
+        title=app_context.settings.app_name + " API",
         description="AI-powered calibration system for platinum/palladium printing",
-        version="1.0.0",
+        version="1.1.0",
+        docs_url="/docs" if app_context.template_config.api.docs_enabled else None,
+        redoc_url="/redoc" if app_context.template_config.api.docs_enabled else None,
     )
 
-    # CORS
+    # Register exception handlers from template system
+    for exc_type, handler in create_fastapi_exception_handlers().items():
+        app.add_exception_handler(exc_type, handler)
+
+    # Include health check endpoints
+    health_router = health_check_endpoint()
+    if health_router:
+        app.include_router(health_router)
+
+    # CORS middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.api.cors_origins,
@@ -56,6 +93,51 @@ def create_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Request logging middleware
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        """Log all requests with context."""
+        import time
+        import uuid
+
+        request_id = str(uuid.uuid4())[:8]
+        start_time = time.perf_counter()
+
+        # Add request context
+        with with_request_context(
+            request_id=request_id,
+            operation=f"{request.method} {request.url.path}",
+        ):
+            logger.info(
+                "Request started",
+                method=request.method,
+                path=request.url.path,
+                client=request.client.host if request.client else "unknown",
+            )
+
+            try:
+                response = await call_next(request)
+                duration_ms = (time.perf_counter() - start_time) * 1000
+
+                logger.info(
+                    "Request completed",
+                    status_code=response.status_code,
+                    duration_ms=round(duration_ms, 2),
+                )
+
+                # Add request ID to response headers
+                response.headers["X-Request-ID"] = request_id
+                return response
+
+            except Exception as e:
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                logger.error(
+                    "Request failed",
+                    error=str(e),
+                    duration_ms=round(duration_ms, 2),
+                )
+                raise
 
     # State
     database = CalibrationDatabase()
