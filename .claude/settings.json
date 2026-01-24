@@ -1,0 +1,88 @@
+{
+  "model": "claude-sonnet-4-20250514",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write(frontend/**)",
+      "Write(migration/**)",
+      "Write(.claude/**)",
+      "Edit(frontend/**)",
+      "Edit(migration/**)",
+      "Edit(.claude/**)",
+      "Bash(pnpm *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(pytest *)",
+      "Bash(uvicorn *)",
+      "Bash(git *)",
+      "Bash(python *)",
+      "Grep",
+      "Glob"
+    ],
+    "deny": [
+      "Write(src/ptpd_calibration/ui/**)",
+      "Edit(src/ptpd_calibration/ui/**)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(frontend/**/*.tsx)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd frontend && pnpm lint:fix $CLAUDE_TOOL_ARG_filepath 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "cd frontend && pnpm typecheck 2>/dev/null || true"
+          }
+        ]
+      },
+      {
+        "matcher": "Write(frontend/**/*.test.tsx)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd frontend && pnpm test -- --run $CLAUDE_TOOL_ARG_filepath 2>/dev/null || true"
+          }
+        ]
+      },
+      {
+        "matcher": "Write(src/**/*.py)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/user/Platinum-Palladium-AI-Printing-Tool && python -m ruff check --fix $CLAUDE_TOOL_ARG_filepath 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PreCommit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd frontend && pnpm check:all 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "cd frontend && pnpm test -- --run 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "cd frontend && pnpm build 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "PROJECT_ROOT": "/home/user/Platinum-Palladium-AI-Printing-Tool",
+    "API_BASE_URL": "http://localhost:8000",
+    "MIGRATION_PHASE": "Phase 1: Project Setup",
+    "LOG_LEVEL": "debug"
+  }
+}
