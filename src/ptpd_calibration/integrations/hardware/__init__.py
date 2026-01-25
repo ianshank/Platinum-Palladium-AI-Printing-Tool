@@ -36,6 +36,7 @@ __lazy_imports = {
     "CalibrationError": "ptpd_calibration.integrations.hardware.exceptions",
     "MeasurementError": "ptpd_calibration.integrations.hardware.exceptions",
     "PrinterError": "ptpd_calibration.integrations.hardware.exceptions",
+    "PrinterNotFoundError": "ptpd_calibration.integrations.hardware.exceptions",
     "PrintJobError": "ptpd_calibration.integrations.hardware.exceptions",
 }
 
@@ -117,15 +118,11 @@ def get_printer_driver(
                 "pip install pycups"
             ) from e
     elif system == "Windows":
-        try:
-            from ptpd_calibration.integrations.hardware.win32_printer import (
-                Win32PrinterDriver,
-            )
-            return Win32PrinterDriver(printer_name=printer_name)
-        except ImportError as e:
-            raise ImportError(
-                "Windows printing libraries not available."
-            ) from e
+        # Note: Windows printing support is planned for future release
+        raise NotImplementedError(
+            "Windows printing is not yet implemented. "
+            "Use simulate=True for testing, or run on Linux/macOS with CUPS."
+        )
     else:
         raise RuntimeError(f"Unsupported platform: {system}")
 
@@ -140,6 +137,7 @@ __all__ = [
     "CalibrationError",
     "MeasurementError",
     "PrinterError",
+    "PrinterNotFoundError",
     "PrintJobError",
     "get_spectrophotometer_driver",
     "get_printer_driver",

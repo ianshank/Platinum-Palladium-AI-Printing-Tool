@@ -45,7 +45,14 @@ def _check_dl_available() -> bool:
 
 
 def _get_neural_predictor() -> Any:
-    """Lazily import NeuralCurvePredictor."""
+    """Lazily import NeuralCurvePredictor.
+
+    Reserved for future integration with real neural network models.
+    Currently returns None as the UI uses simulated predictions.
+
+    Returns:
+        NeuralCurvePredictor class if available, None otherwise.
+    """
     if _check_dl_available():
         try:
             from ptpd_calibration.deep_learning.neural_curves import NeuralCurvePredictor
@@ -56,7 +63,14 @@ def _get_neural_predictor() -> Any:
 
 
 def _get_dl_settings() -> Any:
-    """Lazily import deep learning settings."""
+    """Lazily import deep learning settings.
+
+    Reserved for future integration with configurable deep learning settings.
+    Currently returns None as the UI uses default values.
+
+    Returns:
+        DeepLearningSettings instance if available, None otherwise.
+    """
     try:
         from ptpd_calibration.deep_learning.config import get_deep_learning_settings
         return get_deep_learning_settings()
@@ -463,6 +477,14 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
 
         # Pt:Pd ratio visualization update
         def update_ratio_viz(pt_ratio: int) -> str:
+            """Generate HTML visualization of platinum/palladium ratio.
+
+            Args:
+                pt_ratio: Platinum percentage (0-100).
+
+            Returns:
+                HTML string with gradient visualization.
+            """
             return _create_ratio_viz(pt_ratio)
 
         predict_pt_ratio.change(
@@ -1084,10 +1106,11 @@ def _load_session_data(session_logger: Any, filter_val: str) -> list[dict[str, A
                             "paper_type": record.paper_type,
                             "chemistry": getattr(record, "chemistry", None)
                         })
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to load session data: {e}")
                 continue
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Failed to list sessions: {e}")
 
     return data
 

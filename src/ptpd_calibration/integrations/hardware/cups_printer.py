@@ -143,8 +143,12 @@ class CUPSPrinterDriver:
             ) from e
 
         # Get available printers
-        # Type assertion: _cups_conn is guaranteed non-None after Connection() above
-        assert self._cups_conn is not None
+        # Type guard: _cups_conn is guaranteed non-None after Connection() above
+        if self._cups_conn is None:
+            raise PrinterError(
+                "CUPS connection not established",
+                operation="connect",
+            )
         printers = self._cups_conn.getPrinters()
 
         if not printers:
@@ -449,7 +453,7 @@ class CUPSPrinterDriver:
                 except ValueError:
                     result["level"] = 0
                 return result
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to parse supply string '{supply}': {e}")
 
         return None
