@@ -1,5 +1,11 @@
 """
 LLM integration for AI-powered calibration assistance.
+
+Supports multiple providers:
+- Anthropic Claude
+- OpenAI GPT
+- LM Studio (local)
+- Ollama (local)
 """
 
 from ptpd_calibration.llm.assistant import (
@@ -10,6 +16,11 @@ from ptpd_calibration.llm.client import (
     LLMClient,
     AnthropicClient,
     OpenAIClient,
+    LocalLLMClient,
+    LMStudioClient,
+    OllamaClient,
+    create_client,
+    get_available_providers,
 )
 from ptpd_calibration.llm.prompts import (
     SYSTEM_PROMPT,
@@ -26,6 +37,11 @@ __all__ = [
     "LLMClient",
     "AnthropicClient",
     "OpenAIClient",
+    "LocalLLMClient",
+    "LMStudioClient",
+    "OllamaClient",
+    "create_client",
+    "get_available_providers",
     # Prompts
     "SYSTEM_PROMPT",
     "get_analysis_prompt",

@@ -237,6 +237,7 @@ class Planner:
     def _default_templates(self) -> dict[str, list[str]]:
         """Get default plan templates."""
         return {
+            # Core calibration workflows
             "calibrate": [
                 "Load or scan the step tablet image",
                 "Detect and extract patch densities",
@@ -245,6 +246,25 @@ class Planner:
                 "Export curve in desired format",
                 "Document results",
             ],
+            "quick_calibration": [
+                "Detect step tablet in image",
+                "Extract density measurements",
+                "Generate linearization curve",
+                "Export to selected format",
+            ],
+            "full_calibration": [
+                "Validate input image quality",
+                "Detect and align step tablet",
+                "Extract all patch densities",
+                "Analyze density range, linearity, and monotonicity",
+                "Generate optimized correction curve",
+                "Validate curve against quality thresholds",
+                "Export curve in all required formats",
+                "Generate quality report",
+                "Save calibration record",
+            ],
+
+            # Analysis workflows
             "analyze": [
                 "Load the calibration data",
                 "Calculate quality metrics",
@@ -252,6 +272,33 @@ class Planner:
                 "Identify issues or improvements",
                 "Generate recommendations",
             ],
+            "compare_calibrations": [
+                "Load first calibration record",
+                "Load second calibration record",
+                "Compare density ranges",
+                "Compare curve characteristics",
+                "Identify key differences",
+                "Recommend which to use",
+            ],
+
+            # Quality workflows
+            "quality_check": [
+                "Load calibration data",
+                "Validate density range meets minimum",
+                "Check Dmin and Dmax thresholds",
+                "Verify monotonicity",
+                "Assess step uniformity",
+                "Generate pass/fail result",
+            ],
+            "print_quality_check": [
+                "Validate pre-print conditions",
+                "Check chemistry freshness",
+                "Verify environmental factors",
+                "Assess paper humidity",
+                "Generate go/no-go recommendation",
+            ],
+
+            # Troubleshooting workflows
             "troubleshoot": [
                 "Understand the problem description",
                 "Identify potential causes",
@@ -259,6 +306,16 @@ class Planner:
                 "Suggest diagnostic steps",
                 "Provide solutions",
             ],
+            "diagnose_print_issue": [
+                "Collect symptom details",
+                "Analyze density measurements if available",
+                "Match symptoms to known causes",
+                "Rank causes by likelihood",
+                "Suggest targeted fixes",
+                "Recommend verification steps",
+            ],
+
+            # Recipe and chemistry workflows
             "recipe": [
                 "Understand paper and desired characteristics",
                 "Search for similar calibrations",
@@ -266,6 +323,23 @@ class Planner:
                 "Generate coating recipe",
                 "Suggest test procedure",
             ],
+            "optimize_recipe": [
+                "Analyze target characteristics",
+                "Search for similar successful recipes",
+                "Calculate optimal metal ratio",
+                "Determine exposure time",
+                "Suggest contrast agent amount",
+                "Generate test strip plan",
+            ],
+            "chemistry_calculation": [
+                "Calculate coating area",
+                "Determine drops per component",
+                "Apply paper absorbency factor",
+                "Calculate metal solution volumes",
+                "Estimate cost",
+            ],
+
+            # Prediction workflows
             "predict": [
                 "Gather process parameters",
                 "Validate inputs",
@@ -273,4 +347,78 @@ class Planner:
                 "Estimate uncertainty",
                 "Format and return results",
             ],
+            "predict_exposure": [
+                "Gather environmental data",
+                "Load paper characteristics",
+                "Apply chemistry factors",
+                "Calculate base exposure",
+                "Apply environmental adjustments",
+                "Provide confidence interval",
+            ],
+
+            # Batch processing workflows
+            "batch_process": [
+                "Load recipe and parameters",
+                "Validate all input images",
+                "Process images in parallel",
+                "Apply quality checks to each",
+                "Collect results",
+                "Generate batch report",
+            ],
+
+            # Export workflows
+            "export_curve": [
+                "Validate curve data",
+                "Format for target application",
+                "Apply output settings",
+                "Write export file",
+            ],
+            "export_all_formats": [
+                "Generate QTR format",
+                "Generate Piezography format",
+                "Generate CSV format",
+                "Generate JSON format",
+                "Package all files",
+            ],
+
+            # Paper profiling workflows
+            "profile_paper": [
+                "Create exposure test strip",
+                "Determine optimal base exposure",
+                "Create metal ratio test",
+                "Determine optimal metal ratio",
+                "Create contrast test",
+                "Finalize paper profile",
+            ],
         }
+
+    def get_template(self, name: str) -> Optional[list[str]]:
+        """
+        Get a specific template by name.
+
+        Args:
+            name: Template name.
+
+        Returns:
+            List of step descriptions or None if not found.
+        """
+        return self._plan_templates.get(name)
+
+    def list_templates(self) -> list[str]:
+        """
+        List all available template names.
+
+        Returns:
+            List of template names.
+        """
+        return list(self._plan_templates.keys())
+
+    def add_template(self, name: str, steps: list[str]) -> None:
+        """
+        Add a new template or override existing.
+
+        Args:
+            name: Template name.
+            steps: List of step descriptions.
+        """
+        self._plan_templates[name] = steps
