@@ -16,6 +16,7 @@ from ptpd_calibration.ui.tabs.calibration_wizard import build_calibration_wizard
 from ptpd_calibration.ui.tabs.chemistry import build_chemistry_tab as build_chemistry_new
 from ptpd_calibration.ui.tabs.session_log import build_session_log_tab as build_session_log_new
 from ptpd_calibration.ui.tabs.ai_assistant import build_ai_assistant_tab as build_ai_new
+from ptpd_calibration.ui.tabs.neural_curve import build_neural_curve_tab as build_neural_new
 
 
 
@@ -3947,6 +3948,7 @@ def create_gradio_app(share: bool = False):
             with gr.TabItem("🤖 AI Tools"):
                 with gr.Tabs(elem_id="ai-tabs"):
                     build_ai_new()
+                    build_neural_new(session_logger)
                     build_quick_tools_tab()
 
             build_about_tab(tab_label="ℹ️ About")
