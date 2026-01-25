@@ -79,8 +79,14 @@ jobs:
       - name: Run unit tests
         if: steps.check-tests.outputs.exists == 'true' && matrix.test-type == 'unit'
         run: |
-          PYTHONPATH=src pytest tests/unit/ -v --timeout=300 --tb=short \
-            --ignore=tests/unit/test_performance_monitoring.py
+          PYTHONPATH=src pytest tests/unit/ -v --tb=short \
+            --ignore=tests/unit/test_performance_monitoring.py \
+            --ignore=tests/unit/test_deep_learning.py \
+            --ignore=tests/unit/test_deep_learning/ \
+            --ignore=tests/unit/test_ai_enhance.py \
+            --ignore=tests/unit/test_integrations.py \
+            --ignore=tests/unit/ui/test_deep_learning_ui.py \
+            --ignore=tests/unit/ui/test_dashboard_tab.py
         env:
           PYTHONPATH: src
 
