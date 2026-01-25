@@ -802,6 +802,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 plt.tight_layout()
 
                 # Create summary
+                max_correction = max(abs(c) for c in correction) if len(correction) > 0 else 0.0
                 summary = f"""
 **Model:** {model_record['name']}
 **Paper:** {paper}
@@ -809,7 +810,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
 **Target Dmax:** {target_dmax}
 **Output Points:** {num_points}
 **Monotonic:** {'✓ Yes' if prediction['is_monotonic'] else '✗ No'}
-**Max Correction:** {max(abs(c) for c in correction):.3f}
+**Max Correction:** {max_correction:.3f}
 """
 
                 # Quality checks
@@ -826,7 +827,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 else:
                     checks.append("❌ High prediction uncertainty")
 
-                if max(abs(c) for c in correction) < 0.3:
+                if max_correction < 0.3:
                     checks.append("✅ Reasonable correction magnitude")
                 else:
                     checks.append("⚠️ Large corrections needed")
