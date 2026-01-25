@@ -23,6 +23,8 @@ Usage:
         measurement = driver.read_density()
 """
 
+from typing import Any
+
 # Lazy imports for optional dependencies
 __lazy_imports = {
     "XRiteI1ProDriver": "ptpd_calibration.integrations.hardware.xrite_i1pro",
@@ -38,7 +40,7 @@ __lazy_imports = {
 }
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy import implementation classes."""
     if name in __lazy_imports:
         import importlib
@@ -51,7 +53,7 @@ def __getattr__(name: str):
 def get_spectrophotometer_driver(
     simulate: bool = True,
     port: str | None = None,
-):
+) -> Any:
     """Get appropriate spectrophotometer driver based on settings.
 
     Args:
@@ -83,7 +85,7 @@ def get_spectrophotometer_driver(
 def get_printer_driver(
     simulate: bool = True,
     printer_name: str | None = None,
-):
+) -> Any:
     """Get appropriate printer driver based on platform and settings.
 
     Args:

@@ -44,7 +44,7 @@ def _check_dl_available() -> bool:
     return _DL_AVAILABLE
 
 
-def _get_neural_predictor():
+def _get_neural_predictor() -> Any:
     """Lazily import NeuralCurvePredictor."""
     if _check_dl_available():
         try:
@@ -55,7 +55,7 @@ def _get_neural_predictor():
     return None
 
 
-def _get_dl_settings():
+def _get_dl_settings() -> Any:
     """Lazily import deep learning settings."""
     try:
         from ptpd_calibration.deep_learning.config import get_deep_learning_settings
@@ -64,7 +64,7 @@ def _get_dl_settings():
         return None
 
 
-def build_neural_curve_tab(session_logger=None):
+def build_neural_curve_tab(session_logger: Any = None) -> None:
     """Build the Neural Curve Prediction tab.
 
     Args:
@@ -429,7 +429,7 @@ def build_neural_curve_tab(session_logger=None):
         # =====================================================
 
         # Data source visibility toggle
-        def toggle_data_source(source):
+        def toggle_data_source(source: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
             """Toggle visibility based on data source selection."""
             return (
                 gr.update(visible=(source == "Upload custom data")),  # custom_data_upload
@@ -444,7 +444,7 @@ def build_neural_curve_tab(session_logger=None):
         )
 
         # Architecture info update
-        def update_arch_info(arch):
+        def update_arch_info(arch: str) -> str:
             """Update architecture description."""
             info_map = {
                 "transformer": "_Transformer: Best for capturing long-range dependencies in curves_",
@@ -462,7 +462,7 @@ def build_neural_curve_tab(session_logger=None):
         )
 
         # Pt:Pd ratio visualization update
-        def update_ratio_viz(pt_ratio):
+        def update_ratio_viz(pt_ratio: int) -> str:
             return _create_ratio_viz(pt_ratio)
 
         predict_pt_ratio.change(
@@ -473,22 +473,22 @@ def build_neural_curve_tab(session_logger=None):
 
         # Training handler
         def train_model(
-            data_source_val,
-            custom_file,
-            session_filter_val,
-            synthetic_samples_val,
-            synthetic_noise_val,
-            arch,
-            lr,
-            epochs_val,
-            batch_val,
-            hidden_val,
-            layers_val,
-            dropout_val,
-            uncertainty_val,
-            name,
-            current_models
-        ):
+            data_source_val: str,
+            custom_file: Any,
+            session_filter_val: str,
+            synthetic_samples_val: float,
+            synthetic_noise_val: float,
+            arch: str,
+            lr: float,
+            epochs_val: float,
+            batch_val: float,  # noqa: ARG001
+            hidden_val: float,  # noqa: ARG001
+            layers_val: float,  # noqa: ARG001
+            dropout_val: float,  # noqa: ARG001
+            uncertainty_val: bool,  # noqa: ARG001
+            name: str,
+            current_models: list[dict[str, Any]]
+        ) -> tuple[Any, ...]:
             """Train the neural curve model."""
             import matplotlib.pyplot as plt
 
@@ -642,7 +642,9 @@ def build_neural_curve_tab(session_logger=None):
         )
 
         # Model selection handler
-        def on_model_select(selected_name, all_models):
+        def on_model_select(
+            selected_name: str, all_models: list[dict[str, Any]]
+        ) -> tuple[str, dict[str, Any]]:
             """Update model info when selection changes."""
             if not all_models or selected_name == "No models trained yet":
                 return (
@@ -671,13 +673,13 @@ def build_neural_curve_tab(session_logger=None):
 
         # Prediction handler
         def generate_prediction(
-            selected_model,
-            all_models,
-            paper,
-            pt_ratio,
-            target_dmax,
-            num_points
-        ):
+            selected_model: str,
+            all_models: list[dict[str, Any]],
+            paper: str,
+            pt_ratio: int,
+            target_dmax: float,
+            num_points: int
+        ) -> tuple[Any, ...]:
             """Generate curve prediction."""
             import matplotlib.pyplot as plt
 
@@ -862,7 +864,9 @@ def build_neural_curve_tab(session_logger=None):
         )
 
         # Export handler
-        def export_curve(prediction, format_type):
+        def export_curve(
+            prediction: dict[str, Any] | None, format_type: str
+        ) -> Any:
             """Export the predicted curve."""
             if not prediction:
                 return gr.update(visible=False)
@@ -941,7 +945,9 @@ def build_neural_curve_tab(session_logger=None):
         )
 
         # Delete model handler
-        def delete_model(selected_name, all_models):
+        def delete_model(
+            selected_name: str, all_models: list[dict[str, Any]]
+        ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
             """Delete a trained model."""
             if not all_models or selected_name == "No models trained yet":
                 return all_models, gr.update(choices=["No models trained yet"])
@@ -1040,7 +1046,8 @@ def _load_custom_data(filepath: str) -> list[dict[str, Any]]:
 
     if filepath.endswith(".json"):
         with open(filepath) as f:
-            return json.load(f)
+            result: list[dict[str, Any]] = json.load(f)
+            return result
     elif filepath.endswith(".csv"):
         import csv
         data = []
@@ -1053,7 +1060,7 @@ def _load_custom_data(filepath: str) -> list[dict[str, Any]]:
         raise ValueError(f"Unsupported file format: {filepath}")
 
 
-def _load_session_data(session_logger, filter_val: str) -> list[dict[str, Any]]:  # noqa: ARG001
+def _load_session_data(session_logger: Any, filter_val: str) -> list[dict[str, Any]]:  # noqa: ARG001
     """Load training data from session history.
 
     Args:

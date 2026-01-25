@@ -44,7 +44,7 @@ from ptpd_calibration.integrations.protocols import (
 logger = get_logger(__name__)
 
 
-def _import_cups():
+def _import_cups() -> Any:
     """Lazy import for pycups."""
     if platform.system() == "Windows":
         raise ImportError(
@@ -143,6 +143,8 @@ class CUPSPrinterDriver:
             ) from e
 
         # Get available printers
+        # Type assertion: _cups_conn is guaranteed non-None after Connection() above
+        assert self._cups_conn is not None
         printers = self._cups_conn.getPrinters()
 
         if not printers:
@@ -433,7 +435,7 @@ class CUPSPrinterDriver:
         """
         # Format varies by manufacturer
         # Common format: "type=ink;name=black;level=75"
-        result = {}
+        result: dict[str, Any] = {}
 
         try:
             for part in supply.split(";"):

@@ -20,6 +20,7 @@ Usage:
 
 import re
 from datetime import datetime, timezone
+from typing import Any
 
 from ptpd_calibration.config import get_settings
 from ptpd_calibration.core.logging import get_logger
@@ -48,7 +49,7 @@ XRITE_PRODUCT_IDS = {
 }
 
 
-def _import_serial():
+def _import_serial() -> Any:
     """Lazy import for pyserial."""
     try:
         import serial
@@ -357,7 +358,7 @@ class XRiteI1ProDriver:
             if port_info.vid == XRITE_VENDOR_ID:
                 model = XRITE_PRODUCT_IDS.get(port_info.pid, "Unknown")
                 logger.info(f"Found X-Rite {model} on {port_info.device}")
-                return port_info.device
+                return str(port_info.device)
 
         logger.debug("No X-Rite device detected")
         return None
