@@ -149,7 +149,8 @@ class XRiteI1ProDriver:
                     device_type="spectrophotometer",
                 )
 
-        # Open serial connection
+        # Open serial connection with proper resource cleanup
+        serial_opened = False
         try:
             self._serial = serial.Serial(
                 port=port,
@@ -159,29 +160,33 @@ class XRiteI1ProDriver:
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE,
             )
-            logger.debug(f"Serial port opened: {port}")
-        except serial.SerialException as e:
-            self._status = DeviceStatus.DISCONNECTED
-            raise DeviceConnectionError(
-                f"Failed to open serial port {port}: {e}",
-                device_type="spectrophotometer",
-                port=port,
-            ) from e
+            serial_opened = True
+            logger.debug("Serial port opened successfully")
 
-        # Verify device communication
-        try:
+            # Verify device communication
             self._device_info = self._identify_device()
             self._status = DeviceStatus.CONNECTED
             logger.info(f"Connected to {self._device_info}")
             return True
+
+        except serial.SerialException as e:
+            self._status = DeviceStatus.DISCONNECTED
+            raise DeviceConnectionError(
+                f"Failed to open serial port: {e}",
+                device_type="spectrophotometer",
+                port=port,
+            ) from e
         except Exception as e:
-            self._close_serial()
             self._status = DeviceStatus.DISCONNECTED
             raise DeviceConnectionError(
                 f"Device identification failed: {e}",
                 device_type="spectrophotometer",
                 port=port,
             ) from e
+        finally:
+            # Ensure serial port is closed on any failure
+            if serial_opened and self._status != DeviceStatus.CONNECTED:
+                self._close_serial()
 
     def disconnect(self) -> None:
         """Disconnect from the device."""
@@ -448,11 +453,12 @@ class XRiteI1ProDriver:
 
             # Check for error response
             if response_str.startswith("ERR") or response_str.startswith("ERROR"):
+                # Log full details for debugging
+                logger.error(f"Device returned error for command: {response_str}")
+                # Return generic message to caller (avoid leaking protocol details)
                 raise DeviceCommunicationError(
-                    f"Device error: {response_str}",
+                    "Device command failed",
                     device_type="spectrophotometer",
-                    command=command,
-                    response=response_str,
                 )
 
             return response_str

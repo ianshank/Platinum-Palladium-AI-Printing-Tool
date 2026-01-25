@@ -30,6 +30,30 @@ logger = get_logger(__name__)
 # Lazy imports for optional deep learning dependencies
 _DL_AVAILABLE = None
 
+# Temp file tracking for cleanup
+_TEMP_FILES: list[str] = []
+
+
+def _register_temp_file(filepath: str) -> None:
+    """Register a temp file for cleanup."""
+    _TEMP_FILES.append(filepath)
+    # Keep only last 50 files to prevent unbounded growth
+    if len(_TEMP_FILES) > 50:
+        _cleanup_old_temp_files()
+
+
+def _cleanup_old_temp_files() -> None:
+    """Clean up old temporary files."""
+    import os
+    while len(_TEMP_FILES) > 25:
+        old_file = _TEMP_FILES.pop(0)
+        try:
+            if os.path.exists(old_file):
+                os.unlink(old_file)
+                logger.debug(f"Cleaned up temp file: {old_file}")
+        except Exception as e:
+            logger.debug(f"Failed to clean up temp file: {e}")
+
 
 def _check_dl_available() -> bool:
     """Check if deep learning dependencies are available."""
@@ -894,6 +918,12 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
             if not prediction:
                 return gr.update(visible=False)
 
+            # Validate format type (whitelist)
+            allowed_formats = {"csv", "json", "qtr", "piezography"}
+            if format_type not in allowed_formats:
+                logger.warning(f"Invalid export format requested: {format_type}")
+                return gr.update(visible=False)
+
             try:
                 import json
                 import tempfile
@@ -906,12 +936,17 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 ) as f:
                     if format_type == "csv":
                         f.write("step,input,output,uncertainty\n")
+                        # Get uncertainty with fallback (avoid KeyError)
+                        uncertainties = prediction.get(
+                            "uncertainty",
+                            [0.0] * len(prediction["input"])
+                        )
                         for i, (inp, out) in enumerate(zip(
                             prediction["input"],
                             prediction["output"],
                             strict=True
                         )):
-                            unc = prediction.get("uncertainty", [0] * len(prediction["input"]))[i]
+                            unc = uncertainties[i] if i < len(uncertainties) else 0.0
                             f.write(f"{i},{inp:.6f},{out:.6f},{unc:.6f}\n")
 
                     elif format_type == "json":
@@ -954,6 +989,9 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                             f.write(f"{inp_val}\t{out_val}\n")
 
                     filepath = f.name
+
+                # Register temp file for cleanup
+                _register_temp_file(filepath)
 
                 return gr.update(visible=True, value=filepath)
 
@@ -1064,20 +1102,62 @@ def _generate_synthetic_training_data(
 
 
 def _load_custom_data(filepath: str) -> list[dict[str, Any]]:
-    """Load training data from a custom file."""
+    """Load training data from a custom file.
+
+    Args:
+        filepath: Path to the data file (.json or .csv).
+
+    Returns:
+        List of training data dictionaries.
+
+    Raises:
+        ValueError: If file format is unsupported or validation fails.
+        FileNotFoundError: If file does not exist.
+    """
     import json
+    import tempfile
+
+    # Security: Validate filepath is within expected upload directory
+    resolved_path = Path(filepath).resolve()
+    temp_dir = Path(tempfile.gettempdir()).resolve()
+
+    # Allow files in temp directory (Gradio uploads) or explicit paths
+    if not (str(resolved_path).startswith(str(temp_dir)) or resolved_path.exists()):
+        logger.warning(f"Suspicious file path rejected: {filepath}")
+        raise ValueError("Invalid file path")
+
+    if not resolved_path.exists():
+        raise FileNotFoundError(f"File not found: {filepath}")
 
     if filepath.endswith(".json"):
-        with open(filepath) as f:
-            result: list[dict[str, Any]] = json.load(f)
-            return result
+        with open(resolved_path) as f:
+            raw_data = json.load(f)
+
+        # Validate JSON structure
+        if not isinstance(raw_data, list):
+            raise ValueError("JSON file must contain a list of records")
+
+        validated_data: list[dict[str, Any]] = []
+        for i, item in enumerate(raw_data):
+            if not isinstance(item, dict):
+                raise ValueError(f"Record {i} must be a dictionary")
+            # Validate required fields exist
+            if "input_densities" in item or "output_densities" in item:
+                validated_data.append(item)
+            else:
+                logger.debug(f"Skipping record {i}: missing required fields")
+
+        return validated_data
+
     elif filepath.endswith(".csv"):
         import csv
-        data = []
-        with open(filepath) as f:
+        data: list[dict[str, Any]] = []
+        with open(resolved_path) as f:
             reader = csv.DictReader(f)
+            if reader.fieldnames is None:
+                raise ValueError("CSV file has no headers")
             for row in reader:
-                data.append(row)
+                data.append(dict(row))
         return data
     else:
         raise ValueError(f"Unsupported file format: {filepath}")

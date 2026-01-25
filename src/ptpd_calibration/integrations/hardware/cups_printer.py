@@ -73,6 +73,9 @@ class CUPSPrinterDriver:
         device_info: Printer information (None if not connected).
     """
 
+    # Ink level threshold (percentage below which ink is considered "low")
+    INK_LEVEL_LOW_THRESHOLD = 25
+
     # Paper size mappings (common names to CUPS names)
     PAPER_SIZE_MAP = {
         "4x5": "Custom.4x5in",
@@ -310,9 +313,10 @@ class CUPSPrinterDriver:
                 "accepting_jobs": attrs.get("printer-is-accepting-jobs", False),
                 "queued_jobs": attrs.get("queued-job-count", 0),
             }
-        except Exception as e:
-            logger.warning(f"Failed to get printer status: {e}")
-            return {"status": "unknown", "error": str(e)}
+        except Exception:
+            # Log full details for debugging, return generic message
+            logger.exception("Failed to get printer status")
+            return {"status": "unknown", "error": "Unable to retrieve printer status"}
 
     def get_ink_levels(self) -> dict[str, Any]:
         """Get ink/supply levels via IPP.
@@ -336,14 +340,15 @@ class CUPSPrinterDriver:
                 if parsed:
                     levels[parsed["name"]] = {
                         "level": parsed["level"],
-                        "status": "ok" if parsed["level"] > 25 else "low",
+                        "status": "ok" if parsed["level"] > self.INK_LEVEL_LOW_THRESHOLD else "low",
                     }
 
             return levels
 
-        except Exception as e:
-            logger.warning(f"Failed to get ink levels: {e}")
-            return {"error": str(e)}
+        except Exception:
+            # Log full details for debugging, return generic message
+            logger.exception("Failed to get ink levels")
+            return {"error": "Unable to retrieve ink levels"}
 
     def _extract_device_info(self, printer_info: dict) -> DeviceInfo:
         """Extract DeviceInfo from CUPS printer info.
@@ -406,11 +411,26 @@ class CUPSPrinterDriver:
 
         Returns:
             Dictionary of CUPS options.
-        """
-        options = {}
 
-        # Paper size
-        paper_size = self.PAPER_SIZE_MAP.get(job.paper_size, job.paper_size)
+        Raises:
+            PrintJobError: If paper size is invalid.
+        """
+        options: dict[str, str] = {}
+
+        # Paper size - validate against whitelist for security
+        if job.paper_size in self.PAPER_SIZE_MAP:
+            paper_size = self.PAPER_SIZE_MAP[job.paper_size]
+        else:
+            # Only allow alphanumeric, dots, and 'x' for custom sizes
+            import re
+            if not re.match(r'^[a-zA-Z0-9.x]+$', job.paper_size):
+                raise PrintJobError(
+                    f"Invalid paper size format: {job.paper_size}",
+                    job_name=job.name,
+                )
+            paper_size = job.paper_size
+            logger.warning(f"Using custom paper size: {paper_size}")
+
         options["media"] = paper_size
 
         # Resolution
