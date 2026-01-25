@@ -104,6 +104,10 @@ const config: Config = {
           from: { opacity: '1' },
           to: { opacity: '0' },
         },
+        'fade-out-80': {
+          from: { opacity: '1' },
+          to: { opacity: '0.8' },
+        },
         'slide-in': {
           from: { transform: 'translateX(-100%)' },
           to: { transform: 'translateX(0)' },
@@ -111,6 +115,22 @@ const config: Config = {
         'slide-out': {
           from: { transform: 'translateX(0)' },
           to: { transform: 'translateX(-100%)' },
+        },
+        'slide-in-from-top-full': {
+          from: { transform: 'translateY(-100%)' },
+          to: { transform: 'translateY(0)' },
+        },
+        'slide-out-to-right-full': {
+          from: { transform: 'translateX(0)' },
+          to: { transform: 'translateX(100%)' },
+        },
+        'enter': {
+          from: { opacity: '0', transform: 'scale(0.95)' },
+          to: { opacity: '1', transform: 'scale(1)' },
+        },
+        'exit': {
+          from: { opacity: '1', transform: 'scale(1)' },
+          to: { opacity: '0', transform: 'scale(0.95)' },
         },
         pulse: {
           '0%, 100%': { opacity: '1' },
@@ -122,8 +142,13 @@ const config: Config = {
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in': 'fade-in 0.2s ease-out',
         'fade-out': 'fade-out 0.2s ease-out',
+        'fade-out-80': 'fade-out-80 0.15s ease-in',
         'slide-in': 'slide-in 0.2s ease-out',
         'slide-out': 'slide-out 0.2s ease-out',
+        'slide-in-from-top-full': 'slide-in-from-top-full 0.2s ease-out',
+        'slide-out-to-right-full': 'slide-out-to-right-full 0.2s ease-out',
+        'in': 'enter 0.2s ease-out',
+        'out': 'exit 0.15s ease-in forwards',
         pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       screens: {
