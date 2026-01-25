@@ -23,8 +23,6 @@ Usage:
         measurement = driver.read_density()
 """
 
-from typing import TYPE_CHECKING
-
 # Lazy imports for optional dependencies
 __lazy_imports = {
     "XRiteI1ProDriver": "ptpd_calibration.integrations.hardware.xrite_i1pro",

@@ -27,19 +27,19 @@ import time
 from pathlib import Path
 from typing import Any
 
-from ptpd_calibration.integrations.protocols import (
-    DeviceStatus,
-    DeviceInfo,
-    PrintJob,
-    PrintResult,
-)
+from ptpd_calibration.config import get_settings
+from ptpd_calibration.core.logging import get_logger
 from ptpd_calibration.integrations.hardware.exceptions import (
     PrinterError,
     PrinterNotFoundError,
     PrintJobError,
 )
-from ptpd_calibration.core.logging import get_logger
-from ptpd_calibration.config import get_settings
+from ptpd_calibration.integrations.protocols import (
+    DeviceInfo,
+    DeviceStatus,
+    PrintJob,
+    PrintResult,
+)
 
 logger = get_logger(__name__)
 
@@ -348,8 +348,7 @@ class CUPSPrinterDriver:
         Returns:
             DeviceInfo instance.
         """
-        # Parse device URI to get vendor/model
-        device_uri = printer_info.get("device-uri", "")
+        # Extract make and model from printer info
         make_model = printer_info.get("printer-make-and-model", "Unknown Printer")
 
         # Try to split make and model

@@ -15,17 +15,15 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
+from ptpd_calibration.core.logging import get_logger
 from ptpd_calibration.integrations.protocols import (
-    DeviceStatus,
-    DeviceInfo,
     DensityMeasurement,
-    SpectralData,
+    DeviceInfo,
+    DeviceStatus,
     PrintJob,
     PrintResult,
-    SpectrophotometerProtocol,
-    PrinterProtocol,
+    SpectralData,
 )
-from ptpd_calibration.core.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -80,8 +78,8 @@ class SimulatedSpectrophotometer:
 
     def connect(
         self,
-        port: str | None = None,
-        timeout: float = 5.0,
+        port: str | None = None,  # noqa: ARG002
+        timeout: float = 5.0,  # noqa: ARG002
     ) -> bool:
         """Simulate device connection.
 
@@ -92,6 +90,7 @@ class SimulatedSpectrophotometer:
         Returns:
             Always True for simulation.
         """
+        del port, timeout  # Unused in simulation
         logger.info("Simulated spectrophotometer connecting...")
         self._status = DeviceStatus.CONNECTING
 
@@ -311,7 +310,7 @@ class SimulatedPrinter:
         """Get device information."""
         return self._device_info
 
-    def connect(self, printer_name: str | None = None) -> bool:
+    def connect(self, printer_name: str | None = None) -> bool:  # noqa: ARG002
         """Simulate printer connection.
 
         Args:
@@ -320,6 +319,7 @@ class SimulatedPrinter:
         Returns:
             Always True for simulation.
         """
+        del printer_name  # Unused in simulation
         logger.info("Simulated printer connecting...")
 
         if self._simulate_delay:

@@ -16,14 +16,14 @@ Usage:
         build_neural_curve_tab(session_logger)
 """
 
-import gradio as gr
-import numpy as np
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import gradio as gr
+import numpy as np
+
 from ptpd_calibration.core.logging import get_logger
-from ptpd_calibration.config import get_settings
 
 logger = get_logger(__name__)
 
@@ -70,8 +70,6 @@ def build_neural_curve_tab(session_logger=None):
     Args:
         session_logger: Optional SessionLogger instance for historical data.
     """
-    settings = get_settings()
-
     with gr.TabItem("🧠 Neural Curves"):
         gr.Markdown(
             """
@@ -98,7 +96,6 @@ def build_neural_curve_tab(session_logger=None):
         # =====================================================
         trained_models_state = gr.State([])
         current_prediction_state = gr.State(None)
-        training_history_state = gr.State([])
 
         # =====================================================
         # SECTION 1: Model Training
@@ -244,7 +241,7 @@ def build_neural_curve_tab(session_logger=None):
                     loss_plot = gr.Plot(label="Training Loss", visible=False)
 
                     # Data summary
-                    with gr.Group() as data_summary_group:
+                    with gr.Group():
                         gr.Markdown("#### Data Summary")
                         with gr.Row():
                             data_samples_display = gr.Textbox(
@@ -288,7 +285,7 @@ def build_neural_curve_tab(session_logger=None):
                     )
 
                     with gr.Row():
-                        refresh_models_btn = gr.Button("🔄 Refresh", size="sm")
+                        _refresh_models_btn = gr.Button("🔄 Refresh", size="sm")  # noqa: F841
                         delete_model_btn = gr.Button(
                             "🗑️ Delete",
                             variant="stop",
@@ -408,24 +405,24 @@ def build_neural_curve_tab(session_logger=None):
 
                     with gr.Row():
                         export_btn = gr.Button("💾 Export Curve", variant="secondary")
-                        save_btn = gr.Button("✅ Save to Library", variant="primary")
+                        _save_btn = gr.Button("✅ Save to Library", variant="primary")  # noqa: F841
 
                     export_file = gr.File(label="Download", visible=False)
 
         # =====================================================
-        # SECTION 4: Comparison (Optional)
+        # SECTION 4: Comparison (Optional - placeholder for future)
         # =====================================================
         with gr.Accordion("Compare with Existing Curves", open=False):
             with gr.Row():
-                compare_curve_select = gr.Dropdown(
+                _compare_curve_select = gr.Dropdown(  # noqa: F841
                     choices=["No curves available"],
                     label="Compare With",
                     value="No curves available"
                 )
-                compare_btn = gr.Button("Compare")
+                _compare_btn = gr.Button("Compare")  # noqa: F841
 
-            comparison_plot = gr.Plot(label="Curve Comparison", visible=False)
-            comparison_metrics = gr.Markdown("")
+            _comparison_plot = gr.Plot(label="Curve Comparison", visible=False)  # noqa: F841
+            _comparison_metrics = gr.Markdown("")  # noqa: F841
 
         # =====================================================
         # EVENT HANDLERS
@@ -577,6 +574,7 @@ def build_neural_curve_tab(session_logger=None):
                     "final_loss": loss_history["train"][-1],
                     "config": {
                         "learning_rate": lr,
+                        "batch_size": int(batch_val),
                         "hidden_dim": int(hidden_val),
                         "num_layers": int(layers_val),
                         "dropout": dropout_val,
@@ -813,7 +811,8 @@ def build_neural_curve_tab(session_logger=None):
 
                 # Create table data
                 table_data = []
-                for i, (inp, out, unc) in enumerate(zip(
+                # Note: Can't use strict=True with default fallback for uncertainty
+                for i, (inp, out, unc) in enumerate(zip(  # noqa: B905
                     prediction["input"],
                     prediction["output"],
                     prediction.get("uncertainty", [0] * len(prediction["input"]))
@@ -869,8 +868,8 @@ def build_neural_curve_tab(session_logger=None):
                 return gr.update(visible=False)
 
             try:
-                import tempfile
                 import json
+                import tempfile
 
                 # Create export file
                 with tempfile.NamedTemporaryFile(
@@ -882,7 +881,8 @@ def build_neural_curve_tab(session_logger=None):
                         f.write("step,input,output,uncertainty\n")
                         for i, (inp, out) in enumerate(zip(
                             prediction["input"],
-                            prediction["output"]
+                            prediction["output"],
+                            strict=True
                         )):
                             unc = prediction.get("uncertainty", [0] * len(prediction["input"]))[i]
                             f.write(f"{i},{inp:.6f},{out:.6f},{unc:.6f}\n")
@@ -906,7 +906,7 @@ def build_neural_curve_tab(session_logger=None):
                         f.write(f"; Generated: {datetime.now().isoformat()}\n")
                         f.write(";\n")
                         f.write("GRAY_INK\n")
-                        for i, out in enumerate(prediction["output"]):
+                        for out in prediction["output"]:
                             # Convert to QTR scale (0-100)
                             qtr_val = int(out * 100)
                             f.write(f"{qtr_val}\n")
@@ -916,10 +916,11 @@ def build_neural_curve_tab(session_logger=None):
                         f.write("# Neural Curve Prediction\n")
                         f.write(f"# Generated: {datetime.now().isoformat()}\n")
                         f.write("#\n")
-                        for i, (inp, out) in enumerate(zip(
+                        for inp, out in zip(
                             prediction["input"],
-                            prediction["output"]
-                        )):
+                            prediction["output"],
+                            strict=True
+                        ):
                             # Piezography uses 0-255 scale
                             inp_val = int(inp * 255)
                             out_val = int(out * 255)
@@ -929,7 +930,7 @@ def build_neural_curve_tab(session_logger=None):
 
                 return gr.update(visible=True, value=filepath)
 
-            except Exception as e:
+            except Exception:
                 logger.exception("Export failed")
                 return gr.update(visible=False)
 
@@ -995,7 +996,7 @@ def _generate_synthetic_training_data(
     """Generate synthetic training data for curve prediction."""
     data = []
 
-    for i in range(num_samples):
+    for _ in range(num_samples):
         # Random parameters
         pt_ratio = np.random.uniform(0, 1)
         target_dmax = np.random.uniform(1.2, 2.2)
@@ -1052,8 +1053,14 @@ def _load_custom_data(filepath: str) -> list[dict[str, Any]]:
         raise ValueError(f"Unsupported file format: {filepath}")
 
 
-def _load_session_data(session_logger, filter_val: str) -> list[dict[str, Any]]:
-    """Load training data from session history."""
+def _load_session_data(session_logger, filter_val: str) -> list[dict[str, Any]]:  # noqa: ARG001
+    """Load training data from session history.
+
+    Args:
+        session_logger: Session logger instance.
+        filter_val: Filter string (reserved for future use).
+    """
+    del filter_val  # Reserved for future filtering implementation
     data = []
 
     try:
@@ -1080,10 +1087,17 @@ def _load_session_data(session_logger, filter_val: str) -> list[dict[str, Any]]:
 
 def _simulate_training(
     epochs: int,
-    learning_rate: float,
+    learning_rate: float,  # noqa: ARG001
     data_size: int
 ) -> dict[str, list[float]]:
-    """Simulate training loss curves."""
+    """Simulate training loss curves.
+
+    Args:
+        epochs: Number of training epochs.
+        learning_rate: Learning rate (reserved for future use).
+        data_size: Size of training data.
+    """
+    del learning_rate  # Reserved for future implementation
     train_loss = []
     val_loss = []
 
@@ -1151,7 +1165,7 @@ def _generate_curve_prediction(
     # Generate uncertainty (higher at endpoints)
     base_uncertainty = 0.02 / max(1, model_config.get("num_layers", 3))
     uncertainty = []
-    for i, xi in enumerate(x):
+    for xi in x:
         # Higher uncertainty near 0 and 1
         edge_factor = 1 + 2 * abs(xi - 0.5)
         unc = base_uncertainty * edge_factor
