@@ -76,10 +76,10 @@ class TestSimulatedSpectrophotometerCalibration:
         assert device._calibrated is True
 
     def test_calibrate_white_not_connected(self) -> None:
-        """Test white calibration fails when not connected."""
+        """Test white calibration raises error when not connected."""
         device = SimulatedSpectrophotometer()
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match="not connected"):
             device.calibrate_white()
 
     def test_calibrate_black_success(self) -> None:
@@ -350,6 +350,67 @@ class TestSimulatedPrinterGetInkLevels:
             assert "level" in data
             assert 0 <= data["level"] <= 100
             assert "status" in data
+
+
+class TestSimulatedSpectrophotometerConstants:
+    """Test that simulated spectrophotometer uses constants module."""
+
+    def test_uses_standard_spectral_range(self) -> None:
+        """Test that spectral range matches constants."""
+        from ptpd_calibration.integrations.hardware.constants import (
+            DEFAULT_SPECTRAL_END_NM,
+            DEFAULT_SPECTRAL_START_NM,
+        )
+
+        device = SimulatedSpectrophotometer(simulate_delay=False)
+        device.connect()
+        device.calibrate_white()
+
+        spectral = device.read_spectral()
+
+        assert spectral.start_nm == DEFAULT_SPECTRAL_START_NM
+        assert spectral.end_nm == DEFAULT_SPECTRAL_END_NM
+
+    def test_uses_device_info_from_constants(self) -> None:
+        """Test that device info comes from constants."""
+        from ptpd_calibration.integrations.hardware.constants import (
+            SIMULATED_SPECTRO_MODEL,
+            SIMULATED_SPECTRO_VENDOR,
+        )
+
+        device = SimulatedSpectrophotometer(simulate_delay=False)
+        device.connect()
+
+        assert device.device_info.vendor == SIMULATED_SPECTRO_VENDOR
+        assert device.device_info.model == SIMULATED_SPECTRO_MODEL
+
+
+class TestSimulatedPrinterConstants:
+    """Test that simulated printer uses constants module."""
+
+    def test_paper_sizes_match_constants(self) -> None:
+        """Test that paper sizes match constants."""
+        from ptpd_calibration.integrations.hardware.constants import (
+            STANDARD_PAPER_SIZES,
+        )
+
+        printer = SimulatedPrinter(simulate_delay=False)
+
+        sizes = printer.get_paper_sizes()
+
+        assert sizes == list(STANDARD_PAPER_SIZES)
+
+    def test_resolutions_match_constants(self) -> None:
+        """Test that resolutions match constants."""
+        from ptpd_calibration.integrations.hardware.constants import (
+            STANDARD_RESOLUTIONS,
+        )
+
+        printer = SimulatedPrinter(simulate_delay=False)
+
+        resolutions = printer.get_resolutions()
+
+        assert resolutions == list(STANDARD_RESOLUTIONS)
 
 
 class TestSimulatedPrinterDisconnect:

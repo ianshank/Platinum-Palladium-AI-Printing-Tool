@@ -21,9 +21,20 @@ Usage:
     driver = get_spectrophotometer_driver()
     if driver.connect():
         measurement = driver.read_density()
+
+    # Access constants for configuration
+    from ptpd_calibration.integrations.hardware import constants
+    print(constants.STANDARD_RESOLUTIONS)
 """
 
 from typing import Any
+
+# Direct imports for always-available modules
+from ptpd_calibration.integrations.hardware import constants
+from ptpd_calibration.integrations.hardware.base import (
+    HardwareDeviceBase,
+    parse_device_response,
+)
 
 # Lazy imports for optional dependencies
 __lazy_imports = {
@@ -128,8 +139,14 @@ def get_printer_driver(
 
 
 __all__ = [
+    # Base classes and utilities
+    "HardwareDeviceBase",
+    "parse_device_response",
+    "constants",
+    # Drivers
     "XRiteI1ProDriver",
     "CUPSPrinterDriver",
+    # Exceptions
     "HardwareError",
     "DeviceNotFoundError",
     "DeviceConnectionError",
@@ -139,6 +156,7 @@ __all__ = [
     "PrinterError",
     "PrinterNotFoundError",
     "PrintJobError",
+    # Factory functions
     "get_spectrophotometer_driver",
     "get_printer_driver",
 ]
