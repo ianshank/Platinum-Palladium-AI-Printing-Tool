@@ -10,7 +10,7 @@ import shutil
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -26,45 +26,45 @@ class PrintRecord(BaseModel):
 
     # Paper information
     paper_type: str = Field(..., min_length=1)
-    paper_weight: Optional[int] = Field(default=None, ge=50, le=1000)
-    paper_sizing: Optional[str] = Field(default=None)
+    paper_weight: int | None = Field(default=None, ge=50, le=1000)
+    paper_sizing: str | None = Field(default=None)
 
     # Chemistry
     chemistry_type: str = Field(default="platinum_palladium")
     metal_ratio: float = Field(default=0.5, ge=0.0, le=1.0)
-    contrast_agent: Optional[str] = Field(default=None)
+    contrast_agent: str | None = Field(default=None)
     contrast_amount: float = Field(default=0.0, ge=0.0)
-    developer: Optional[str] = Field(default=None)
+    developer: str | None = Field(default=None)
 
     # Process parameters
     exposure_time: float = Field(..., ge=0.0)
-    uv_source: Optional[str] = Field(default=None)
-    humidity: Optional[float] = Field(default=None, ge=0.0, le=100.0)
-    temperature: Optional[float] = Field(default=None, ge=-20.0, le=50.0)
+    uv_source: str | None = Field(default=None)
+    humidity: float | None = Field(default=None, ge=0.0, le=100.0)
+    temperature: float | None = Field(default=None, ge=-20.0, le=50.0)
 
     # Results
-    dmin: Optional[float] = Field(default=None, ge=0.0)
-    dmax: Optional[float] = Field(default=None, ge=0.0)
-    density_range: Optional[float] = Field(default=None, ge=0.0)
+    dmin: float | None = Field(default=None, ge=0.0)
+    dmax: float | None = Field(default=None, ge=0.0)
+    density_range: float | None = Field(default=None, ge=0.0)
     overall_quality: float = Field(default=1.0, ge=0.0, le=1.0)
 
     # Recipe reference
-    recipe_id: Optional[UUID] = Field(default=None)
-    curve_id: Optional[UUID] = Field(default=None)
+    recipe_id: UUID | None = Field(default=None)
+    curve_id: UUID | None = Field(default=None)
 
     # Image paths (stored as JSON list of strings)
     image_paths: list[str] = Field(default_factory=list)
 
     # Metadata
     tags: list[str] = Field(default_factory=list)
-    notes: Optional[str] = Field(default=None)
+    notes: str | None = Field(default=None)
 
     # Custom metadata (JSON serializable dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("id", "recipe_id", "curve_id", mode="before")
     @classmethod
-    def convert_uuid(cls, v: Any) -> Optional[UUID]:
+    def convert_uuid(cls, v: Any) -> UUID | None:
         """Convert string UUIDs to UUID objects."""
         if v is None:
             return None
@@ -86,7 +86,7 @@ class PrintRecord(BaseModel):
 class PrintDatabase:
     """SQLite-based print database with searchable metadata."""
 
-    def __init__(self, db_path: Optional[Path] = None) -> None:
+    def __init__(self, db_path: Path | None = None) -> None:
         """
         Initialize the print database.
 
@@ -94,7 +94,7 @@ class PrintDatabase:
             db_path: Path to SQLite database file. If None, uses in-memory database.
         """
         self.db_path = db_path or Path(":memory:")
-        self.conn: Optional[sqlite3.Connection] = None
+        self.conn: sqlite3.Connection | None = None
         self._initialize_db()
 
     def _initialize_db(self) -> None:
@@ -148,15 +148,9 @@ class PrintDatabase:
         )
 
         # Create indices for common queries
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_timestamp ON prints(timestamp DESC)"
-        )
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_paper_type ON prints(paper_type)"
-        )
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_recipe_id ON prints(recipe_id)"
-        )
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON prints(timestamp DESC)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_paper_type ON prints(paper_type)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_recipe_id ON prints(recipe_id)")
 
         # Create full-text search virtual table
         self.conn.execute(
@@ -226,7 +220,7 @@ class PrintDatabase:
         self.conn.commit()
         return record.id
 
-    def get_print(self, print_id: UUID) -> Optional[PrintRecord]:
+    def get_print(self, print_id: UUID) -> PrintRecord | None:
         """
         Get a single print record by ID.
 
@@ -236,9 +230,7 @@ class PrintDatabase:
         Returns:
             PrintRecord if found, None otherwise
         """
-        cursor = self.conn.execute(
-            "SELECT * FROM prints WHERE id = ?", (str(print_id),)
-        )
+        cursor = self.conn.execute("SELECT * FROM prints WHERE id = ?", (str(print_id),))
         row = cursor.fetchone()
 
         if row is None:
@@ -282,9 +274,7 @@ class PrintDatabase:
 
         values.append(str(print_id))
 
-        self.conn.execute(
-            f"UPDATE prints SET {', '.join(set_clauses)} WHERE id = ?", values
-        )
+        self.conn.execute(f"UPDATE prints SET {', '.join(set_clauses)} WHERE id = ?", values)
 
         # Update FTS if relevant fields changed
         if any(k in updates for k in ("name", "paper_type", "notes", "tags")):
@@ -318,12 +308,8 @@ class PrintDatabase:
         Returns:
             True if record was deleted, False if not found
         """
-        cursor = self.conn.execute(
-            "DELETE FROM prints WHERE id = ?", (str(print_id),)
-        )
-        self.conn.execute(
-            "DELETE FROM prints_fts WHERE id = ?", (str(print_id),)
-        )
+        cursor = self.conn.execute("DELETE FROM prints WHERE id = ?", (str(print_id),))
+        self.conn.execute("DELETE FROM prints_fts WHERE id = ?", (str(print_id),))
         self.conn.commit()
         return cursor.rowcount > 0
 
@@ -389,9 +375,7 @@ class PrintDatabase:
 
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
-    def get_prints_by_date_range(
-        self, start: datetime, end: datetime
-    ) -> list[PrintRecord]:
+    def get_prints_by_date_range(self, start: datetime, end: datetime) -> list[PrintRecord]:
         """
         Get prints within a date range.
 
@@ -474,9 +458,7 @@ class PrintDatabase:
             GROUP BY chemistry_type
             """
         )
-        stats["chemistry_types"] = {
-            row["chemistry_type"]: row["count"] for row in cursor
-        }
+        stats["chemistry_types"] = {row["chemistry_type"]: row["count"] for row in cursor}
 
         # Average exposure time
         cursor = self.conn.execute(

@@ -3,12 +3,12 @@ Tool definitions for the calibration agent.
 """
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
-from ptpd_calibration.core.models import CalibrationRecord, CurveData
+from ptpd_calibration.core.models import CalibrationRecord
 from ptpd_calibration.ml.database import CalibrationDatabase
 
 
@@ -31,7 +31,7 @@ class ToolParameter:
     type: str
     description: str
     required: bool = True
-    enum: Optional[list[str]] = None
+    enum: list[str] | None = None
     default: Any = None
 
 
@@ -41,7 +41,7 @@ class ToolResult:
 
     success: bool
     data: Any = None
-    error: Optional[str] = None
+    error: str | None = None
     metadata: dict = field(default_factory=dict)
 
     def to_string(self) -> str:
@@ -110,11 +110,11 @@ class ToolRegistry:
         """Register a tool."""
         self._tools[tool.name] = tool
 
-    def get(self, name: str) -> Optional[Tool]:
+    def get(self, name: str) -> Tool | None:
         """Get a tool by name."""
         return self._tools.get(name)
 
-    def list_tools(self, category: Optional[ToolCategory] = None) -> list[Tool]:
+    def list_tools(self, category: ToolCategory | None = None) -> list[Tool]:
         """List all tools, optionally filtered by category."""
         tools = list(self._tools.values())
         if category:
@@ -127,8 +127,8 @@ class ToolRegistry:
 
 
 def create_calibration_tools(
-    database: Optional[CalibrationDatabase] = None,
-    predictor: Optional[Any] = None,
+    database: CalibrationDatabase | None = None,
+    predictor: Any | None = None,
 ) -> ToolRegistry:
     """
     Create the standard set of calibration tools.
@@ -221,9 +221,7 @@ def create_calibration_tools(
                 name="save_calibration",
                 description="Save a new calibration record",
                 parameters=[
-                    ToolParameter(
-                        name="paper_type", type="string", description="Paper type"
-                    ),
+                    ToolParameter(name="paper_type", type="string", description="Paper type"),
                     ToolParameter(
                         name="exposure_time",
                         type="number",
@@ -258,9 +256,7 @@ def create_calibration_tools(
                 name="predict_response",
                 description="Predict density response for given parameters",
                 parameters=[
-                    ToolParameter(
-                        name="paper_type", type="string", description="Paper type"
-                    ),
+                    ToolParameter(name="paper_type", type="string", description="Paper type"),
                     ToolParameter(
                         name="metal_ratio",
                         type="number",
@@ -396,9 +392,7 @@ def _analyze_densities(densities: list[float]) -> ToolResult:
     )
 
 
-def _compare_calibrations(
-    database: Optional[CalibrationDatabase], id1: str, id2: str
-) -> ToolResult:
+def _compare_calibrations(database: CalibrationDatabase | None, id1: str, id2: str) -> ToolResult:
     """Compare two calibrations."""
     if not database:
         return ToolResult(success=False, error="Database not available")
@@ -431,8 +425,8 @@ def _compare_calibrations(
 
 def _search_calibrations(
     database: CalibrationDatabase,
-    paper_type: Optional[str] = None,
-    chemistry_type: Optional[str] = None,
+    paper_type: str | None = None,
+    chemistry_type: str | None = None,
     limit: int = 10,
 ) -> ToolResult:
     """Search calibrations."""
@@ -470,7 +464,7 @@ def _save_calibration(
     exposure_time: float,
     metal_ratio: float,
     densities: list[float],
-    notes: Optional[str] = None,
+    notes: str | None = None,
 ) -> ToolResult:
     """Save a new calibration."""
     from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
@@ -488,9 +482,7 @@ def _save_calibration(
 
     database.add_record(record)
 
-    return ToolResult(
-        success=True, data={"id": str(record.id), "message": "Calibration saved"}
-    )
+    return ToolResult(success=True, data={"id": str(record.id), "message": "Calibration saved"})
 
 
 def _predict_response(

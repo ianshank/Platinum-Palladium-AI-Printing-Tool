@@ -11,11 +11,11 @@ import pytest
 from ptpd_calibration.config import CurveSettings, NeuroSymbolicSettings
 from ptpd_calibration.core.models import CurveData, ExtractionResult, PatchData
 from ptpd_calibration.core.types import CurveType
-from ptpd_calibration.neuro_symbolic.curve_generator import (
-    NeuroSymbolicCurveGenerator,
-    CurveGenerationResult,
-)
 from ptpd_calibration.neuro_symbolic.constraints import ConstraintViolation
+from ptpd_calibration.neuro_symbolic.curve_generator import (
+    CurveGenerationResult,
+    NeuroSymbolicCurveGenerator,
+)
 
 
 class TestNeuroSymbolicCurveGenerator:
@@ -35,7 +35,7 @@ class TestNeuroSymbolicCurveGenerator:
     def sample_densities(self):
         """Create sample density measurements."""
         steps = np.linspace(0, 1, 21)
-        densities = 0.1 + 2.0 * (steps ** 0.85)
+        densities = 0.1 + 2.0 * (steps**0.85)
         return list(densities)
 
     @pytest.fixture
@@ -170,7 +170,7 @@ class TestNeuroSymbolicCurveGenerator:
         assert len(result.confidence_lower) == len(result.curve.output_values)
 
         # Upper should be >= lower
-        for lower, upper in zip(result.confidence_lower, result.confidence_upper):
+        for lower, upper in zip(result.confidence_lower, result.confidence_upper, strict=False):
             assert upper >= lower - 1e-6
 
     def test_full_generation(self, generator, sample_densities):
@@ -278,7 +278,9 @@ class TestNeuroSymbolicCurveGenerator:
 
         # Should have meaningful explanation
         assert len(result.explanation) > 50
-        assert "linearization" in result.explanation.lower() or "curve" in result.explanation.lower()
+        assert (
+            "linearization" in result.explanation.lower() or "curve" in result.explanation.lower()
+        )
 
     def test_get_knowledge_graph(self, generator):
         """Test accessing knowledge graph."""
@@ -286,12 +288,18 @@ class TestNeuroSymbolicCurveGenerator:
 
         assert kg is not None
         # Should have pre-populated entities
-        papers = kg.get_entities_by_type(
-            generator._knowledge_graph.get_entities_by_type.__self__.__class__.__bases__[0].__subclasses__()[0].__name__
-        ) if False else []
+        (
+            kg.get_entities_by_type(
+                generator._knowledge_graph.get_entities_by_type.__self__.__class__.__bases__[0]
+                .__subclasses__()[0]
+                .__name__
+            )
+            if False
+            else []
+        )
 
         # Just verify we can access it
-        assert hasattr(kg, 'get_entity_by_name')
+        assert hasattr(kg, "get_entity_by_name")
 
     def test_get_constraint_set(self, generator):
         """Test accessing constraint set."""

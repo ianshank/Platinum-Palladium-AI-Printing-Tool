@@ -5,13 +5,13 @@ Provides abstract interface and concrete implementations for inkjet printers
 commonly used for platinum/palladium digital negatives (Epson, Canon).
 """
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-import logging
-from datetime import datetime
+from typing import Any
 
 import numpy as np
 from PIL import Image
@@ -65,13 +65,9 @@ class InkLevel:
     level_percent: float  # 0-100
     status: str  # "ok", "low", "empty"
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
-        return {
-            "color": self.color,
-            "level_percent": self.level_percent,
-            "status": self.status
-        }
+        return {"color": self.color, "level_percent": self.level_percent, "status": self.status}
 
 
 class PrintSettings(BaseModel):
@@ -96,10 +92,10 @@ class NozzleCheckResult(BaseModel):
     """Nozzle check result."""
 
     success: bool
-    missing_nozzles: List[str] = Field(default_factory=list, description="List of missing nozzles")
+    missing_nozzles: list[str] = Field(default_factory=list, description="List of missing nozzles")
     pattern_quality: float = Field(default=1.0, ge=0.0, le=1.0, description="Pattern quality score")
     timestamp: datetime = Field(default_factory=datetime.now)
-    recommendations: List[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
 
 
 class PrintJob(BaseModel):
@@ -107,11 +103,11 @@ class PrintJob(BaseModel):
 
     job_id: str
     status: str  # "pending", "printing", "completed", "failed"
-    image_path: Optional[Path] = None
+    image_path: Path | None = None
     settings: PrintSettings
     pages: int = Field(default=1)
     timestamp: datetime = Field(default_factory=datetime.now)
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class PrinterInterface(ABC):
@@ -140,7 +136,7 @@ class PrinterInterface(ABC):
         self.brand = brand
         self.model = model
         self.is_connected = False
-        self.current_profile: Optional[Path] = None
+        self.current_profile: Path | None = None
 
     @abstractmethod
     def connect(self) -> bool:
@@ -174,7 +170,7 @@ class PrinterInterface(ABC):
     def print_negative(
         self,
         image: Image.Image,
-        settings: Optional[PrintSettings] = None,
+        settings: PrintSettings | None = None,
     ) -> PrintJob:
         """
         Print a digital negative.
@@ -189,7 +185,7 @@ class PrinterInterface(ABC):
         pass
 
     @abstractmethod
-    def get_ink_levels(self) -> Dict[str, InkLevel]:
+    def get_ink_levels(self) -> dict[str, InkLevel]:
         """
         Get current ink levels.
 
@@ -209,7 +205,7 @@ class PrinterInterface(ABC):
         pass
 
     @abstractmethod
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         Get printer status.
 
@@ -229,12 +225,7 @@ class EpsonDriver(PrinterInterface):
     - Epson 7900, 9900
     """
 
-    SUPPORTED_MODELS = [
-        "P800", "P900",
-        "3880", "3800",
-        "7900", "9900",
-        "R2400", "R2880"
-    ]
+    SUPPORTED_MODELS = ["P800", "P900", "3880", "3800", "7900", "9900", "R2400", "R2880"]
 
     def __init__(
         self,
@@ -306,7 +297,7 @@ class EpsonDriver(PrinterInterface):
     def print_negative(
         self,
         image: Image.Image,
-        settings: Optional[PrintSettings] = None,
+        settings: PrintSettings | None = None,
     ) -> PrintJob:
         """Print digital negative on Epson printer."""
         if not self.is_connected:
@@ -329,12 +320,7 @@ class EpsonDriver(PrinterInterface):
             )
 
             # Create job
-            job = PrintJob(
-                job_id=job_id,
-                status="completed",
-                settings=settings,
-                pages=1
-            )
+            job = PrintJob(job_id=job_id, status="completed", settings=settings, pages=1)
 
             logger.info(f"Print job {job_id} completed (simulated)")
             return job
@@ -345,11 +331,7 @@ class EpsonDriver(PrinterInterface):
         # - Direct printer protocol communication
         raise NotImplementedError("Real printing not implemented")
 
-    def _prepare_image(
-        self,
-        image: Image.Image,
-        settings: PrintSettings
-    ) -> Image.Image:
+    def _prepare_image(self, image: Image.Image, settings: PrintSettings) -> Image.Image:
         """Prepare image for printing based on settings."""
         processed = image.copy()
 
@@ -364,31 +346,25 @@ class EpsonDriver(PrinterInterface):
             processed = processed.transpose(Image.FLIP_LEFT_RIGHT)
 
         # Invert for negative
-        if settings.invert:
-            if processed.mode == "L":
-                processed = Image.eval(processed, lambda x: 255 - x)
-            elif processed.mode == "RGB":
-                processed = Image.eval(processed, lambda x: 255 - x)
+        if settings.invert and processed.mode in ("L", "RGB"):
+            processed = Image.eval(processed, lambda x: 255 - x)
 
         # Scale if needed
         if settings.scale_percent != 100.0:
             scale = settings.scale_percent / 100.0
-            new_size = (
-                int(processed.width * scale),
-                int(processed.height * scale)
-            )
+            new_size = (int(processed.width * scale), int(processed.height * scale))
             processed = processed.resize(new_size, Image.Resampling.LANCZOS)
 
         return processed
 
-    def get_ink_levels(self) -> Dict[str, InkLevel]:
+    def get_ink_levels(self) -> dict[str, InkLevel]:
         """Get ink levels from Epson printer."""
         if not self.is_connected:
             raise ConnectionError("Printer not connected")
 
         if self.simulate:
             # Simulate gradual ink depletion
-            for color, level in self._ink_levels.items():
+            for _color, level in self._ink_levels.items():
                 # Decrease randomly
                 decrease = np.random.uniform(0, 2)
                 level.level_percent = max(0, level.level_percent - decrease)
@@ -425,13 +401,12 @@ class EpsonDriver(PrinterInterface):
 
             if has_issues:
                 missing = random.sample(
-                    ["black_1", "black_2", "cyan_3", "magenta_5"],
-                    k=random.randint(1, 2)
+                    ["black_1", "black_2", "cyan_3", "magenta_5"], k=random.randint(1, 2)
                 )
                 quality = random.uniform(0.7, 0.9)
                 recommendations = [
                     "Run head cleaning cycle",
-                    "Print nozzle check pattern again after cleaning"
+                    "Print nozzle check pattern again after cleaning",
                 ]
                 success = False
             else:
@@ -444,7 +419,7 @@ class EpsonDriver(PrinterInterface):
                 success=success,
                 missing_nozzles=missing,
                 pattern_quality=quality,
-                recommendations=recommendations
+                recommendations=recommendations,
             )
 
             logger.info(f"Nozzle check complete: {result.success}")
@@ -456,7 +431,7 @@ class EpsonDriver(PrinterInterface):
         # - Query printer status
         raise NotImplementedError("Real nozzle check not implemented")
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get Epson printer status."""
         if not self.is_connected:
             raise ConnectionError("Printer not connected")
@@ -468,7 +443,7 @@ class EpsonDriver(PrinterInterface):
             "connected": self.is_connected,
             "profile": str(self.current_profile) if self.current_profile else None,
             "ink_levels": {k: v.to_dict() for k, v in self.get_ink_levels().items()},
-            "simulated": self.simulate
+            "simulated": self.simulate,
         }
 
 
@@ -482,11 +457,7 @@ class CanonDriver(PrinterInterface):
     - Canon iPF series
     """
 
-    SUPPORTED_MODELS = [
-        "PRO-1000", "PRO-2000", "PRO-4000",
-        "PRO-100",
-        "iPF6400", "iPF8400"
-    ]
+    SUPPORTED_MODELS = ["PRO-1000", "PRO-2000", "PRO-4000", "PRO-100", "iPF6400", "iPF8400"]
 
     def __init__(
         self,
@@ -560,7 +531,7 @@ class CanonDriver(PrinterInterface):
     def print_negative(
         self,
         image: Image.Image,
-        settings: Optional[PrintSettings] = None,
+        settings: PrintSettings | None = None,
     ) -> PrintJob:
         """Print digital negative on Canon printer."""
         if not self.is_connected:
@@ -581,23 +552,14 @@ class CanonDriver(PrinterInterface):
                 f"{settings.quality.value}, {settings.resolution_dpi} DPI"
             )
 
-            job = PrintJob(
-                job_id=job_id,
-                status="completed",
-                settings=settings,
-                pages=1
-            )
+            job = PrintJob(job_id=job_id, status="completed", settings=settings, pages=1)
 
             logger.info(f"Print job {job_id} completed (simulated)")
             return job
 
         raise NotImplementedError("Real printing not implemented")
 
-    def _prepare_image(
-        self,
-        image: Image.Image,
-        settings: PrintSettings
-    ) -> Image.Image:
+    def _prepare_image(self, image: Image.Image, settings: PrintSettings) -> Image.Image:
         """Prepare image for Canon printing."""
         # Similar to Epson, but Canon has some specific requirements
         processed = image.copy()
@@ -610,30 +572,24 @@ class CanonDriver(PrinterInterface):
         if settings.mirror:
             processed = processed.transpose(Image.FLIP_LEFT_RIGHT)
 
-        if settings.invert:
-            if processed.mode == "L":
-                processed = Image.eval(processed, lambda x: 255 - x)
-            elif processed.mode == "RGB":
-                processed = Image.eval(processed, lambda x: 255 - x)
+        if settings.invert and processed.mode in ("L", "RGB"):
+            processed = Image.eval(processed, lambda x: 255 - x)
 
         if settings.scale_percent != 100.0:
             scale = settings.scale_percent / 100.0
-            new_size = (
-                int(processed.width * scale),
-                int(processed.height * scale)
-            )
+            new_size = (int(processed.width * scale), int(processed.height * scale))
             processed = processed.resize(new_size, Image.Resampling.LANCZOS)
 
         return processed
 
-    def get_ink_levels(self) -> Dict[str, InkLevel]:
+    def get_ink_levels(self) -> dict[str, InkLevel]:
         """Get ink levels from Canon printer."""
         if not self.is_connected:
             raise ConnectionError("Printer not connected")
 
         if self.simulate:
             # Simulate ink depletion
-            for color, level in self._ink_levels.items():
+            for _color, level in self._ink_levels.items():
                 decrease = np.random.uniform(0, 1.5)
                 level.level_percent = max(0, level.level_percent - decrease)
 
@@ -662,14 +618,10 @@ class CanonDriver(PrinterInterface):
 
             if has_issues:
                 missing = random.sample(
-                    ["photo_black_1", "cyan_2", "gray_4"],
-                    k=random.randint(1, 2)
+                    ["photo_black_1", "cyan_2", "gray_4"], k=random.randint(1, 2)
                 )
                 quality = random.uniform(0.75, 0.92)
-                recommendations = [
-                    "Run standard cleaning",
-                    "If issue persists, run deep cleaning"
-                ]
+                recommendations = ["Run standard cleaning", "If issue persists, run deep cleaning"]
                 success = False
             else:
                 missing = []
@@ -681,12 +633,12 @@ class CanonDriver(PrinterInterface):
                 success=success,
                 missing_nozzles=missing,
                 pattern_quality=quality,
-                recommendations=recommendations
+                recommendations=recommendations,
             )
 
         raise NotImplementedError("Real nozzle check not implemented")
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get Canon printer status."""
         if not self.is_connected:
             raise ConnectionError("Printer not connected")
@@ -698,5 +650,5 @@ class CanonDriver(PrinterInterface):
             "connected": self.is_connected,
             "profile": str(self.current_profile) if self.current_profile else None,
             "ink_levels": {k: v.to_dict() for k, v in self.get_ink_levels().items()},
-            "simulated": self.simulate
+            "simulated": self.simulate,
         }

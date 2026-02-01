@@ -26,11 +26,9 @@ from ptpd_calibration.data.cloud_sync import (
 from ptpd_calibration.data.database import PrintDatabase, PrintRecord
 from ptpd_calibration.data.export_import import DataExporter, DataImporter
 from ptpd_calibration.data.version_control import (
-    MergeConflict,
     VersionController,
     VersionedItem,
 )
-
 
 # ============================================================================
 # PrintDatabase Tests
@@ -430,7 +428,7 @@ class TestDataExport:
         assert output_path.exists()
 
         # Verify JSON structure
-        with open(output_path, "r") as f:
+        with open(output_path) as f:
             data = json.load(f)
 
         assert "metadata" in data
@@ -453,7 +451,7 @@ class TestDataExport:
         # Verify YAML can be loaded
         import yaml
 
-        with open(output_path, "r") as f:
+        with open(output_path) as f:
             data = yaml.safe_load(f)
 
         assert "metadata" in data
@@ -495,7 +493,7 @@ class TestDataExport:
         # Verify CSV has header and data
         import csv
 
-        with open(output_path, "r") as f:
+        with open(output_path) as f:
             reader = csv.DictReader(f)
             rows = list(reader)
 
@@ -933,9 +931,7 @@ class TestVersionController:
         # Create multiple versions
         for i in range(3):
             content = {**sample_content, "version": i}
-            temp_vc.commit(
-                item_id="recipe_1", content=content, message=f"Version {i}"
-            )
+            temp_vc.commit(item_id="recipe_1", content=content, message=f"Version {i}")
 
         # Get history
         history = temp_vc.get_history("recipe_1")
@@ -949,9 +945,7 @@ class TestVersionController:
         # Create multiple versions
         for i in range(5):
             content = {**sample_content, "version": i}
-            temp_vc.commit(
-                item_id="recipe_1", content=content, message=f"Version {i}"
-            )
+            temp_vc.commit(item_id="recipe_1", content=content, message=f"Version {i}")
 
         # Get limited history
         history = temp_vc.get_history("recipe_1", limit=2)
@@ -975,9 +969,7 @@ class TestVersionController:
 
     def test_rollback(self, temp_vc, sample_content):
         """Test rolling back to a previous version."""
-        v1 = temp_vc.commit(
-            item_id="recipe_1", content=sample_content, message="Version 1"
-        )
+        v1 = temp_vc.commit(item_id="recipe_1", content=sample_content, message="Version 1")
 
         # Make changes
         new_content = {**sample_content, "metal_ratio": 0.8}
@@ -993,9 +985,7 @@ class TestVersionController:
     def test_branch(self, temp_vc, sample_content):
         """Test creating a branch."""
         # Create initial commit on main
-        temp_vc.commit(
-            item_id="recipe_1", content=sample_content, message="Main version"
-        )
+        temp_vc.commit(item_id="recipe_1", content=sample_content, message="Main version")
 
         # Create branch
         success = temp_vc.branch("recipe_1", "experimental", from_branch="main")
@@ -1046,9 +1036,7 @@ class TestVersionController:
 
         # Make conflicting changes on main
         main_content = {**content, "metal_ratio": 0.6}
-        temp_vc.commit(
-            item_id="recipe_1", content=main_content, message="Main v2", branch="main"
-        )
+        temp_vc.commit(item_id="recipe_1", content=main_content, message="Main v2", branch="main")
 
         # Make conflicting changes on experimental
         exp_content = {**content, "metal_ratio": 0.7}
@@ -1074,9 +1062,7 @@ class TestVersionController:
 
         # Make conflicting changes
         main_content = {**content, "metal_ratio": 0.6}
-        temp_vc.commit(
-            item_id="recipe_1", content=main_content, message="Main v2", branch="main"
-        )
+        temp_vc.commit(item_id="recipe_1", content=main_content, message="Main v2", branch="main")
 
         exp_content = {**content, "metal_ratio": 0.7}
         temp_vc.commit(
@@ -1111,9 +1097,7 @@ class TestVersionController:
 
     def test_tag_version(self, temp_vc, sample_content):
         """Test tagging a version."""
-        version = temp_vc.commit(
-            item_id="recipe_1", content=sample_content, message="Version 1"
-        )
+        version = temp_vc.commit(item_id="recipe_1", content=sample_content, message="Version 1")
 
         # Add tag
         success = temp_vc.tag_version(version.version_id, "v1.0")

@@ -24,12 +24,12 @@ from ptpd_calibration.deep_learning.training.pipelines import (
     CurveTrainingPipeline,
     DefectTrainingPipeline,
     DetectionTrainingPipeline,
+    EarlyStopping,
     ExposureTrainingPipeline,
     RecipeTrainingPipeline,
     TrainingConfig,
     TrainingMetrics,
     TrainingResult,
-    EarlyStopping,
 )
 
 __all__ = [

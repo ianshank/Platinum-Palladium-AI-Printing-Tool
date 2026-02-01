@@ -23,6 +23,7 @@ All components are designed with:
 
 from ptpd_calibration.deep_learning.config import (
     DeepLearningSettings,
+    DefectDetectionSettings,
     DetectionModelSettings,
     DiffusionSettings,
     FederatedLearningSettings,
@@ -31,65 +32,62 @@ from ptpd_calibration.deep_learning.config import (
     NeuralCurveSettings,
     PrintComparisonSettings,
     RecipeRecommendationSettings,
-    DefectDetectionSettings,
     UVExposureSettings,
     get_deep_learning_settings,
 )
-
-from ptpd_calibration.deep_learning.types import (
-    # Detection types
-    DetectionBackend,
-    SegmentationBackend,
-    # Quality assessment types
-    IQAMetric,
-    QualityLevel,
-    # Diffusion types
-    DiffusionScheduler,
-    EnhancementMode,
-    # Neural prediction types
-    CurvePredictorArchitecture,
-    UncertaintyMethod,
-    # Defect types
-    DefectType,
-    DefectSeverity,
-    # Recommendation types
-    RecommendationStrategy,
-    SimilarityMetric,
-    RecipeCategory,
-    # Comparison types
-    PerceptualMetric,
-    ComparisonMode,
-    ComparisonResult,
-    # Multi-modal types
-    VisionLanguageModel,
-    ToolType,
-    # Federated types
-    AggregationStrategy,
-    PrivacyLevel,
-)
-
 from ptpd_calibration.deep_learning.models import (
-    # Detection models
-    DetectedPatch,
-    DeepDetectionResult,
-    # Image quality models
-    ZoneQualityScore,
-    ImageQualityResult,
-    # Result models
-    DiffusionEnhancementResult,
     CurvePredictionResult,
-    EnhancementRegion,
-    # UV exposure models
-    UVExposurePrediction,
+    DeepDetectionResult,
+    DefectDetectionResult,
     # Defect detection models
     DetectedDefect,
-    DefectDetectionResult,
+    # Detection models
+    DetectedPatch,
+    # Result models
+    DiffusionEnhancementResult,
+    EnhancementRegion,
+    ImageQualityResult,
+    PrintComparisonResult,
     # Recipe recommendation models
     RecipeRecommendation,
     RecipeRecommendationResult,
+    # UV exposure models
+    UVExposurePrediction,
     # Print comparison models
     ZoneComparison,
-    PrintComparisonResult,
+    # Image quality models
+    ZoneQualityScore,
+)
+from ptpd_calibration.deep_learning.types import (
+    # Federated types
+    AggregationStrategy,
+    ComparisonMode,
+    ComparisonResult,
+    # Neural prediction types
+    CurvePredictorArchitecture,
+    DefectSeverity,
+    # Defect types
+    DefectType,
+    # Detection types
+    DetectionBackend,
+    # Diffusion types
+    DiffusionScheduler,
+    EnhancementMode,
+    # Quality assessment types
+    IQAMetric,
+    # Comparison types
+    PerceptualMetric,
+    PrivacyLevel,
+    QualityLevel,
+    RecipeCategory,
+    # Recommendation types
+    RecommendationStrategy,
+    SegmentationBackend,
+    SimilarityMetric,
+    ToolType,
+    UncertaintyMethod,
+    # Multi-modal types
+    VisionLanguageModel,
 )
 
 # Lazy imports for implementation classes (to avoid dependency errors)
@@ -118,10 +116,12 @@ def __getattr__(name: str):
     """Lazy import implementation classes."""
     if name in __lazy_imports:
         import importlib
+
         module_path = __lazy_imports[name]
         module = importlib.import_module(module_path)
         return getattr(module, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     # Configuration

@@ -6,7 +6,7 @@ for all AI/ML features with full validation.
 """
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 import numpy as np
@@ -21,7 +21,6 @@ from ptpd_calibration.deep_learning.types import (
     QualityLevel,
     RecipeCategory,
 )
-
 
 # =============================================================================
 # Base Models
@@ -64,17 +63,11 @@ class DetectedPatch(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     index: int = Field(..., ge=0, description="Patch index (0 = lightest)")
-    bbox: tuple[int, int, int, int] = Field(
-        ..., description="Bounding box (x, y, width, height)"
-    )
+    bbox: tuple[int, int, int, int] = Field(..., description="Bounding box (x, y, width, height)")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Detection confidence")
-    mask: Optional[np.ndarray] = Field(
-        default=None, description="Segmentation mask"
-    )
+    mask: np.ndarray | None = Field(default=None, description="Segmentation mask")
     mask_area: int = Field(default=0, ge=0, description="Mask area in pixels")
-    centroid: tuple[float, float] = Field(
-        default=(0.0, 0.0), description="Centroid (x, y)"
-    )
+    centroid: tuple[float, float] = Field(default=(0.0, 0.0), description="Centroid (x, y)")
 
     @field_validator("bbox", mode="before")
     @classmethod
@@ -89,23 +82,13 @@ class DeepDetectionResult(BaseAIResult):
     """Result from deep learning step tablet detection."""
 
     # Detection info
-    tablet_bbox: tuple[int, int, int, int] = Field(
-        ..., description="Tablet bounding box"
-    )
-    tablet_confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Tablet detection confidence"
-    )
-    rotation_angle: float = Field(
-        default=0.0, description="Detected rotation angle in degrees"
-    )
-    orientation: str = Field(
-        default="horizontal", description="Tablet orientation"
-    )
+    tablet_bbox: tuple[int, int, int, int] = Field(..., description="Tablet bounding box")
+    tablet_confidence: float = Field(..., ge=0.0, le=1.0, description="Tablet detection confidence")
+    rotation_angle: float = Field(default=0.0, description="Detected rotation angle in degrees")
+    orientation: str = Field(default="horizontal", description="Tablet orientation")
 
     # Patches
-    patches: list[DetectedPatch] = Field(
-        default_factory=list, description="Detected patches"
-    )
+    patches: list[DetectedPatch] = Field(default_factory=list, description="Detected patches")
     num_patches: int = Field(default=0, ge=0, description="Number of detected patches")
 
     # Quality metrics
@@ -117,12 +100,8 @@ class DeepDetectionResult(BaseAIResult):
     )
 
     # Fallback info
-    used_fallback: bool = Field(
-        default=False, description="Whether classical fallback was used"
-    )
-    fallback_reason: Optional[str] = Field(
-        default=None, description="Reason for fallback"
-    )
+    used_fallback: bool = Field(default=False, description="Whether classical fallback was used")
+    fallback_reason: str | None = Field(default=None, description="Reason for fallback")
 
     # Warnings
     warnings: list[str] = Field(default_factory=list, description="Detection warnings")
@@ -156,18 +135,14 @@ class ImageQualityResult(BaseAIResult):
     """Result from Vision Transformer image quality assessment."""
 
     # Overall quality
-    overall_score: float = Field(
-        ..., ge=0.0, le=1.0, description="Overall quality score"
-    )
+    overall_score: float = Field(..., ge=0.0, le=1.0, description="Overall quality score")
     quality_level: QualityLevel = Field(..., description="Quality classification")
 
     # Individual metrics
     metric_scores: dict[str, float] = Field(
         default_factory=dict, description="Individual metric scores"
     )
-    primary_metric_name: str = Field(
-        default="maniqa", description="Primary metric used"
-    )
+    primary_metric_name: str = Field(default="maniqa", description="Primary metric used")
     primary_metric_score: float = Field(
         default=0.0, ge=0.0, le=1.0, description="Primary metric score"
     )
@@ -179,12 +154,8 @@ class ImageQualityResult(BaseAIResult):
     highlight_quality: float = Field(
         default=1.0, ge=0.0, le=1.0, description="Highlight zone quality"
     )
-    midtone_quality: float = Field(
-        default=1.0, ge=0.0, le=1.0, description="Midtone zone quality"
-    )
-    shadow_quality: float = Field(
-        default=1.0, ge=0.0, le=1.0, description="Shadow zone quality"
-    )
+    midtone_quality: float = Field(default=1.0, ge=0.0, le=1.0, description="Midtone zone quality")
+    shadow_quality: float = Field(default=1.0, ge=0.0, le=1.0, description="Shadow zone quality")
 
     # Technical metrics
     sharpness: float = Field(default=1.0, ge=0.0, le=1.0, description="Sharpness score")
@@ -199,7 +170,7 @@ class ImageQualityResult(BaseAIResult):
     issues: list[str] = Field(default_factory=list, description="Detected issues")
 
     # Embeddings (for comparison)
-    embedding: Optional[list[float]] = Field(
+    embedding: list[float] | None = Field(
         default=None, description="Image embedding for comparison"
     )
 
@@ -213,13 +184,9 @@ class EnhancementRegion(BaseModel):
     """A region targeted for enhancement."""
 
     bbox: tuple[int, int, int, int] = Field(..., description="Region bounding box")
-    mask: Optional[np.ndarray] = Field(default=None, description="Region mask")
-    enhancement_type: EnhancementMode = Field(
-        ..., description="Type of enhancement applied"
-    )
-    strength: float = Field(
-        default=0.5, ge=0.0, le=1.0, description="Enhancement strength"
-    )
+    mask: np.ndarray | None = Field(default=None, description="Region mask")
+    enhancement_type: EnhancementMode = Field(..., description="Type of enhancement applied")
+    strength: float = Field(default=0.5, ge=0.0, le=1.0, description="Enhancement strength")
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -230,45 +197,27 @@ class DiffusionEnhancementResult(BaseAIResult):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # Enhanced image
-    enhanced_image: Optional[np.ndarray] = Field(
-        default=None, description="Enhanced image array"
-    )
-    original_size: tuple[int, int] = Field(
-        ..., description="Original image size (width, height)"
-    )
-    output_size: tuple[int, int] = Field(
-        ..., description="Output image size (width, height)"
-    )
+    enhanced_image: np.ndarray | None = Field(default=None, description="Enhanced image array")
+    original_size: tuple[int, int] = Field(..., description="Original image size (width, height)")
+    output_size: tuple[int, int] = Field(..., description="Output image size (width, height)")
 
     # Enhancement info
-    enhancement_mode: EnhancementMode = Field(
-        ..., description="Enhancement mode used"
-    )
+    enhancement_mode: EnhancementMode = Field(..., description="Enhancement mode used")
     regions_enhanced: list[EnhancementRegion] = Field(
         default_factory=list, description="Enhanced regions"
     )
-    num_inference_steps: int = Field(
-        default=30, ge=1, description="Inference steps used"
-    )
+    num_inference_steps: int = Field(default=30, ge=1, description="Inference steps used")
 
     # Quality metrics
-    quality_improvement: float = Field(
-        default=0.0, description="Quality improvement percentage"
-    )
+    quality_improvement: float = Field(default=0.0, description="Quality improvement percentage")
     structure_preservation: float = Field(
         default=1.0, ge=0.0, le=1.0, description="Structure preservation score"
     )
-    tone_fidelity: float = Field(
-        default=1.0, ge=0.0, le=1.0, description="Tonal fidelity score"
-    )
+    tone_fidelity: float = Field(default=1.0, ge=0.0, le=1.0, description="Tonal fidelity score")
 
     # Prompts used
-    prompt_used: Optional[str] = Field(
-        default=None, description="Generation prompt used"
-    )
-    negative_prompt: Optional[str] = Field(
-        default=None, description="Negative prompt used"
-    )
+    prompt_used: str | None = Field(default=None, description="Generation prompt used")
+    negative_prompt: str | None = Field(default=None, description="Negative prompt used")
 
     # Warnings
     warnings: list[str] = Field(default_factory=list)
@@ -285,24 +234,14 @@ class CurvePredictionResult(BaseAIResult):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # Predicted curve
-    input_values: list[float] = Field(
-        ..., min_length=2, description="Input values (0-1)"
-    )
-    output_values: list[float] = Field(
-        ..., min_length=2, description="Output values (0-1)"
-    )
+    input_values: list[float] = Field(..., min_length=2, description="Input values (0-1)")
+    output_values: list[float] = Field(..., min_length=2, description="Output values (0-1)")
     num_points: int = Field(..., ge=2, description="Number of curve points")
 
     # Uncertainty
-    uncertainty: Optional[list[float]] = Field(
-        default=None, description="Per-point uncertainty"
-    )
-    mean_uncertainty: float = Field(
-        default=0.0, ge=0.0, description="Mean uncertainty"
-    )
-    confidence: float = Field(
-        default=1.0, ge=0.0, le=1.0, description="Overall confidence"
-    )
+    uncertainty: list[float] | None = Field(default=None, description="Per-point uncertainty")
+    mean_uncertainty: float = Field(default=0.0, ge=0.0, description="Mean uncertainty")
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Overall confidence")
 
     # Curve properties
     is_monotonic: bool = Field(default=True, description="Curve is monotonic")
@@ -315,9 +254,7 @@ class CurvePredictionResult(BaseAIResult):
     )
 
     # Comparison with baseline
-    baseline_mae: Optional[float] = Field(
-        default=None, description="MAE vs baseline/target"
-    )
+    baseline_mae: float | None = Field(default=None, description="MAE vs baseline/target")
 
     @field_validator("input_values", "output_values", mode="before")
     @classmethod
@@ -341,47 +278,27 @@ class UVExposurePrediction(BaseAIResult):
     """Result from neural UV exposure prediction."""
 
     # Prediction
-    predicted_seconds: float = Field(
-        ..., ge=0.0, description="Predicted exposure time in seconds"
-    )
-    predicted_minutes: float = Field(
-        ..., ge=0.0, description="Predicted exposure time in minutes"
-    )
+    predicted_seconds: float = Field(..., ge=0.0, description="Predicted exposure time in seconds")
+    predicted_minutes: float = Field(..., ge=0.0, description="Predicted exposure time in minutes")
 
     # Confidence interval
-    lower_bound_seconds: float = Field(
-        ..., ge=0.0, description="Lower confidence bound"
-    )
-    upper_bound_seconds: float = Field(
-        ..., ge=0.0, description="Upper confidence bound"
-    )
-    confidence_level: float = Field(
-        default=0.95, ge=0.0, le=1.0, description="Confidence level"
-    )
+    lower_bound_seconds: float = Field(..., ge=0.0, description="Lower confidence bound")
+    upper_bound_seconds: float = Field(..., ge=0.0, description="Upper confidence bound")
+    confidence_level: float = Field(default=0.95, ge=0.0, le=1.0, description="Confidence level")
 
     # Input factors
-    input_factors: dict[str, Any] = Field(
-        default_factory=dict, description="Input factors used"
-    )
+    input_factors: dict[str, Any] = Field(default_factory=dict, description="Input factors used")
 
     # Factor contributions
     factor_contributions: dict[str, float] = Field(
         default_factory=dict, description="Contribution of each factor"
     )
-    base_exposure: float = Field(
-        ..., ge=0.0, description="Base exposure before adjustments"
-    )
-    adjustment_factor: float = Field(
-        default=1.0, ge=0.0, description="Total adjustment factor"
-    )
+    base_exposure: float = Field(..., ge=0.0, description="Base exposure before adjustments")
+    adjustment_factor: float = Field(default=1.0, ge=0.0, description="Total adjustment factor")
 
     # Recommendations
-    recommendations: list[str] = Field(
-        default_factory=list, description="Exposure recommendations"
-    )
-    warnings: list[str] = Field(
-        default_factory=list, description="Exposure warnings"
-    )
+    recommendations: list[str] = Field(default_factory=list, description="Exposure recommendations")
+    warnings: list[str] = Field(default_factory=list, description="Exposure warnings")
 
     def format_time(self) -> str:
         """Format predicted time as human-readable string."""
@@ -408,23 +325,19 @@ class DetectedDefect(BaseModel):
     severity: DefectSeverity = Field(..., description="Defect severity")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Detection confidence")
     bbox: tuple[int, int, int, int] = Field(..., description="Bounding box")
-    mask: Optional[np.ndarray] = Field(default=None, description="Defect mask")
+    mask: np.ndarray | None = Field(default=None, description="Defect mask")
     area_pixels: int = Field(default=0, ge=0, description="Defect area in pixels")
     area_percentage: float = Field(
         default=0.0, ge=0.0, le=100.0, description="Defect area percentage"
     )
-    remediation: Optional[str] = Field(
-        default=None, description="Suggested remediation"
-    )
+    remediation: str | None = Field(default=None, description="Suggested remediation")
 
 
 class DefectDetectionResult(BaseAIResult):
     """Result from defect detection."""
 
     # Defects
-    defects: list[DetectedDefect] = Field(
-        default_factory=list, description="Detected defects"
-    )
+    defects: list[DetectedDefect] = Field(default_factory=list, description="Detected defects")
     num_defects: int = Field(default=0, ge=0, description="Number of defects")
 
     # Summary by type
@@ -439,14 +352,10 @@ class DefectDetectionResult(BaseAIResult):
     overall_severity: DefectSeverity = Field(
         default=DefectSeverity.NEGLIGIBLE, description="Overall severity"
     )
-    print_acceptable: bool = Field(
-        default=True, description="Whether print is acceptable"
-    )
+    print_acceptable: bool = Field(default=True, description="Whether print is acceptable")
 
     # Segmentation mask
-    full_mask: Optional[np.ndarray] = Field(
-        default=None, description="Full segmentation mask"
-    )
+    full_mask: np.ndarray | None = Field(default=None, description="Full segmentation mask")
     defect_coverage: float = Field(
         default=0.0, ge=0.0, le=100.0, description="Total defect coverage percentage"
     )
@@ -469,9 +378,7 @@ class RecipeRecommendation(BaseModel):
 
     recipe_id: UUID = Field(..., description="Recipe ID")
     recipe_name: str = Field(..., description="Recipe name")
-    similarity_score: float = Field(
-        ..., ge=0.0, le=1.0, description="Similarity score"
-    )
+    similarity_score: float = Field(..., ge=0.0, le=1.0, description="Similarity score")
     rank: int = Field(..., ge=1, description="Recommendation rank")
 
     # Recipe details
@@ -481,17 +388,11 @@ class RecipeRecommendation(BaseModel):
     exposure_time: float = Field(..., ge=0.0, description="Exposure time")
 
     # Categories
-    categories: list[RecipeCategory] = Field(
-        default_factory=list, description="Recipe categories"
-    )
+    categories: list[RecipeCategory] = Field(default_factory=list, description="Recipe categories")
 
     # Explanation
-    explanation: Optional[str] = Field(
-        default=None, description="Why this recipe was recommended"
-    )
-    matching_factors: list[str] = Field(
-        default_factory=list, description="Matching factors"
-    )
+    explanation: str | None = Field(default=None, description="Why this recipe was recommended")
+    matching_factors: list[str] = Field(default_factory=list, description="Matching factors")
 
 
 class RecipeRecommendationResult(BaseAIResult):
@@ -501,17 +402,13 @@ class RecipeRecommendationResult(BaseAIResult):
     query_image_used: bool = Field(
         default=False, description="Whether image was used for recommendation"
     )
-    query_parameters: dict[str, Any] = Field(
-        default_factory=dict, description="Query parameters"
-    )
+    query_parameters: dict[str, Any] = Field(default_factory=dict, description="Query parameters")
 
     # Recommendations
     recommendations: list[RecipeRecommendation] = Field(
         default_factory=list, description="Recommended recipes"
     )
-    num_recommendations: int = Field(
-        default=0, ge=0, description="Number of recommendations"
-    )
+    num_recommendations: int = Field(default=0, ge=0, description="Number of recommendations")
 
     # User preferences considered
     preferences_used: dict[str, Any] = Field(
@@ -533,14 +430,10 @@ class ZoneComparison(BaseModel):
     """Comparison for a specific tonal zone."""
 
     zone: str = Field(..., description="Zone name")
-    similarity: float = Field(
-        ..., ge=0.0, le=1.0, description="Zone similarity score"
-    )
+    similarity: float = Field(..., ge=0.0, le=1.0, description="Zone similarity score")
     lpips_score: float = Field(default=0.0, ge=0.0, description="Zone LPIPS score")
     ssim_score: float = Field(default=1.0, ge=0.0, le=1.0, description="Zone SSIM score")
-    differences: list[str] = Field(
-        default_factory=list, description="Notable differences"
-    )
+    differences: list[str] = Field(default_factory=list, description="Notable differences")
 
 
 class PrintComparisonResult(BaseAIResult):
@@ -549,12 +442,8 @@ class PrintComparisonResult(BaseAIResult):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # Overall comparison
-    overall_similarity: float = Field(
-        ..., ge=0.0, le=1.0, description="Overall similarity score"
-    )
-    comparison_result: ComparisonResult = Field(
-        ..., description="Comparison classification"
-    )
+    overall_similarity: float = Field(..., ge=0.0, le=1.0, description="Overall similarity score")
+    comparison_result: ComparisonResult = Field(..., description="Comparison classification")
 
     # Metric scores
     lpips_score: float = Field(default=0.0, ge=0.0, description="LPIPS distance")
@@ -570,10 +459,8 @@ class PrintComparisonResult(BaseAIResult):
     )
 
     # Difference visualization
-    difference_map: Optional[np.ndarray] = Field(
-        default=None, description="Difference heatmap"
-    )
-    attention_map: Optional[np.ndarray] = Field(
+    difference_map: np.ndarray | None = Field(default=None, description="Difference heatmap")
+    attention_map: np.ndarray | None = Field(
         default=None, description="Attention-based difference map"
     )
 
@@ -600,15 +487,11 @@ class ToolCall(BaseModel):
     """A tool call made by the assistant."""
 
     tool_name: str = Field(..., description="Tool name")
-    tool_input: dict[str, Any] = Field(
-        default_factory=dict, description="Tool input"
-    )
+    tool_input: dict[str, Any] = Field(default_factory=dict, description="Tool input")
     tool_output: Any = Field(default=None, description="Tool output")
-    execution_time_ms: float = Field(
-        default=0.0, ge=0.0, description="Execution time"
-    )
+    execution_time_ms: float = Field(default=0.0, ge=0.0, description="Execution time")
     success: bool = Field(default=True, description="Whether tool call succeeded")
-    error: Optional[str] = Field(default=None, description="Error message if failed")
+    error: str | None = Field(default=None, description="Error message if failed")
 
 
 class ImageAnalysis(BaseModel):
@@ -616,12 +499,8 @@ class ImageAnalysis(BaseModel):
 
     image_index: int = Field(..., ge=0, description="Image index")
     description: str = Field(..., description="Image description")
-    detected_issues: list[str] = Field(
-        default_factory=list, description="Detected issues"
-    )
-    recommendations: list[str] = Field(
-        default_factory=list, description="Recommendations"
-    )
+    detected_issues: list[str] = Field(default_factory=list, description="Detected issues")
+    recommendations: list[str] = Field(default_factory=list, description="Recommendations")
     extracted_data: dict[str, Any] = Field(
         default_factory=dict, description="Extracted data from image"
     )
@@ -637,28 +516,20 @@ class MultiModalResponse(BaseAIResult):
     )
 
     # Tool usage
-    tool_calls: list[ToolCall] = Field(
-        default_factory=list, description="Tool calls made"
-    )
+    tool_calls: list[ToolCall] = Field(default_factory=list, description="Tool calls made")
     num_tool_calls: int = Field(default=0, ge=0, description="Number of tool calls")
 
     # Image analysis
     image_analyses: list[ImageAnalysis] = Field(
         default_factory=list, description="Image analyses performed"
     )
-    images_analyzed: int = Field(
-        default=0, ge=0, description="Number of images analyzed"
-    )
+    images_analyzed: int = Field(default=0, ge=0, description="Number of images analyzed")
 
     # RAG context
-    rag_sources_used: list[str] = Field(
-        default_factory=list, description="RAG sources retrieved"
-    )
+    rag_sources_used: list[str] = Field(default_factory=list, description="RAG sources retrieved")
 
     # Conversation
-    conversation_id: Optional[UUID] = Field(
-        default=None, description="Conversation ID"
-    )
+    conversation_id: UUID | None = Field(default=None, description="Conversation ID")
     turn_number: int = Field(default=1, ge=1, description="Conversation turn number")
 
     # Token usage
@@ -678,12 +549,8 @@ class FederatedUpdate(BaseModel):
     round_number: int = Field(..., ge=0, description="Training round number")
     num_samples: int = Field(..., ge=1, description="Number of local samples")
     local_loss: float = Field(..., ge=0.0, description="Local training loss")
-    local_accuracy: Optional[float] = Field(
-        default=None, ge=0.0, le=1.0, description="Local accuracy"
-    )
-    training_time_seconds: float = Field(
-        default=0.0, ge=0.0, description="Local training time"
-    )
+    local_accuracy: float | None = Field(default=None, ge=0.0, le=1.0, description="Local accuracy")
+    training_time_seconds: float = Field(default=0.0, ge=0.0, description="Local training time")
 
 
 class FederatedRoundResult(BaseAIResult):
@@ -696,7 +563,7 @@ class FederatedRoundResult(BaseAIResult):
     # Aggregation
     aggregation_strategy: str = Field(..., description="Aggregation strategy used")
     global_loss: float = Field(..., ge=0.0, description="Global aggregated loss")
-    global_accuracy: Optional[float] = Field(
+    global_accuracy: float | None = Field(
         default=None, ge=0.0, le=1.0, description="Global accuracy"
     )
 
@@ -707,19 +574,13 @@ class FederatedRoundResult(BaseAIResult):
 
     # Privacy
     privacy_level: str = Field(..., description="Privacy level used")
-    noise_added: bool = Field(
-        default=False, description="Whether DP noise was added"
-    )
+    noise_added: bool = Field(default=False, description="Whether DP noise was added")
 
     # Model improvement
-    loss_improvement: float = Field(
-        default=0.0, description="Loss improvement from previous round"
-    )
+    loss_improvement: float = Field(default=0.0, description="Loss improvement from previous round")
 
     # Communication stats
-    bytes_communicated: int = Field(
-        default=0, ge=0, description="Total bytes communicated"
-    )
-    compression_ratio: Optional[float] = Field(
+    bytes_communicated: int = Field(default=0, ge=0, description="Total bytes communicated")
+    compression_ratio: float | None = Field(
         default=None, ge=0.0, le=1.0, description="Gradient compression ratio"
     )

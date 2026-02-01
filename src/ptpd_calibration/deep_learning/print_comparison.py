@@ -14,7 +14,6 @@ All parameters are configuration-driven with no hardcoded values.
 
 import logging
 import time
-from typing import Optional, Tuple
 
 import numpy as np
 from scipy import ndimage
@@ -58,8 +57,8 @@ class LPIPSWrapper:
             return
 
         try:
-            import torch
             import lpips
+            import torch
 
             # Determine device
             if self.settings.device == "auto":
@@ -74,10 +73,9 @@ class LPIPSWrapper:
 
             # Load LPIPS model
             net_type = self.settings.lpips_net  # 'alex', 'vgg', or 'squeeze'
-            self._lpips_model = lpips.LPIPS(
-                net=net_type,
-                spatial=self.settings.lpips_spatial
-            ).to(self._device)
+            self._lpips_model = lpips.LPIPS(net=net_type, spatial=self.settings.lpips_spatial).to(
+                self._device
+            )
 
             logger.info(f"LPIPS model ({net_type}) loaded on {self._device}")
 
@@ -89,11 +87,8 @@ class LPIPSWrapper:
             self._lpips_model = None
 
     def compute(
-        self,
-        image1: np.ndarray,
-        image2: np.ndarray,
-        return_spatial: bool = None
-    ) -> Tuple[float, Optional[np.ndarray]]:
+        self, image1: np.ndarray, image2: np.ndarray, return_spatial: bool = None
+    ) -> tuple[float, np.ndarray | None]:
         """
         Compute LPIPS distance between two images.
 
@@ -175,11 +170,8 @@ class LPIPSWrapper:
         return tensor
 
     def _compute_fallback(
-        self,
-        image1: np.ndarray,
-        image2: np.ndarray,
-        return_spatial: bool
-    ) -> Tuple[float, Optional[np.ndarray]]:
+        self, image1: np.ndarray, image2: np.ndarray, return_spatial: bool
+    ) -> tuple[float, np.ndarray | None]:
         """Fallback metric based on MSE."""
         # Normalize images
         img1 = image1.astype(np.float32)
@@ -197,10 +189,7 @@ class LPIPSWrapper:
         spatial_map = None
         if return_spatial:
             # Average across channels if RGB
-            if diff.ndim == 3:
-                spatial_map = np.mean(diff, axis=2)
-            else:
-                spatial_map = diff
+            spatial_map = np.mean(diff, axis=2) if diff.ndim == 3 else diff
 
         return distance, spatial_map
 
@@ -214,10 +203,7 @@ class DeepPrintComparator:
     parameter adjustment suggestions.
     """
 
-    def __init__(
-        self,
-        settings: Optional[PrintComparisonSettings] = None
-    ):
+    def __init__(self, settings: PrintComparisonSettings | None = None):
         """
         Initialize the print comparator.
 
@@ -231,10 +217,7 @@ class DeepPrintComparator:
         self.lpips = LPIPSWrapper(settings)
 
     def compare(
-        self,
-        image1: np.ndarray,
-        image2: np.ndarray,
-        mode: Optional[ComparisonMode] = None
+        self, image1: np.ndarray, image2: np.ndarray, mode: ComparisonMode | None = None
     ) -> PrintComparisonResult:
         """
         Compare two print images.
@@ -273,9 +256,7 @@ class DeepPrintComparator:
 
         # Overall similarity (inverse of LPIPS, weighted with SSIM)
         overall_similarity = self._compute_overall_similarity(
-            lpips_score,
-            ssim_score,
-            additional_metrics
+            lpips_score, ssim_score, additional_metrics
         )
 
         # Classify comparison result
@@ -294,27 +275,18 @@ class DeepPrintComparator:
         # Generate attention map if requested
         attention_map = None
         if self.settings.generate_attention_maps:
-            attention_map = self._generate_attention_map(
-                image1,
-                image2,
-                difference_map
-            )
+            attention_map = self._generate_attention_map(image1, image2, difference_map)
 
         # Identify major and minor differences
         major_diffs, minor_diffs = self._identify_differences(
-            lpips_score,
-            ssim_score,
-            zone_comparisons,
-            difference_map
+            lpips_score, ssim_score, zone_comparisons, difference_map
         )
 
         # Generate adjustment suggestions
         adjustment_suggestions = []
         if zone_comparisons:
             adjustment_suggestions = self._generate_adjustment_suggestions(
-                zone_comparisons,
-                lpips_score,
-                ssim_score
+                zone_comparisons, lpips_score, ssim_score
             )
 
         inference_time = (time.time() - start_time) * 1000
@@ -337,16 +309,10 @@ class DeepPrintComparator:
         )
 
     def _compute_lpips(
-        self,
-        image1: np.ndarray,
-        image2: np.ndarray
-    ) -> Tuple[float, Optional[np.ndarray]]:
+        self, image1: np.ndarray, image2: np.ndarray
+    ) -> tuple[float, np.ndarray | None]:
         """Compute LPIPS score and difference map."""
-        return self.lpips.compute(
-            image1,
-            image2,
-            return_spatial=self.settings.lpips_spatial
-        )
+        return self.lpips.compute(image1, image2, return_spatial=self.settings.lpips_spatial)
 
     def _compute_ssim(self, image1: np.ndarray, image2: np.ndarray) -> float:
         """Compute SSIM (Structural Similarity Index)."""
@@ -361,11 +327,7 @@ class DeepPrintComparator:
             img1 = self._normalize_image(img1)
             img2 = self._normalize_image(img2)
 
-            ssim = structural_similarity(
-                img1,
-                img2,
-                data_range=1.0
-            )
+            ssim = structural_similarity(img1, img2, data_range=1.0)
 
             return float(ssim)
 
@@ -373,11 +335,7 @@ class DeepPrintComparator:
             logger.warning("scikit-image not available, using fallback SSIM")
             return self._compute_ssim_fallback(image1, image2)
 
-    def _compute_ssim_fallback(
-        self,
-        image1: np.ndarray,
-        image2: np.ndarray
-    ) -> float:
+    def _compute_ssim_fallback(self, image1: np.ndarray, image2: np.ndarray) -> float:
         """Fallback SSIM computation."""
         img1 = self._normalize_image(self._to_grayscale(image1))
         img2 = self._normalize_image(self._to_grayscale(image2))
@@ -389,11 +347,12 @@ class DeepPrintComparator:
         sigma2 = np.std(img2)
         sigma12 = np.mean((img1 - mu1) * (img2 - mu2))
 
-        c1 = 0.01 ** 2
-        c2 = 0.03 ** 2
+        c1 = 0.01**2
+        c2 = 0.03**2
 
-        ssim = ((2 * mu1 * mu2 + c1) * (2 * sigma12 + c2)) / \
-               ((mu1**2 + mu2**2 + c1) * (sigma1**2 + sigma2**2 + c2))
+        ssim = ((2 * mu1 * mu2 + c1) * (2 * sigma12 + c2)) / (
+            (mu1**2 + mu2**2 + c1) * (sigma1**2 + sigma2**2 + c2)
+        )
 
         return float(np.clip(ssim, -1.0, 1.0))
 
@@ -405,16 +364,13 @@ class DeepPrintComparator:
         mse = np.mean((img1 - img2) ** 2)
 
         if mse == 0:
-            return float('inf')
+            return float("inf")
 
         psnr = 10 * np.log10(1.0 / mse)
         return float(psnr)
 
     def _compute_metric(
-        self,
-        image1: np.ndarray,
-        image2: np.ndarray,
-        metric: PerceptualMetric
+        self, image1: np.ndarray, image2: np.ndarray, metric: PerceptualMetric
     ) -> float:
         """Compute a specific perceptual metric."""
         # For now, return placeholder values
@@ -427,11 +383,7 @@ class DeepPrintComparator:
         else:
             return 0.0
 
-    def _compute_dists_fallback(
-        self,
-        image1: np.ndarray,
-        image2: np.ndarray
-    ) -> float:
+    def _compute_dists_fallback(self, image1: np.ndarray, image2: np.ndarray) -> float:
         """Fallback DISTS computation using gradient similarity."""
         img1 = self._normalize_image(self._to_grayscale(image1))
         img2 = self._normalize_image(self._to_grayscale(image2))
@@ -449,11 +401,7 @@ class DeepPrintComparator:
         similarity = 1.0 - np.mean(np.abs(mag1 - mag2))
         return float(similarity)
 
-    def _compute_fsim_fallback(
-        self,
-        image1: np.ndarray,
-        image2: np.ndarray
-    ) -> float:
+    def _compute_fsim_fallback(self, image1: np.ndarray, image2: np.ndarray) -> float:
         """Fallback FSIM computation."""
         # Simplified feature similarity
         img1 = self._normalize_image(self._to_grayscale(image1))
@@ -469,11 +417,7 @@ class DeepPrintComparator:
         similarity = 2 * mu1 * mu2 / (mu1**2 + mu2**2 + 1e-6)
         return float(np.mean(similarity))
 
-    def _compare_zones(
-        self,
-        image1: np.ndarray,
-        image2: np.ndarray
-    ) -> list[ZoneComparison]:
+    def _compare_zones(self, image1: np.ndarray, image2: np.ndarray) -> list[ZoneComparison]:
         """Compare images zone by zone (shadows, midtones, highlights)."""
         img1 = self._normalize_image(self._to_grayscale(image1))
         img2 = self._normalize_image(self._to_grayscale(image2))
@@ -536,11 +480,7 @@ class DeepPrintComparator:
 
         return zone_comparisons
 
-    def _multiscale_comparison(
-        self,
-        image1: np.ndarray,
-        image2: np.ndarray
-    ) -> list[float]:
+    def _multiscale_comparison(self, image1: np.ndarray, image2: np.ndarray) -> list[float]:
         """Perform multi-scale comparison."""
         scores = []
 
@@ -562,10 +502,7 @@ class DeepPrintComparator:
         return scores
 
     def _generate_attention_map(
-        self,
-        image1: np.ndarray,
-        image2: np.ndarray,
-        difference_map: Optional[np.ndarray]
+        self, image1: np.ndarray, image2: np.ndarray, difference_map: np.ndarray | None
     ) -> np.ndarray:
         """Generate attention-based visualization of differences."""
         if difference_map is None:
@@ -580,18 +517,17 @@ class DeepPrintComparator:
 
         # Resize to match original if needed
         if difference_map.shape != image1.shape[:2]:
-            difference_map = self._resize_image(
-                difference_map,
-                image1.shape[:2]
-            )
+            difference_map = self._resize_image(difference_map, image1.shape[:2])
 
         # Apply Gaussian smoothing for better visualization
         from scipy.ndimage import gaussian_filter
+
         attention_map = gaussian_filter(difference_map, sigma=2.0)
 
         # Normalize to 0-1
-        attention_map = (attention_map - attention_map.min()) / \
-                       (attention_map.max() - attention_map.min() + 1e-6)
+        attention_map = (attention_map - attention_map.min()) / (
+            attention_map.max() - attention_map.min() + 1e-6
+        )
 
         # Threshold if highlighting differences
         if self.settings.highlight_differences:
@@ -605,37 +541,28 @@ class DeepPrintComparator:
         lpips_score: float,
         ssim_score: float,
         zone_comparisons: list[ZoneComparison],
-        difference_map: Optional[np.ndarray]
-    ) -> Tuple[list[str], list[str]]:
+        difference_map: np.ndarray | None,
+    ) -> tuple[list[str], list[str]]:
         """Identify major and minor differences."""
         major_diffs = []
         minor_diffs = []
 
         # Overall differences
         if lpips_score > self.settings.different_threshold:
-            major_diffs.append(
-                f"High perceptual difference (LPIPS: {lpips_score:.3f})"
-            )
+            major_diffs.append(f"High perceptual difference (LPIPS: {lpips_score:.3f})")
         elif lpips_score > self.settings.similar_threshold:
-            minor_diffs.append(
-                f"Moderate perceptual difference (LPIPS: {lpips_score:.3f})"
-            )
+            minor_diffs.append(f"Moderate perceptual difference (LPIPS: {lpips_score:.3f})")
 
         if ssim_score < 0.7:
-            major_diffs.append(
-                f"Significant structural changes (SSIM: {ssim_score:.3f})"
-            )
+            major_diffs.append(f"Significant structural changes (SSIM: {ssim_score:.3f})")
         elif ssim_score < 0.85:
-            minor_diffs.append(
-                f"Minor structural changes (SSIM: {ssim_score:.3f})"
-            )
+            minor_diffs.append(f"Minor structural changes (SSIM: {ssim_score:.3f})")
 
         # Zone-specific differences
         for zone_comp in zone_comparisons:
             if zone_comp.lpips_score > 0.3:
                 major_diffs.append(
-                    f"Major difference in {zone_comp.zone} "
-                    f"(LPIPS: {zone_comp.lpips_score:.3f})"
+                    f"Major difference in {zone_comp.zone} (LPIPS: {zone_comp.lpips_score:.3f})"
                 )
             elif zone_comp.lpips_score > 0.15:
                 minor_diffs.append(
@@ -646,10 +573,7 @@ class DeepPrintComparator:
         return major_diffs, minor_diffs
 
     def _generate_adjustment_suggestions(
-        self,
-        zone_comparisons: list[ZoneComparison],
-        lpips_score: float,
-        ssim_score: float
+        self, zone_comparisons: list[ZoneComparison], lpips_score: float, ssim_score: float
     ) -> list[dict]:
         """Generate parameter adjustment suggestions."""
         suggestions = []
@@ -657,45 +581,50 @@ class DeepPrintComparator:
         # Analyze zone comparisons for suggestions
         for zone_comp in zone_comparisons:
             if zone_comp.zone == "shadows" and zone_comp.lpips_score > 0.2:
-                suggestions.append({
-                    "parameter": "exposure_time",
-                    "adjustment": "increase",
-                    "magnitude": "5-10%",
-                    "reason": "Shadow detail differences detected"
-                })
+                suggestions.append(
+                    {
+                        "parameter": "exposure_time",
+                        "adjustment": "increase",
+                        "magnitude": "5-10%",
+                        "reason": "Shadow detail differences detected",
+                    }
+                )
 
             elif zone_comp.zone == "highlights" and zone_comp.lpips_score > 0.2:
-                suggestions.append({
-                    "parameter": "exposure_time",
-                    "adjustment": "decrease",
-                    "magnitude": "5-10%",
-                    "reason": "Highlight detail differences detected"
-                })
+                suggestions.append(
+                    {
+                        "parameter": "exposure_time",
+                        "adjustment": "decrease",
+                        "magnitude": "5-10%",
+                        "reason": "Highlight detail differences detected",
+                    }
+                )
 
             elif zone_comp.zone == "midtones" and zone_comp.lpips_score > 0.2:
-                suggestions.append({
-                    "parameter": "development_time",
-                    "adjustment": "fine_tune",
-                    "magnitude": "5%",
-                    "reason": "Midtone contrast differences detected"
-                })
+                suggestions.append(
+                    {
+                        "parameter": "development_time",
+                        "adjustment": "fine_tune",
+                        "magnitude": "5%",
+                        "reason": "Midtone contrast differences detected",
+                    }
+                )
 
         # Overall contrast suggestions
         if lpips_score > 0.3:
-            suggestions.append({
-                "parameter": "metal_ratio",
-                "adjustment": "adjust",
-                "magnitude": "0.05",
-                "reason": "Overall tonal difference suggests chemistry adjustment"
-            })
+            suggestions.append(
+                {
+                    "parameter": "metal_ratio",
+                    "adjustment": "adjust",
+                    "magnitude": "0.05",
+                    "reason": "Overall tonal difference suggests chemistry adjustment",
+                }
+            )
 
         return suggestions
 
     def _compute_overall_similarity(
-        self,
-        lpips_score: float,
-        ssim_score: float,
-        additional_metrics: dict[str, float]
+        self, lpips_score: float, ssim_score: float, additional_metrics: dict[str, float]
     ) -> float:
         """Compute overall similarity from multiple metrics."""
         # Convert LPIPS (distance) to similarity
@@ -711,11 +640,7 @@ class DeepPrintComparator:
 
         return float(np.clip(overall, 0.0, 1.0))
 
-    def _classify_result(
-        self,
-        overall_similarity: float,
-        lpips_score: float
-    ) -> ComparisonResult:
+    def _classify_result(self, overall_similarity: float, lpips_score: float) -> ComparisonResult:
         """Classify comparison result based on similarity."""
         if lpips_score < self.settings.identical_threshold:
             return ComparisonResult.IDENTICAL
@@ -749,11 +674,7 @@ class DeepPrintComparator:
             img = img / 255.0
         return img
 
-    def _resize_image(
-        self,
-        image: np.ndarray,
-        new_shape: Tuple[int, int]
-    ) -> np.ndarray:
+    def _resize_image(self, image: np.ndarray, new_shape: tuple[int, int]) -> np.ndarray:
         """Resize image to new shape."""
         try:
             from scipy.ndimage import zoom
@@ -762,20 +683,12 @@ class DeepPrintComparator:
                 factors = (new_shape[0] / image.shape[0], new_shape[1] / image.shape[1])
                 return zoom(image, factors, order=1)
             else:
-                factors = (
-                    new_shape[0] / image.shape[0],
-                    new_shape[1] / image.shape[1],
-                    1
-                )
+                factors = (new_shape[0] / image.shape[0], new_shape[1] / image.shape[1], 1)
                 return zoom(image, factors, order=1)
         except Exception as e:
             logger.warning(f"Resize failed: {e}")
             return image
 
-    def _resize_to_match(
-        self,
-        image: np.ndarray,
-        target_shape: Tuple[int, ...]
-    ) -> np.ndarray:
+    def _resize_to_match(self, image: np.ndarray, target_shape: tuple[int, ...]) -> np.ndarray:
         """Resize image to match target shape."""
         return self._resize_image(image, target_shape[:2])

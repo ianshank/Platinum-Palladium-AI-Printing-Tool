@@ -9,18 +9,19 @@ Tests cover:
 - Curve generation for all modes
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-import numpy as np
+from unittest.mock import patch
 
+from ptpd_calibration.curves.linearization import LinearizationMethod, TargetResponse
 from ptpd_calibration.ui.tabs.calibration_wizard import (
+    LINEARIZATION_MODES,
     # Mode configuration
     WizardLinearizationMode,
-    LinearizationModeConfig,
-    LINEARIZATION_MODES,
     get_linearization_mode_choices,
     get_mode_by_label,
     get_mode_value_by_label,
+    get_paper_chemistry_notes,
+    # Paper configuration
+    get_paper_preset_choices,
     # Strategy configuration
     get_strategy_choices,
     get_strategy_labels,
@@ -29,17 +30,13 @@ from ptpd_calibration.ui.tabs.calibration_wizard import (
     get_target_choices,
     get_target_labels,
     get_target_value_by_label,
-    # Paper configuration
-    get_paper_preset_choices,
-    get_paper_chemistry_notes,
     # Validation
     wizard_is_valid_config,
+    wizard_on_config_change,
     # Handlers
     wizard_on_mode_change,
     wizard_on_paper_change,
-    wizard_on_config_change,
 )
-from ptpd_calibration.curves.linearization import LinearizationMethod, TargetResponse
 
 
 class TestLinearizationModeConfiguration:
@@ -144,8 +141,14 @@ class TestStrategyConfiguration:
 
     def test_get_strategy_value_by_label(self):
         """Test getting strategy value by label."""
-        assert get_strategy_value_by_label("Smooth spline (recommended)") == LinearizationMethod.SPLINE_FIT.value
-        assert get_strategy_value_by_label("Polynomial fit") == LinearizationMethod.POLYNOMIAL_FIT.value
+        assert (
+            get_strategy_value_by_label("Smooth spline (recommended)")
+            == LinearizationMethod.SPLINE_FIT.value
+        )
+        assert (
+            get_strategy_value_by_label("Polynomial fit")
+            == LinearizationMethod.POLYNOMIAL_FIT.value
+        )
         assert get_strategy_value_by_label("Invalid") is None
 
 
@@ -174,7 +177,10 @@ class TestTargetConfiguration:
     def test_get_target_value_by_label(self):
         """Test getting target value by label."""
         assert get_target_value_by_label("Even tonal steps (linear)") == TargetResponse.LINEAR.value
-        assert get_target_value_by_label("Match digital gamma 2.2 (sRGB)") == TargetResponse.GAMMA_22.value
+        assert (
+            get_target_value_by_label("Match digital gamma 2.2 (sRGB)")
+            == TargetResponse.GAMMA_22.value
+        )
         assert get_target_value_by_label("Invalid") is None
 
 
@@ -485,26 +491,28 @@ class TestBuildWizardTab:
 
     def test_wizard_tab_builds_without_error(self):
         """Test that the wizard tab can be built without errors."""
-        with patch('gradio.TabItem'), \
-             patch('gradio.Markdown'), \
-             patch('gradio.State') as MockState, \
-             patch('gradio.Group'), \
-             patch('gradio.Row'), \
-             patch('gradio.Column'), \
-             patch('gradio.Image'), \
-             patch('gradio.Dropdown') as MockDropdown, \
-             patch('gradio.Slider'), \
-             patch('gradio.Checkbox'), \
-             patch('gradio.Button') as MockButton, \
-             patch('gradio.Plot'), \
-             patch('gradio.Dataframe'), \
-             patch('gradio.Textbox'), \
-             patch('gradio.Number'), \
-             patch('gradio.Radio'), \
-             patch('gradio.File'), \
-             patch('gradio.Accordion'):
-
+        with (
+            patch("gradio.TabItem"),
+            patch("gradio.Markdown"),
+            patch("gradio.State") as MockState,
+            patch("gradio.Group"),
+            patch("gradio.Row"),
+            patch("gradio.Column"),
+            patch("gradio.Image"),
+            patch("gradio.Dropdown") as MockDropdown,
+            patch("gradio.Slider"),
+            patch("gradio.Checkbox"),
+            patch("gradio.Button") as MockButton,
+            patch("gradio.Plot"),
+            patch("gradio.Dataframe"),
+            patch("gradio.Textbox"),
+            patch("gradio.Number"),
+            patch("gradio.Radio"),
+            patch("gradio.File"),
+            patch("gradio.Accordion"),
+        ):
             from ptpd_calibration.ui.tabs.calibration_wizard import build_calibration_wizard_tab
+
             build_calibration_wizard_tab()
 
             # Verify key components were created
@@ -525,14 +533,14 @@ class TestIntegrationWithLinearizer:
 
     def test_strategy_values_match_linearization_methods(self):
         """Verify strategy values map to valid LinearizationMethod enums."""
-        for label, value in get_strategy_choices():
+        for _label, value in get_strategy_choices():
             # Should not raise an exception
             method = LinearizationMethod(value)
             assert method is not None
 
     def test_target_values_match_target_response(self):
         """Verify target values map to valid TargetResponse enums."""
-        for label, value in get_target_choices():
+        for _label, value in get_target_choices():
             # Should not raise an exception
             target = TargetResponse(value)
             assert target is not None

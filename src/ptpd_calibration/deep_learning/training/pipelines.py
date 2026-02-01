@@ -21,10 +21,10 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 if TYPE_CHECKING:
@@ -216,8 +216,7 @@ class BaseTrainingPipeline(ABC, Generic[ModelT]):
     ):
         if not TORCH_AVAILABLE:
             raise ImportError(
-                "PyTorch is required for training. "
-                "Install with: pip install torch torchvision"
+                "PyTorch is required for training. Install with: pip install torch torchvision"
             )
 
         self.config = config or TrainingConfig()
@@ -443,8 +442,7 @@ class BaseTrainingPipeline(ABC, Generic[ModelT]):
             # Log progress
             if (step + 1) % self.config.log_every_n_steps == 0:
                 logger.debug(
-                    f"Epoch {epoch}, Step {step + 1}/{len(train_loader)}, "
-                    f"Loss: {loss.item():.4f}"
+                    f"Epoch {epoch}, Step {step + 1}/{len(train_loader)}, Loss: {loss.item():.4f}"
                 )
 
         avg_loss = total_loss / len(train_loader)
@@ -526,9 +524,7 @@ class BaseTrainingPipeline(ABC, Generic[ModelT]):
             epoch_start = time.time()
 
             # Train
-            train_loss, train_metrics = self._train_epoch(
-                self.model, train_loader, epoch
-            )
+            train_loss, train_metrics = self._train_epoch(self.model, train_loader, epoch)
 
             # Validate
             val_loss, val_metrics = None, {}
@@ -627,7 +623,7 @@ class DetectionTrainingPipeline(BaseTrainingPipeline):
         from ptpd_calibration.deep_learning.detection import DeepTabletDetector
 
         # Create detector which initializes the YOLO model
-        detector = DeepTabletDetector()
+        _detector = DeepTabletDetector()  # Initialize model weights
 
         # For training, we need the underlying model
         # This is a simplified version - real training would use the full YOLO training
@@ -752,9 +748,7 @@ class DetectionTrainingPipeline(BaseTrainingPipeline):
         # Confidence loss (BCE)
         conf_pred = predictions[:, :, 4]
         conf_target = targets[:, :, 4]
-        conf_loss = nn.functional.binary_cross_entropy_with_logits(
-            conf_pred, conf_target
-        )
+        conf_loss = nn.functional.binary_cross_entropy_with_logits(conf_pred, conf_target)
 
         # Total loss
         total_loss = box_loss + conf_loss
@@ -1002,9 +996,7 @@ class ExposureTrainingPipeline(BaseTrainingPipeline):
         mse_loss = nn.functional.mse_loss(predictions, targets)
 
         # Relative error (for meaningful metrics)
-        relative_error = torch.mean(
-            torch.abs(predictions - targets) / (torch.abs(targets) + 1e-6)
-        )
+        relative_error = torch.mean(torch.abs(predictions - targets) / (torch.abs(targets) + 1e-6))
 
         metrics = {
             "mse_loss": mse_loss.item(),
@@ -1035,18 +1027,14 @@ class DefectTrainingPipeline(BaseTrainingPipeline):
 
         # Combined model for both segmentation and classification
         class CombinedDefectModel(nn.Module):
-            def __init__(
-                self, num_classes: int, dropout: float, image_size: int = 256
-            ):
+            def __init__(self, num_classes: int, dropout: float, image_size: int = 256):
                 super().__init__()
                 self.segmentation = DefectSegmentationNet(in_channels=3, out_channels=1)
                 self.classifier = DefectClassifierNet(
                     num_classes=num_classes, dropout=dropout, image_size=image_size
                 )
 
-            def forward(
-                self, x: torch.Tensor
-            ) -> tuple[torch.Tensor, torch.Tensor]:
+            def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
                 seg_output = self.segmentation(x)
                 class_output = self.classifier(x)
                 return seg_output, class_output

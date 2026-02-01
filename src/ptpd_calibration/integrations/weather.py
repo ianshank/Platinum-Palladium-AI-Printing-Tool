@@ -5,12 +5,12 @@ Provides weather data to help optimize platinum/palladium printing workflow,
 including humidity and temperature monitoring for coating and drying times.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional
-import logging
+from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field
@@ -53,7 +53,7 @@ class CurrentConditions:
     @property
     def temperature_f(self) -> float:
         """Temperature in Fahrenheit."""
-        return self.temperature_c * 9/5 + 32
+        return self.temperature_c * 9 / 5 + 32
 
     @property
     def is_suitable_for_coating(self) -> bool:
@@ -64,7 +64,7 @@ class CurrentConditions:
         humidity_ok = 30 <= self.humidity_percent <= 70
         return temp_ok and humidity_ok
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
             "temperature_c": self.temperature_c,
@@ -75,7 +75,7 @@ class CurrentConditions:
             "condition": self.condition.value,
             "description": self.description,
             "timestamp": self.timestamp.isoformat(),
-            "suitable_for_coating": self.is_suitable_for_coating
+            "suitable_for_coating": self.is_suitable_for_coating,
         }
 
 
@@ -93,9 +93,9 @@ class ForecastPeriod:
     @property
     def temperature_f(self) -> float:
         """Temperature in Fahrenheit."""
-        return self.temperature_c * 9/5 + 32
+        return self.temperature_c * 9 / 5 + 32
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -104,7 +104,7 @@ class ForecastPeriod:
             "humidity_percent": self.humidity_percent,
             "condition": self.condition.value,
             "description": self.description,
-            "precipitation_probability": self.precipitation_probability
+            "precipitation_probability": self.precipitation_probability,
         }
 
 
@@ -115,7 +115,7 @@ class DryingTimeEstimate(BaseModel):
     estimated_hours: float = Field(description="Estimated drying time in hours")
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence in estimate")
     conditions: CurrentConditions = Field(description="Weather conditions used")
-    recommendations: List[str] = Field(default_factory=list, description="Recommendations")
+    recommendations: list[str] = Field(default_factory=list, description="Recommendations")
 
     class Config:
         arbitrary_types_allowed = True
@@ -127,7 +127,7 @@ class CoatingRecommendation(BaseModel):
     best_time: datetime = Field(description="Recommended coating time")
     forecast: ForecastPeriod = Field(description="Forecast for recommended time")
     reason: str = Field(description="Reason for recommendation")
-    alternative_times: List[datetime] = Field(default_factory=list, description="Alternative times")
+    alternative_times: list[datetime] = Field(default_factory=list, description="Alternative times")
 
     class Config:
         arbitrary_types_allowed = True
@@ -140,7 +140,7 @@ class WeatherProvider(ABC):
     Concrete implementations should handle API-specific requests and parsing.
     """
 
-    def __init__(self, api_key: Optional[str] = None, units: str = "metric"):
+    def __init__(self, api_key: str | None = None, units: str = "metric"):
         """
         Initialize weather provider.
 
@@ -150,15 +150,15 @@ class WeatherProvider(ABC):
         """
         self.api_key = api_key
         self.units = units
-        self._cache: Dict[str, tuple[datetime, any]] = {}
+        self._cache: dict[str, tuple[datetime, any]] = {}
         self._cache_duration = timedelta(minutes=10)
 
     @abstractmethod
     async def get_current_conditions(
         self,
         location: str,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
     ) -> CurrentConditions:
         """
         Get current weather conditions.
@@ -178,9 +178,9 @@ class WeatherProvider(ABC):
         self,
         location: str,
         hours: int = 24,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
-    ) -> List[ForecastPeriod]:
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> list[ForecastPeriod]:
         """
         Get weather forecast.
 
@@ -255,14 +255,10 @@ class WeatherProvider(ABC):
                 "High humidity - consider using a dehumidifier or fan to speed drying"
             )
         elif conditions.humidity_percent < 30:
-            recommendations.append(
-                "Low humidity - monitor paper carefully to prevent over-drying"
-            )
+            recommendations.append("Low humidity - monitor paper carefully to prevent over-drying")
 
         if conditions.temperature_c < 15:
-            recommendations.append(
-                "Low temperature - consider moving to a warmer location"
-            )
+            recommendations.append("Low temperature - consider moving to a warmer location")
         elif conditions.temperature_c > 28:
             recommendations.append(
                 "High temperature - ensure good ventilation to prevent uneven drying"
@@ -283,15 +279,15 @@ class WeatherProvider(ABC):
             estimated_hours=round(estimated_hours, 1),
             confidence=round(confidence, 2),
             conditions=conditions,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     async def recommend_coating_time(
         self,
         location: str,
         forecast_hours: int = 48,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
     ) -> CoatingRecommendation:
         """
         Recommend best time to coat paper based on forecast.
@@ -306,10 +302,7 @@ class WeatherProvider(ABC):
             CoatingRecommendation with best time and alternatives
         """
         forecast = await self.get_forecast(
-            location=location,
-            hours=forecast_hours,
-            latitude=latitude,
-            longitude=longitude
+            location=location, hours=forecast_hours, latitude=latitude, longitude=longitude
         )
 
         # Score each forecast period
@@ -321,11 +314,7 @@ class WeatherProvider(ABC):
             precip_score = 1.0 - period.precipitation_probability / 100
 
             # Weight the scores
-            total_score = (
-                temp_score * 0.4 +
-                humidity_score * 0.4 +
-                precip_score * 0.2
-            )
+            total_score = temp_score * 0.4 + humidity_score * 0.4 + precip_score * 0.2
 
             scored_periods.append((total_score, period))
 
@@ -347,16 +336,20 @@ class WeatherProvider(ABC):
         if best_period.precipitation_probability < 20:
             reasons.append("low precipitation risk")
 
-        reason = "Best conditions: " + ", ".join(reasons) if reasons else "Most suitable time in forecast"
+        reason = (
+            "Best conditions: " + ", ".join(reasons)
+            if reasons
+            else "Most suitable time in forecast"
+        )
 
         return CoatingRecommendation(
             best_time=best_period.timestamp,
             forecast=best_period,
             reason=reason,
-            alternative_times=alternatives
+            alternative_times=alternatives,
         )
 
-    def _get_from_cache(self, key: str) -> Optional[any]:
+    def _get_from_cache(self, key: str) -> Any | None:
         """Get value from cache if not expired."""
         if key in self._cache:
             timestamp, value = self._cache[key]
@@ -364,7 +357,7 @@ class WeatherProvider(ABC):
                 return value
         return None
 
-    def _set_cache(self, key: str, value: any) -> None:
+    def _set_cache(self, key: str, value: Any) -> None:
         """Set value in cache."""
         self._cache[key] = (datetime.now(), value)
 
@@ -379,7 +372,7 @@ class OpenWeatherMapProvider(WeatherProvider):
 
     BASE_URL = "https://api.openweathermap.org/data/2.5"
 
-    def __init__(self, api_key: Optional[str] = None, units: str = "metric"):
+    def __init__(self, api_key: str | None = None, units: str = "metric"):
         """
         Initialize OpenWeatherMap provider.
 
@@ -393,8 +386,8 @@ class OpenWeatherMapProvider(WeatherProvider):
     async def get_current_conditions(
         self,
         location: str,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
     ) -> CurrentConditions:
         """Get current weather from OpenWeatherMap."""
         if not self.api_key:
@@ -444,9 +437,9 @@ class OpenWeatherMapProvider(WeatherProvider):
         self,
         location: str,
         hours: int = 24,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
-    ) -> List[ForecastPeriod]:
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> list[ForecastPeriod]:
         """Get weather forecast from OpenWeatherMap."""
         if not self.api_key:
             logger.warning("No API key provided, returning simulated data")
@@ -491,7 +484,7 @@ class OpenWeatherMapProvider(WeatherProvider):
             logger.warning("Falling back to simulated data")
             return self._simulate_forecast(hours)
 
-    def _parse_current_conditions(self, data: Dict) -> CurrentConditions:
+    def _parse_current_conditions(self, data: dict) -> CurrentConditions:
         """Parse OpenWeatherMap current weather response."""
         main = data["main"]
         weather = data["weather"][0]
@@ -517,10 +510,10 @@ class OpenWeatherMapProvider(WeatherProvider):
             wind_speed_ms=wind.get("speed", 0.0),
             condition=condition,
             description=weather["description"],
-            timestamp=datetime.fromtimestamp(data["dt"])
+            timestamp=datetime.fromtimestamp(data["dt"]),
         )
 
-    def _parse_forecast(self, data: Dict, hours: int) -> List[ForecastPeriod]:
+    def _parse_forecast(self, data: dict, hours: int) -> list[ForecastPeriod]:
         """Parse OpenWeatherMap forecast response."""
         forecast_list = data["list"]
         periods = []
@@ -555,7 +548,7 @@ class OpenWeatherMapProvider(WeatherProvider):
                 humidity_percent=main["humidity"],
                 condition=condition,
                 description=weather["description"],
-                precipitation_probability=precip_prob
+                precipitation_probability=precip_prob,
             )
             periods.append(period)
 
@@ -572,10 +565,10 @@ class OpenWeatherMapProvider(WeatherProvider):
             wind_speed_ms=random.uniform(0, 5),
             condition=WeatherCondition.CLEAR,
             description="simulated clear sky",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
-    def _simulate_forecast(self, hours: int) -> List[ForecastPeriod]:
+    def _simulate_forecast(self, hours: int) -> list[ForecastPeriod]:
         """Generate simulated forecast for testing."""
         import random
 
@@ -583,13 +576,15 @@ class OpenWeatherMapProvider(WeatherProvider):
         base_time = datetime.now()
 
         for i in range(0, hours, 3):  # 3-hour intervals
-            periods.append(ForecastPeriod(
-                timestamp=base_time + timedelta(hours=i),
-                temperature_c=random.uniform(15, 25),
-                humidity_percent=random.uniform(40, 70),
-                condition=WeatherCondition.CLEAR,
-                description="simulated conditions",
-                precipitation_probability=random.uniform(0, 30)
-            ))
+            periods.append(
+                ForecastPeriod(
+                    timestamp=base_time + timedelta(hours=i),
+                    temperature_c=random.uniform(15, 25),
+                    humidity_percent=random.uniform(40, 70),
+                    condition=WeatherCondition.CLEAR,
+                    description="simulated conditions",
+                    precipitation_probability=random.uniform(0, 30),
+                )
+            )
 
         return periods

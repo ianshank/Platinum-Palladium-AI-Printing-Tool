@@ -15,16 +15,16 @@ Usage:
     logger.info("Processing started", extra={"record_id": 123})
 """
 
+import json
 import logging
 import sys
-from typing import Any
-from pathlib import Path
-from datetime import datetime, timezone
-import json
 from contextvars import ContextVar
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 
 # Context variable for request/operation tracking
-_log_context: ContextVar[dict[str, Any]] = ContextVar("log_context", default={})
+_log_context: ContextVar[dict[str, Any]] = ContextVar("log_context")
 
 
 class JSONFormatter(logging.Formatter):
@@ -70,9 +70,7 @@ class JSONFormatter(logging.Formatter):
         # Add exception info
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
-            log_data["exception_type"] = (
-                record.exc_info[0].__name__ if record.exc_info[0] else None
-            )
+            log_data["exception_type"] = record.exc_info[0].__name__ if record.exc_info[0] else None
 
         return json.dumps(log_data, default=str)
 
@@ -84,10 +82,10 @@ class ColoredFormatter(logging.Formatter):
     """
 
     COLORS = {
-        "DEBUG": "\033[36m",     # Cyan
-        "INFO": "\033[32m",      # Green
-        "WARNING": "\033[33m",   # Yellow
-        "ERROR": "\033[31m",     # Red
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
         "CRITICAL": "\033[35m",  # Magenta
     }
     RESET = "\033[0m"
@@ -148,15 +146,19 @@ def setup_logging(
     if json_format:
         console_handler.setFormatter(JSONFormatter())
     elif colored and sys.stdout.isatty():
-        console_handler.setFormatter(ColoredFormatter(
-            "%(asctime)s | %(levelname)s | %(name)s:%(lineno)d | %(message)s",
-            datefmt="%H:%M:%S"
-        ))
+        console_handler.setFormatter(
+            ColoredFormatter(
+                "%(asctime)s | %(levelname)s | %(name)s:%(lineno)d | %(message)s",
+                datefmt="%H:%M:%S",
+            )
+        )
     else:
-        console_handler.setFormatter(logging.Formatter(
-            "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
-        ))
+        console_handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+        )
 
     root_logger.addHandler(console_handler)
 
@@ -171,9 +173,7 @@ def setup_logging(
         root_logger.addHandler(file_handler)
 
     _logging_configured = True
-    root_logger.debug(
-        f"Logging configured: level={level}, file={log_file}, json={json_format}"
-    )
+    root_logger.debug(f"Logging configured: level={level}, file={log_file}, json={json_format}")
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -264,9 +264,7 @@ def log_operation(
             yield
             elapsed = time.perf_counter() - start
             logger.log(
-                level,
-                f"Completed: {operation}",
-                extra={"duration_seconds": round(elapsed, 4)}
+                level, f"Completed: {operation}", extra={"duration_seconds": round(elapsed, 4)}
             )
         except Exception as e:
             elapsed = time.perf_counter() - start

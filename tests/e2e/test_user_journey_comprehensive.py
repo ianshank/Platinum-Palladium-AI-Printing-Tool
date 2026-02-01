@@ -9,19 +9,19 @@ Tests complete user journeys from start to finish, covering:
 - Session persistence
 """
 
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
-import time
 
 import pytest
 
 if TYPE_CHECKING:
-    from selenium.webdriver.remote.webdriver import WebDriver
+    pass
 
 try:
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
 
     SELENIUM_AVAILABLE = True
 except ImportError:
@@ -34,8 +34,8 @@ except ImportError:
 @pytest.fixture
 def sample_step_tablet(tmp_path) -> Path:
     """Create a realistic step tablet image for testing."""
-    from PIL import Image
     import numpy as np
+    from PIL import Image
 
     # Create a 21-step tablet with realistic gamma curve
     width, height = 840, 150
@@ -46,7 +46,7 @@ def sample_step_tablet(tmp_path) -> Path:
     for i in range(num_patches):
         # Use gamma curve similar to real printing
         normalized = i / (num_patches - 1)
-        density = 255 - int(255 * (normalized ** 0.45))  # Approximate gamma 2.2
+        density = 255 - int(255 * (normalized**0.45))  # Approximate gamma 2.2
         x_start = i * patch_width
         x_end = (i + 1) * patch_width
         img_array[:, x_start:x_end] = density
@@ -61,8 +61,8 @@ def sample_step_tablet(tmp_path) -> Path:
 @pytest.fixture
 def sample_high_contrast_tablet(tmp_path) -> Path:
     """Create a high contrast step tablet for testing."""
-    from PIL import Image
     import numpy as np
+    from PIL import Image
 
     width, height = 840, 150
     num_patches = 21
@@ -74,7 +74,7 @@ def sample_high_contrast_tablet(tmp_path) -> Path:
         normalized = i / (num_patches - 1)
         # S-curve for higher contrast
         if normalized < 0.5:
-            density = 255 - int(255 * (2 * normalized ** 2))
+            density = 255 - int(255 * (2 * normalized**2))
         else:
             density = 255 - int(255 * (1 - 2 * (1 - normalized) ** 2))
         x_start = i * patch_width
@@ -106,7 +106,7 @@ class TestFirstTimeUserJourney:
 
         # Find and click through all tabs
         tabs = driver.find_elements(By.CSS_SELECTOR, "button[role='tab']")
-        tab_names = [tab.text for tab in tabs]
+        [tab.text for tab in tabs]
 
         assert len(tabs) > 0, "Should have at least one tab"
 
@@ -115,9 +115,7 @@ class TestFirstTimeUserJourney:
                 tab.click()
                 time.sleep(0.5)  # Allow tab content to load
 
-    def test_first_calibration_workflow(
-        self, driver, gradio_wait, sample_step_tablet
-    ):
+    def test_first_calibration_workflow(self, driver, gradio_wait, sample_step_tablet):  # noqa: ARG002
         """Test complete first calibration for a new user."""
         gradio_wait()
 
@@ -153,9 +151,7 @@ class TestFirstTimeUserJourney:
 class TestExpertUserJourney:
     """Test workflows for experienced users."""
 
-    def test_rapid_calibration_workflow(
-        self, driver, gradio_wait, sample_step_tablet
-    ):
+    def test_rapid_calibration_workflow(self, driver, gradio_wait, sample_step_tablet):  # noqa: ARG002
         """Test rapid calibration workflow for expert users."""
         gradio_wait()
 
@@ -167,7 +163,7 @@ class TestExpertUserJourney:
                 tab.click()
                 break
 
-    def test_batch_processing_setup(self, driver, gradio_wait):
+    def test_batch_processing_setup(self, driver, gradio_wait):  # noqa: ARG002
         """Test setting up batch processing."""
         gradio_wait()
 
@@ -273,9 +269,7 @@ class TestAccessibilityJourney:
         gradio_wait()
 
         # Check for aria-label attributes
-        elements_with_aria = driver.find_elements(
-            By.CSS_SELECTOR, "[aria-label], [aria-labelledby], [role]"
-        )
+        driver.find_elements(By.CSS_SELECTOR, "[aria-label], [aria-labelledby], [role]")
 
         # Should have some accessible elements
         # Note: Gradio provides basic accessibility
@@ -290,7 +284,7 @@ class TestAccessibilityJourney:
             buttons[0].click()
             # Focus should be visible
 
-    def test_color_contrast(self, driver, gradio_wait):
+    def test_color_contrast(self, driver, gradio_wait):  # noqa: ARG002
         """Test basic color contrast (placeholder for real contrast testing)."""
         gradio_wait()
 
@@ -345,7 +339,7 @@ class TestResponsiveUIJourney:
         set_viewport(600, 800)  # Narrow viewport
         gradio_wait()
 
-        tabs = driver.find_elements(By.CSS_SELECTOR, "button[role='tab']")
+        driver.find_elements(By.CSS_SELECTOR, "button[role='tab']")
         # Tabs should either wrap or have scroll mechanism
 
 
@@ -411,9 +405,7 @@ class TestDataPersistenceJourney:
 class TestIntegrationJourney:
     """Test integration between different features."""
 
-    def test_calibration_affects_chemistry(
-        self, driver, gradio_wait, sample_step_tablet
-    ):
+    def test_calibration_affects_chemistry(self, driver, gradio_wait, sample_step_tablet):  # noqa: ARG002
         """Test that calibration results affect chemistry calculations."""
         gradio_wait()
 

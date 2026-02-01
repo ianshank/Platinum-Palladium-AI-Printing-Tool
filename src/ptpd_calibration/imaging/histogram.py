@@ -11,7 +11,6 @@ Provides comprehensive histogram analysis including:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Tuple, Union
 from pathlib import Path
 
 import numpy as np
@@ -73,8 +72,7 @@ class HistogramStats:
             "shadow_clipping": f"{self.shadow_clipping_percent:.1f}%",
             "highlight_clipping": f"{self.highlight_clipping_percent:.1f}%",
             "zone_distribution": {
-                f"Zone {z}": f"{pct*100:.1f}%"
-                for z, pct in self.zone_distribution.items()
+                f"Zone {z}": f"{pct * 100:.1f}%" for z, pct in self.zone_distribution.items()
             },
             "notes": self.notes,
         }
@@ -91,14 +89,14 @@ class HistogramResult:
     stats: HistogramStats
 
     # Original image info
-    image_size: Tuple[int, int]
+    image_size: tuple[int, int]
     image_mode: str
     total_pixels: int
 
     # For RGB images, per-channel histograms
-    red_histogram: Optional[np.ndarray] = None
-    green_histogram: Optional[np.ndarray] = None
-    blue_histogram: Optional[np.ndarray] = None
+    red_histogram: np.ndarray | None = None
+    green_histogram: np.ndarray | None = None
+    blue_histogram: np.ndarray | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary (excluding large arrays)."""
@@ -120,11 +118,11 @@ class HistogramAnalyzer:
 
     # Zone boundaries (0-255 mapped to zones 0-10)
     ZONE_BOUNDARIES = [
-        (0, 12),     # Zone 0: Pure black
-        (13, 38),    # Zone I: Near black
-        (39, 63),    # Zone II: Dark with texture
-        (64, 89),    # Zone III: Average dark
-        (90, 114),   # Zone IV: Dark foliage
+        (0, 12),  # Zone 0: Pure black
+        (13, 38),  # Zone I: Near black
+        (39, 63),  # Zone II: Dark with texture
+        (64, 89),  # Zone III: Average dark
+        (90, 114),  # Zone IV: Dark foliage
         (115, 140),  # Zone V: Middle gray (18%)
         (141, 165),  # Zone VI: Light skin
         (166, 191),  # Zone VII: Very light
@@ -135,7 +133,7 @@ class HistogramAnalyzer:
 
     def analyze(
         self,
-        image: Union[str, Path, Image.Image, np.ndarray],
+        image: str | Path | Image.Image | np.ndarray,
         include_rgb: bool = True,
     ) -> HistogramResult:
         """Analyze image histogram.
@@ -202,8 +200,8 @@ class HistogramAnalyzer:
 
     def compare_histograms(
         self,
-        image1: Union[str, Path, Image.Image, np.ndarray],
-        image2: Union[str, Path, Image.Image, np.ndarray],
+        image1: str | Path | Image.Image | np.ndarray,
+        image2: str | Path | Image.Image | np.ndarray,
     ) -> dict:
         """Compare histograms of two images.
 
@@ -226,9 +224,7 @@ class HistogramAnalyzer:
         intersection = np.sum(np.minimum(h1, h2))
 
         # Chi-squared distance (lower = more similar)
-        chi_squared = np.sum(
-            np.where(h1 + h2 > 0, (h1 - h2) ** 2 / (h1 + h2 + 1e-10), 0)
-        )
+        chi_squared = np.sum(np.where(h1 + h2 > 0, (h1 - h2) ** 2 / (h1 + h2 + 1e-10), 0))
 
         # Bhattacharyya coefficient (higher = more similar, max 1.0)
         bhattacharyya = np.sum(np.sqrt(h1 * h2))
@@ -247,9 +243,7 @@ class HistogramAnalyzer:
             },
             "changes": {
                 "mean_shift": round(mean_shift, 2),
-                "brightness_change": round(
-                    result2.stats.brightness - result1.stats.brightness, 3
-                ),
+                "brightness_change": round(result2.stats.brightness - result1.stats.brightness, 3),
                 "contrast_change": round(contrast_change, 2),
                 "dynamic_range_change": round(
                     result2.stats.dynamic_range - result1.stats.dynamic_range, 2
@@ -328,13 +322,9 @@ class HistogramAnalyzer:
                 "Consider increasing exposure or reducing contrast."
             )
         if dynamic_range < 4:
-            notes.append(
-                "Low dynamic range. Image may benefit from contrast enhancement."
-            )
+            notes.append("Low dynamic range. Image may benefit from contrast enhancement.")
         if dynamic_range > 7:
-            notes.append(
-                "High dynamic range. Consider N-1 or N-2 development for printing."
-            )
+            notes.append("High dynamic range. Consider N-1 or N-2 development for printing.")
         if brightness < 0.3:
             notes.append("Image is quite dark. Consider exposure adjustment.")
         if brightness > 0.7:
@@ -389,7 +379,6 @@ class HistogramAnalyzer:
             Matplotlib figure
         """
         import matplotlib.pyplot as plt
-        import matplotlib.patches as mpatches
 
         # Create figure
         fig, axes = plt.subplots(2, 1, figsize=(10, 8), height_ratios=[3, 1])
@@ -455,10 +444,25 @@ class HistogramAnalyzer:
         zone_pcts = [result.stats.zone_distribution.get(i, 0) * 100 for i in range(11)]
         zone_labels = [f"Z{i}" for i in range(11)]
 
-        bars = ax2.bar(zone_labels, zone_pcts, color=[
-            "#1A1A1A", "#333333", "#4D4D4D", "#666666", "#808080",
-            "#999999", "#B3B3B3", "#CCCCCC", "#E6E6E6", "#F0F0F0", "#FFFFFF"
-        ], edgecolor="black", linewidth=0.5)
+        bars = ax2.bar(
+            zone_labels,
+            zone_pcts,
+            color=[
+                "#1A1A1A",
+                "#333333",
+                "#4D4D4D",
+                "#666666",
+                "#808080",
+                "#999999",
+                "#B3B3B3",
+                "#CCCCCC",
+                "#E6E6E6",
+                "#F0F0F0",
+                "#FFFFFF",
+            ],
+            edgecolor="black",
+            linewidth=0.5,
+        )
 
         ax2.set_xlabel("Ansel Adams Zone")
         ax2.set_ylabel("Percentage")
@@ -467,7 +471,7 @@ class HistogramAnalyzer:
         ax2.grid(True, alpha=0.3, axis="y")
 
         # Add percentage labels on bars
-        for bar, pct in zip(bars, zone_pcts):
+        for bar, pct in zip(bars, zone_pcts, strict=True):
             if pct > 1:
                 ax2.text(
                     bar.get_x() + bar.get_width() / 2,

@@ -23,14 +23,16 @@ Usage:
         return spectro.read_density()
 """
 
-from typing import Protocol, TypeVar, Generic, runtime_checkable
-from enum import Enum
-from pydantic import BaseModel, Field
 from datetime import datetime, timezone
+from enum import Enum
+from typing import Generic, Protocol, TypeVar, runtime_checkable
+
+from pydantic import BaseModel, Field
 
 
 class DeviceStatus(str, Enum):
     """Device connection status."""
+
     DISCONNECTED = "disconnected"
     CONNECTING = "connecting"
     CONNECTED = "connected"
@@ -50,6 +52,7 @@ class DeviceInfo(BaseModel):
         firmware_version: Device firmware version (if available).
         capabilities: List of device capabilities.
     """
+
     vendor: str
     model: str
     serial_number: str | None = None
@@ -73,6 +76,7 @@ class DensityMeasurement(BaseModel):
         aperture_size: Aperture size used (if applicable).
         measurement_mode: Mode used (reflection, transmission, etc.).
     """
+
     density: float = Field(ge=0.0, le=5.0)
     lab_l: float = Field(ge=0.0, le=100.0)
     lab_a: float = Field(ge=-128.0, le=128.0)
@@ -93,9 +97,9 @@ class DensityMeasurement(BaseModel):
         def f_inv(t: float) -> float:
             delta = 6 / 29
             if t > delta:
-                return t ** 3
+                return t**3
             else:
-                return 3 * delta ** 2 * (t - 4 / 29)
+                return 3 * delta**2 * (t - 4 / 29)
 
         # D50 illuminant reference
         Xn, Yn, Zn = 96.422, 100.0, 82.521
@@ -117,6 +121,7 @@ class SpectralData(BaseModel):
         end_nm: Ending wavelength.
         interval_nm: Wavelength interval.
     """
+
     wavelengths: list[float]
     values: list[float]
     start_nm: float = 380.0
@@ -139,6 +144,7 @@ class PrintJob(BaseModel):
         color_profile: ICC profile to use (if any).
         paper_type: Type of paper for profile selection.
     """
+
     name: str
     image_path: str
     paper_size: str = "8x10"
@@ -158,6 +164,7 @@ class PrintResult(BaseModel):
         error: Error message if printing failed.
         duration_seconds: Time taken to print.
     """
+
     success: bool
     job_id: str | None = None
     pages_printed: int = 0
@@ -395,7 +402,7 @@ class DeviceManager(Generic[T]):
                 return True
 
         if self.auto_reconnect and hasattr(self.device, "connect"):
-            for attempt in range(self.max_reconnect_attempts):
+            for _attempt in range(self.max_reconnect_attempts):
                 if self.device.connect():  # type: ignore
                     return True
 

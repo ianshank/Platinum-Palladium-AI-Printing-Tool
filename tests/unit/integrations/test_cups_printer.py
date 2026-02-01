@@ -20,9 +20,7 @@ from ptpd_calibration.integrations.protocols import DeviceStatus, PrintJob
 @pytest.fixture
 def mock_cups_module():
     """Mock the pycups module."""
-    with patch(
-        "ptpd_calibration.integrations.hardware.cups_printer._import_cups"
-    ) as mock:
+    with patch("ptpd_calibration.integrations.hardware.cups_printer._import_cups") as mock:
         cups_mock = MagicMock()
         cups_mock.Connection = MagicMock()
         mock.return_value = cups_mock
@@ -175,9 +173,7 @@ class TestCUPSPrinterDriverConnect:
 class TestCUPSPrinterDriverDisconnect:
     """Test CUPSPrinterDriver disconnect method."""
 
-    def test_disconnect_clears_state(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_disconnect_clears_state(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test that disconnect clears all state."""
         connected_driver.disconnect()
 
@@ -266,9 +262,7 @@ class TestCUPSPrinterDriverPrintImage:
 class TestCUPSPrinterDriverBuildPrintOptions:
     """Test CUPSPrinterDriver _build_print_options method."""
 
-    def test_build_options_standard_paper_size(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_build_options_standard_paper_size(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test building options with standard paper size."""
         job = PrintJob(
             name="Test",
@@ -283,9 +277,7 @@ class TestCUPSPrinterDriverBuildPrintOptions:
         assert options["Resolution"] == "2880dpi"
         assert options["ColorModel"] == "Gray"
 
-    def test_build_options_custom_paper_size(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_build_options_custom_paper_size(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test building options with custom paper size."""
         job = PrintJob(
             name="Test",
@@ -325,9 +317,7 @@ class TestCUPSPrinterDriverGetPaperSizes:
         assert len(sizes) > 0
         assert "8x10" in sizes
 
-    def test_get_paper_sizes_returns_list(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_get_paper_sizes_returns_list(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test that paper sizes returns a list."""
         sizes = connected_driver.get_paper_sizes()
 
@@ -338,9 +328,7 @@ class TestCUPSPrinterDriverGetPaperSizes:
 class TestCUPSPrinterDriverGetResolutions:
     """Test CUPSPrinterDriver get_resolutions method."""
 
-    def test_get_resolutions_returns_standard_values(
-        self, driver: CUPSPrinterDriver
-    ) -> None:
+    def test_get_resolutions_returns_standard_values(self, driver: CUPSPrinterDriver) -> None:
         """Test that standard resolutions are returned."""
         resolutions = driver.get_resolutions()
 
@@ -353,17 +341,13 @@ class TestCUPSPrinterDriverGetResolutions:
 class TestCUPSPrinterDriverGetPrinterStatus:
     """Test CUPSPrinterDriver get_printer_status method."""
 
-    def test_get_printer_status_disconnected(
-        self, driver: CUPSPrinterDriver
-    ) -> None:
+    def test_get_printer_status_disconnected(self, driver: CUPSPrinterDriver) -> None:
         """Test status when disconnected."""
         status = driver.get_printer_status()
 
         assert status["status"] == "disconnected"
 
-    def test_get_printer_status_connected(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_get_printer_status_connected(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test status when connected."""
         status = connected_driver.get_printer_status()
 
@@ -374,17 +358,13 @@ class TestCUPSPrinterDriverGetPrinterStatus:
 class TestCUPSPrinterDriverGetInkLevels:
     """Test CUPSPrinterDriver get_ink_levels method."""
 
-    def test_get_ink_levels_disconnected(
-        self, driver: CUPSPrinterDriver
-    ) -> None:
+    def test_get_ink_levels_disconnected(self, driver: CUPSPrinterDriver) -> None:
         """Test ink levels when disconnected."""
         levels = driver.get_ink_levels()
 
         assert levels == {}
 
-    def test_get_ink_levels_connected(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_get_ink_levels_connected(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test ink levels when connected."""
         levels = connected_driver.get_ink_levels()
 
@@ -392,9 +372,7 @@ class TestCUPSPrinterDriverGetInkLevels:
         assert levels["black"]["level"] == 75
         assert levels["black"]["status"] == "ok"
 
-    def test_get_ink_levels_low_threshold(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_get_ink_levels_low_threshold(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test that low ink is detected correctly."""
         levels = connected_driver.get_ink_levels()
 
@@ -405,48 +383,34 @@ class TestCUPSPrinterDriverGetInkLevels:
 class TestCUPSPrinterDriverParseSupplyString:
     """Test CUPSPrinterDriver _parse_supply_string method."""
 
-    def test_parse_supply_string_valid(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_parse_supply_string_valid(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test parsing valid supply string."""
-        result = connected_driver._parse_supply_string(
-            "type=ink;name=black;level=75"
-        )
+        result = connected_driver._parse_supply_string("type=ink;name=black;level=75")
 
         assert result is not None
         assert result["name"] == "black"
         assert result["level"] == 75
 
-    def test_parse_supply_string_missing_name(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_parse_supply_string_missing_name(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test parsing supply string without name."""
         result = connected_driver._parse_supply_string("type=ink;level=75")
 
         assert result is None
 
-    def test_parse_supply_string_missing_level(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_parse_supply_string_missing_level(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test parsing supply string without level."""
         result = connected_driver._parse_supply_string("type=ink;name=black")
 
         assert result is None
 
-    def test_parse_supply_string_invalid_level(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_parse_supply_string_invalid_level(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test parsing supply string with invalid level."""
-        result = connected_driver._parse_supply_string(
-            "type=ink;name=black;level=invalid"
-        )
+        result = connected_driver._parse_supply_string("type=ink;name=black;level=invalid")
 
         assert result is not None
         assert result["level"] == 0
 
-    def test_parse_supply_string_malformed(
-        self, connected_driver: CUPSPrinterDriver
-    ) -> None:
+    def test_parse_supply_string_malformed(self, connected_driver: CUPSPrinterDriver) -> None:
         """Test parsing malformed supply string."""
         result = connected_driver._parse_supply_string("garbage data")
 

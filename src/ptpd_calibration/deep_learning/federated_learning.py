@@ -7,15 +7,12 @@ gradient compression, and multiple aggregation strategies.
 """
 
 import asyncio
-import hashlib
 import logging
-from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 import numpy as np
-from pydantic import BaseModel, Field
 
 from ptpd_calibration.deep_learning.config import FederatedLearningSettings
 from ptpd_calibration.deep_learning.models import (
@@ -24,7 +21,6 @@ from ptpd_calibration.deep_learning.models import (
 )
 from ptpd_calibration.deep_learning.types import (
     AggregationStrategy,
-    FederatedRole,
     PrivacyLevel,
 )
 
@@ -62,9 +58,7 @@ class DifferentialPrivacy:
         self.clip_norm = clip_norm
         self.privacy_accountant = {"epsilon_used": 0.0, "rounds": 0}
 
-    def clip_gradients(
-        self, gradients: dict[str, np.ndarray]
-    ) -> dict[str, np.ndarray]:
+    def clip_gradients(self, gradients: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         """
         Clip gradients to bound sensitivity.
 
@@ -83,16 +77,14 @@ class DifferentialPrivacy:
         # Clip if necessary
         if total_norm > self.clip_norm:
             clip_factor = self.clip_norm / (total_norm + 1e-10)
-            clipped = {
-                name: grad * clip_factor for name, grad in gradients.items()
-            }
+            clipped = {name: grad * clip_factor for name, grad in gradients.items()}
         else:
             clipped = gradients
 
         return clipped
 
     def add_noise(
-        self, gradients: dict[str, np.ndarray], sensitivity: Optional[float] = None
+        self, gradients: dict[str, np.ndarray], sensitivity: float | None = None
     ) -> dict[str, np.ndarray]:
         """
         Add Gaussian noise for differential privacy.
@@ -111,9 +103,7 @@ class DifferentialPrivacy:
 
         noisy_gradients = {}
         for name, grad in gradients.items():
-            noise = np.random.normal(
-                loc=0.0, scale=noise_scale, size=grad.shape
-            )
+            noise = np.random.normal(loc=0.0, scale=noise_scale, size=grad.shape)
             noisy_gradients[name] = grad + noise
 
         # Update privacy accountant
@@ -122,9 +112,7 @@ class DifferentialPrivacy:
 
         return noisy_gradients
 
-    def privatize_update(
-        self, gradients: dict[str, np.ndarray]
-    ) -> dict[str, np.ndarray]:
+    def privatize_update(self, gradients: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         """
         Apply full DP mechanism: clip then add noise.
 
@@ -152,9 +140,7 @@ class DifferentialPrivacy:
         """Get total privacy budget spent."""
         return {
             "epsilon_used": self.privacy_accountant["epsilon_used"],
-            "epsilon_remaining": max(
-                0, self.epsilon - self.privacy_accountant["epsilon_used"]
-            ),
+            "epsilon_remaining": max(0, self.epsilon - self.privacy_accountant["epsilon_used"]),
             "rounds": self.privacy_accountant["rounds"],
         }
 
@@ -190,9 +176,7 @@ class GradientCompressor:
         self.compression_ratio = compression_ratio
         self.quantization_bits = quantization_bits
 
-    def compress(
-        self, gradients: dict[str, np.ndarray]
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
+    def compress(self, gradients: dict[str, np.ndarray]) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         Compress gradients using top-k sparsification.
 
@@ -299,7 +283,7 @@ class FederatedClient:
         self,
         client_id: str,
         settings: FederatedLearningSettings,
-        local_data: Optional[Any] = None,
+        local_data: Any | None = None,
     ):
         """
         Initialize federated client.
@@ -312,8 +296,8 @@ class FederatedClient:
         self.client_id = client_id
         self.settings = settings
         self.local_data = local_data
-        self.global_model_params: Optional[dict[str, np.ndarray]] = None
-        self.local_model_params: Optional[dict[str, np.ndarray]] = None
+        self.global_model_params: dict[str, np.ndarray] | None = None
+        self.local_model_params: dict[str, np.ndarray] | None = None
 
         # Initialize privacy and compression
         if settings.privacy_level == PrivacyLevel.DIFFERENTIAL:
@@ -326,16 +310,14 @@ class FederatedClient:
             self.dp_mechanism = None
 
         if settings.gradient_compression:
-            self.compressor = GradientCompressor(
-                compression_ratio=settings.compression_ratio
-            )
+            self.compressor = GradientCompressor(compression_ratio=settings.compression_ratio)
         else:
             self.compressor = None
 
     async def local_train(
         self,
-        epochs: Optional[int] = None,
-        batch_size: Optional[int] = None,
+        epochs: int | None = None,
+        batch_size: int | None = None,
     ) -> FederatedUpdate:
         """
         Perform local training.
@@ -392,9 +374,7 @@ class FederatedClient:
             training_time_seconds=training_time,
         )
 
-    async def send_update(
-        self, server_address: str, update: FederatedUpdate
-    ) -> bool:
+    async def send_update(self, server_address: str, update: FederatedUpdate) -> bool:
         """
         Send update to the federated server.
 
@@ -409,18 +389,14 @@ class FederatedClient:
         # In production, would use gRPC, HTTP, or WebSocket
 
         try:
-            logger.info(
-                f"Client {self.client_id}: Sending update to {server_address}"
-            )
+            logger.info(f"Client {self.client_id}: Sending update to {server_address}")
             await asyncio.sleep(0.05)  # Simulate network delay
             return True
         except Exception as e:
             logger.error(f"Client {self.client_id}: Failed to send update: {e}")
             return False
 
-    async def receive_global_model(
-        self, server_address: str
-    ) -> Optional[dict[str, np.ndarray]]:
+    async def receive_global_model(self, server_address: str) -> dict[str, np.ndarray] | None:
         """
         Receive global model from server.
 
@@ -431,9 +407,7 @@ class FederatedClient:
             Optional[dict]: Global model parameters
         """
         try:
-            logger.info(
-                f"Client {self.client_id}: Receiving global model from {server_address}"
-            )
+            logger.info(f"Client {self.client_id}: Receiving global model from {server_address}")
             await asyncio.sleep(0.05)  # Simulate network delay
 
             # Placeholder - would receive actual model
@@ -441,9 +415,7 @@ class FederatedClient:
             return self.global_model_params
 
         except Exception as e:
-            logger.error(
-                f"Client {self.client_id}: Failed to receive global model: {e}"
-            )
+            logger.error(f"Client {self.client_id}: Failed to receive global model: {e}")
             return None
 
     def _get_num_local_samples(self) -> int:
@@ -498,14 +470,14 @@ class FederatedServer:
             settings: Federated learning settings
         """
         self.settings = settings
-        self.global_model_params: Optional[dict[str, np.ndarray]] = None
+        self.global_model_params: dict[str, np.ndarray] | None = None
         self.round_number = 0
         self.client_updates: dict[str, tuple[FederatedUpdate, dict[str, np.ndarray]]] = {}
 
     async def aggregate(
         self,
         client_updates: list[tuple[FederatedUpdate, dict[str, np.ndarray]]],
-        strategy: Optional[AggregationStrategy] = None,
+        strategy: AggregationStrategy | None = None,
     ) -> dict[str, np.ndarray]:
         """
         Aggregate client updates into global model.
@@ -592,11 +564,10 @@ class FederatedServer:
 
         # Apply proximal term (simplified)
         if self.global_model_params is not None:
-            for param_name in result.keys():
-                result[param_name] = (
-                    (1 - mu) * result[param_name]
-                    + mu * self.global_model_params.get(param_name, 0)
-                )
+            for param_name in result:
+                result[param_name] = (1 - mu) * result[
+                    param_name
+                ] + mu * self.global_model_params.get(param_name, 0)
 
         return result
 
@@ -625,7 +596,7 @@ class FederatedServer:
         for param_name in param_names:
             weighted_sum = None
 
-            for (update, gradients), weight in zip(client_updates, weights):
+            for (_update, gradients), weight in zip(client_updates, weights, strict=True):
                 param_update = gradients[param_name] * weight
 
                 if weighted_sum is None:
@@ -689,9 +660,7 @@ class FederatedServer:
         start_time = datetime.utcnow()
         self.round_number += 1
 
-        logger.info(
-            f"Starting round {self.round_number} with {len(participating_clients)} clients"
-        )
+        logger.info(f"Starting round {self.round_number} with {len(participating_clients)} clients")
 
         # Collect updates (simulated)
         client_updates_list = []
@@ -767,7 +736,7 @@ class FederatedLearningManager:
     Orchestrates clients and server for complete federated training.
     """
 
-    def __init__(self, settings: Optional[FederatedLearningSettings] = None):
+    def __init__(self, settings: FederatedLearningSettings | None = None):
         """
         Initialize federated learning manager.
 
@@ -779,7 +748,7 @@ class FederatedLearningManager:
         if not self.settings.enabled:
             logger.info("Federated learning is disabled in settings")
 
-        self.server: Optional[FederatedServer] = None
+        self.server: FederatedServer | None = None
         self.clients: dict[str, FederatedClient] = {}
         self.round_results: list[FederatedRoundResult] = []
 
@@ -795,7 +764,7 @@ class FederatedLearningManager:
         return self.server
 
     def register_client(
-        self, client_id: Optional[str] = None, local_data: Optional[Any] = None
+        self, client_id: str | None = None, local_data: Any | None = None
     ) -> FederatedClient:
         """
         Register a new federated client.
@@ -823,9 +792,9 @@ class FederatedLearningManager:
 
     async def run_federated_training(
         self,
-        num_rounds: Optional[int] = None,
-        min_clients: Optional[int] = None,
-        max_clients: Optional[int] = None,
+        num_rounds: int | None = None,
+        min_clients: int | None = None,
+        max_clients: int | None = None,
     ) -> list[FederatedRoundResult]:
         """
         Run complete federated training.
@@ -859,9 +828,7 @@ class FederatedLearningManager:
 
         for round_num in range(num_rounds):
             # Select participating clients
-            num_participating = min(
-                max_clients, max(min_clients, len(self.clients))
-            )
+            num_participating = min(max_clients, max(min_clients, len(self.clients)))
 
             if len(self.clients) < min_clients:
                 logger.warning(

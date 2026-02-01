@@ -13,10 +13,11 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -26,6 +27,7 @@ from ptpd_calibration.ml.deep.exceptions import TrainingError
 
 if TYPE_CHECKING:
     from ptpd_calibration.core.models import CalibrationRecord
+    from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +69,7 @@ class ExperimentConfig:
     num_ensemble_models: int = 5
 
     # Output
-    output_dir: Optional[Path] = None
+    output_dir: Path | None = None
     save_checkpoints: bool = True
 
     def to_dl_settings(self) -> DeepLearningSettings:
@@ -101,7 +103,7 @@ class ExperimentResult:
     config: ExperimentConfig
     training_stats: dict
     evaluation_metrics: dict
-    model_path: Optional[Path] = None
+    model_path: Path | None = None
     training_time: float = 0.0
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
@@ -146,7 +148,7 @@ class TrainingPipeline:
     def __init__(
         self,
         database: CalibrationDatabase,
-        output_dir: Optional[Path] = None,
+        output_dir: Path | None = None,
     ):
         """
         Initialize the pipeline.
@@ -170,7 +172,7 @@ class TrainingPipeline:
     def run_experiment(
         self,
         config: ExperimentConfig,
-        callbacks: Optional[list[Callable]] = None,
+        callbacks: list[Callable] | None = None,
     ) -> ExperimentResult:
         """
         Run a complete training experiment.
@@ -184,8 +186,7 @@ class TrainingPipeline:
         """
         if not self.torch_available:
             raise TrainingError(
-                "PyTorch is required for training. "
-                "Install with: pip install ptpd-calibration[deep]"
+                "PyTorch is required for training. Install with: pip install ptpd-calibration[deep]"
             )
 
         from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
@@ -243,7 +244,7 @@ class TrainingPipeline:
 
     def _evaluate_model(
         self,
-        predictor: "DeepCurvePredictor",
+        predictor: DeepCurvePredictor,
     ) -> dict:
         """
         Evaluate model on the full database.
@@ -251,10 +252,10 @@ class TrainingPipeline:
         Delegates to CurveTrainer.evaluate() to avoid duplicate evaluation logic
         (addresses Gemini code review feedback).
         """
+        from torch.utils.data import DataLoader
+
         from ptpd_calibration.ml.deep.dataset import CalibrationDataset, DataAugmentation
         from ptpd_calibration.ml.deep.training import CurveTrainer
-
-        from torch.utils.data import DataLoader
 
         # Create dataset without augmentation for clean evaluation
         dataset = CalibrationDataset(
@@ -344,7 +345,7 @@ class TrainingPipeline:
                 config_dict[field_name] = getattr(base_config, field_name)
 
             # Apply hyperparameters
-            for name, value in zip(param_names, combo):
+            for name, value in zip(param_names, combo, strict=True):
                 config_dict[name] = value
 
             config = ExperimentConfig(**config_dict)
@@ -363,7 +364,7 @@ class TrainingPipeline:
     def compare_models(
         self,
         model_paths: list[Path],
-        test_records: Optional[list["CalibrationRecord"]] = None,
+        test_records: list[CalibrationRecord] | None = None,
     ) -> dict:
         """
         Compare multiple trained models.
@@ -459,8 +460,8 @@ def run_training_pipeline(
 def quick_train(
     num_synthetic_samples: int = 200,
     num_epochs: int = 50,
-    output_dir: Optional[Path] = None,
-) -> "DeepCurvePredictor":
+    output_dir: Path | None = None,
+) -> DeepCurvePredictor:
     """
     Quick training for testing and demos.
 

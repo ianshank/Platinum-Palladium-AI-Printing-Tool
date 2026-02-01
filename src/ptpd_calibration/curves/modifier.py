@@ -6,7 +6,6 @@ Provides tools for adjusting, smoothing, blending, and transforming curves.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Union
 
 import numpy as np
 from scipy.interpolate import PchipInterpolator, interp1d
@@ -208,7 +207,9 @@ class CurveModifier:
             outputs[0] = 0.0
             outputs[-1] = 1.0
 
-        return self._create_modified_curve(curve, outputs, f"levels({black_point:.2f},{white_point:.2f})")
+        return self._create_modified_curve(
+            curve, outputs, f"levels({black_point:.2f},{white_point:.2f})"
+        )
 
     def adjust_highlights(
         self,
@@ -299,7 +300,7 @@ class CurveModifier:
         outputs = np.array(curve.output_values)
 
         # Create gaussian mask centered on midtones
-        mask = np.exp(-((inputs - center) ** 2) / (2 * width ** 2))
+        mask = np.exp(-((inputs - center) ** 2) / (2 * width**2))
 
         # Apply adjustment
         adjustment = amount * 0.3 * mask
@@ -366,7 +367,9 @@ class CurveModifier:
             smoothed[0] = curve.output_values[0]
             smoothed[-1] = curve.output_values[-1]
 
-        return self._create_modified_curve(curve, smoothed, f"smooth({method.value},{strength:.2f})")
+        return self._create_modified_curve(
+            curve, smoothed, f"smooth({method.value},{strength:.2f})"
+        )
 
     def enforce_monotonicity(
         self,
@@ -558,7 +561,7 @@ class CurveModifier:
         delta = output_value - current
 
         # Create gaussian influence mask
-        mask = np.exp(-((inputs - input_value) ** 2) / (2 * influence ** 2))
+        mask = np.exp(-((inputs - input_value) ** 2) / (2 * influence**2))
 
         # Apply adjustment
         outputs = outputs + delta * mask

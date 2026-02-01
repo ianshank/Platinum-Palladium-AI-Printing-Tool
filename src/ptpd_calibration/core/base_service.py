@@ -19,15 +19,16 @@ Usage:
             return CurveOutput(curve=generated_curve)
 """
 
-from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Any
-from dataclasses import dataclass, field
-from pydantic import BaseModel
-from datetime import datetime, timezone
 import time
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any, Generic, TypeVar
 
-from ptpd_calibration.core.logging import get_logger, LogContext
+from pydantic import BaseModel
+
 from ptpd_calibration.config import get_settings
+from ptpd_calibration.core.logging import LogContext, get_logger
 
 # Type variables for input and output
 TInput = TypeVar("TInput", bound=BaseModel)
@@ -43,6 +44,7 @@ class ValidationResult:
         errors: List of validation error messages.
         warnings: List of validation warnings (non-blocking).
     """
+
     is_valid: bool
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -68,6 +70,7 @@ class ServiceResult(Generic[TOutput]):
         timestamp: When the operation completed.
         metadata: Additional metadata about the operation.
     """
+
     success: bool
     data: TOutput | None = None
     error: str | None = None
@@ -301,7 +304,7 @@ class BaseService(ABC, Generic[TInput, TOutput]):
 
                 self.logger.info(
                     f"Successfully processed {type(data).__name__}",
-                    extra={"duration_seconds": duration}
+                    extra={"duration_seconds": duration},
                 )
 
                 return ServiceResult.ok(
@@ -312,8 +315,7 @@ class BaseService(ABC, Generic[TInput, TOutput]):
             except Exception as e:
                 duration = time.perf_counter() - start_time
                 self.logger.exception(
-                    f"Processing failed: {e}",
-                    extra={"duration_seconds": duration}
+                    f"Processing failed: {e}", extra={"duration_seconds": duration}
                 )
 
                 return ServiceResult.fail(
@@ -432,7 +434,7 @@ class AsyncBaseService(ABC, Generic[TInput, TOutput]):
 
                 self.logger.info(
                     f"Successfully processed {type(data).__name__}",
-                    extra={"duration_seconds": duration}
+                    extra={"duration_seconds": duration},
                 )
 
                 return ServiceResult.ok(data=result, duration=duration)

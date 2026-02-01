@@ -5,9 +5,6 @@ These tests simulate complete user workflows without requiring browser automatio
 They test the full integration of modules as a user would experience them.
 """
 
-import tempfile
-from pathlib import Path
-
 import numpy as np
 import pytest
 from PIL import Image
@@ -45,9 +42,9 @@ class TestCalibrationJourney:
         """
         Complete workflow: Scan → Analyze → Generate Curve → Export
         """
-        from ptpd_calibration.detection import StepTabletReader
-        from ptpd_calibration.curves import CurveGenerator, save_curve
         from ptpd_calibration.analysis import StepWedgeAnalyzer
+        from ptpd_calibration.curves import CurveGenerator, save_curve
+        from ptpd_calibration.detection import StepTabletReader
 
         # Step 1: Save the sample image
         image_path = tmp_path / "step_tablet.png"
@@ -101,12 +98,12 @@ class TestCalibrationJourney:
 
         # Step 1: Load the real-world quad file
         profile = load_quad_file(real_quad_path)
-        
+
         # Step 2: Validate basic metadata
         assert profile is not None
         # The file has "Platinum-Palladium" in comments
         assert any("Platinum-Palladium" in c for c in profile.comments)
-        
+
         # Step 3: Check Channels
         # The file has K, C, M, Y, LC, LM, LK, LLK, V, MK headers
         # Check for active channels. Based on file content, K seems active.
@@ -114,7 +111,7 @@ class TestCalibrationJourney:
         k_curve = profile.channels["K"]
         assert len(k_curve.values) == 256
         assert k_curve.values[-1] > 0  # Should have some density
-        
+
         # Step 4: Check specific metadata if parsed (e.g. ink load)
         # The parser might extract these if implemented, otherwise check comments
         assert len(profile.comments) > 0
@@ -143,12 +140,12 @@ class TestDigitalNegativeJourney:
         """
         Workflow: Load Image → Preview → Apply Curve → Export Negative
         """
-        from ptpd_calibration.imaging import (
-            ImageProcessor,
-            ImageFormat,
-            ExportSettings,
-        )
         from ptpd_calibration.curves import load_quad_file
+        from ptpd_calibration.imaging import (
+            ExportSettings,
+            ImageFormat,
+            ImageProcessor,
+        )
 
         # Step 1: Save sample image
         image_path = tmp_path / "sample.png"
@@ -220,7 +217,7 @@ class TestChemistryJourney:
         assert "drops" in formatted.lower()
 
         # Step 4: Try different presets
-        for size_name, (w, h) in ChemistryCalculator.get_standard_sizes().items():
+        for _size_name, (w, h) in ChemistryCalculator.get_standard_sizes().items():
             result = calculator.calculate(width_inches=w, height_inches=h)
             assert result.platinum_drops + result.palladium_drops > 0
 
@@ -277,14 +274,14 @@ class TestZoneSystemJourney:
         arr = np.repeat(np.repeat(arr, 10, axis=0), 10, axis=1)
         return Image.fromarray(arr, mode="L")
 
-    def test_zone_analysis_workflow(self, sample_gradient, tmp_path):
+    def test_zone_analysis_workflow(self, sample_gradient, tmp_path):  # noqa: ARG002
         """
         Workflow: Upload Image → Analyze Zones → Get Recommendations
         """
         from ptpd_calibration.zones import (
+            Zone,
             ZoneMapper,
             ZoneMapping,
-            Zone,
         )
 
         # Step 1: Set up paper characteristics
@@ -319,12 +316,12 @@ class TestSoftProofingJourney:
         """
         Workflow: Select Paper → Adjust Settings → Generate Proof
         """
-        from ptpd_calibration.proofing import (
-            SoftProofer,
-            ProofSettings,
-            PaperSimulation,
-        )
         from ptpd_calibration.curves import load_quad_file
+        from ptpd_calibration.proofing import (
+            PaperSimulation,
+            ProofSettings,
+            SoftProofer,
+        )
 
         # Step 1: Try different paper presets
         for paper in [
@@ -340,8 +337,8 @@ class TestSoftProofingJourney:
             assert result.image.mode == "RGB"
 
         # Step 2: Custom settings with Real Curve
-        # Load real curve to get some characteristics if possible, 
-        # but SoftProofer mainly uses density/color. 
+        # Load real curve to get some characteristics if possible,
+        # but SoftProofer mainly uses density/color.
         # We'll just ensure we can read it and potentially use it in a more advanced test.
         profile = load_quad_file(real_quad_path)
         assert profile is not None
@@ -450,7 +447,6 @@ class TestPaperProfilesJourney:
         """
         from ptpd_calibration.papers import (
             PaperDatabase,
-            PaperProfile,
         )
 
         # Step 1: Create database
@@ -479,8 +475,8 @@ class TestPrintSessionJourney:
         Workflow: Start Session → Log Prints → Review History → Get Stats
         """
         from ptpd_calibration.session import (
-            SessionLogger,
             PrintRecord,
+            SessionLogger,
         )
         from ptpd_calibration.session.logger import ChemistryUsed, PrintResult
 
@@ -488,12 +484,12 @@ class TestPrintSessionJourney:
         logger = SessionLogger(storage_dir=tmp_path / "sessions")
 
         # Step 2: Start a session
-        session = logger.start_session("Test Session")
+        logger.start_session("Test Session")
 
         # Step 3: Log some prints
         for i in range(3):
             record = PrintRecord(
-                image_name=f"Test Image {i+1}",
+                image_name=f"Test Image {i + 1}",
                 paper_type="Arches Platine",
                 exposure_time_minutes=10.0 + i,
                 chemistry=ChemistryUsed(
@@ -531,11 +527,11 @@ class TestIntegratedWorkflow:
         Complete workflow: Analyze → Calculate Chemistry → Calculate Exposure →
         Generate Negative → Preview Proof
         """
-        from ptpd_calibration.imaging import ImageProcessor, HistogramAnalyzer
         from ptpd_calibration.chemistry import ChemistryCalculator
         from ptpd_calibration.exposure import ExposureCalculator, ExposureSettings
+        from ptpd_calibration.imaging import HistogramAnalyzer, ImageProcessor
+        from ptpd_calibration.proofing import ProofSettings, SoftProofer
         from ptpd_calibration.zones import ZoneMapper
-        from ptpd_calibration.proofing import SoftProofer, ProofSettings
 
         # Step 1: Analyze image histogram
         hist_analyzer = HistogramAnalyzer()
@@ -599,12 +595,12 @@ class TestWizardStep3Linearization:
         from ptpd_calibration.ui.tabs.calibration_wizard import (
             get_linearization_mode_choices,
             get_mode_by_label,
+            get_paper_preset_choices,
             get_strategy_labels,
             get_target_labels,
-            get_paper_preset_choices,
             wizard_is_valid_config,
-            wizard_on_mode_change,
             wizard_on_config_change,
+            wizard_on_mode_change,
         )
 
         # Step 1: Get available modes
@@ -660,11 +656,11 @@ class TestWizardStep3Linearization:
         Journey: Select No Linearization → Generate Identity Curve
         """
         from ptpd_calibration.ui.tabs.calibration_wizard import (
+            WizardLinearizationMode,
             get_mode_by_label,
+            get_mode_value_by_label,
             wizard_is_valid_config,
             wizard_on_mode_change,
-            WizardLinearizationMode,
-            get_mode_value_by_label,
         )
 
         # Step 1: Select no linearization mode
@@ -680,7 +676,7 @@ class TestWizardStep3Linearization:
         visibility_updates = wizard_on_mode_change(mode_label)
         assert visibility_updates[0]["visible"] is False  # Target hidden
         assert visibility_updates[1]["visible"] is False  # Strategy hidden
-        assert visibility_updates[2]["visible"] is True   # Paper visible
+        assert visibility_updates[2]["visible"] is True  # Paper visible
 
         # Step 3: Validate configuration
         is_valid, msg = wizard_is_valid_config(
@@ -722,7 +718,7 @@ class TestWizardStep3Linearization:
         assert visibility_updates[0]["visible"] is False  # Target hidden
         assert visibility_updates[1]["visible"] is False  # Strategy hidden
         assert visibility_updates[2]["visible"] is False  # Paper hidden
-        assert visibility_updates[3]["visible"] is True   # Existing profile visible
+        assert visibility_updates[3]["visible"] is True  # Existing profile visible
 
         # Step 3: Invalid without profile
         is_valid, msg = wizard_is_valid_config(
@@ -755,8 +751,8 @@ class TestWizardStep3Linearization:
         """
         from ptpd_calibration.ui.tabs.calibration_wizard import (
             get_paper_preset_choices,
-            wizard_on_paper_change,
             wizard_is_valid_config,
+            wizard_on_paper_change,
         )
 
         # Step 1: Select custom paper
@@ -798,15 +794,15 @@ class TestWizardStep3Linearization:
         """
         Journey: Configure Wizard → Generate Curve with AutoLinearizer
         """
-        from ptpd_calibration.ui.tabs.calibration_wizard import (
-            get_strategy_value_by_label,
-            get_target_value_by_label,
-        )
         from ptpd_calibration.curves.linearization import (
             AutoLinearizer,
             LinearizationConfig,
             LinearizationMethod,
             TargetResponse,
+        )
+        from ptpd_calibration.ui.tabs.calibration_wizard import (
+            get_strategy_value_by_label,
+            get_target_value_by_label,
         )
 
         # Step 1: Get configuration values from UI labels
@@ -853,11 +849,11 @@ class TestWizardStep3Linearization:
         """
         Journey: Test all strategy options generate valid curves
         """
-        from ptpd_calibration.ui.tabs.calibration_wizard import get_strategy_choices
         from ptpd_calibration.curves.linearization import (
             AutoLinearizer,
             LinearizationMethod,
         )
+        from ptpd_calibration.ui.tabs.calibration_wizard import get_strategy_choices
 
         densities = [0.08, 0.15, 0.28, 0.45, 0.68, 0.95, 1.25, 1.48, 1.60]
 
@@ -879,11 +875,11 @@ class TestWizardStep3Linearization:
         """
         Journey: Test all target options generate valid curves
         """
-        from ptpd_calibration.ui.tabs.calibration_wizard import get_target_choices
         from ptpd_calibration.curves.linearization import (
             AutoLinearizer,
             TargetResponse,
         )
+        from ptpd_calibration.ui.tabs.calibration_wizard import get_target_choices
 
         densities = [0.08, 0.15, 0.28, 0.45, 0.68, 0.95, 1.25, 1.48, 1.60]
 

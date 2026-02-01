@@ -11,18 +11,14 @@ Each process has unique exposure characteristics based on sensitivity
 to different wavelengths, chemistry, and paper types.
 """
 
+import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
-import math
 
 from ptpd_calibration.core.types import (
-    ChemistryType,
     CyanotypeFormula,
-    PaperBase,
     PaperGrade,
 )
-from ptpd_calibration.exposure.calculator import LightSource, LIGHT_SOURCE_SPEEDS
 
 
 class EnlargerLightSource(str, Enum):
@@ -299,13 +295,13 @@ class CyanotypeExposureCalculator:
 
         # Calculate final exposure
         exposure_minutes = (
-            base *
-            density_adjustment *
-            uv_adjustment *
-            formula_adjustment *
-            humidity_adjustment *
-            paper_adjustment *
-            distance_adjustment
+            base
+            * density_adjustment
+            * uv_adjustment
+            * formula_adjustment
+            * humidity_adjustment
+            * paper_adjustment
+            * distance_adjustment
         )
 
         # Visual indicators for exposure monitoring
@@ -428,7 +424,7 @@ class SilverGelatinExposureCalculator:
 
         Returns:
             SilverGelatinExposureResult with calculated exposure
-        
+
         Raises:
             ValueError: If inputs are invalid (negative or zero where not allowed)
         """
@@ -449,7 +445,7 @@ class SilverGelatinExposureCalculator:
 
         # 1. Magnification adjustment (inverse square law approximation)
         height_ratio = enlarger_height_cm / self.base_height_cm
-        magnification_adjustment = height_ratio ** 2
+        magnification_adjustment = height_ratio**2
 
         if height_ratio > 2:
             notes.append("Large magnification - consider opening aperture or longer exposure")
@@ -457,7 +453,7 @@ class SilverGelatinExposureCalculator:
         # 2. F-stop adjustment
         # Each stop doubles/halves exposure
         stop_difference = 2 * math.log2(f_stop / base_f_stop)
-        f_stop_adjustment = 2 ** stop_difference
+        f_stop_adjustment = 2**stop_difference
 
         # 3. Paper speed adjustment
         # ISO-P 250 is baseline
@@ -474,12 +470,12 @@ class SilverGelatinExposureCalculator:
 
         # 6. Calculate base exposure before reciprocity
         pre_reciprocity = (
-            base *
-            magnification_adjustment *
-            f_stop_adjustment *
-            paper_speed_adjustment *
-            filter_adjustment *
-            light_source_speed
+            base
+            * magnification_adjustment
+            * f_stop_adjustment
+            * paper_speed_adjustment
+            * filter_adjustment
+            * light_source_speed
         )
 
         # 7. Reciprocity adjustment for long exposures
@@ -529,7 +525,7 @@ class SilverGelatinExposureCalculator:
         Returns:
             Tuple of (additional time, description)
         """
-        factor = 2 ** adjustment_stops
+        factor = 2**adjustment_stops
         additional_time = base_exposure * (factor - 1)
 
         if adjustment_stops < 0:

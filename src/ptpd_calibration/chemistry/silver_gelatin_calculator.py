@@ -20,17 +20,13 @@ Standard Workflow:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
+from ptpd_calibration.config import SilverGelatinSettings
 from ptpd_calibration.core.types import (
     DeveloperType,
     FixerType,
     PaperBase,
-    PaperGrade,
-    PaperSurface,
 )
-from ptpd_calibration.config import SilverGelatinSettings
-
 
 # Standard development times (seconds) for different developers at 20C
 DEFAULT_DEVELOPER_TIMES = {
@@ -129,15 +125,15 @@ class ProcessingChemistry:
     fixer_capacity_prints: int
 
     # Optional hypo clear
-    hypo_clear_ml: Optional[float]
-    hypo_clear_time_seconds: Optional[int]
+    hypo_clear_ml: float | None
+    hypo_clear_time_seconds: int | None
 
     # Wash
     wash_time_minutes: int
     wash_method: str
 
     # Estimated costs
-    estimated_cost_usd: Optional[float] = None
+    estimated_cost_usd: float | None = None
 
     # Notes
     notes: list[str] = field(default_factory=list)
@@ -149,7 +145,7 @@ class ProcessingChemistry:
             "SILVER GELATIN DARKROOM PROCESSING RECIPE",
             "=" * 60,
             "",
-            f"Print Size: {self.print_size[0]}\" x {self.print_size[1]}\"",
+            f'Print Size: {self.print_size[0]}" x {self.print_size[1]}"',
             f"Paper Base: {self.paper_base.value.replace('_', ' ').title()}",
             f"Tray Size: {self.tray_size.value}",
             "",
@@ -182,38 +178,46 @@ class ProcessingChemistry:
         ]
 
         if self.hypo_clear_ml:
-            lines.extend([
+            lines.extend(
+                [
+                    "",
+                    "-" * 60,
+                    "HYPO CLEAR / WASH AID",
+                    "-" * 60,
+                    f"Volume: {self.hypo_clear_ml:.0f} ml",
+                    f"Time: {self.hypo_clear_time_seconds // 60}:{self.hypo_clear_time_seconds % 60:02d}",
+                ]
+            )
+
+        lines.extend(
+            [
                 "",
                 "-" * 60,
-                "HYPO CLEAR / WASH AID",
+                "WASH",
                 "-" * 60,
-                f"Volume: {self.hypo_clear_ml:.0f} ml",
-                f"Time: {self.hypo_clear_time_seconds // 60}:{self.hypo_clear_time_seconds % 60:02d}",
-            ])
-
-        lines.extend([
-            "",
-            "-" * 60,
-            "WASH",
-            "-" * 60,
-            f"Method: {self.wash_method}",
-            f"Time: {self.wash_time_minutes} minutes",
-        ])
+                f"Method: {self.wash_method}",
+                f"Time: {self.wash_time_minutes} minutes",
+            ]
+        )
 
         if self.estimated_cost_usd:
-            lines.extend([
-                "",
-                "-" * 60,
-                f"ESTIMATED CHEMISTRY COST: ${self.estimated_cost_usd:.2f} USD",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "-" * 60,
+                    f"ESTIMATED CHEMISTRY COST: ${self.estimated_cost_usd:.2f} USD",
+                ]
+            )
 
         if self.notes:
-            lines.extend([
-                "",
-                "-" * 60,
-                "NOTES",
-                "-" * 60,
-            ])
+            lines.extend(
+                [
+                    "",
+                    "-" * 60,
+                    "NOTES",
+                    "-" * 60,
+                ]
+            )
             for note in self.notes:
                 lines.append(f"* {note}")
 
@@ -254,7 +258,9 @@ class ProcessingChemistry:
             "hypo_clear": {
                 "volume_ml": self.hypo_clear_ml,
                 "time_seconds": self.hypo_clear_time_seconds,
-            } if self.hypo_clear_ml else None,
+            }
+            if self.hypo_clear_ml
+            else None,
             "wash": {
                 "method": self.wash_method,
                 "time_minutes": self.wash_time_minutes,
@@ -262,9 +268,6 @@ class ProcessingChemistry:
             "estimated_cost_usd": self.estimated_cost_usd,
             "notes": self.notes,
         }
-
-
-
 
 
 class SilverGelatinCalculator:
@@ -275,7 +278,7 @@ class SilverGelatinCalculator:
     fixer, and washing chemistry.
     """
 
-    def __init__(self, settings: Optional[SilverGelatinSettings] = None):
+    def __init__(self, settings: SilverGelatinSettings | None = None):
         """Initialize calculator with optional custom settings.
 
         Args:
@@ -293,7 +296,7 @@ class SilverGelatinCalculator:
         temperature_c: float = None,
         fixer: FixerType = FixerType.SODIUM_THIOSULFATE,
         include_hypo_clear: bool = True,
-        tray_size: Optional[TraySize] = None,
+        tray_size: TraySize | None = None,
         num_prints: int = 1,
         include_cost: bool = True,
     ) -> ProcessingChemistry:
@@ -327,13 +330,13 @@ class SilverGelatinCalculator:
         # Use defaults if not specified
         # Use defaults if not specified
         if developer is None:
-             # Handle string vs Enum if coming from config
-             dev_setting = self.settings.default_developer
-             developer = DeveloperType(dev_setting) if isinstance(dev_setting, str) else dev_setting
+            # Handle string vs Enum if coming from config
+            dev_setting = self.settings.default_developer
+            developer = DeveloperType(dev_setting) if isinstance(dev_setting, str) else dev_setting
 
         if dilution is None:
-             dil_setting = self.settings.default_dilution
-             dilution = DilutionRatio(dil_setting) if isinstance(dil_setting, str) else dil_setting
+            dil_setting = self.settings.default_dilution
+            dilution = DilutionRatio(dil_setting) if isinstance(dil_setting, str) else dil_setting
 
         temperature_c = temperature_c or self.settings.default_temperature_c
 
@@ -354,7 +357,8 @@ class SilverGelatinCalculator:
 
         # Calculate fixer
         fixer_time = (
-            self.settings.fixer_time_fb_seconds if paper_base == PaperBase.FIBER
+            self.settings.fixer_time_fb_seconds
+            if paper_base == PaperBase.FIBER
             else self.settings.fixer_time_rc_seconds
         )
         fixer_capacity = self._calculate_fixer_capacity(tray_volume_ml, paper_base)
@@ -380,9 +384,7 @@ class SilverGelatinCalculator:
             )
 
         # Generate notes
-        notes = self._generate_notes(
-            developer, paper_base, temperature_c, num_prints
-        )
+        notes = self._generate_notes(developer, paper_base, temperature_c, num_prints)
 
         return ProcessingChemistry(
             print_size=(width_inches, height_inches),
@@ -429,7 +431,7 @@ class SilverGelatinCalculator:
         half_strips = num_strips // 2
 
         for i in range(-half_strips, num_strips - half_strips):
-            factor = increment_factor ** i
+            factor = increment_factor**i
             times.append(base_exposure_seconds * factor)
 
         return times
@@ -583,13 +585,13 @@ class SilverGelatinCalculator:
         developer_ml: float,
         stop_ml: float,
         fixer_ml: float,
-        hypo_clear_ml: Optional[float],
+        hypo_clear_ml: float | None,
     ) -> float:
         """Calculate estimated chemistry cost."""
         cost = (
-            (developer_ml / 1000) * self.settings.developer_cost_per_liter +
-            (stop_ml / 1000) * self.settings.stop_bath_cost_per_liter +
-            (fixer_ml / 1000) * self.settings.fixer_cost_per_liter
+            (developer_ml / 1000) * self.settings.developer_cost_per_liter
+            + (stop_ml / 1000) * self.settings.stop_bath_cost_per_liter
+            + (fixer_ml / 1000) * self.settings.fixer_cost_per_liter
         )
 
         if hypo_clear_ml:

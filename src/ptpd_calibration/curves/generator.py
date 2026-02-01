@@ -5,7 +5,6 @@ Generates linearization and correction curves from step tablet measurements.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 from scipy.interpolate import PchipInterpolator, interp1d
@@ -30,9 +29,7 @@ class TargetCurve:
         return cls(input_values=values, output_values=values, name="Linear")
 
     @classmethod
-    def paper_white_preserve(
-        cls, num_points: int, highlight_hold: float = 0.05
-    ) -> "TargetCurve":
+    def paper_white_preserve(cls, num_points: int, highlight_hold: float = 0.05) -> "TargetCurve":
         """
         Create target curve that preserves paper white in highlights.
 
@@ -90,7 +87,7 @@ class CurveGenerator:
     different printing requirements.
     """
 
-    def __init__(self, settings: Optional[CurveSettings] = None):
+    def __init__(self, settings: CurveSettings | None = None):
         """
         Initialize the curve generator.
 
@@ -103,10 +100,10 @@ class CurveGenerator:
         self,
         measured_densities: list[float],
         curve_type: CurveType = CurveType.LINEAR,
-        target_curve: Optional[TargetCurve] = None,
+        target_curve: TargetCurve | None = None,
         name: str = "Calibration Curve",
-        paper_type: Optional[str] = None,
-        chemistry: Optional[str] = None,
+        paper_type: str | None = None,
+        chemistry: str | None = None,
     ) -> CurveData:
         """
         Generate a calibration curve from measured densities.
@@ -153,20 +150,14 @@ class CurveGenerator:
                 target_curve = TargetCurve.linear(num_steps)
 
         # Calculate correction curve
-        correction = self._calculate_correction(
-            input_steps, normalized, target_curve
-        )
+        correction = self._calculate_correction(input_steps, normalized, target_curve)
 
         # Interpolate to output resolution
-        output_values = self._interpolate_curve(
-            correction, self.settings.num_output_points
-        )
+        output_values = self._interpolate_curve(correction, self.settings.num_output_points)
 
         # Apply smoothing if requested
         if self.settings.smoothing_factor > 0:
-            output_values = self._smooth_curve(
-                output_values, self.settings.smoothing_factor
-            )
+            output_values = self._smooth_curve(output_values, self.settings.smoothing_factor)
 
         # Enforce monotonicity if requested
         if self.settings.monotonicity_enforcement:
@@ -189,10 +180,10 @@ class CurveGenerator:
         self,
         extraction: ExtractionResult,
         curve_type: CurveType = CurveType.LINEAR,
-        target_curve: Optional[TargetCurve] = None,
+        target_curve: TargetCurve | None = None,
         name: str = "Calibration Curve",
-        paper_type: Optional[str] = None,
-        chemistry: Optional[str] = None,
+        paper_type: str | None = None,
+        chemistry: str | None = None,
     ) -> CurveData:
         """
         Generate curve directly from extraction result.
@@ -283,9 +274,7 @@ class CurveGenerator:
         t = (target_value - y0) / (y1 - y0)
         return x0 + t * (x1 - x0)
 
-    def _interpolate_curve(
-        self, values: np.ndarray, num_points: int
-    ) -> np.ndarray:
+    def _interpolate_curve(self, values: np.ndarray, num_points: int) -> np.ndarray:
         """Interpolate curve to specified number of points."""
         x_old = np.linspace(0, 1, len(values))
         x_new = np.linspace(0, 1, num_points)
@@ -322,8 +311,8 @@ class CurveGenerator:
 def generate_linearization_curve(
     measured_densities: list[float],
     name: str = "Linearization",
-    paper_type: Optional[str] = None,
-    chemistry: Optional[str] = None,
+    paper_type: str | None = None,
+    chemistry: str | None = None,
 ) -> CurveData:
     """
     Convenience function to generate a linearization curve.

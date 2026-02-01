@@ -8,10 +8,7 @@ Tests the UI layer interaction patterns for AI features including:
 - Error handling
 """
 
-from unittest.mock import MagicMock, patch, AsyncMock
 import numpy as np
-import pytest
-from PIL import Image
 
 
 class TestDeepLearningUIConfiguration:
@@ -73,8 +70,8 @@ class TestDeepLearningUIResultDisplay:
     def test_detection_result_display_format(self):
         """Test detection result formatting for display."""
         from ptpd_calibration.deep_learning.models import (
-            DetectedPatch,
             DeepDetectionResult,
+            DetectedPatch,
         )
 
         patches = [
@@ -154,8 +151,7 @@ class TestDeepLearningUIResultDisplay:
             input_values=list(np.linspace(0, 1, 256)),
             output_values=list(np.power(np.linspace(0, 1, 256), 0.8)),
             confidence_intervals=[
-                (v - 0.02, v + 0.02)
-                for v in np.power(np.linspace(0, 1, 256), 0.8)
+                (v - 0.02, v + 0.02) for v in np.power(np.linspace(0, 1, 256), 0.8)
             ],
             uncertainty_per_zone=[0.02] * 21,
             model_version="curve-transformer-v1",
@@ -175,10 +171,10 @@ class TestDeepLearningUIResultDisplay:
     def test_defect_result_annotation_display(self):
         """Test defect detection result annotation display."""
         from ptpd_calibration.deep_learning.models import (
-            DetectedDefect,
             DefectDetectionResult,
+            DetectedDefect,
         )
-        from ptpd_calibration.deep_learning.types import DefectType, DefectSeverity
+        from ptpd_calibration.deep_learning.types import DefectSeverity, DefectType
 
         defects = [
             DetectedDefect(
@@ -342,8 +338,7 @@ class TestDeepLearningUIInputValidation:
 
         # Detection backends
         backend_options = [
-            (backend.value, backend.name.replace("_", " ").title())
-            for backend in DetectionBackend
+            (backend.value, backend.name.replace("_", " ").title()) for backend in DetectionBackend
         ]
         assert len(backend_options) > 0
 
@@ -356,8 +351,7 @@ class TestDeepLearningUIInputValidation:
 
         # Privacy levels
         privacy_options = [
-            (level.value, level.name.replace("_", " ").title())
-            for level in PrivacyLevel
+            (level.value, level.name.replace("_", " ").title()) for level in PrivacyLevel
         ]
         assert len(privacy_options) > 0
 
@@ -436,7 +430,7 @@ class TestDeepLearningUIAccessibility:
             "info": {"color": "blue", "icon": "info", "text": "Info"},
         }
 
-        for status, indicator in status_indicators.items():
+        for _status, indicator in status_indicators.items():
             # Each status must have both icon and text, not just color
             assert "icon" in indicator
             assert "text" in indicator
@@ -455,7 +449,7 @@ class TestDeepLearningUIStateSync:
             "defect": {"downloaded": True, "loaded": False, "version": "1.0.0"},
         }
 
-        for model_name, status in model_status.items():
+        for _model_name, status in model_status.items():
             # Can't be loaded without being downloaded
             if status["loaded"]:
                 assert status["downloaded"]
@@ -473,7 +467,7 @@ class TestDeepLearningUIStateSync:
 
         # Get default settings
         settings = get_deep_learning_settings()
-        original_threshold = settings.detection.confidence_threshold
+        _ = settings.detection.confidence_threshold  # Used to verify settings load
 
         # Simulate settings change
         new_settings = DetectionModelSettings(

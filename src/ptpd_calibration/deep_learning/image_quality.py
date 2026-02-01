@@ -15,10 +15,8 @@ Example:
     >>> print(f"Quality: {result.quality_level}, Score: {result.overall_score:.3f}")
 """
 
-import asyncio
 import logging
 import time
-from typing import Optional
 
 import numpy as np
 from scipy import ndimage
@@ -29,8 +27,8 @@ from ptpd_calibration.deep_learning.models import (
     ZoneQualityScore,
 )
 from ptpd_calibration.deep_learning.types import (
-    IQAMetric,
     ImageArray,
+    IQAMetric,
     QualityLevel,
 )
 
@@ -202,7 +200,7 @@ class VisionTransformerIQA:
         ...     print(f"{zone_score.zone_name}: {zone_score.score:.3f}")
     """
 
-    def __init__(self, settings: Optional[ImageQualitySettings] = None):
+    def __init__(self, settings: ImageQualitySettings | None = None):
         """
         Initialize the Vision Transformer IQA.
 
@@ -210,7 +208,7 @@ class VisionTransformerIQA:
             settings: IQA settings. If None, uses defaults.
         """
         self.settings = settings or ImageQualitySettings()
-        self._device: Optional[str] = None
+        self._device: str | None = None
         self._vit_model = None
         self._clip_model = None
         self._clip_preprocess = None
@@ -311,9 +309,7 @@ class VisionTransformerIQA:
                     pretrained=False,
                     num_classes=1,  # Regression task
                 )
-                checkpoint = torch.load(
-                    self.settings.custom_weights_path, map_location=self.device
-                )
+                checkpoint = torch.load(self.settings.custom_weights_path, map_location=self.device)
                 self._vit_model.load_state_dict(checkpoint)
             else:
                 logger.info(f"Loading pretrained {self.settings.vit_model_name}")
@@ -349,9 +345,7 @@ class VisionTransformerIQA:
         try:
             # Load CLIP
             model_name = "ViT-B/32"  # Can be configured
-            self._clip_model, self._clip_preprocess = clip.load(
-                model_name, device=self.device
-            )
+            self._clip_model, self._clip_preprocess = clip.load(model_name, device=self.device)
             self._clip_model.eval()
 
             logger.info(f"CLIP model loaded: {model_name}")
@@ -564,16 +558,12 @@ class VisionTransformerIQA:
             return 0.5
 
         try:
-            from skimage.metrics import structural_similarity as ssim
-
             # NIQE approximation using local statistics
             # Lower NIQE is better, normalize to [0, 1]
-            image_8bit = (image * 255).astype(np.uint8)
+            _image_8bit = (image * 255).astype(np.uint8)  # Reserved for future NIQE model
 
             # Compute local variance as quality indicator
-            local_var = ndimage.generic_filter(
-                image, np.var, size=7, mode="reflect"
-            )
+            local_var = ndimage.generic_filter(image, np.var, size=7, mode="reflect")
             avg_local_var = np.mean(local_var)
 
             # Normalize (empirical range 0-0.05)
@@ -642,10 +632,7 @@ class VisionTransformerIQA:
 
         try:
             # Prepare image for CLIP
-            if len(image.shape) == 2:
-                image_rgb = np.stack([image] * 3, axis=-1)
-            else:
-                image_rgb = image
+            image_rgb = np.stack([image] * 3, axis=-1) if len(image.shape) == 2 else image
 
             # Convert to PIL for preprocessing
             from PIL import Image
@@ -698,9 +685,7 @@ class VisionTransformerIQA:
             logger.error(f"CLIP-IQA computation failed: {e}")
             return 0.5
 
-    async def _compute_vit_based_metric(
-        self, image: ImageArray, metric: IQAMetric
-    ) -> float:
+    async def _compute_vit_based_metric(self, image: ImageArray, metric: IQAMetric) -> float:
         """
         Compute ViT-based quality metric (MANIQA, MUSIQ, TOPIQ).
 
@@ -722,10 +707,7 @@ class VisionTransformerIQA:
 
         try:
             # Prepare image for ViT
-            if len(image.shape) == 2:
-                image_rgb = np.stack([image] * 3, axis=-1)
-            else:
-                image_rgb = image
+            image_rgb = np.stack([image] * 3, axis=-1) if len(image.shape) == 2 else image
 
             # Resize and normalize
             import torchvision.transforms as transforms
@@ -735,9 +717,7 @@ class VisionTransformerIQA:
                     transforms.ToPILImage(),
                     transforms.Resize((self.settings.input_size, self.settings.input_size)),
                     transforms.ToTensor(),
-                    transforms.Normalize(
-                        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                    ),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                 ]
             )
 
@@ -882,7 +862,7 @@ class VisionTransformerIQA:
         """
         # Quality based on tonal consistency and smoothness
         variance = np.var(zone_pixels)
-        std = np.std(zone_pixels)
+        _std = np.std(zone_pixels)  # Reserved for future use in zone quality metrics
 
         # Zones should have smooth gradations
         # Lower variance is better (more uniform tones)
@@ -1059,8 +1039,7 @@ class VisionTransformerIQA:
             if zone_score.score < 0.5:
                 zone_name = zone_score.zone_name
                 recommendations.append(
-                    f"Improve tonal quality in {zone_name} "
-                    f"(consider chemistry ratio adjustment)"
+                    f"Improve tonal quality in {zone_name} (consider chemistry ratio adjustment)"
                 )
 
         # Technical recommendations
@@ -1084,7 +1063,7 @@ class VisionTransformerIQA:
 
         return recommendations, issues
 
-    async def _generate_embedding(self, image: ImageArray) -> Optional[list[float]]:
+    async def _generate_embedding(self, image: ImageArray) -> list[float] | None:
         """
         Generate image embedding for comparison.
 
@@ -1103,10 +1082,7 @@ class VisionTransformerIQA:
 
         try:
             # Prepare image
-            if len(image.shape) == 2:
-                image_rgb = np.stack([image] * 3, axis=-1)
-            else:
-                image_rgb = image
+            image_rgb = np.stack([image] * 3, axis=-1) if len(image.shape) == 2 else image
 
             # Transform and extract features
             import torchvision.transforms as transforms

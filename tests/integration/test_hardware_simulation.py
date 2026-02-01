@@ -8,33 +8,27 @@ Tests realistic usage scenarios including:
 - Multi-device scenarios
 """
 
-import pytest
 import tempfile
-from pathlib import Path
-from datetime import datetime
 
+import pytest
+
+from ptpd_calibration.integrations.hardware import (
+    MeasurementError,
+    get_printer_driver,
+    get_spectrophotometer_driver,
+)
 from ptpd_calibration.integrations.protocols import (
-    DeviceStatus,
     DensityMeasurement,
-    SpectralData,
+    DeviceStatus,
     PrintJob,
     PrintResult,
+    SpectralData,
 )
-from ptpd_calibration.integrations.hardware import (
-    get_spectrophotometer_driver,
-    get_printer_driver,
-    MeasurementError,
-    CalibrationError,
-)
-from ptpd_calibration.integrations.hardware.simulated import (
-    SimulatedSpectrophotometer,
-    SimulatedPrinter,
-)
-
 
 # =============================================================================
 # Test Step Tablet Measurement Workflow
 # =============================================================================
+
 
 class TestStepTabletMeasurementWorkflow:
     """Integration tests for step tablet measurement scenarios."""
@@ -49,7 +43,7 @@ class TestStepTabletMeasurementWorkflow:
 
         # Measure 21 steps
         measurements = []
-        for step in range(21):
+        for _step in range(21):
             measurement = device.read_density()
             measurements.append(measurement)
 
@@ -124,6 +118,7 @@ class TestStepTabletMeasurementWorkflow:
 # =============================================================================
 # Test Print Job Processing
 # =============================================================================
+
 
 class TestPrintJobProcessing:
     """Integration tests for print job scenarios."""
@@ -250,6 +245,7 @@ class TestPrintJobProcessing:
 # Test Error Handling and Recovery
 # =============================================================================
 
+
 class TestErrorHandlingAndRecovery:
     """Integration tests for error scenarios."""
 
@@ -353,6 +349,7 @@ class TestErrorHandlingAndRecovery:
 # Test Multi-Device Scenarios
 # =============================================================================
 
+
 class TestMultiDeviceScenarios:
     """Integration tests for multiple device usage."""
 
@@ -441,6 +438,7 @@ class TestMultiDeviceScenarios:
 # Test Calibration Workflow
 # =============================================================================
 
+
 class TestCalibrationWorkflow:
     """Integration tests for calibration workflows."""
 
@@ -454,11 +452,13 @@ class TestCalibrationWorkflow:
         step_densities = []
         for step in range(21):
             measurement = device.read_density()
-            step_densities.append({
-                "step": step,
-                "density": measurement.density,
-                "lab_l": measurement.lab_l,
-            })
+            step_densities.append(
+                {
+                    "step": step,
+                    "density": measurement.density,
+                    "lab_l": measurement.lab_l,
+                }
+            )
 
         device.disconnect()
 
@@ -514,11 +514,13 @@ class TestCalibrationWorkflow:
             )
             result = printer.print_image(job)
 
-            iterations.append({
-                "iteration": iteration,
-                "density": measurement.density,
-                "print_success": result.success,
-            })
+            iterations.append(
+                {
+                    "iteration": iteration,
+                    "density": measurement.density,
+                    "print_success": result.success,
+                }
+            )
 
         spectro.disconnect()
         printer.disconnect()
@@ -532,6 +534,7 @@ class TestCalibrationWorkflow:
 # =============================================================================
 # Test Device Status Transitions
 # =============================================================================
+
 
 class TestDeviceStatusTransitions:
     """Test correct status transitions during operations."""

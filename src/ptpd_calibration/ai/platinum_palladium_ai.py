@@ -5,48 +5,43 @@ This module provides AI-powered analysis, prediction, and optimization tools
 specifically designed for the platinum-palladium printing workflow.
 """
 
-from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union, Tuple, Dict, List, Any
-from uuid import UUID, uuid4
-from datetime import datetime
+from typing import Any
 
 import numpy as np
 from PIL import Image
 from pydantic import BaseModel, Field, field_validator
 
+from ptpd_calibration.chemistry.calculator import (
+    ChemistryCalculator,
+    CoatingMethod,
+    PaperAbsorbency,
+)
 from ptpd_calibration.config import get_settings
+from ptpd_calibration.core.models import (
+    CalibrationRecord,
+    CurveData,
+)
 from ptpd_calibration.core.types import (
     ChemistryType,
     ContrastAgent,
-    DeveloperType,
     CurveType,
-)
-from ptpd_calibration.core.models import (
-    CurveData,
-    CalibrationRecord,
-    PaperProfile,
-)
-from ptpd_calibration.imaging.histogram import HistogramAnalyzer, HistogramStats
-from ptpd_calibration.imaging.processor import (
-    ImageProcessor,
-    ProcessingResult,
-    ImageFormat,
-    ColorMode,
-    ExportSettings,
+    DeveloperType,
 )
 from ptpd_calibration.exposure.calculator import (
     ExposureCalculator,
     ExposureSettings,
     LightSource,
 )
-from ptpd_calibration.chemistry.calculator import (
-    ChemistryCalculator,
-    PaperAbsorbency,
-    CoatingMethod,
+from ptpd_calibration.imaging.histogram import HistogramAnalyzer
+from ptpd_calibration.imaging.processor import (
+    ColorMode,
+    ExportSettings,
+    ImageFormat,
+    ImageProcessor,
+    ProcessingResult,
 )
-
 
 # ============================================================================
 # Enums and Constants
@@ -101,22 +96,16 @@ class TonalityAnalysisResult(BaseModel):
     """Result of image tonality analysis."""
 
     # Histogram statistics
-    histogram_stats: Dict[str, Any] = Field(
-        ..., description="Complete histogram statistics"
-    )
+    histogram_stats: dict[str, Any] = Field(..., description="Complete histogram statistics")
 
     # Zone analysis (Ansel Adams zones 0-10)
-    zone_distribution: Dict[int, float] = Field(
+    zone_distribution: dict[int, float] = Field(
         ..., description="Percentage of pixels in each zone"
     )
-    dominant_zones: List[int] = Field(
-        ..., description="Zones with highest pixel concentration"
-    )
+    dominant_zones: list[int] = Field(..., description="Zones with highest pixel concentration")
 
     # Tonal range
-    dynamic_range_stops: float = Field(
-        ..., ge=0.0, description="Dynamic range in stops"
-    )
+    dynamic_range_stops: float = Field(..., ge=0.0, description="Dynamic range in stops")
     shadow_detail_percent: float = Field(
         ..., ge=0.0, le=100.0, description="Percentage of shadow detail"
     )
@@ -133,12 +122,10 @@ class TonalityAnalysisResult(BaseModel):
     )
 
     # Suggestions
-    suggestions: List[str] = Field(
+    suggestions: list[str] = Field(
         default_factory=list, description="Recommendations for optimal printing"
     )
-    warnings: List[str] = Field(
-        default_factory=list, description="Potential issues to address"
-    )
+    warnings: list[str] = Field(default_factory=list, description="Potential issues to address")
 
 
 class ExposurePrediction(BaseModel):
@@ -152,34 +139,24 @@ class ExposurePrediction(BaseModel):
     )
 
     # Confidence interval (95%)
-    lower_bound_seconds: float = Field(
-        ..., ge=0.0, description="Lower confidence bound"
-    )
-    upper_bound_seconds: float = Field(
-        ..., ge=0.0, description="Upper confidence bound"
-    )
-    confidence_level: float = Field(
-        default=0.95, ge=0.0, le=1.0, description="Confidence level"
-    )
+    lower_bound_seconds: float = Field(..., ge=0.0, description="Lower confidence bound")
+    upper_bound_seconds: float = Field(..., ge=0.0, description="Upper confidence bound")
+    confidence_level: float = Field(default=0.95, ge=0.0, le=1.0, description="Confidence level")
 
     # Factors considered
     negative_density: float = Field(..., description="Negative density range")
     paper_speed_factor: float = Field(default=1.0, description="Paper speed factor")
     humidity_factor: float = Field(default=1.0, description="Humidity adjustment")
-    temperature_celsius: Optional[float] = Field(
-        default=None, description="Temperature in Celsius"
-    )
+    temperature_celsius: float | None = Field(default=None, description="Temperature in Celsius")
 
     # Breakdown
     base_exposure: float = Field(..., description="Base exposure time")
-    adjustments_applied: Dict[str, float] = Field(
+    adjustments_applied: dict[str, float] = Field(
         default_factory=dict, description="Adjustment factors applied"
     )
 
     # Recommendations
-    recommendations: List[str] = Field(
-        default_factory=list, description="Exposure recommendations"
-    )
+    recommendations: list[str] = Field(default_factory=list, description="Exposure recommendations")
 
     def format_time(self) -> str:
         """Format predicted time as human-readable string."""
@@ -199,15 +176,11 @@ class ChemistryRecommendation(BaseModel):
     platinum_ratio: float = Field(
         ..., ge=0.0, le=1.0, description="Platinum ratio (0=pure Pd, 1=pure Pt)"
     )
-    palladium_ratio: float = Field(
-        ..., ge=0.0, le=1.0, description="Palladium ratio"
-    )
+    palladium_ratio: float = Field(..., ge=0.0, le=1.0, description="Palladium ratio")
 
     # Ferric oxalate amounts (in drops)
     ferric_oxalate_1_drops: float = Field(..., ge=0.0, description="FO #1 drops")
-    ferric_oxalate_2_drops: float = Field(
-        default=0.0, ge=0.0, description="FO #2 (contrast) drops"
-    )
+    ferric_oxalate_2_drops: float = Field(default=0.0, ge=0.0, description="FO #2 (contrast) drops")
 
     # Contrast agent
     contrast_agent: ContrastAgent = Field(
@@ -230,12 +203,8 @@ class ChemistryRecommendation(BaseModel):
     )
 
     # Rationale
-    rationale: List[str] = Field(
-        default_factory=list, description="Explanation of recommendations"
-    )
-    notes: List[str] = Field(
-        default_factory=list, description="Additional notes"
-    )
+    rationale: list[str] = Field(default_factory=list, description="Explanation of recommendations")
+    notes: list[str] = Field(default_factory=list, description="Additional notes")
 
 
 class DigitalNegativeResult(BaseModel):
@@ -244,25 +213,21 @@ class DigitalNegativeResult(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     # Processing info
-    processing_result: Optional[Any] = Field(
-        default=None, description="ProcessingResult object"
-    )
-    output_path: Optional[Path] = Field(default=None, description="Saved file path")
+    processing_result: Any | None = Field(default=None, description="ProcessingResult object")
+    output_path: Path | None = Field(default=None, description="Saved file path")
 
     # Metadata
-    original_size: Tuple[int, int] = Field(..., description="Original image size")
-    output_size: Tuple[int, int] = Field(..., description="Output image size")
+    original_size: tuple[int, int] = Field(..., description="Original image size")
+    output_size: tuple[int, int] = Field(..., description="Output image size")
     output_format: str = Field(..., description="Output format")
-    output_dpi: Optional[int] = Field(default=None, description="Output DPI")
+    output_dpi: int | None = Field(default=None, description="Output DPI")
 
     # Curve applied
-    curve_name: Optional[str] = Field(default=None, description="Applied curve name")
-    curve_type: Optional[CurveType] = Field(default=None, description="Curve type")
+    curve_name: str | None = Field(default=None, description="Applied curve name")
+    curve_type: CurveType | None = Field(default=None, description="Curve type")
 
     # Processing steps
-    steps_applied: List[str] = Field(
-        default_factory=list, description="Processing steps applied"
-    )
+    steps_applied: list[str] = Field(default_factory=list, description="Processing steps applied")
 
     # Quality metrics
     estimated_quality: float = Field(
@@ -280,35 +245,28 @@ class PrintQualityAnalysis(BaseModel):
     """Analysis comparing print to reference image."""
 
     # Overall metrics
-    overall_match_score: float = Field(
-        ..., ge=0.0, le=1.0, description="Overall match score (0-1)"
-    )
+    overall_match_score: float = Field(..., ge=0.0, le=1.0, description="Overall match score (0-1)")
     density_correlation: float = Field(
         ..., ge=-1.0, le=1.0, description="Density correlation coefficient"
     )
 
     # Density analysis
-    mean_density_difference: float = Field(
-        ..., description="Mean density difference"
-    )
-    max_density_difference: float = Field(
-        ..., description="Maximum density difference"
-    )
+    mean_density_difference: float = Field(..., description="Mean density difference")
+    max_density_difference: float = Field(..., description="Maximum density difference")
     density_range_match: float = Field(
         ..., ge=0.0, le=1.0, description="How well density ranges match"
     )
 
     # Problem areas
-    problem_areas: List[Tuple[ProblemArea, str, float]] = Field(
-        default_factory=list,
-        description="List of (area, description, severity) tuples"
+    problem_areas: list[tuple[ProblemArea, str, float]] = Field(
+        default_factory=list, description="List of (area, description, severity) tuples"
     )
 
     # Zone-by-zone analysis
-    zone_differences: Dict[int, float] = Field(
+    zone_differences: dict[int, float] = Field(
         default_factory=dict, description="Difference by zone (0-10)"
     )
-    worst_zones: List[int] = Field(
+    worst_zones: list[int] = Field(
         default_factory=list, description="Zones with largest differences"
     )
 
@@ -319,12 +277,12 @@ class PrintQualityAnalysis(BaseModel):
     suggested_contrast_correction: str = Field(
         default="none", description="Suggested contrast correction"
     )
-    suggested_curve_adjustments: Dict[str, float] = Field(
+    suggested_curve_adjustments: dict[str, float] = Field(
         default_factory=dict, description="Suggested curve adjustments"
     )
 
     # Detailed recommendations
-    corrections: List[str] = Field(
+    corrections: list[str] = Field(
         default_factory=list, description="Specific correction recommendations"
     )
 
@@ -335,36 +293,32 @@ class WorkflowOptimization(BaseModel):
     # Analysis summary
     total_prints_analyzed: int = Field(..., ge=0, description="Number of prints analyzed")
     successful_prints: int = Field(..., ge=0, description="Number of successful prints")
-    success_rate: float = Field(
-        ..., ge=0.0, le=1.0, description="Overall success rate"
-    )
+    success_rate: float = Field(..., ge=0.0, le=1.0, description="Overall success rate")
 
     # Patterns identified
-    optimal_parameters: Dict[str, Any] = Field(
+    optimal_parameters: dict[str, Any] = Field(
         default_factory=dict, description="Identified optimal parameters"
     )
-    parameter_trends: Dict[str, str] = Field(
+    parameter_trends: dict[str, str] = Field(
         default_factory=dict, description="Trends in successful prints"
     )
 
     # Predictive insights
-    recommended_base_exposure: Optional[float] = Field(
+    recommended_base_exposure: float | None = Field(
         default=None, description="Recommended base exposure time"
     )
-    recommended_metal_ratio: Optional[float] = Field(
+    recommended_metal_ratio: float | None = Field(
         default=None, description="Recommended Pt/Pd ratio"
     )
-    recommended_paper_settings: Dict[str, Any] = Field(
+    recommended_paper_settings: dict[str, Any] = Field(
         default_factory=dict, description="Paper-specific settings"
     )
 
     # Efficiency improvements
-    efficiency_suggestions: List[str] = Field(
+    efficiency_suggestions: list[str] = Field(
         default_factory=list, description="Suggestions to improve efficiency"
     )
-    common_mistakes: List[str] = Field(
-        default_factory=list, description="Common mistakes to avoid"
-    )
+    common_mistakes: list[str] = Field(default_factory=list, description="Common mistakes to avoid")
 
     # Confidence
     confidence: float = Field(
@@ -372,9 +326,7 @@ class WorkflowOptimization(BaseModel):
     )
 
     # Detailed insights
-    insights: List[str] = Field(
-        default_factory=list, description="Detailed insights from analysis"
-    )
+    insights: list[str] = Field(default_factory=list, description="Detailed insights from analysis")
 
 
 # ============================================================================
@@ -401,7 +353,7 @@ class PlatinumPalladiumAI:
     All parameters are configurable via settings, with no hardcoded values.
     """
 
-    def __init__(self, settings: Optional[Any] = None):
+    def __init__(self, settings: Any | None = None):
         """
         Initialize the Platinum/Palladium AI system.
 
@@ -417,8 +369,8 @@ class PlatinumPalladiumAI:
         self.chemistry_calculator = ChemistryCalculator()
 
         # Cache for ML models (lazy loaded)
-        self._exposure_model: Optional[Any] = None
-        self._quality_model: Optional[Any] = None
+        self._exposure_model: Any | None = None
+        self._quality_model: Any | None = None
 
     # ========================================================================
     # 1. Image Tonality Analysis
@@ -426,9 +378,9 @@ class PlatinumPalladiumAI:
 
     def analyze_image_tonality(
         self,
-        image: Union[str, Path, Image.Image, np.ndarray],
-        target_paper: Optional[str] = None,
-        target_process: Optional[ChemistryType] = None,
+        image: str | Path | Image.Image | np.ndarray,
+        target_paper: str | None = None,
+        target_process: ChemistryType | None = None,
     ) -> TonalityAnalysisResult:
         """
         Analyze image for optimal Pt/Pd conversion.
@@ -455,9 +407,7 @@ class PlatinumPalladiumAI:
         zone_distribution = stats.zone_distribution
 
         # Identify dominant zones (>10% of pixels)
-        dominant_zones = [
-            zone for zone, pct in zone_distribution.items() if pct > 0.10
-        ]
+        dominant_zones = [zone for zone, pct in zone_distribution.items() if pct > 0.10]
         dominant_zones.sort(key=lambda z: zone_distribution[z], reverse=True)
 
         # Calculate shadow and highlight detail percentages
@@ -475,14 +425,10 @@ class PlatinumPalladiumAI:
         # Analyze brightness
         if stats.brightness < 0.25:
             exposure_adjustment = -1.0  # Increase exposure by 1 stop
-            suggestions.append(
-                "Image is quite dark. Consider increasing exposure by 1 stop."
-            )
+            suggestions.append("Image is quite dark. Consider increasing exposure by 1 stop.")
         elif stats.brightness > 0.75:
             exposure_adjustment = 1.0  # Decrease exposure by 1 stop
-            suggestions.append(
-                "Image is quite bright. Consider reducing exposure by 1 stop."
-            )
+            suggestions.append("Image is quite bright. Consider reducing exposure by 1 stop.")
 
         # Analyze contrast
         if stats.contrast < 0.15:
@@ -494,8 +440,7 @@ class PlatinumPalladiumAI:
         elif stats.contrast > 0.35:
             contrast_adjustment = "decrease"
             suggestions.append(
-                "High contrast image. Consider N-1 development or "
-                "using softer grade chemistry."
+                "High contrast image. Consider N-1 development or using softer grade chemistry."
             )
 
         # Dynamic range analysis
@@ -531,9 +476,7 @@ class PlatinumPalladiumAI:
 
         # Zone-specific recommendations
         if zone_distribution.get(5, 0) < 0.05:  # Zone V (middle gray)
-            suggestions.append(
-                "Limited midtone content. Consider whether this suits your vision."
-            )
+            suggestions.append("Limited midtone content. Consider whether this suits your vision.")
 
         # Paper-specific recommendations
         if target_paper:
@@ -580,12 +523,12 @@ class PlatinumPalladiumAI:
     def predict_exposure_time(
         self,
         negative_density: float,
-        paper_type: Optional[str] = None,
-        light_source: Optional[LightSource] = None,
-        humidity: Optional[float] = None,
-        temperature: Optional[float] = None,
-        platinum_ratio: Optional[float] = None,
-        distance_inches: Optional[float] = None,
+        paper_type: str | None = None,
+        light_source: LightSource | None = None,
+        humidity: float | None = None,
+        temperature: float | None = None,
+        platinum_ratio: float | None = None,
+        distance_inches: float | None = None,
     ) -> ExposurePrediction:
         """
         AI-based exposure time prediction with confidence intervals.
@@ -612,7 +555,7 @@ class PlatinumPalladiumAI:
         # Get base exposure settings
         exposure_settings = ExposureSettings(
             base_exposure_minutes=self.settings.exposure.base_exposure_minutes
-            if hasattr(self.settings, 'exposure')
+            if hasattr(self.settings, "exposure")
             else 10.0,
             light_source=light_source or LightSource.BL_FLUORESCENT,
         )
@@ -657,10 +600,12 @@ class PlatinumPalladiumAI:
 
         # Calculate bounds using error propagation
         # Density affects exposure exponentially (2^(Δd/0.3))
-        density_factor_low = 2 ** ((negative_density - density_uncertainty -
-                                   exposure_settings.base_negative_density) / 0.3)
-        density_factor_high = 2 ** ((negative_density + density_uncertainty -
-                                    exposure_settings.base_negative_density) / 0.3)
+        _density_factor_low = 2 ** (
+            (negative_density - density_uncertainty - exposure_settings.base_negative_density) / 0.3
+        )
+        _density_factor_high = 2 ** (
+            (negative_density + density_uncertainty - exposure_settings.base_negative_density) / 0.3
+        )
 
         lower_bound = result.exposure_seconds * (1 - paper_uncertainty - env_uncertainty)
         upper_bound = result.exposure_seconds * (1 + paper_uncertainty + env_uncertainty)
@@ -715,8 +660,8 @@ class PlatinumPalladiumAI:
         self,
         desired_tone: TonePreference,
         contrast_level: ContrastLevel,
-        paper_type: Optional[str] = None,
-        print_size_inches: Optional[Tuple[float, float]] = None,
+        paper_type: str | None = None,
+        print_size_inches: tuple[float, float] | None = None,
     ) -> ChemistryRecommendation:
         """
         Recommend ferric oxalate and metal ratios for desired tone and contrast.
@@ -739,9 +684,9 @@ class PlatinumPalladiumAI:
         """
         # Map tone preference to platinum ratio
         tone_to_ratio = {
-            TonePreference.WARM: 0.0,      # Pure palladium
-            TonePreference.NEUTRAL: 0.5,   # 50/50 mix
-            TonePreference.COOL: 1.0,      # Pure platinum
+            TonePreference.WARM: 0.0,  # Pure palladium
+            TonePreference.NEUTRAL: 0.5,  # 50/50 mix
+            TonePreference.COOL: 1.0,  # Pure platinum
         }
 
         platinum_ratio = tone_to_ratio.get(desired_tone, 0.5)
@@ -790,7 +735,9 @@ class PlatinumPalladiumAI:
         else:
             # Provide ratios only
             fo1_drops = 12.0  # Standard base for reference
-            fo2_drops = fo1_drops * (contrast_boost / (1 - contrast_boost)) if contrast_boost < 1 else 0
+            fo2_drops = (
+                fo1_drops * (contrast_boost / (1 - contrast_boost)) if contrast_boost < 1 else 0
+            )
             na2_drops = (fo1_drops + fo2_drops) * na2_ratio if use_na2 else 0.0
 
         # Determine expected characteristics
@@ -830,13 +777,13 @@ class PlatinumPalladiumAI:
             )
         else:
             rationale.append(
-                f"{platinum_ratio*100:.0f}% platinum / {palladium_ratio*100:.0f}% "
+                f"{platinum_ratio * 100:.0f}% platinum / {palladium_ratio * 100:.0f}% "
                 f"palladium for balanced tones."
             )
 
         if contrast_boost > 0:
             rationale.append(
-                f"FO #2 (contrast) at {contrast_boost*100:.0f}% for increased contrast. "
+                f"FO #2 (contrast) at {contrast_boost * 100:.0f}% for increased contrast. "
                 f"Good for flat negatives."
             )
 
@@ -853,9 +800,7 @@ class PlatinumPalladiumAI:
         )
 
         if platinum_ratio > 0.5:
-            notes.append(
-                "Higher platinum content requires longer exposure times (~2x vs pure Pd)"
-            )
+            notes.append("Higher platinum content requires longer exposure times (~2x vs pure Pd)")
 
         if contrast_level == ContrastLevel.MAXIMUM:
             notes.append(
@@ -887,10 +832,10 @@ class PlatinumPalladiumAI:
 
     def generate_digital_negative(
         self,
-        image: Union[str, Path, Image.Image, np.ndarray],
-        printer_profile: Optional[PrinterProfile] = None,
-        curve: Optional[CurveData] = None,
-        output_path: Optional[Union[str, Path]] = None,
+        image: str | Path | Image.Image | np.ndarray,
+        printer_profile: PrinterProfile | None = None,
+        curve: CurveData | None = None,
+        output_path: str | Path | None = None,
         output_format: ImageFormat = ImageFormat.TIFF_16BIT,
         target_dpi: int = 2880,
         invert: bool = True,
@@ -996,8 +941,8 @@ class PlatinumPalladiumAI:
 
     def analyze_print_quality(
         self,
-        scan_image: Union[str, Path, Image.Image, np.ndarray],
-        reference_image: Union[str, Path, Image.Image, np.ndarray],
+        scan_image: str | Path | Image.Image | np.ndarray,
+        reference_image: str | Path | Image.Image | np.ndarray,
         zone_weight: float = 1.0,
     ) -> PrintQualityAnalysis:
         """
@@ -1025,9 +970,7 @@ class PlatinumPalladiumAI:
         ref_stats = ref_analysis.stats
 
         # Compare histograms
-        comparison = self.histogram_analyzer.compare_histograms(
-            scan_image, reference_image
-        )
+        comparison = self.histogram_analyzer.compare_histograms(scan_image, reference_image)
 
         # Calculate overall match score
         # Based on histogram intersection and Bhattacharyya coefficient
@@ -1059,71 +1002,55 @@ class PlatinumPalladiumAI:
 
         # Identify worst zones (largest differences)
         worst_zones = sorted(
-            zone_differences.keys(),
-            key=lambda z: zone_differences[z],
-            reverse=True
+            zone_differences.keys(), key=lambda z: zone_differences[z], reverse=True
         )[:3]
 
         # Identify problem areas
-        problem_areas: List[Tuple[ProblemArea, str, float]] = []
+        problem_areas: list[tuple[ProblemArea, str, float]] = []
 
         # Check highlights
         if zone_differences[9] > 0.1 or zone_differences[10] > 0.1:
             severity = max(zone_differences[9], zone_differences[10])
             if scan_stats.zone_distribution.get(10, 0) > ref_stats.zone_distribution.get(10, 0):
-                problem_areas.append((
-                    ProblemArea.HIGHLIGHTS,
-                    "Highlights are blown out (too bright)",
-                    severity
-                ))
+                problem_areas.append(
+                    (ProblemArea.HIGHLIGHTS, "Highlights are blown out (too bright)", severity)
+                )
             else:
-                problem_areas.append((
-                    ProblemArea.HIGHLIGHTS,
-                    "Highlights are blocked (too dark)",
-                    severity
-                ))
+                problem_areas.append(
+                    (ProblemArea.HIGHLIGHTS, "Highlights are blocked (too dark)", severity)
+                )
 
         # Check shadows
         if zone_differences[0] > 0.1 or zone_differences[1] > 0.1:
             severity = max(zone_differences[0], zone_differences[1])
             if scan_stats.zone_distribution.get(0, 0) > ref_stats.zone_distribution.get(0, 0):
-                problem_areas.append((
-                    ProblemArea.SHADOWS,
-                    "Shadows are blocked (too dark)",
-                    severity
-                ))
+                problem_areas.append(
+                    (ProblemArea.SHADOWS, "Shadows are blocked (too dark)", severity)
+                )
             else:
-                problem_areas.append((
-                    ProblemArea.SHADOWS,
-                    "Shadows are weak (too light)",
-                    severity
-                ))
+                problem_areas.append(
+                    (ProblemArea.SHADOWS, "Shadows are weak (too light)", severity)
+                )
 
         # Check midtones
         if zone_differences[5] > 0.1:
             severity = zone_differences[5]
             if scan_stats.zone_distribution.get(5, 0) > ref_stats.zone_distribution.get(5, 0):
-                problem_areas.append((
-                    ProblemArea.MIDTONES,
-                    "Midtones are shifted (distribution mismatch)",
-                    severity
-                ))
+                problem_areas.append(
+                    (ProblemArea.MIDTONES, "Midtones are shifted (distribution mismatch)", severity)
+                )
 
         # Check overall density
         if abs(mean_diff) > 20:
             severity = min(1.0, abs(mean_diff) / 50)
             if mean_diff > 0:
-                problem_areas.append((
-                    ProblemArea.OVERALL_DENSITY,
-                    "Print is overall too light",
-                    severity
-                ))
+                problem_areas.append(
+                    (ProblemArea.OVERALL_DENSITY, "Print is overall too light", severity)
+                )
             else:
-                problem_areas.append((
-                    ProblemArea.OVERALL_DENSITY,
-                    "Print is overall too dark",
-                    severity
-                ))
+                problem_areas.append(
+                    (ProblemArea.OVERALL_DENSITY, "Print is overall too dark", severity)
+                )
 
         # Calculate corrections
         exposure_correction = 0.0
@@ -1138,8 +1065,7 @@ class PlatinumPalladiumAI:
             exposure_correction = -mean_diff / 30.0
             if exposure_correction > 0:
                 corrections.append(
-                    f"Increase exposure by {abs(exposure_correction):.1f} stops "
-                    "(print is too dark)"
+                    f"Increase exposure by {abs(exposure_correction):.1f} stops (print is too dark)"
                 )
             else:
                 corrections.append(
@@ -1167,17 +1093,23 @@ class PlatinumPalladiumAI:
         if ProblemArea.HIGHLIGHTS in [p[0] for p in problem_areas]:
             curve_adjustments["highlights"] = -0.1 if "blown" in str(problem_areas) else 0.1
             corrections.append(
-                "Adjust curve highlights: " +
-                ("Reduce highlight values" if curve_adjustments["highlights"] < 0
-                 else "Increase highlight values")
+                "Adjust curve highlights: "
+                + (
+                    "Reduce highlight values"
+                    if curve_adjustments["highlights"] < 0
+                    else "Increase highlight values"
+                )
             )
 
         if ProblemArea.SHADOWS in [p[0] for p in problem_areas]:
             curve_adjustments["shadows"] = -0.1 if "blocked" in str(problem_areas) else 0.1
             corrections.append(
-                "Adjust curve shadows: " +
-                ("Reduce shadow values" if curve_adjustments["shadows"] < 0
-                 else "Increase shadow values")
+                "Adjust curve shadows: "
+                + (
+                    "Reduce shadow values"
+                    if curve_adjustments["shadows"] < 0
+                    else "Increase shadow values"
+                )
             )
 
         # General recommendations
@@ -1208,7 +1140,7 @@ class PlatinumPalladiumAI:
 
     def optimize_workflow(
         self,
-        print_history: List[CalibrationRecord],
+        print_history: list[CalibrationRecord],
         success_threshold: float = 0.8,
     ) -> WorkflowOptimization:
         """
@@ -1241,8 +1173,7 @@ class PlatinumPalladiumAI:
         # Determine successful prints
         # For now, we'll consider prints with good density range as successful
         successful = [
-            r for r in print_history
-            if r.measured_densities and max(r.measured_densities) > 1.5
+            r for r in print_history if r.measured_densities and max(r.measured_densities) > 1.5
         ]
         successful_count = len(successful)
         success_rate = successful_count / total_prints if total_prints > 0 else 0.0
@@ -1290,14 +1221,14 @@ class PlatinumPalladiumAI:
                 trends["metal_ratio"] = "palladium_dominant"
                 insights.append(
                     "Your successful prints favor palladium-rich chemistry "
-                    f"(avg {avg_metal_ratio*100:.0f}% Pt). "
+                    f"(avg {avg_metal_ratio * 100:.0f}% Pt). "
                     "Consider this your preferred aesthetic."
                 )
             elif avg_metal_ratio > 0.7:
                 trends["metal_ratio"] = "platinum_dominant"
                 insights.append(
                     "Your successful prints favor platinum-rich chemistry "
-                    f"(avg {avg_metal_ratio*100:.0f}% Pt). "
+                    f"(avg {avg_metal_ratio * 100:.0f}% Pt). "
                     "Expect cool tones and maximum Dmax."
                 )
 
@@ -1402,7 +1333,9 @@ class PlatinumPalladiumAI:
         paper_lower = paper_type.lower()
 
         # Fast papers (sized, hot press)
-        if any(keyword in paper_lower for keyword in ["hot press", "hp", "sized", "arches platine"]):
+        if any(
+            keyword in paper_lower for keyword in ["hot press", "hp", "sized", "arches platine"]
+        ):
             return 0.9
 
         # Slow papers (unsized, cold press)

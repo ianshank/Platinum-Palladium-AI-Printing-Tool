@@ -8,12 +8,12 @@ import pytest
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.curves.visualization import (
-    CurveVisualizer,
-    CurveStatistics,
-    CurveComparisonResult,
-    VisualizationConfig,
-    PlotStyle,
     ColorScheme,
+    CurveComparisonResult,
+    CurveStatistics,
+    CurveVisualizer,
+    PlotStyle,
+    VisualizationConfig,
 )
 
 
@@ -312,7 +312,7 @@ class TestCurveVisualizer:
         assert isinstance(bytes_data, bytes)
         assert len(bytes_data) > 0
         # PNG magic bytes
-        assert bytes_data[:8] == b'\x89PNG\r\n\x1a\n'
+        assert bytes_data[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_save_figure(self, visualizer, sample_curve, tmp_path):
         """Test figure saving."""
@@ -345,13 +345,16 @@ class TestPlotStyles:
         """Create visualizer."""
         return CurveVisualizer()
 
-    @pytest.mark.parametrize("style", [
-        PlotStyle.LINE,
-        PlotStyle.LINE_MARKERS,
-        PlotStyle.SCATTER,
-        PlotStyle.AREA,
-        PlotStyle.STEP,
-    ])
+    @pytest.mark.parametrize(
+        "style",
+        [
+            PlotStyle.LINE,
+            PlotStyle.LINE_MARKERS,
+            PlotStyle.SCATTER,
+            PlotStyle.AREA,
+            PlotStyle.STEP,
+        ],
+    )
     def test_all_plot_styles(self, visualizer, sample_curve, style):
         """Test all plot styles work without error."""
         fig = visualizer.plot_single_curve(sample_curve, style=style)
@@ -361,13 +364,16 @@ class TestPlotStyles:
 class TestColorSchemes:
     """Tests for color schemes."""
 
-    @pytest.mark.parametrize("scheme", [
-        ColorScheme.PLATINUM,
-        ColorScheme.MONOCHROME,
-        ColorScheme.VIBRANT,
-        ColorScheme.PASTEL,
-        ColorScheme.ACCESSIBLE,
-    ])
+    @pytest.mark.parametrize(
+        "scheme",
+        [
+            ColorScheme.PLATINUM,
+            ColorScheme.MONOCHROME,
+            ColorScheme.VIBRANT,
+            ColorScheme.PASTEL,
+            ColorScheme.ACCESSIBLE,
+        ],
+    )
     def test_all_color_schemes(self, scheme):
         """Test all color schemes provide valid colors."""
         config = VisualizationConfig(color_scheme=scheme)

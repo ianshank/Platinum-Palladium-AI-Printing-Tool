@@ -16,7 +16,7 @@ Dependencies are lazily loaded to avoid import errors.
 
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -24,7 +24,6 @@ from ptpd_calibration.deep_learning.config import NeuralCurveSettings
 from ptpd_calibration.deep_learning.models import CurvePredictionResult
 from ptpd_calibration.deep_learning.types import (
     CurveLossFunction,
-    CurvePredictorArchitecture,
     CurvePoints,
     UncertaintyMethod,
 )
@@ -90,9 +89,7 @@ class CurveTransformer:
                 self.config = config
 
                 # Input projection
-                self.input_projection = nn.Linear(
-                    config.input_features, config.d_model
-                )
+                self.input_projection = nn.Linear(config.input_features, config.d_model)
 
                 # Positional encoding
                 self.positional_encoding = self._create_positional_encoding(
@@ -136,15 +133,12 @@ class CurveTransformer:
                 # Initialize weights
                 self.apply(self._init_weights)
 
-            def _create_positional_encoding(
-                self, max_len: int, d_model: int
-            ) -> torch.Tensor:
+            def _create_positional_encoding(self, max_len: int, d_model: int) -> torch.Tensor:
                 """Create sinusoidal positional encoding."""
                 pe = torch.zeros(max_len, d_model)
                 position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
                 div_term = torch.exp(
-                    torch.arange(0, d_model, 2).float()
-                    * (-np.log(10000.0) / d_model)
+                    torch.arange(0, d_model, 2).float() * (-np.log(10000.0) / d_model)
                 )
                 pe[:, 0::2] = torch.sin(position * div_term)
                 pe[:, 1::2] = torch.cos(position * div_term)
@@ -160,7 +154,7 @@ class CurveTransformer:
             def forward(
                 self,
                 x: torch.Tensor,
-                conditioning: Optional[torch.Tensor] = None,
+                conditioning: torch.Tensor | None = None,
             ) -> torch.Tensor:
                 """
                 Forward pass.
@@ -274,8 +268,8 @@ class NeuralCurvePredictor:
 
     def __init__(
         self,
-        settings: Optional[NeuralCurveSettings] = None,
-        device: Optional[str] = None,
+        settings: NeuralCurveSettings | None = None,
+        device: str | None = None,
     ):
         """
         Initialize the neural curve predictor.
@@ -291,7 +285,7 @@ class NeuralCurvePredictor:
         # Lazy-loaded components
         self._torch = None
         self._nn = None
-        self.model: Optional[CurveTransformer] = None
+        self.model: CurveTransformer | None = None
         self.optimizer = None
         self.ensemble: list[CurveTransformer] = []
 
@@ -399,7 +393,7 @@ class NeuralCurvePredictor:
         if self.settings.smoothness_weight > 0:
             # Penalize second derivative (curvature)
             second_deriv = predictions[:, 2:] - 2 * predictions[:, 1:-1] + predictions[:, :-2]
-            smoothness_penalty = (second_deriv ** 2).mean()
+            smoothness_penalty = (second_deriv**2).mean()
             total_loss = total_loss + self.settings.smoothness_weight * smoothness_penalty
 
         return total_loss
@@ -407,7 +401,7 @@ class NeuralCurvePredictor:
     def predict(
         self,
         input_values: CurvePoints,
-        conditioning: Optional[dict[str, Any]] = None,
+        conditioning: dict[str, Any] | None = None,
         return_uncertainty: bool = True,
     ) -> CurvePredictionResult:
         """
@@ -480,9 +474,7 @@ class NeuralCurvePredictor:
             output_values=output_values.tolist(),
             num_points=num_points,
             uncertainty=uncertainty.tolist() if uncertainty is not None else None,
-            mean_uncertainty=(
-                float(uncertainty.mean()) if uncertainty is not None else 0.0
-            ),
+            mean_uncertainty=(float(uncertainty.mean()) if uncertainty is not None else 0.0),
             confidence=1.0 - (uncertainty.mean() if uncertainty is not None else 0.0),
             is_monotonic=is_monotonic,
             max_slope=max_slope,
@@ -496,7 +488,7 @@ class NeuralCurvePredictor:
     def _prepare_input_tensor(
         self,
         input_values: CurvePoints,
-        conditioning: Optional[dict[str, Any]],
+        conditioning: dict[str, Any] | None,
     ) -> Any:
         """Prepare input tensor from curve points and conditioning."""
         num_points = len(input_values)
@@ -521,9 +513,7 @@ class NeuralCurvePredictor:
         # Convert to tensor
         return self._torch.from_numpy(features).float().to(self.device)
 
-    def _prepare_conditioning_tensor(
-        self, conditioning: Optional[dict[str, Any]]
-    ) -> Optional[Any]:
+    def _prepare_conditioning_tensor(self, conditioning: dict[str, Any] | None) -> Any | None:
         """Prepare conditioning tensor for the model."""
         if not conditioning or not self.settings.include_conditioning:
             return None
@@ -539,7 +529,7 @@ class NeuralCurvePredictor:
         return self._torch.from_numpy(cond_features).float().to(self.device)
 
     def _predict_mc_dropout(
-        self, input_tensor: Any, conditioning: Optional[dict[str, Any]]
+        self, input_tensor: Any, conditioning: dict[str, Any] | None
     ) -> np.ndarray:
         """Predict with MC dropout for uncertainty estimation."""
         self.model.train()  # Keep dropout active
@@ -556,7 +546,7 @@ class NeuralCurvePredictor:
         return np.array(predictions)
 
     def _predict_ensemble(
-        self, input_tensor: Any, conditioning: Optional[dict[str, Any]]
+        self, input_tensor: Any, conditioning: dict[str, Any] | None
     ) -> np.ndarray:
         """Predict with ensemble for uncertainty estimation."""
         if len(self.ensemble) == 0:
@@ -581,8 +571,8 @@ class NeuralCurvePredictor:
         self,
         X_train: np.ndarray,
         y_train: np.ndarray,
-        X_val: Optional[np.ndarray] = None,
-        y_val: Optional[np.ndarray] = None,
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
         save_best: bool = True,
     ) -> dict[str, list[float]]:
         """
@@ -692,10 +682,7 @@ class NeuralCurvePredictor:
                         f"Loss: {avg_loss:.4f}, Val Loss: {val_loss_value:.4f}"
                     )
                 else:
-                    print(
-                        f"Epoch {epoch + 1}/{self.settings.epochs} - "
-                        f"Loss: {avg_loss:.4f}"
-                    )
+                    print(f"Epoch {epoch + 1}/{self.settings.epochs} - Loss: {avg_loss:.4f}")
 
         return history
 
@@ -703,8 +690,8 @@ class NeuralCurvePredictor:
         self,
         X_train: np.ndarray,
         y_train: np.ndarray,
-        X_val: Optional[np.ndarray] = None,
-        y_val: Optional[np.ndarray] = None,
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
     ) -> list[dict[str, list[float]]]:
         """
         Train an ensemble of models for uncertainty quantification.

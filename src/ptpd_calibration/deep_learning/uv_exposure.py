@@ -17,7 +17,7 @@ All settings are configuration-driven with no hardcoded values.
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 from pydantic import BaseModel
@@ -25,7 +25,6 @@ from pydantic import BaseModel
 from ptpd_calibration.deep_learning.config import UVExposureSettings
 from ptpd_calibration.deep_learning.models import UVExposurePrediction
 from ptpd_calibration.deep_learning.types import (
-    ExposureConfidence,
     UncertaintyMethod,
     UVSourceType,
 )
@@ -52,8 +51,7 @@ def _import_torch():
             _optim = optim
         except ImportError as e:
             raise ImportError(
-                "PyTorch is required for UV exposure prediction. "
-                "Install with: pip install torch"
+                "PyTorch is required for UV exposure prediction. Install with: pip install torch"
             ) from e
     return _torch, _nn, _optim
 
@@ -108,9 +106,7 @@ class ExposureNet:
         )
 
         # Calculate total input dimension
-        num_continuous = len(settings.input_features) - len(
-            settings.categorical_features
-        )
+        num_continuous = len(settings.input_features) - len(settings.categorical_features)
         num_categorical_embeddings = len(settings.categorical_features) * settings.embedding_dim
         input_dim = num_continuous + num_categorical_embeddings
 
@@ -118,7 +114,7 @@ class ExposureNet:
         layers = []
         prev_dim = input_dim
 
-        for i, hidden_dim in enumerate(settings.hidden_layers):
+        for _i, hidden_dim in enumerate(settings.hidden_layers):
             layers.append(nn.Linear(prev_dim, hidden_dim))
 
             # Activation function based on config
@@ -249,8 +245,8 @@ class UVExposurePredictor:
 
     def __init__(
         self,
-        settings: Optional[UVExposureSettings] = None,
-        model_path: Optional[Path] = None,
+        settings: UVExposureSettings | None = None,
+        model_path: Path | None = None,
     ):
         """
         Initialize the UV exposure predictor.
@@ -280,9 +276,7 @@ class UVExposurePredictor:
         elif self.settings.model_path:
             self.load(self.settings.model_path)
 
-        logger.info(
-            f"UVExposurePredictor initialized with {len(self.ensemble_models)} model(s)"
-        )
+        logger.info(f"UVExposurePredictor initialized with {len(self.ensemble_models)} model(s)")
 
     def predict(
         self,
@@ -423,9 +417,7 @@ class UVExposurePredictor:
         if "paper_type" in self.settings.categorical_features:
             # Map paper type to index
             if input_data.paper_type not in self.paper_type_mapping:
-                self.paper_type_mapping[input_data.paper_type] = len(
-                    self.paper_type_mapping
-                )
+                self.paper_type_mapping[input_data.paper_type] = len(self.paper_type_mapping)
             idx = self.paper_type_mapping[input_data.paper_type]
             categorical_indices["paper_type"] = torch.tensor(
                 [idx], dtype=torch.long, device=self.ensemble_models[0].device
@@ -439,9 +431,7 @@ class UVExposurePredictor:
 
         return continuous_tensor, categorical_indices
 
-    def _calculate_factor_contributions(
-        self, input_data: ExposureInputData
-    ) -> dict[str, float]:
+    def _calculate_factor_contributions(self, input_data: ExposureInputData) -> dict[str, float]:
         """
         Calculate the contribution of each factor to the prediction.
 
@@ -457,7 +447,7 @@ class UVExposurePredictor:
         contributions["target_density"] = input_data.target_density * 0.3
 
         # UV source intensity factor (simplified)
-        uv_intensity_factors = {
+        _uv_intensity_factors = {  # Available for future lookup
             UVSourceType.NUARC_26_1K: 1.0,
             UVSourceType.LED_365NM: 0.7,
             UVSourceType.SUNLIGHT: 0.5,
@@ -493,13 +483,9 @@ class UVExposurePredictor:
 
         # Environmental recommendations
         if input_data.humidity < 40:
-            recommendations.append(
-                "Low humidity may require slightly longer exposure times."
-            )
+            recommendations.append("Low humidity may require slightly longer exposure times.")
         elif input_data.humidity > 70:
-            recommendations.append(
-                "High humidity may allow for slightly shorter exposure times."
-            )
+            recommendations.append("High humidity may allow for slightly shorter exposure times.")
 
         # Chemistry recommendations
         if input_data.chemistry_ratio > 0.7:
@@ -515,9 +501,7 @@ class UVExposurePredictor:
 
         return recommendations
 
-    def _generate_warnings(
-        self, input_data: ExposureInputData, predicted_time: float
-    ) -> list[str]:
+    def _generate_warnings(self, input_data: ExposureInputData, predicted_time: float) -> list[str]:
         """Generate warnings based on input parameters."""
         warnings = []
 
@@ -543,7 +527,7 @@ class UVExposurePredictor:
     def train(
         self,
         training_data: list[dict[str, Any]],
-        validation_data: Optional[list[dict[str, Any]]] = None,
+        validation_data: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """
         Train the UV exposure model.
@@ -564,7 +548,7 @@ class UVExposurePredictor:
         for model_idx, model in enumerate(self.ensemble_models):
             logger.info(f"Training model {model_idx + 1}/{len(self.ensemble_models)}")
 
-            optimizer = optim.Adam(
+            _optimizer = optim.Adam(  # Reserved for training loop
                 model.parameters(),
                 lr=self.settings.learning_rate,
             )
@@ -573,7 +557,7 @@ class UVExposurePredictor:
             model.to(model.device)
             best_loss = float("inf")
 
-            for epoch in range(self.settings.epochs):
+            for _epoch in range(self.settings.epochs):
                 # Training epoch would go here
                 # This is a placeholder - full implementation would include:
                 # - Data batching
@@ -642,8 +626,8 @@ class UVExposurePredictor:
 
 # Factory function for easy instantiation
 def create_uv_exposure_predictor(
-    settings: Optional[UVExposureSettings] = None,
-    model_path: Optional[Path] = None,
+    settings: UVExposureSettings | None = None,
+    model_path: Path | None = None,
 ) -> UVExposurePredictor:
     """
     Create a UV exposure predictor.

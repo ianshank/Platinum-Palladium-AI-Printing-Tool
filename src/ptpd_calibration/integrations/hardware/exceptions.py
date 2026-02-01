@@ -285,3 +285,130 @@ class PrinterNotFoundError(PrinterError):
             details=details,
             **kwargs,
         )
+
+
+class PrinterDriverError(PrinterError):
+    """Printer driver error.
+
+    Raised when the printer driver fails to initialize or operate.
+    """
+
+    def __init__(
+        self,
+        message: str = "Printer driver error",
+        driver_name: str | None = None,
+        **kwargs: Any,
+    ):
+        details = kwargs.pop("details", {})
+        if driver_name:
+            details["driver_name"] = driver_name
+        super().__init__(
+            message,
+            operation="driver_init",
+            details=details,
+            **kwargs,
+        )
+
+
+class DeviceReconnectionError(DeviceConnectionError):
+    """Failed to reconnect to device after connection loss.
+
+    Raised when automatic reconnection attempts are exhausted.
+    """
+
+    def __init__(
+        self,
+        message: str = "Failed to reconnect to device",
+        attempts: int | None = None,
+        device_type: str | None = None,
+        **kwargs: Any,
+    ):
+        details = kwargs.pop("details", {})
+        if attempts is not None:
+            details["reconnect_attempts"] = attempts
+        # Don't pass operation - let parent class set it, then override
+        super().__init__(
+            message,
+            device_type=device_type,
+            details=details,
+            **kwargs,
+        )
+        # Override operation after parent init
+        self.operation = "reconnect"
+
+
+class DeviceTimeoutError(DeviceCommunicationError):
+    """Device communication timeout.
+
+    Raised when a device operation exceeds the configured timeout.
+    """
+
+    def __init__(
+        self,
+        message: str = "Device operation timed out",
+        timeout_seconds: float | None = None,
+        device_type: str | None = None,
+        **kwargs: Any,
+    ):
+        details = kwargs.pop("details", {})
+        if timeout_seconds is not None:
+            details["timeout_seconds"] = timeout_seconds
+        # Don't pass operation - parent sets it, operation is already "communicate"
+        super().__init__(
+            message,
+            device_type=device_type,
+            details=details,
+            **kwargs,
+        )
+        # Override operation to be more specific
+        self.operation = "timeout"
+
+
+class DiscoveryError(HardwareError):
+    """Device discovery failed.
+
+    Raised when device discovery operations fail.
+    """
+
+    def __init__(
+        self,
+        message: str = "Device discovery failed",
+        discovery_method: str | None = None,
+        **kwargs: Any,
+    ):
+        details = kwargs.pop("details", {})
+        if discovery_method:
+            details["discovery_method"] = discovery_method
+        super().__init__(
+            message,
+            operation="discover",
+            details=details,
+            **kwargs,
+        )
+
+
+class PermissionDeniedError(DiscoveryError):
+    """Permission denied accessing device.
+
+    Raised when the application lacks permissions to access hardware.
+    Common on Linux when user not in dialout/plugdev groups.
+    """
+
+    def __init__(
+        self,
+        message: str = "Permission denied accessing device",
+        device_path: str | None = None,
+        required_permission: str | None = None,
+        **kwargs: Any,
+    ):
+        details = kwargs.pop("details", {})
+        if device_path:
+            details["device_path"] = device_path
+        if required_permission:
+            details["required_permission"] = required_permission
+        super().__init__(
+            message,
+            discovery_method="permission_check",
+            details=details,
+            **kwargs,
+        )

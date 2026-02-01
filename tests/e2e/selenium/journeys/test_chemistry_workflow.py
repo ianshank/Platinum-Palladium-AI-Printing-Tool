@@ -149,16 +149,16 @@ class TestChemistryWorkflow:
 
         chemistry_page.navigate_to_chemistry()
 
+        import contextlib
+
         for chem_type in chemistry_types:
-            try:
-                results = chemistry_page.calculate_recipe(
+            with contextlib.suppress(Exception):
+                _ = chemistry_page.calculate_recipe(
                     width=8.0,
                     height=10.0,
                     chemistry_type=chem_type,
                 )
                 # Some chemistry types may not be available
-            except Exception:
-                pass  # Skip if chemistry type not available
 
     def test_extreme_metal_ratios(self, chemistry_page):
         """Test edge cases for metal ratios."""

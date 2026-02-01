@@ -10,22 +10,19 @@ Tests cover:
 
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
 
 from ptpd_calibration.deep_learning.training.data_generators import (
-    SyntheticDataConfig,
-    DetectionDataGenerator,
     CurveDataGenerator,
-    ExposureDataGenerator,
     DefectDataGenerator,
+    DetectionDataGenerator,
+    ExposureDataGenerator,
     RecipeDataGenerator,
+    SyntheticDataConfig,
 )
-
 from ptpd_calibration.deep_learning.training.pipelines import (
+    EarlyStopping,
     TrainingConfig,
     TrainingMetrics,
-    TrainingResult,
-    EarlyStopping,
 )
 
 
@@ -251,7 +248,7 @@ class TestDefectDataGenerator:
         gen_with_noise = DefectDataGenerator(config_with_noise, num_defect_types=7)
 
         # Generate many samples to observe noise effect
-        data_no_noise = gen_no_noise.generate(1000)
+        gen_no_noise.generate(1000)
         data_with_noise = gen_with_noise.generate(1000)
 
         # With noise, labels should be more distributed
@@ -440,27 +437,15 @@ class TestDataSeparation:
         test_data = gen_test.generate(100)
 
         # Ensure data is different
-        assert not np.allclose(
-            train_data["densities"], val_data["densities"]
-        )
-        assert not np.allclose(
-            train_data["densities"], test_data["densities"]
-        )
-        assert not np.allclose(
-            val_data["densities"], test_data["densities"]
-        )
+        assert not np.allclose(train_data["densities"], val_data["densities"])
+        assert not np.allclose(train_data["densities"], test_data["densities"])
+        assert not np.allclose(val_data["densities"], test_data["densities"])
 
     def test_val_test_have_less_noise(self):
         """Test that validation/test have different noise levels."""
-        config_train = SyntheticDataConfig(
-            seed=42, input_noise_std=0.1, output_noise_std=0.05
-        )
-        config_val = SyntheticDataConfig(
-            seed=1042, input_noise_std=0.05, output_noise_std=0.025
-        )
-        config_test = SyntheticDataConfig(
-            seed=2042, input_noise_std=0.0, output_noise_std=0.0
-        )
+        config_train = SyntheticDataConfig(seed=42, input_noise_std=0.1, output_noise_std=0.05)
+        config_val = SyntheticDataConfig(seed=1042, input_noise_std=0.05, output_noise_std=0.025)
+        config_test = SyntheticDataConfig(seed=2042, input_noise_std=0.0, output_noise_std=0.0)
 
         # This just verifies the configs are set up correctly
         assert config_train.input_noise_std > config_val.input_noise_std
@@ -517,7 +502,8 @@ class TestAntiHallucinationMeasures:
 
 # Skip tests that require torch if not available
 try:
-    import torch
+    import torch  # noqa: F401
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False

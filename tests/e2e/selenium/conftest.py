@@ -8,8 +8,8 @@ screenshot capture on failure, and common test utilities.
 import os
 import subprocess
 import time
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 
@@ -18,13 +18,13 @@ try:
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options as ChromeOptions
     from selenium.webdriver.chrome.service import Service as ChromeService
-    from selenium.webdriver.firefox.options import Options as FirefoxOptions
-    from selenium.webdriver.firefox.service import Service as FirefoxService
+    from selenium.webdriver.common.by import By
     from selenium.webdriver.edge.options import Options as EdgeOptions
     from selenium.webdriver.edge.service import Service as EdgeService
-    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.firefox.options import Options as FirefoxOptions
+    from selenium.webdriver.firefox.service import Service as FirefoxService
     from selenium.webdriver.support import expected_conditions as EC
-    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
 
     SELENIUM_AVAILABLE = True
 except ImportError:
@@ -55,12 +55,10 @@ BROWSER = os.environ.get("PTPD_TEST_BROWSER", "chrome").lower()
 
 def pytest_configure(config):
     """Add Selenium markers."""
-    config.addinivalue_line(
-        "markers", "selenium: mark test as requiring Selenium WebDriver"
-    )
+    config.addinivalue_line("markers", "selenium: mark test as requiring Selenium WebDriver")
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config, items):  # noqa: ARG001
     """Skip Selenium tests if Selenium is not available."""
     if not SELENIUM_AVAILABLE:
         skip_selenium = pytest.mark.skip(reason="Selenium not installed")
@@ -180,7 +178,10 @@ def create_edge_driver(headless: bool = True) -> "webdriver.Edge":
 
 @pytest.fixture(scope="function")
 def driver(
-    app_process, app_url: str, screenshots_dir: Path, request
+    app_process,
+    app_url: str,
+    screenshots_dir: Path,
+    request,  # noqa: ARG001
 ) -> Generator["webdriver.Remote", None, None]:
     """
     Create and manage WebDriver instance.
@@ -219,7 +220,7 @@ def driver(
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
-def pytest_runtest_makereport(item, call):
+def pytest_runtest_makereport(item, call):  # noqa: ARG001
     """Store test result for screenshot capture."""
     outcome = yield
     rep = outcome.get_result()
@@ -261,18 +262,16 @@ def gradio_wait(driver):
     def _gradio_wait(timeout=DEFAULT_TIMEOUT):
         wait = WebDriverWait(driver, timeout)
         # Wait for Gradio footer or main container to be present
-        wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, ".gradio-container"))
-        )
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".gradio-container")))
         # Wait for any loading indicators to disappear
-        try:
+        import contextlib
+
+        with contextlib.suppress(Exception):
             wait.until(
                 EC.invisibility_of_element_located(
                     (By.CSS_SELECTOR, ".loading, .progress-bar:not([style*='display: none'])")
                 )
             )
-        except Exception:
-            pass  # Loading indicator may not exist
         time.sleep(0.5)  # Small buffer for JS initialization
 
     return _gradio_wait

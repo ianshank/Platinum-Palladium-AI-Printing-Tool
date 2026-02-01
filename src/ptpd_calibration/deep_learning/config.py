@@ -6,7 +6,6 @@ No hardcoded values - everything is configurable.
 """
 
 from pathlib import Path
-from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -113,11 +112,11 @@ class DetectionModelSettings(BaseSettings):
     )
 
     # Model paths (optional custom models)
-    custom_yolo_weights: Optional[Path] = Field(
+    custom_yolo_weights: Path | None = Field(
         default=None,
         description="Path to custom YOLO weights",
     )
-    custom_sam_checkpoint: Optional[Path] = Field(
+    custom_sam_checkpoint: Path | None = Field(
         default=None,
         description="Path to custom SAM checkpoint",
     )
@@ -189,7 +188,7 @@ class ImageQualitySettings(BaseSettings):
         default="imagenet",
         description="Pretrained weights: imagenet, clip, custom",
     )
-    custom_weights_path: Optional[Path] = Field(
+    custom_weights_path: Path | None = Field(
         default=None,
         description="Path to custom IQA model weights",
     )
@@ -329,7 +328,7 @@ class DiffusionSettings(BaseSettings):
         default=False,
         description="Use custom LoRA for Pt/Pd aesthetic",
     )
-    lora_weights_path: Optional[Path] = Field(
+    lora_weights_path: Path | None = Field(
         default=None,
         description="Path to custom LoRA weights",
     )
@@ -515,11 +514,11 @@ class NeuralCurveSettings(BaseSettings):
     )
 
     # Model paths
-    pretrained_model_path: Optional[Path] = Field(
+    pretrained_model_path: Path | None = Field(
         default=None,
         description="Path to pretrained model",
     )
-    save_model_path: Optional[Path] = Field(
+    save_model_path: Path | None = Field(
         default=None,
         description="Path to save trained model",
     )
@@ -606,7 +605,7 @@ class UVExposureSettings(BaseSettings):
     ensemble_size: int = Field(default=5, ge=2, le=20)
 
     # Model paths
-    model_path: Optional[Path] = Field(default=None)
+    model_path: Path | None = Field(default=None)
 
     # Hardware
     device: str = Field(default="auto")
@@ -700,8 +699,8 @@ class DefectDetectionSettings(BaseSettings):
     )
 
     # Model paths
-    segmentation_model_path: Optional[Path] = Field(default=None)
-    classifier_model_path: Optional[Path] = Field(default=None)
+    segmentation_model_path: Path | None = Field(default=None)
+    classifier_model_path: Path | None = Field(default=None)
 
     # Training
     learning_rate: float = Field(default=1e-4, ge=1e-6, le=1e-2)
@@ -799,8 +798,8 @@ class RecipeRecommendationSettings(BaseSettings):
     )
 
     # Model paths
-    model_path: Optional[Path] = Field(default=None)
-    embeddings_path: Optional[Path] = Field(default=None)
+    model_path: Path | None = Field(default=None)
+    embeddings_path: Path | None = Field(default=None)
 
     # Training
     learning_rate: float = Field(default=1e-3, ge=1e-6, le=1e-2)
@@ -913,9 +912,9 @@ class MultiModalSettings(BaseSettings):
     )
 
     # API settings (inherit from LLM settings if not specified)
-    anthropic_api_key: Optional[str] = Field(default=None)
-    openai_api_key: Optional[str] = Field(default=None)
-    google_api_key: Optional[str] = Field(default=None)
+    anthropic_api_key: str | None = Field(default=None)
+    openai_api_key: str | None = Field(default=None)
+    google_api_key: str | None = Field(default=None)
 
     # Image processing
     max_image_size: int = Field(
@@ -1103,7 +1102,7 @@ class FederatedLearningSettings(BaseSettings):
     )
 
     # Client settings
-    client_id: Optional[str] = Field(
+    client_id: str | None = Field(
         default=None,
         description="Unique client identifier",
     )
@@ -1136,7 +1135,7 @@ class DeepLearningSettings(BaseSettings):
         default=True,
         description="Cache loaded models in memory",
     )
-    model_cache_dir: Optional[Path] = Field(
+    model_cache_dir: Path | None = Field(
         default=None,
         description="Directory for model cache",
     )
@@ -1160,40 +1159,22 @@ class DeepLearningSettings(BaseSettings):
     )
 
     # Subsettings
-    detection: DetectionModelSettings = Field(
-        default_factory=DetectionModelSettings
-    )
-    image_quality: ImageQualitySettings = Field(
-        default_factory=ImageQualitySettings
-    )
-    diffusion: DiffusionSettings = Field(
-        default_factory=DiffusionSettings
-    )
-    neural_curve: NeuralCurveSettings = Field(
-        default_factory=NeuralCurveSettings
-    )
-    uv_exposure: UVExposureSettings = Field(
-        default_factory=UVExposureSettings
-    )
-    defect_detection: DefectDetectionSettings = Field(
-        default_factory=DefectDetectionSettings
-    )
+    detection: DetectionModelSettings = Field(default_factory=DetectionModelSettings)
+    image_quality: ImageQualitySettings = Field(default_factory=ImageQualitySettings)
+    diffusion: DiffusionSettings = Field(default_factory=DiffusionSettings)
+    neural_curve: NeuralCurveSettings = Field(default_factory=NeuralCurveSettings)
+    uv_exposure: UVExposureSettings = Field(default_factory=UVExposureSettings)
+    defect_detection: DefectDetectionSettings = Field(default_factory=DefectDetectionSettings)
     recipe_recommendation: RecipeRecommendationSettings = Field(
         default_factory=RecipeRecommendationSettings
     )
-    print_comparison: PrintComparisonSettings = Field(
-        default_factory=PrintComparisonSettings
-    )
-    multimodal: MultiModalSettings = Field(
-        default_factory=MultiModalSettings
-    )
-    federated: FederatedLearningSettings = Field(
-        default_factory=FederatedLearningSettings
-    )
+    print_comparison: PrintComparisonSettings = Field(default_factory=PrintComparisonSettings)
+    multimodal: MultiModalSettings = Field(default_factory=MultiModalSettings)
+    federated: FederatedLearningSettings = Field(default_factory=FederatedLearningSettings)
 
     @field_validator("model_cache_dir", mode="before")
     @classmethod
-    def resolve_cache_dir(cls, v: Optional[Path]) -> Optional[Path]:
+    def resolve_cache_dir(cls, v: Path | None) -> Path | None:
         """Resolve cache directory path."""
         if v is None:
             return Path.home() / ".ptpd" / "models"
@@ -1218,7 +1199,7 @@ class DeepLearningSettings(BaseSettings):
 
 
 # Global settings instance
-_deep_learning_settings: Optional[DeepLearningSettings] = None
+_deep_learning_settings: DeepLearningSettings | None = None
 
 
 def get_deep_learning_settings() -> DeepLearningSettings:
@@ -1230,7 +1211,7 @@ def get_deep_learning_settings() -> DeepLearningSettings:
 
 
 def configure_deep_learning(
-    settings: Optional[DeepLearningSettings] = None,
+    settings: DeepLearningSettings | None = None,
     **kwargs,
 ) -> DeepLearningSettings:
     """Configure deep learning settings."""

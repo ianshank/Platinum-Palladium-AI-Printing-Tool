@@ -13,7 +13,7 @@ The simulator models:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
@@ -58,7 +58,7 @@ class ProcessParameters:
     toe_position: float = 0.15
     contrast: float = 1.0
 
-    def to_tensor(self, device: Optional[torch.device] = None) -> torch.Tensor:
+    def to_tensor(self, device: torch.device | None = None) -> torch.Tensor:
         """Convert to tensor."""
         _check_torch()
         tensor = torch.tensor(
@@ -77,7 +77,7 @@ class ProcessParameters:
         return tensor
 
     @classmethod
-    def from_tensor(cls, tensor: torch.Tensor) -> "ProcessParameters":
+    def from_tensor(cls, tensor: torch.Tensor) -> ProcessParameters:
         """Create from tensor."""
         _check_torch()
         values = tensor.detach().cpu().numpy()
@@ -168,15 +168,11 @@ class CharacteristicCurve(nn.Module):
 
         # Apply shoulder compression (high values)
         shoulder_strength = torch.sigmoid(self.shoulder) * 0.5
-        response = response - shoulder_strength * torch.pow(
-            torch.clamp(response - 0.5, 0, 0.5), 2
-        )
+        response = response - shoulder_strength * torch.pow(torch.clamp(response - 0.5, 0, 0.5), 2)
 
         # Apply toe expansion (low values)
         toe_strength = torch.sigmoid(self.toe) * 0.3
-        response = response + toe_strength * torch.pow(
-            torch.clamp(0.3 - response, 0, 0.3), 2
-        )
+        response = response + toe_strength * torch.pow(torch.clamp(0.3 - response, 0, 0.3), 2)
 
         # Scale to density range
         density = self.dmin + (self.dmax - self.dmin) * response
@@ -197,7 +193,7 @@ class ProcessSimulator(nn.Module):
 
     def __init__(
         self,
-        settings: Optional[DeepLearningSettings] = None,
+        settings: DeepLearningSettings | None = None,
         learnable: bool = True,
     ):
         """

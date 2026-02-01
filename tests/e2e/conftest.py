@@ -68,7 +68,7 @@ def ensure_app_running(app_url):
             time.sleep(1)
             if i == max_retries - 1:
                 process.terminate()
-                raise RuntimeError("Failed to start app.")
+                raise RuntimeError("Failed to start app.") from None
 
     yield
 
@@ -87,7 +87,7 @@ def pytest_configure(config):
     )
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config, items):  # noqa: ARG001
     """Skip browser tests if playwright is not available."""
     if not PLAYWRIGHT_AVAILABLE:
         skip_browser = pytest.mark.skip(reason="Playwright not installed")

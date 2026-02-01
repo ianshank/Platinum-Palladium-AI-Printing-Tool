@@ -11,13 +11,12 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from ptpd_calibration.ml.deep.exceptions import (
     CheckpointError,
-    DeepLearningError,
     ModelNotTrainedError,
 )
 
@@ -25,6 +24,7 @@ if TYPE_CHECKING:
     from ptpd_calibration.config import DeepLearningSettings
     from ptpd_calibration.core.models import CalibrationRecord, CurveData
     from ptpd_calibration.ml.database import CalibrationDatabase
+    from ptpd_calibration.ml.deep.dataset import FeatureEncoder
 
 try:
     import torch
@@ -53,10 +53,10 @@ class PredictionResult:
     """Result from curve prediction."""
 
     curve: np.ndarray  # Predicted curve values (LUT)
-    control_points: Optional[np.ndarray] = None  # Control points if available
-    uncertainty: Optional[float] = None  # Prediction uncertainty
-    confidence: Optional[float] = None  # Confidence score (0-1)
-    metadata: Optional[dict] = None  # Additional metadata
+    control_points: np.ndarray | None = None  # Control points if available
+    uncertainty: float | None = None  # Prediction uncertainty
+    confidence: float | None = None  # Confidence score (0-1)
+    metadata: dict | None = None  # Additional metadata
 
 
 class DeepCurvePredictor:
@@ -72,8 +72,8 @@ class DeepCurvePredictor:
 
     def __init__(
         self,
-        settings: Optional[DeepLearningSettings] = None,
-        device: Optional[str] = None,
+        settings: DeepLearningSettings | None = None,
+        device: str | None = None,
     ):
         """
         Initialize DeepCurvePredictor.
@@ -91,22 +91,22 @@ class DeepCurvePredictor:
         self.device = get_device(device or self.settings.device)
 
         # Model and encoder storage
-        self.model: Optional[nn.Module] = None
-        self.encoder: Optional["FeatureEncoder"] = None
+        self.model: nn.Module | None = None
+        self.encoder: FeatureEncoder | None = None
         self.is_trained = False
 
         # Ensemble models for uncertainty estimation
         self.ensemble_models: list[nn.Module] = []
 
         # Training history
-        self.training_history: Optional[dict] = None
+        self.training_history: dict | None = None
 
     def train(
         self,
-        database: "CalibrationDatabase",
+        database: CalibrationDatabase,
         val_ratio: float = 0.2,
-        num_epochs: Optional[int] = None,
-        callbacks: Optional[list] = None,
+        num_epochs: int | None = None,
+        callbacks: list | None = None,
     ) -> dict:
         """
         Train the model on calibration data.
@@ -121,7 +121,6 @@ class DeepCurvePredictor:
             Training statistics.
         """
         from ptpd_calibration.ml.deep.dataset import (
-            CalibrationDataset,
             DataAugmentation,
             create_dataloaders,
         )
@@ -198,9 +197,9 @@ class DeepCurvePredictor:
 
     def _train_ensemble(
         self,
-        database: "CalibrationDatabase",
+        database: CalibrationDatabase,
         val_ratio: float,
-        num_epochs: Optional[int],
+        num_epochs: int | None,
     ) -> None:
         """Train ensemble of models for uncertainty estimation."""
         from ptpd_calibration.ml.deep.dataset import DataAugmentation, create_dataloaders
@@ -254,7 +253,7 @@ class DeepCurvePredictor:
 
     def predict(
         self,
-        record: "CalibrationRecord",
+        record: CalibrationRecord,
         return_uncertainty: bool = True,
     ) -> PredictionResult:
         """
@@ -326,8 +325,8 @@ class DeepCurvePredictor:
 
     def predict_with_mc_dropout(
         self,
-        record: "CalibrationRecord",
-        num_samples: Optional[int] = None,
+        record: CalibrationRecord,
+        num_samples: int | None = None,
     ) -> PredictionResult:
         """
         Predict with Monte Carlo dropout for uncertainty.
@@ -380,9 +379,9 @@ class DeepCurvePredictor:
         self,
         prediction: PredictionResult,
         name: str = "DL Predicted Curve",
-        paper_type: Optional[str] = None,
-        chemistry: Optional[str] = None,
-    ) -> "CurveData":
+        paper_type: str | None = None,
+        chemistry: str | None = None,
+    ) -> CurveData:
         """
         Convert prediction to CurveData model.
 
@@ -464,8 +463,8 @@ class DeepCurvePredictor:
     def load(
         cls,
         path: Path,
-        device: Optional[str] = None,
-    ) -> "DeepCurvePredictor":
+        device: str | None = None,
+    ) -> DeepCurvePredictor:
         """
         Load a predictor from disk.
 
@@ -546,7 +545,7 @@ class DeepCurvePredictor:
 
     def suggest_adjustments(
         self,
-        record: "CalibrationRecord",
+        record: CalibrationRecord,
         target_curve: np.ndarray,
     ) -> dict:
         """
@@ -595,7 +594,7 @@ class DeepCurvePredictor:
                 adjustments["metal_ratio_delta"] = max(-0.2, range_diff)
 
         # Analyze shadow detail
-        shadow_diff = np.mean(diff[:len(diff) // 4])
+        shadow_diff = np.mean(diff[: len(diff) // 4])
         if abs(shadow_diff) > 0.05:
             if shadow_diff > 0:
                 suggestions.append("Add contrast agent for more shadow detail")

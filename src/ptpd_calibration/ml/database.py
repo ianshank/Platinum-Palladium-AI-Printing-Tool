@@ -5,7 +5,6 @@ Calibration database for storing and querying historical records.
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 from uuid import UUID
 
 import numpy as np
@@ -46,7 +45,7 @@ class CalibrationDatabase:
             self._chemistry_index[chem_key] = []
         self._chemistry_index[chem_key].append(record.id)
 
-    def get_record(self, record_id: UUID) -> Optional[CalibrationRecord]:
+    def get_record(self, record_id: UUID) -> CalibrationRecord | None:
         """Get a record by ID."""
         return self.records.get(record_id)
 
@@ -140,9 +139,7 @@ class CalibrationDatabase:
 
         # Exposure time similarity (log scale)
         if record1.exposure_time > 0 and record2.exposure_time > 0:
-            log_ratio = abs(
-                np.log(record1.exposure_time) - np.log(record2.exposure_time)
-            )
+            log_ratio = abs(np.log(record1.exposure_time) - np.log(record2.exposure_time))
             score += 0.15 * max(0, 1 - log_ratio / 2)
         weights += 0.15
 
@@ -150,13 +147,13 @@ class CalibrationDatabase:
 
     def query(
         self,
-        paper_type: Optional[str] = None,
-        chemistry_type: Optional[str] = None,
-        min_exposure: Optional[float] = None,
-        max_exposure: Optional[float] = None,
-        min_metal_ratio: Optional[float] = None,
-        max_metal_ratio: Optional[float] = None,
-        tags: Optional[list[str]] = None,
+        paper_type: str | None = None,
+        chemistry_type: str | None = None,
+        min_exposure: float | None = None,
+        max_exposure: float | None = None,
+        min_metal_ratio: float | None = None,
+        max_metal_ratio: float | None = None,
+        tags: list[str] | None = None,
     ) -> list[CalibrationRecord]:
         """
         Query records with filters.

@@ -13,7 +13,7 @@ All parameters are configuration-driven with no hardcoded values.
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 import numpy as np
@@ -71,11 +71,13 @@ class RecipeEncoder:
                     prev_dim = input_dim
 
                     for hidden_dim in hidden_layers:
-                        layers.extend([
-                            nn.Linear(prev_dim, hidden_dim),
-                            nn.ReLU(),
-                            nn.Dropout(self.settings.nn_dropout)
-                        ])
+                        layers.extend(
+                            [
+                                nn.Linear(prev_dim, hidden_dim),
+                                nn.ReLU(),
+                                nn.Dropout(self.settings.nn_dropout),
+                            ]
+                        )
                         prev_dim = hidden_dim
 
                     layers.append(nn.Linear(prev_dim, output_dim))
@@ -87,17 +89,14 @@ class RecipeEncoder:
             # Initialize with typical recipe features (28 features)
             input_features = 28
             self._encoder_model = RecipeEncoderNet(
-                input_features,
-                self.embedding_dim,
-                self.settings.nn_hidden_layers
+                input_features, self.embedding_dim, self.settings.nn_hidden_layers
             )
 
             # Load pretrained weights if available
             if self.settings.model_path and self.settings.model_path.exists():
                 try:
                     state_dict = torch.load(
-                        self.settings.model_path,
-                        map_location=self.settings.device
+                        self.settings.model_path, map_location=self.settings.device
                     )
                     self._encoder_model.load_state_dict(state_dict)
                     logger.info(f"Loaded recipe encoder from {self.settings.model_path}")
@@ -129,10 +128,7 @@ class RecipeEncoder:
                 import torch
 
                 with torch.no_grad():
-                    features_tensor = torch.tensor(
-                        features,
-                        dtype=torch.float32
-                    ).unsqueeze(0)
+                    features_tensor = torch.tensor(features, dtype=torch.float32).unsqueeze(0)
                     embedding = self._encoder_model(features_tensor)
                     return embedding.squeeze(0).numpy()
             except Exception as e:
@@ -143,7 +139,7 @@ class RecipeEncoder:
         if len(features) < self.embedding_dim:
             features = np.pad(features, (0, self.embedding_dim - len(features)))
         else:
-            features = features[:self.embedding_dim]
+            features = features[: self.embedding_dim]
 
         # L2 normalize
         norm = np.linalg.norm(features)
@@ -250,16 +246,15 @@ class ImageEncoder:
             self._model.eval()
 
             # Image preprocessing
-            self._preprocess = transforms.Compose([
-                transforms.ToPILImage(),
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225]
-                ),
-            ])
+            self._preprocess = transforms.Compose(
+                [
+                    transforms.ToPILImage(),
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ]
+            )
 
             logger.info("Image encoder (ResNet50) loaded successfully")
 
@@ -305,9 +300,10 @@ class ImageEncoder:
             if embedding.shape[0] != self.embedding_dim:
                 # Simple interpolation
                 from scipy.interpolate import interp1d
+
                 x_old = np.linspace(0, 1, embedding.shape[0])
                 x_new = np.linspace(0, 1, self.embedding_dim)
-                f = interp1d(x_old, embedding, kind='linear')
+                f = interp1d(x_old, embedding, kind="linear")
                 embedding = f(x_new)
 
             # L2 normalize
@@ -358,13 +354,15 @@ class ImageEncoder:
                 features.extend([0.0] * 16)
 
         # Statistical features
-        features.extend([
-            np.mean(image),
-            np.std(image),
-            np.percentile(image, 5),
-            np.percentile(image, 50),
-            np.percentile(image, 95),
-        ])
+        features.extend(
+            [
+                np.mean(image),
+                np.std(image),
+                np.percentile(image, 5),
+                np.percentile(image, 50),
+                np.percentile(image, 95),
+            ]
+        )
 
         feature_vec = np.array(features, dtype=np.float32)
 
@@ -372,7 +370,7 @@ class ImageEncoder:
         if len(feature_vec) < self.embedding_dim:
             feature_vec = np.pad(feature_vec, (0, self.embedding_dim - len(feature_vec)))
         else:
-            feature_vec = feature_vec[:self.embedding_dim]
+            feature_vec = feature_vec[: self.embedding_dim]
 
         # L2 normalize
         norm = np.linalg.norm(feature_vec)
@@ -403,11 +401,7 @@ class CollaborativeFilter:
         self._user_factors = {}
         self._recipe_factors = {}
 
-    def fit(
-        self,
-        interactions: list[dict[str, Any]],
-        num_epochs: int = None
-    ) -> None:
+    def fit(self, interactions: list[dict[str, Any]], num_epochs: int = None) -> None:
         """
         Fit the collaborative filtering model on user interactions.
 
@@ -419,51 +413,40 @@ class CollaborativeFilter:
             num_epochs = self.settings.epochs
 
         # Extract unique users and recipes
-        users = set(i["user_id"] for i in interactions)
-        recipes = set(i["recipe_id"] for i in interactions)
+        users = {i["user_id"] for i in interactions}
+        recipes = {i["recipe_id"] for i in interactions}
 
         # Initialize factors randomly
         for user_id in users:
-            self._user_factors[user_id] = np.random.randn(
-                self.num_factors
-            ).astype(np.float32) * 0.01
+            self._user_factors[user_id] = (
+                np.random.randn(self.num_factors).astype(np.float32) * 0.01
+            )
 
         for recipe_id in recipes:
-            self._recipe_factors[recipe_id] = np.random.randn(
-                self.num_factors
-            ).astype(np.float32) * 0.01
+            self._recipe_factors[recipe_id] = (
+                np.random.randn(self.num_factors).astype(np.float32) * 0.01
+            )
 
         # Alternating least squares
         learning_rate = self.settings.learning_rate
 
-        for epoch in range(num_epochs):
+        for _epoch in range(num_epochs):
             # Update user factors
             for user_id in users:
-                user_interactions = [
-                    i for i in interactions if i["user_id"] == user_id
-                ]
+                user_interactions = [i for i in interactions if i["user_id"] == user_id]
                 if user_interactions:
                     self._update_user_factor(user_id, user_interactions, learning_rate)
 
             # Update recipe factors
             for recipe_id in recipes:
-                recipe_interactions = [
-                    i for i in interactions if i["recipe_id"] == recipe_id
-                ]
+                recipe_interactions = [i for i in interactions if i["recipe_id"] == recipe_id]
                 if recipe_interactions:
-                    self._update_recipe_factor(
-                        recipe_id,
-                        recipe_interactions,
-                        learning_rate
-                    )
+                    self._update_recipe_factor(recipe_id, recipe_interactions, learning_rate)
 
         logger.info(f"Collaborative filter trained on {len(interactions)} interactions")
 
     def _update_user_factor(
-        self,
-        user_id: str,
-        interactions: list[dict[str, Any]],
-        learning_rate: float
+        self, user_id: str, interactions: list[dict[str, Any]], learning_rate: float
     ) -> None:
         """Update user factor based on interactions."""
         user_vec = self._user_factors[user_id]
@@ -484,10 +467,7 @@ class CollaborativeFilter:
         self._user_factors[user_id] = user_vec
 
     def _update_recipe_factor(
-        self,
-        recipe_id: UUID,
-        interactions: list[dict[str, Any]],
-        learning_rate: float
+        self, recipe_id: UUID, interactions: list[dict[str, Any]], learning_rate: float
     ) -> None:
         """Update recipe factor based on interactions."""
         recipe_vec = self._recipe_factors[recipe_id]
@@ -528,7 +508,7 @@ class CollaborativeFilter:
         score = np.dot(user_vec, recipe_vec)
         return float(np.clip(score, 0.0, 1.0))
 
-    def get_recipe_embedding(self, recipe_id: UUID) -> Optional[np.ndarray]:
+    def get_recipe_embedding(self, recipe_id: UUID) -> np.ndarray | None:
         """Get the learned embedding for a recipe."""
         return self._recipe_factors.get(recipe_id)
 
@@ -541,10 +521,7 @@ class RecipeRecommender:
     approaches to recommend recipes tailored to user preferences and target images.
     """
 
-    def __init__(
-        self,
-        settings: Optional[RecipeRecommendationSettings] = None
-    ):
+    def __init__(self, settings: RecipeRecommendationSettings | None = None):
         """
         Initialize the recipe recommender.
 
@@ -579,10 +556,10 @@ class RecipeRecommender:
 
     def recommend(
         self,
-        user_id: Optional[str] = None,
-        target_image: Optional[np.ndarray] = None,
-        query_parameters: Optional[dict[str, Any]] = None,
-        user_preferences: Optional[dict[str, Any]] = None,
+        user_id: str | None = None,
+        target_image: np.ndarray | None = None,
+        query_parameters: dict[str, Any] | None = None,
+        user_preferences: dict[str, Any] | None = None,
     ) -> RecipeRecommendationResult:
         """
         Generate recipe recommendations.
@@ -614,7 +591,7 @@ class RecipeRecommender:
             # Weighted combination
             scores = {
                 rid: 0.6 * content_scores.get(rid, 0.0) + 0.4 * collab_scores.get(rid, 0.0)
-                for rid in self._recipes.keys()
+                for rid in self._recipes
             }
         else:
             # Default to content-based
@@ -629,11 +606,9 @@ class RecipeRecommender:
             scores = self._apply_recency(scores, user_preferences)
 
         # Get top-k recommendations
-        top_recipe_ids = sorted(
-            scores.keys(),
-            key=lambda rid: scores[rid],
-            reverse=True
-        )[:self.settings.top_k]
+        top_recipe_ids = sorted(scores.keys(), key=lambda rid: scores[rid], reverse=True)[
+            : self.settings.top_k
+        ]
 
         # Build recommendation objects
         recommendations = []
@@ -654,15 +629,8 @@ class RecipeRecommender:
 
             # Generate explanation if enabled
             if self.settings.generate_explanations:
-                rec.explanation = self._generate_explanation(
-                    recipe,
-                    target_image,
-                    query_parameters
-                )
-                rec.matching_factors = self._get_matching_factors(
-                    recipe,
-                    query_parameters
-                )
+                rec.explanation = self._generate_explanation(recipe, target_image, query_parameters)
+                rec.matching_factors = self._get_matching_factors(recipe, query_parameters)
 
             recommendations.append(rec)
 
@@ -683,9 +651,7 @@ class RecipeRecommender:
         )
 
     def _content_based_scores(
-        self,
-        target_image: Optional[np.ndarray],
-        query_parameters: dict[str, Any]
+        self, target_image: np.ndarray | None, query_parameters: dict[str, Any]
     ) -> dict[UUID, float]:
         """Compute content-based similarity scores."""
         scores = {}
@@ -702,16 +668,18 @@ class RecipeRecommender:
             param_embedding = self.recipe_encoder.encode(query_parameters)
             if query_embedding is not None:
                 # Combine image and parameter embeddings
-                query_embedding = np.concatenate([
-                    query_embedding[:self.settings.image_embedding_dim // 2],
-                    param_embedding[:self.settings.recipe_embedding_dim // 2]
-                ])
+                query_embedding = np.concatenate(
+                    [
+                        query_embedding[: self.settings.image_embedding_dim // 2],
+                        param_embedding[: self.settings.recipe_embedding_dim // 2],
+                    ]
+                )
             else:
                 query_embedding = param_embedding
 
         if query_embedding is None:
             # No query provided, return uniform scores
-            return {rid: 0.5 for rid in self._recipes.keys()}
+            return dict.fromkeys(self._recipes.keys(), 0.5)
 
         # Compute similarities
         for recipe_id, recipe_embedding in self._recipe_embeddings.items():
@@ -720,22 +688,18 @@ class RecipeRecommender:
 
         return scores
 
-    def _collaborative_scores(self, user_id: Optional[str]) -> dict[UUID, float]:
+    def _collaborative_scores(self, user_id: str | None) -> dict[UUID, float]:
         """Compute collaborative filtering scores."""
         if user_id is None:
-            return {rid: 0.5 for rid in self._recipes.keys()}
+            return dict.fromkeys(self._recipes.keys(), 0.5)
 
         scores = {}
-        for recipe_id in self._recipes.keys():
+        for recipe_id in self._recipes:
             scores[recipe_id] = self.collaborative_filter.predict(user_id, recipe_id)
 
         return scores
 
-    def _compute_similarity(
-        self,
-        embedding1: np.ndarray,
-        embedding2: np.ndarray
-    ) -> float:
+    def _compute_similarity(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
         """Compute similarity between two embeddings."""
         # Ensure same length
         min_len = min(len(embedding1), len(embedding2))
@@ -777,25 +741,22 @@ class RecipeRecommender:
         recipe_ids = list(scores.keys())
 
         for i, rid1 in enumerate(recipe_ids):
-            for rid2 in recipe_ids[i+1:]:
+            for rid2 in recipe_ids[i + 1 :]:
                 if rid1 in self._recipe_embeddings and rid2 in self._recipe_embeddings:
                     similarity = self._compute_similarity(
-                        self._recipe_embeddings[rid1],
-                        self._recipe_embeddings[rid2]
+                        self._recipe_embeddings[rid1], self._recipe_embeddings[rid2]
                     )
 
                     # Penalize both if too similar
                     if similarity > 0.9:
                         penalty = diversity_weight * similarity
-                        adjusted_scores[rid1] *= (1 - penalty)
-                        adjusted_scores[rid2] *= (1 - penalty)
+                        adjusted_scores[rid1] *= 1 - penalty
+                        adjusted_scores[rid2] *= 1 - penalty
 
         return adjusted_scores
 
     def _apply_recency(
-        self,
-        scores: dict[UUID, float],
-        user_preferences: dict[str, Any]
+        self, scores: dict[UUID, float], user_preferences: dict[str, Any]
     ) -> dict[UUID, float]:
         """Apply recency weighting to scores."""
         recency_weight = self.settings.recency_weight
@@ -806,15 +767,15 @@ class RecipeRecommender:
         # Boost recently used recipes slightly
         for recipe_id in recent_recipes:
             if recipe_id in adjusted_scores:
-                adjusted_scores[recipe_id] *= (1 + recency_weight * 0.5)
+                adjusted_scores[recipe_id] *= 1 + recency_weight * 0.5
 
         return adjusted_scores
 
     def _generate_explanation(
         self,
         recipe: dict[str, Any],
-        target_image: Optional[np.ndarray],
-        query_parameters: dict[str, Any]
+        target_image: np.ndarray | None,
+        query_parameters: dict[str, Any],
     ) -> str:
         """Generate explanation for why recipe was recommended."""
         reasons = []
@@ -847,17 +808,14 @@ class RecipeRecommender:
         return "This recipe " + " and ".join(reasons) + "."
 
     def _get_matching_factors(
-        self,
-        recipe: dict[str, Any],
-        query_parameters: dict[str, Any]
+        self, recipe: dict[str, Any], query_parameters: dict[str, Any]
     ) -> list[str]:
         """Get list of matching factors between recipe and query."""
         factors = []
 
         for key in ["paper_type", "chemistry_type", "metal_ratio", "exposure_time"]:
-            if key in query_parameters and key in recipe:
-                if query_parameters[key] == recipe[key]:
-                    factors.append(key)
+            if key in query_parameters and key in recipe and query_parameters[key] == recipe[key]:
+                factors.append(key)
 
         return factors
 
@@ -871,9 +829,11 @@ class RecipeRecommender:
         count = 0
 
         for i, rec1 in enumerate(recommendations):
-            for rec2 in recommendations[i+1:]:
-                if rec1.recipe_id in self._recipe_embeddings and \
-                   rec2.recipe_id in self._recipe_embeddings:
+            for rec2 in recommendations[i + 1 :]:
+                if (
+                    rec1.recipe_id in self._recipe_embeddings
+                    and rec2.recipe_id in self._recipe_embeddings
+                ):
                     emb1 = self._recipe_embeddings[rec1.recipe_id]
                     emb2 = self._recipe_embeddings[rec2.recipe_id]
                     distance = np.linalg.norm(emb1 - emb2)

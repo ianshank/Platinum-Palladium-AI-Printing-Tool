@@ -6,7 +6,7 @@ All models use Pydantic for validation and serialization.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 import numpy as np
@@ -33,10 +33,10 @@ class PatchData(BaseModel):
     )
     rgb_mean: tuple[float, float, float] = Field(..., description="Mean RGB values (0-255)")
     rgb_std: tuple[float, float, float] = Field(..., description="RGB standard deviations")
-    lab_mean: Optional[tuple[float, float, float]] = Field(
+    lab_mean: tuple[float, float, float] | None = Field(
         default=None, description="Mean L*a*b* values"
     )
-    density: Optional[float] = Field(default=None, ge=0.0, description="Calculated density")
+    density: float | None = Field(default=None, ge=0.0, description="Calculated density")
     uniformity: float = Field(default=1.0, ge=0.0, le=1.0, description="Patch uniformity score")
 
     @field_validator("rgb_mean", "rgb_std", mode="before")
@@ -54,7 +54,7 @@ class DensityMeasurement(BaseModel):
     step: int = Field(..., ge=0, description="Step number")
     input_value: float = Field(..., ge=0.0, le=1.0, description="Input value (0-1)")
     density: float = Field(..., ge=0.0, description="Measured density")
-    lab: Optional[tuple[float, float, float]] = Field(default=None, description="L*a*b* values")
+    lab: tuple[float, float, float] | None = Field(default=None, description="L*a*b* values")
     unit: MeasurementUnit = Field(default=MeasurementUnit.VISUAL_DENSITY)
 
 
@@ -67,9 +67,9 @@ class ExtractionResult(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
 
     # Image info
-    source_path: Optional[Path] = Field(default=None)
+    source_path: Path | None = Field(default=None)
     image_size: tuple[int, int] = Field(..., description="Image dimensions (width, height)")
-    image_dpi: Optional[int] = Field(default=None)
+    image_dpi: int | None = Field(default=None)
 
     # Detection info
     tablet_bounds: tuple[int, int, int, int] = Field(
@@ -83,8 +83,8 @@ class ExtractionResult(BaseModel):
     num_patches: int = Field(default=0, ge=0)
 
     # Paper base reference
-    paper_base_rgb: Optional[tuple[float, float, float]] = Field(default=None)
-    paper_base_density: Optional[float] = Field(default=None)
+    paper_base_rgb: tuple[float, float, float] | None = Field(default=None)
+    paper_base_density: float | None = Field(default=None)
 
     # Quality metrics
     overall_quality: float = Field(default=1.0, ge=0.0, le=1.0)
@@ -106,19 +106,19 @@ class ExtractionResult(BaseModel):
         return [p.rgb_mean for p in self.patches]
 
     @property
-    def dmin(self) -> Optional[float]:
+    def dmin(self) -> float | None:
         """Minimum density (paper base)."""
         densities = self.get_densities()
         return min(densities) if densities else None
 
     @property
-    def dmax(self) -> Optional[float]:
+    def dmax(self) -> float | None:
         """Maximum density."""
         densities = self.get_densities()
         return max(densities) if densities else None
 
     @property
-    def density_range(self) -> Optional[float]:
+    def density_range(self) -> float | None:
         """Total density range."""
         if self.dmin is not None and self.dmax is not None:
             return self.dmax - self.dmin
@@ -162,17 +162,17 @@ class CurveData(BaseModel):
 
     # Curve type and metadata
     curve_type: CurveType = Field(default=CurveType.LINEAR)
-    paper_type: Optional[str] = Field(default=None)
-    chemistry: Optional[str] = Field(default=None)
-    notes: Optional[str] = Field(default=None)
+    paper_type: str | None = Field(default=None)
+    chemistry: str | None = Field(default=None)
+    notes: str | None = Field(default=None)
 
     # Input/output points
     input_values: list[float] = Field(..., min_length=2)
     output_values: list[float] = Field(..., min_length=2)
 
     # Source calibration
-    source_extraction_id: Optional[UUID] = Field(default=None)
-    target_curve_type: Optional[str] = Field(default=None)
+    source_extraction_id: UUID | None = Field(default=None)
+    target_curve_type: str | None = Field(default=None)
 
     @field_validator("input_values", "output_values", mode="before")
     @classmethod
@@ -212,17 +212,17 @@ class PaperProfile(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     name: str = Field(..., min_length=1)
-    manufacturer: Optional[str] = Field(default=None)
-    weight_gsm: Optional[int] = Field(default=None, ge=50, le=1000)
+    manufacturer: str | None = Field(default=None)
+    weight_gsm: int | None = Field(default=None, ge=50, le=1000)
     sizing: PaperSizing = Field(default=PaperSizing.INTERNAL)
 
     # Characteristics
-    base_density: Optional[float] = Field(default=None, ge=0.0)
-    max_density: Optional[float] = Field(default=None, ge=0.0)
+    base_density: float | None = Field(default=None, ge=0.0)
+    max_density: float | None = Field(default=None, ge=0.0)
     recommended_exposure_factor: float = Field(default=1.0, ge=0.1, le=10.0)
 
     # Notes and metadata
-    notes: Optional[str] = Field(default=None)
+    notes: str | None = Field(default=None)
     calibration_ids: list[UUID] = Field(default_factory=list)
 
 
@@ -233,11 +233,11 @@ class CalibrationRecord(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     timestamp: datetime = Field(default_factory=datetime.now)
-    name: Optional[str] = Field(default=None)
+    name: str | None = Field(default=None)
 
     # Paper info
     paper_type: str = Field(..., min_length=1)
-    paper_weight: Optional[int] = Field(default=None, ge=50, le=1000)
+    paper_weight: int | None = Field(default=None, ge=50, le=1000)
     paper_sizing: PaperSizing = Field(default=PaperSizing.INTERNAL)
 
     # Chemistry
@@ -249,17 +249,17 @@ class CalibrationRecord(BaseModel):
 
     # Process parameters
     exposure_time: float = Field(..., ge=0.0, description="Exposure time in seconds")
-    uv_source: Optional[str] = Field(default=None)
-    humidity: Optional[float] = Field(default=None, ge=0.0, le=100.0)
-    temperature: Optional[float] = Field(default=None, ge=-20.0, le=50.0)
+    uv_source: str | None = Field(default=None)
+    humidity: float | None = Field(default=None, ge=0.0, le=100.0)
+    temperature: float | None = Field(default=None, ge=-20.0, le=50.0)
 
     # Results
     measured_densities: list[float] = Field(default_factory=list)
-    extraction_id: Optional[UUID] = Field(default=None)
-    curve_id: Optional[UUID] = Field(default=None)
+    extraction_id: UUID | None = Field(default=None)
+    curve_id: UUID | None = Field(default=None)
 
     # Metadata
-    notes: Optional[str] = Field(default=None)
+    notes: str | None = Field(default=None)
     tags: list[str] = Field(default_factory=list)
 
     def get_feature_vector(self) -> list[float]:

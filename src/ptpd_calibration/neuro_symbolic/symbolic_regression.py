@@ -21,12 +21,12 @@ References:
 - Cranmer et al. (2020) "PySR"
 """
 
-from abc import ABC, abstractmethod
+import random
+from contextlib import suppress
 from copy import deepcopy
 from dataclasses import dataclass, field
-from enum import Enum, auto
-from typing import Any, Callable, Optional, Union
-import random
+from enum import Enum
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -95,13 +95,13 @@ class ExpressionNode:
     """
 
     operator: OperatorType
-    value: Optional[float] = None  # For constants
+    value: float | None = None  # For constants
     variable_name: str = "x"  # For variables
     children: list["ExpressionNode"] = field(default_factory=list)
 
     # Optimization metadata
-    _gradient: Optional[float] = None
-    _cached_value: Optional[float] = None
+    _gradient: float | None = None
+    _cached_value: float | None = None
 
     def arity(self) -> int:
         """Get expected number of children."""
@@ -129,9 +129,9 @@ class ExpressionNode:
 
     def evaluate(
         self,
-        x: Union[float, NDArray[np.float64]],
+        x: float | NDArray[np.float64],
         epsilon: float = 1e-10,
-    ) -> Union[float, NDArray[np.float64]]:
+    ) -> float | NDArray[np.float64]:
         """Evaluate expression at given input(s).
 
         Args:
@@ -157,9 +157,9 @@ class ExpressionNode:
 
     def _apply_operator(
         self,
-        args: list[Union[float, NDArray[np.float64]]],
+        args: list[float | NDArray[np.float64]],
         epsilon: float,
-    ) -> Union[float, NDArray[np.float64]]:
+    ) -> float | NDArray[np.float64]:
         """Apply operator to arguments with numerical safety."""
         op = self.operator
 
@@ -223,8 +223,12 @@ class ExpressionNode:
         if self.arity() == 1:
             return f"{symbol}({child_strs[0]})"
         elif self.arity() == 2:
-            if self.operator in (OperatorType.ADD, OperatorType.SUB,
-                                 OperatorType.MUL, OperatorType.DIV):
+            if self.operator in (
+                OperatorType.ADD,
+                OperatorType.SUB,
+                OperatorType.MUL,
+                OperatorType.DIV,
+            ):
                 return f"({child_strs[0]} {symbol} {child_strs[1]})"
             else:
                 return f"{symbol}({child_strs[0]}, {child_strs[1]})"
@@ -314,9 +318,7 @@ class SymbolicExpression(BaseModel):
         super().__init__(**data)
         self.complexity = self.root.size()
 
-    def evaluate(
-        self, x: Union[float, NDArray[np.float64]]
-    ) -> Union[float, NDArray[np.float64]]:
+    def evaluate(self, x: float | NDArray[np.float64]) -> float | NDArray[np.float64]:
         """Evaluate expression."""
         return self.root.evaluate(x)
 
@@ -397,9 +399,7 @@ class ExpressionLibrary:
                                                 ExpressionNode(operator=OperatorType.VARIABLE),
                                             ],
                                         ),
-                                        ExpressionNode(
-                                            operator=OperatorType.CONSTANT, value=0.1
-                                        ),
+                                        ExpressionNode(operator=OperatorType.CONSTANT, value=0.1),
                                     ],
                                 ),
                             ],
@@ -426,9 +426,7 @@ class ExpressionLibrary:
                                 ExpressionNode(
                                     operator=OperatorType.MUL,
                                     children=[
-                                        ExpressionNode(
-                                            operator=OperatorType.CONSTANT, value=5.0
-                                        ),
+                                        ExpressionNode(operator=OperatorType.CONSTANT, value=5.0),
                                         ExpressionNode(
                                             operator=OperatorType.SUB,
                                             children=[
@@ -513,7 +511,7 @@ class DifferentiableSymbolicRegressor:
     gradient-based optimization for constant refinement.
     """
 
-    def __init__(self, settings: Optional[NeuroSymbolicSettings] = None):
+    def __init__(self, settings: NeuroSymbolicSettings | None = None):
         """Initialize regressor.
 
         Args:
@@ -521,29 +519,25 @@ class DifferentiableSymbolicRegressor:
         """
         self.settings = settings or get_settings().neuro_symbolic
         self._population: list[SymbolicExpression] = []
-        self._best_expression: Optional[SymbolicExpression] = None
+        self._best_expression: SymbolicExpression | None = None
         self._generation = 0
 
         # Parse allowed operators
-        self._allowed_ops = self._parse_operators(
-            self.settings.sr_allowed_operators
-        )
+        self._allowed_ops = self._parse_operators(self.settings.sr_allowed_operators)
 
     def _parse_operators(self, op_names: list[str]) -> list[OperatorType]:
         """Parse operator names to enum values."""
         ops = []
         for name in op_names:
-            try:
+            with suppress(ValueError):
                 ops.append(OperatorType(name))
-            except ValueError:
-                pass
         return ops
 
     def fit(
         self,
         x: NDArray[np.float64],
         y: NDArray[np.float64],
-        initial_expressions: Optional[list[ExpressionNode]] = None,
+        initial_expressions: list[ExpressionNode] | None = None,
     ) -> SymbolicExpression:
         """Fit symbolic expression to data.
 
@@ -592,7 +586,7 @@ class DifferentiableSymbolicRegressor:
         return self._best_expression
 
     def _initialize_population(
-        self, initial_expressions: Optional[list[ExpressionNode]] = None
+        self, initial_expressions: list[ExpressionNode] | None = None
     ) -> None:
         """Initialize population with expressions."""
         self._population = []
@@ -614,14 +608,10 @@ class DifferentiableSymbolicRegressor:
 
         # Fill rest with random expressions
         while len(self._population) < self.settings.sr_population_size:
-            expr = self._generate_random_expression(
-                max_depth=self.settings.sr_max_expression_depth
-            )
+            expr = self._generate_random_expression(max_depth=self.settings.sr_max_expression_depth)
             self._population.append(SymbolicExpression(root=expr))
 
-    def _generate_random_expression(
-        self, max_depth: int, current_depth: int = 0
-    ) -> ExpressionNode:
+    def _generate_random_expression(self, max_depth: int, current_depth: int = 0) -> ExpressionNode:
         """Generate random expression tree."""
         # Terminal probability increases with depth
         terminal_prob = current_depth / max_depth
@@ -650,8 +640,7 @@ class DifferentiableSymbolicRegressor:
         arity = OPERATOR_INFO[op][0]
 
         children = [
-            self._generate_random_expression(max_depth, current_depth + 1)
-            for _ in range(arity)
+            self._generate_random_expression(max_depth, current_depth + 1) for _ in range(arity)
         ]
 
         return ExpressionNode(operator=op, children=children)
@@ -695,16 +684,16 @@ class DifferentiableSymbolicRegressor:
             expr.mse = float("inf")
             expr.r_squared = 0.0
 
-    def _evolve_population(
-        self, x: NDArray[np.float64], y: NDArray[np.float64]
-    ) -> None:
+    def _evolve_population(self, x: NDArray[np.float64], y: NDArray[np.float64]) -> None:
         """Evolve population through selection and genetic operators."""
         new_population = []
 
         # Elitism: keep best expressions
         elite_size = max(1, self.settings.sr_population_size // 10)
         new_population.extend(
-            SymbolicExpression(root=e.root.copy(), fitness=e.fitness, r_squared=e.r_squared, mse=e.mse)
+            SymbolicExpression(
+                root=e.root.copy(), fitness=e.fitness, r_squared=e.r_squared, mse=e.mse
+            )
             for e in self._population[:elite_size]
         )
 
@@ -733,9 +722,7 @@ class DifferentiableSymbolicRegressor:
         best = min(contestants, key=lambda e: e.fitness)
         return best.root.copy()
 
-    def _crossover(
-        self, parent1: ExpressionNode, parent2: ExpressionNode
-    ) -> ExpressionNode:
+    def _crossover(self, parent1: ExpressionNode, parent2: ExpressionNode) -> ExpressionNode:
         """Perform subtree crossover."""
         child = parent1.copy()
 
@@ -797,11 +784,7 @@ class DifferentiableSymbolicRegressor:
             target.value = (target.value or 0.0) + random.gauss(0, 0.5)
         elif not target.is_terminal():
             # Change operator (same arity)
-            same_arity = [
-                op
-                for op in self._allowed_ops
-                if OPERATOR_INFO[op][0] == target.arity()
-            ]
+            same_arity = [op for op in self._allowed_ops if OPERATOR_INFO[op][0] == target.arity()]
             if same_arity:
                 target.operator = random.choice(same_arity)
 
@@ -828,15 +811,13 @@ class DifferentiableSymbolicRegressor:
 
     def _collect_nodes(
         self, node: ExpressionNode
-    ) -> list[tuple[ExpressionNode, Optional[ExpressionNode], Optional[int]]]:
+    ) -> list[tuple[ExpressionNode, ExpressionNode | None, int | None]]:
         """Collect all nodes with parent references."""
-        result: list[tuple[ExpressionNode, Optional[ExpressionNode], Optional[int]]] = [
+        result: list[tuple[ExpressionNode, ExpressionNode | None, int | None]] = [
             (node, None, None)
         ]
 
-        def _collect(
-            n: ExpressionNode, parent: Optional[ExpressionNode], idx: Optional[int]
-        ) -> None:
+        def _collect(n: ExpressionNode, parent: ExpressionNode | None, idx: int | None) -> None:
             for i, child in enumerate(n.children):
                 result.append((child, n, i))
                 _collect(child, n, i)
@@ -895,7 +876,7 @@ class CurveFormulaDiscovery:
     for platinum/palladium curve discovery.
     """
 
-    def __init__(self, settings: Optional[NeuroSymbolicSettings] = None):
+    def __init__(self, settings: NeuroSymbolicSettings | None = None):
         """Initialize formula discovery.
 
         Args:
@@ -907,8 +888,8 @@ class CurveFormulaDiscovery:
     def discover_formula(
         self,
         measured_densities: list[float],
-        input_values: Optional[list[float]] = None,
-        paper_type: Optional[str] = None,
+        input_values: list[float] | None = None,
+        paper_type: str | None = None,
     ) -> dict[str, Any]:
         """Discover symbolic formula for curve.
 
@@ -923,10 +904,7 @@ class CurveFormulaDiscovery:
         y = np.array(measured_densities)
         n = len(y)
 
-        if input_values is None:
-            x = np.linspace(0, 1, n)
-        else:
-            x = np.array(input_values)
+        x = np.linspace(0, 1, n) if input_values is None else np.array(input_values)
 
         # Normalize
         y_min, y_max = y.min(), y.max()
@@ -952,7 +930,7 @@ class CurveFormulaDiscovery:
             "latex": latex_str,
             "expression": best,
             "r_squared": best.r_squared,
-            "mse": best.mse * y_range ** 2,  # Denormalized MSE
+            "mse": best.mse * y_range**2,  # Denormalized MSE
             "complexity": best.complexity,
             "constants": best.root.get_constants(),
             "predictions": y_pred.tolist(),
@@ -968,21 +946,13 @@ class CurveFormulaDiscovery:
 
         # Check for common patterns
         if "log" in formula:
-            interpretation.append(
-                "Logarithmic component suggests typical H&D toe behavior"
-            )
+            interpretation.append("Logarithmic component suggests typical H&D toe behavior")
         if "exp" in formula:
-            interpretation.append(
-                "Exponential component indicates saturation (shoulder region)"
-            )
+            interpretation.append("Exponential component indicates saturation (shoulder region)")
         if "^" in formula or "pow" in formula:
-            interpretation.append(
-                "Power law component suggests gamma correction"
-            )
+            interpretation.append("Power law component suggests gamma correction")
         if "σ" in formula or "sigmoid" in formula.lower():
-            interpretation.append(
-                "Sigmoid indicates S-curve characteristic"
-            )
+            interpretation.append("Sigmoid indicates S-curve characteristic")
 
         if expr.complexity < 10:
             interpretation.append("Simple formula - good for interpretation")
@@ -1034,14 +1004,16 @@ class CurveFormulaDiscovery:
             k = expr.complexity  # Number of parameters approximated by complexity
             aic = n * np.log(mse + 1e-10) + 2 * k
 
-            results.append({
-                "formula": expr.to_string(),
-                "r_squared": float(r2),
-                "mse": mse,
-                "complexity": expr.complexity,
-                "aic": float(aic),
-                "interpretation": self._interpret_formula(expr),
-            })
+            results.append(
+                {
+                    "formula": expr.to_string(),
+                    "r_squared": float(r2),
+                    "mse": mse,
+                    "complexity": expr.complexity,
+                    "aic": float(aic),
+                    "interpretation": self._interpret_formula(expr),
+                }
+            )
 
         # Sort by AIC (lower is better)
         results.sort(key=lambda r: r["aic"])

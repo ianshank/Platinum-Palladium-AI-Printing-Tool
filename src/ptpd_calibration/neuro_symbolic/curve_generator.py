@@ -13,15 +13,11 @@ The generator produces curves that:
 4. Provide uncertainty quantification and explanations
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Optional
-from uuid import UUID, uuid4
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, Field
-from scipy.interpolate import PchipInterpolator
 
 from ptpd_calibration.config import (
     CurveSettings,
@@ -31,20 +27,17 @@ from ptpd_calibration.config import (
 from ptpd_calibration.core.models import CurveData, ExtractionResult
 from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.curves.generator import CurveGenerator, TargetCurve
-
 from ptpd_calibration.neuro_symbolic.constraints import (
+    ConstrainedCurveOptimizer,
     ConstraintSet,
     ConstraintViolation,
-    ConstrainedCurveOptimizer,
-    DifferentiableLoss,
 )
 from ptpd_calibration.neuro_symbolic.knowledge_graph import (
-    PaperChemistryKnowledgeGraph,
     InferenceResult,
+    PaperChemistryKnowledgeGraph,
 )
 from ptpd_calibration.neuro_symbolic.symbolic_regression import (
     CurveFormulaDiscovery,
-    SymbolicExpression,
 )
 
 
@@ -63,20 +56,20 @@ class CurveGenerationResult(BaseModel):
     constraint_report: str = ""
 
     # Knowledge graph reasoning
-    knowledge_inference: Optional[InferenceResult] = None
+    knowledge_inference: InferenceResult | None = None
     similar_papers: list[str] = Field(default_factory=list)
     inferred_settings: dict[str, Any] = Field(default_factory=dict)
 
     # Formula discovery
-    discovered_formula: Optional[str] = None
-    formula_latex: Optional[str] = None
-    formula_r_squared: Optional[float] = None
-    formula_interpretation: Optional[str] = None
+    discovered_formula: str | None = None
+    formula_latex: str | None = None
+    formula_r_squared: float | None = None
+    formula_interpretation: str | None = None
 
     # Uncertainty quantification
-    uncertainty: Optional[NDArray[np.float64]] = None
-    confidence_lower: Optional[list[float]] = None
-    confidence_upper: Optional[list[float]] = None
+    uncertainty: NDArray[np.float64] | None = None
+    confidence_lower: list[float] | None = None
+    confidence_upper: list[float] | None = None
 
     # Explanations
     explanation: str = ""
@@ -96,8 +89,8 @@ class NeuroSymbolicCurveGenerator:
 
     def __init__(
         self,
-        curve_settings: Optional[CurveSettings] = None,
-        neuro_settings: Optional[NeuroSymbolicSettings] = None,
+        curve_settings: CurveSettings | None = None,
+        neuro_settings: NeuroSymbolicSettings | None = None,
     ):
         """Initialize neuro-symbolic curve generator.
 
@@ -112,9 +105,7 @@ class NeuroSymbolicCurveGenerator:
         # Initialize components
         self._base_generator = CurveGenerator(self.curve_settings)
         self._constraint_set = ConstraintSet.default_set(self.neuro_settings)
-        self._optimizer = ConstrainedCurveOptimizer(
-            self._constraint_set, self.neuro_settings
-        )
+        self._optimizer = ConstrainedCurveOptimizer(self._constraint_set, self.neuro_settings)
         self._knowledge_graph = PaperChemistryKnowledgeGraph(self.neuro_settings)
         self._formula_discovery = CurveFormulaDiscovery(self.neuro_settings)
 
@@ -122,10 +113,10 @@ class NeuroSymbolicCurveGenerator:
         self,
         measured_densities: list[float],
         curve_type: CurveType = CurveType.LINEAR,
-        target_curve: Optional[TargetCurve] = None,
+        target_curve: TargetCurve | None = None,
         name: str = "Neuro-Symbolic Calibration Curve",
-        paper_type: Optional[str] = None,
-        chemistry: Optional[str] = None,
+        paper_type: str | None = None,
+        chemistry: str | None = None,
         enforce_constraints: bool = True,
         discover_formula: bool = False,
         use_knowledge_graph: bool = True,
@@ -149,7 +140,9 @@ class NeuroSymbolicCurveGenerator:
             CurveGenerationResult with curve and all metadata
         """
         reasoning_steps = []
-        reasoning_steps.append(f"Starting curve generation with {len(measured_densities)} measurements")
+        reasoning_steps.append(
+            f"Starting curve generation with {len(measured_densities)} measurements"
+        )
 
         # Step 1: Generate base curve using standard method
         reasoning_steps.append("Generating base curve using classical interpolation")
@@ -181,14 +174,10 @@ class NeuroSymbolicCurveGenerator:
                 # Find similar papers
                 paper_entity = self._knowledge_graph.get_entity_by_name(paper_type)
                 if paper_entity:
-                    similar = self._knowledge_graph.find_similar(
-                        paper_entity.id, top_k=3
-                    )
+                    similar = self._knowledge_graph.find_similar(paper_entity.id, top_k=3)
                     similar_papers = [s.entity_name for s in similar]
                     if similar_papers:
-                        reasoning_steps.append(
-                            f"Found similar papers: {', '.join(similar_papers)}"
-                        )
+                        reasoning_steps.append(f"Found similar papers: {', '.join(similar_papers)}")
             else:
                 reasoning_steps.append("Paper not found in knowledge graph, using defaults")
 
@@ -254,9 +243,7 @@ class NeuroSymbolicCurveGenerator:
 
         if quantify_uncertainty:
             reasoning_steps.append("Estimating uncertainty via Monte Carlo sampling")
-            uncertainty_result = self._estimate_uncertainty(
-                measured_densities, curve_values
-            )
+            uncertainty_result = self._estimate_uncertainty(measured_densities, curve_values)
             uncertainty = uncertainty_result["uncertainty"]
             confidence_lower = uncertainty_result["lower"].tolist()
             confidence_upper = uncertainty_result["upper"].tolist()
@@ -310,10 +297,10 @@ class NeuroSymbolicCurveGenerator:
         self,
         extraction: ExtractionResult,
         curve_type: CurveType = CurveType.LINEAR,
-        target_curve: Optional[TargetCurve] = None,
+        target_curve: TargetCurve | None = None,
         name: str = "Neuro-Symbolic Calibration Curve",
-        paper_type: Optional[str] = None,
-        chemistry: Optional[str] = None,
+        paper_type: str | None = None,
+        chemistry: str | None = None,
         **kwargs,
     ) -> CurveGenerationResult:
         """Generate curve from extraction result.
@@ -352,7 +339,7 @@ class NeuroSymbolicCurveGenerator:
     def generate_for_new_paper(
         self,
         paper_properties: dict[str, Any],
-        measured_densities: Optional[list[float]] = None,
+        measured_densities: list[float] | None = None,
         curve_type: CurveType = CurveType.LINEAR,
         name: str = "New Paper Calibration",
     ) -> CurveGenerationResult:
@@ -422,9 +409,7 @@ class NeuroSymbolicCurveGenerator:
         gamma = 0.8 + 0.2 * metal_ratio  # Pt makes curve slightly steeper
         k = 3.0 * coating_factor
 
-        synthetic_densities = dmin + expected_dmax * (
-            1 - np.exp(-k * np.power(x, gamma))
-        )
+        synthetic_densities = dmin + expected_dmax * (1 - np.exp(-k * np.power(x, gamma)))
 
         return self.generate(
             measured_densities=synthetic_densities.tolist(),
@@ -472,9 +457,7 @@ class NeuroSymbolicCurveGenerator:
 
             # Generate curve from noisy measurements
             try:
-                noisy_curve = self._base_generator.generate(
-                    noisy_densities.tolist()
-                )
+                noisy_curve = self._base_generator.generate(noisy_densities.tolist())
                 samples.append(np.array(noisy_curve.output_values))
             except Exception:
                 continue
@@ -490,7 +473,7 @@ class NeuroSymbolicCurveGenerator:
         samples = np.array(samples)
 
         # Calculate statistics
-        mean = np.mean(samples, axis=0)
+        _mean = np.mean(samples, axis=0)  # Reserved for future mean curve output
         std = np.std(samples, axis=0)
 
         # Confidence interval
@@ -510,11 +493,11 @@ class NeuroSymbolicCurveGenerator:
     def _generate_explanation(
         self,
         curve_type: CurveType,
-        paper_type: Optional[str],
+        paper_type: str | None,
         constraints_satisfied: bool,
         num_violations: int,
-        formula: Optional[str],
-        formula_r_squared: Optional[float],
+        formula: str | None,
+        formula_r_squared: float | None,
         similar_papers: list[str],
     ) -> str:
         """Generate human-readable explanation of curve generation."""

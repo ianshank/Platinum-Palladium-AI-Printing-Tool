@@ -24,11 +24,11 @@ class PlotColors:
     TEXT_LIGHT: Final[str] = "#e0e0e0"
 
     # Chart colors
-    PRIMARY: Final[str] = "#f59e0b"        # Orange/amber - main accent
-    SECONDARY: Final[str] = "#3b82f6"      # Blue - secondary accent
-    SUCCESS: Final[str] = "#4ade80"        # Green - positive values
-    ERROR: Final[str] = "#f87171"          # Red - negative values
-    WARNING: Final[str] = "#fbbf24"        # Yellow/gold - warnings
+    PRIMARY: Final[str] = "#f59e0b"  # Orange/amber - main accent
+    SECONDARY: Final[str] = "#3b82f6"  # Blue - secondary accent
+    SUCCESS: Final[str] = "#4ade80"  # Green - positive values
+    ERROR: Final[str] = "#f87171"  # Red - negative values
+    WARNING: Final[str] = "#fbbf24"  # Yellow/gold - warnings
 
     # Specific use colors
     TRAINING_LOSS: Final[str] = "#f59e0b"  # Orange for training loss
@@ -37,8 +37,8 @@ class PlotColors:
     NEGATIVE_CORRECTION: Final[str] = "#f87171"  # Red for negative corrections
 
     # Metal colors for Pt/Pd visualization
-    PLATINUM: Final[str] = "#fbbf24"       # Gold for platinum
-    PALLADIUM: Final[str] = "#94a3b8"      # Silver for palladium
+    PLATINUM: Final[str] = "#fbbf24"  # Gold for platinum
+    PALLADIUM: Final[str] = "#94a3b8"  # Silver for palladium
     PLATINUM_GRADIENT_END: Final[str] = "#f59e0b"
     PALLADIUM_GRADIENT_END: Final[str] = "#64748b"
 
@@ -68,10 +68,7 @@ def apply_dark_theme_to_figure(fig: Any) -> None:
     fig.patch.set_facecolor(PlotColors.DARK_BG)
 
 
-def apply_dark_theme(
-    fig: Any,
-    axes: Sequence[Any] | None = None
-) -> None:
+def apply_dark_theme(fig: Any, axes: Sequence[Any] | None = None) -> None:
     """Apply dark theme to figure and all axes.
 
     Args:
@@ -85,6 +82,7 @@ def apply_dark_theme(
 
     for ax in axes:
         apply_dark_theme_to_axes(ax)
+
 
 class ProLabTheme(Base):
     def __init__(
@@ -126,13 +124,11 @@ class ProLabTheme(Base):
             block_border_width="1px",
             block_border_color="#333333",
             block_shadow="0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.16)",
-
             # Input fields
             input_background_fill="#262626",
             input_background_fill_dark="#202020",
             input_border_color="#404040",
             input_radius="4px",
-
             # Buttons
             button_primary_background_fill="*primary_600",
             button_primary_background_fill_hover="*primary_500",
@@ -140,13 +136,11 @@ class ProLabTheme(Base):
             button_secondary_background_fill="#333333",
             button_secondary_background_fill_hover="#404040",
             button_secondary_text_color="*neutral_200",
-
             # Text
             block_label_text_color="*neutral_400",
             block_title_text_color="*neutral_200",
             body_text_color="*neutral_300",
             # prose_header_text_color="*neutral_100",  # Removed as it caused error
-
             # Borders
             border_color_primary="#333333",
         )

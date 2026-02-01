@@ -5,7 +5,6 @@ Verifies that curve files (.quad) can be loaded, displayed, and statistics gener
 """
 
 import pytest
-from pathlib import Path
 from playwright.sync_api import Page, expect
 
 # UTF-8 .quad content
@@ -24,6 +23,7 @@ ProfileName=Test UTF-16
 255=255
 """
 
+
 @pytest.fixture
 def curve_files(tmp_path):
     """Create test curve files."""
@@ -35,9 +35,10 @@ def curve_files(tmp_path):
 
     return utf8_file, utf16_file
 
+
 @pytest.mark.browser
 @pytest.mark.skip(reason="Playwright selectors pending update for hierarchical navigation")
-def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):
+def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):  # noqa: ARG001
     """
     Test loading curve files:
     1. Upload UTF-8 file
@@ -49,7 +50,7 @@ def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):
 
     # 1. Navigate
     page.goto(app_url)
-    
+
     # Wait for title
     expect(page.get_by_role("heading", name="Pt/Pd Calibration Studio")).to_be_visible()
 
@@ -60,7 +61,7 @@ def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):
     # Navigate to Calibration ▸ Curve Display
     page.get_by_role("tab", name="Calibration", exact=False).first.click()
     page.get_by_role("tab", name="Curve Display").first.click()
-    
+
     # 2. Upload UTF-8 file
     file_input = page.locator("input[type='file']").first
     file_input.set_input_files(str(utf8_file))
@@ -73,7 +74,7 @@ def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):
     # Check if "Test UTF-8 (K)" appears in the dataframe or text
     # Gradio Dataframe renders as a table.
     expect(page.get_by_text("Test UTF-8 (K)")).to_be_visible(timeout=10000)
-    
+
     # Check points count (256)
     # Note: This might be in a cell next to the name
     # We can just check for existence for now.
@@ -95,23 +96,21 @@ def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):
     # 6. Paste Data Test
     # Click "Paste Data" tab
     page.get_by_role("tab", name="Paste Data").first.click()
-    
+
     # Fill textarea
     textarea = page.get_by_label("Paste Curve Values")
     textarea.fill("0.0, 0.5, 1.0")
-    
+
     name_input = page.get_by_label("Curve Name")
     name_input.fill("Pasted Curve")
-    
+
     add_btn = page.get_by_role("button", name="Add Curve")
     add_btn.click()
 
     # Verify Pasted Load
     expect(page.get_by_text("Pasted Curve")).to_be_visible()
-    
+
     # Check statistics panel if enabled (it's checkbox is off by default)
     # Enable statistics
     page.get_by_label("Show Statistics Panel").check()
     expect(page.get_by_text("Gamma:")).to_be_visible()
-
-

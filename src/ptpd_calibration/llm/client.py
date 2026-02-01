@@ -2,9 +2,8 @@
 LLM client implementations for different providers.
 """
 
-import asyncio
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
 
 from ptpd_calibration.config import LLMProvider, LLMSettings, get_settings
 
@@ -16,9 +15,9 @@ class LLMClient(ABC):
     async def complete(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> str:
         """Generate a completion."""
         pass
@@ -27,9 +26,9 @@ class LLMClient(ABC):
     async def stream(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]:
         """Stream a completion."""
         pass
@@ -38,7 +37,7 @@ class LLMClient(ABC):
 class AnthropicClient(LLMClient):
     """Client for Anthropic Claude API."""
 
-    def __init__(self, settings: Optional[LLMSettings] = None):
+    def __init__(self, settings: LLMSettings | None = None):
         """
         Initialize Anthropic client.
 
@@ -56,17 +55,17 @@ class AnthropicClient(LLMClient):
     async def complete(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> str:
         """Generate completion using Anthropic API."""
         try:
             import anthropic
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "anthropic package required. Install with: pip install ptpd-calibration[llm]"
-            )
+            ) from err
 
         client = anthropic.AsyncAnthropic(api_key=self.api_key)
 
@@ -83,17 +82,17 @@ class AnthropicClient(LLMClient):
     async def stream(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]:
         """Stream completion using Anthropic API."""
         try:
             import anthropic
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "anthropic package required. Install with: pip install ptpd-calibration[llm]"
-            )
+            ) from err
 
         client = anthropic.AsyncAnthropic(api_key=self.api_key)
 
@@ -111,7 +110,7 @@ class AnthropicClient(LLMClient):
 class OpenAIClient(LLMClient):
     """Client for OpenAI API."""
 
-    def __init__(self, settings: Optional[LLMSettings] = None):
+    def __init__(self, settings: LLMSettings | None = None):
         """
         Initialize OpenAI client.
 
@@ -129,17 +128,17 @@ class OpenAIClient(LLMClient):
     async def complete(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> str:
         """Generate completion using OpenAI API."""
         try:
             from openai import AsyncOpenAI
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "openai package required. Install with: pip install ptpd-calibration[llm]"
-            )
+            ) from err
 
         client = AsyncOpenAI(api_key=self.api_key)
 
@@ -161,17 +160,17 @@ class OpenAIClient(LLMClient):
     async def stream(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]:
         """Stream completion using OpenAI API."""
         try:
             from openai import AsyncOpenAI
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "openai package required. Install with: pip install ptpd-calibration[llm]"
-            )
+            ) from err
 
         client = AsyncOpenAI(api_key=self.api_key)
 
@@ -194,7 +193,7 @@ class OpenAIClient(LLMClient):
                 yield chunk.choices[0].delta.content
 
 
-def create_client(settings: Optional[LLMSettings] = None) -> LLMClient:
+def create_client(settings: LLMSettings | None = None) -> LLMClient:
     """
     Create an LLM client based on settings.
 

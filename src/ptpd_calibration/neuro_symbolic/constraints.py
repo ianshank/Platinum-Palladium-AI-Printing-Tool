@@ -17,9 +17,8 @@ References:
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from enum import Enum, auto
-from typing import Any, Callable, Optional, Protocol, TypeVar
+from enum import Enum
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -49,7 +48,7 @@ class ConstraintViolation(BaseModel):
     violation_magnitude: float = Field(ge=0.0)
     violation_indices: list[int] = Field(default_factory=list)
     description: str = ""
-    suggested_fix: Optional[str] = None
+    suggested_fix: str | None = None
 
 
 class ConstraintResult(BaseModel):
@@ -57,7 +56,7 @@ class ConstraintResult(BaseModel):
 
     is_satisfied: bool
     loss_value: float = Field(ge=0.0)
-    gradient: Optional[list[float]] = None
+    gradient: list[float] | None = None
     violations: list[ConstraintViolation] = Field(default_factory=list)
     explanation: str = ""
 
@@ -74,7 +73,7 @@ class SymbolicConstraint(ABC):
         name: str,
         constraint_type: ConstraintType,
         weight: float,
-        settings: Optional[NeuroSymbolicSettings] = None,
+        settings: NeuroSymbolicSettings | None = None,
     ):
         """Initialize constraint.
 
@@ -131,9 +130,9 @@ class SymbolicConstraint(ABC):
             values_plus[i] += epsilon
             values_minus = values.copy()
             values_minus[i] -= epsilon
-            gradient[i] = (
-                self.compute_loss(values_plus) - self.compute_loss(values_minus)
-            ) / (2 * epsilon)
+            gradient[i] = (self.compute_loss(values_plus) - self.compute_loss(values_minus)) / (
+                2 * epsilon
+            )
         return gradient
 
     def weighted_loss(self, values: NDArray[np.float64]) -> float:
@@ -161,8 +160,8 @@ class MonotonicityConstraint(SymbolicConstraint):
 
     def __init__(
         self,
-        weight: Optional[float] = None,
-        settings: Optional[NeuroSymbolicSettings] = None,
+        weight: float | None = None,
+        settings: NeuroSymbolicSettings | None = None,
     ):
         settings = settings or get_settings().neuro_symbolic
         super().__init__(
@@ -215,7 +214,7 @@ class MonotonicityConstraint(SymbolicConstraint):
         diffs = np.diff(values)
         # Soft penalty: squared negative differences
         negative_diffs = np.minimum(diffs, 0)
-        return float(np.sum(negative_diffs ** 2))
+        return float(np.sum(negative_diffs**2))
 
 
 class DensityBoundsConstraint(SymbolicConstraint):
@@ -230,10 +229,10 @@ class DensityBoundsConstraint(SymbolicConstraint):
 
     def __init__(
         self,
-        min_density: Optional[float] = None,
-        max_density: Optional[float] = None,
-        weight: Optional[float] = None,
-        settings: Optional[NeuroSymbolicSettings] = None,
+        min_density: float | None = None,
+        max_density: float | None = None,
+        weight: float | None = None,
+        settings: NeuroSymbolicSettings | None = None,
     ):
         settings = settings or get_settings().neuro_symbolic
         super().__init__(
@@ -242,12 +241,8 @@ class DensityBoundsConstraint(SymbolicConstraint):
             weight=weight if weight is not None else settings.density_bounds_weight,
             settings=settings,
         )
-        self.min_density = (
-            min_density if min_density is not None else settings.min_density
-        )
-        self.max_density = (
-            max_density if max_density is not None else settings.max_density
-        )
+        self.min_density = min_density if min_density is not None else settings.min_density
+        self.max_density = max_density if max_density is not None else settings.max_density
 
     def evaluate(self, values: NDArray[np.float64]) -> ConstraintResult:
         """Evaluate density bounds constraint."""
@@ -266,9 +261,7 @@ class DensityBoundsConstraint(SymbolicConstraint):
                 ConstraintViolation(
                     constraint_type=self.constraint_type,
                     constraint_name=f"{self.name} (lower)",
-                    violation_magnitude=float(
-                        np.sum(self.min_density - values[below_min])
-                    ),
+                    violation_magnitude=float(np.sum(self.min_density - values[below_min])),
                     violation_indices=below_indices,
                     description=f"{len(below_indices)} values below minimum density {self.min_density}",
                     suggested_fix="Check for calculation errors or increase exposure",
@@ -279,9 +272,7 @@ class DensityBoundsConstraint(SymbolicConstraint):
                 ConstraintViolation(
                     constraint_type=self.constraint_type,
                     constraint_name=f"{self.name} (upper)",
-                    violation_magnitude=float(
-                        np.sum(values[above_max] - self.max_density)
-                    ),
+                    violation_magnitude=float(np.sum(values[above_max] - self.max_density)),
                     violation_indices=above_indices,
                     description=f"{len(above_indices)} values above maximum density {self.max_density}",
                     suggested_fix="Check for measurement errors or reduce exposure",
@@ -306,11 +297,11 @@ class DensityBoundsConstraint(SymbolicConstraint):
         """Compute bounds loss using soft penalty."""
         # Lower bound penalty
         below_min = np.maximum(self.min_density - values, 0)
-        lower_loss = np.sum(below_min ** 2)
+        lower_loss = np.sum(below_min**2)
 
         # Upper bound penalty
         above_max = np.maximum(values - self.max_density, 0)
-        upper_loss = np.sum(above_max ** 2)
+        upper_loss = np.sum(above_max**2)
 
         return float(lower_loss + upper_loss)
 
@@ -331,8 +322,8 @@ class PhysicsConstraint(SymbolicConstraint):
         self,
         toe_fraction: float = 0.2,
         shoulder_fraction: float = 0.2,
-        weight: Optional[float] = None,
-        settings: Optional[NeuroSymbolicSettings] = None,
+        weight: float | None = None,
+        settings: NeuroSymbolicSettings | None = None,
     ):
         """Initialize physics constraint.
 
@@ -417,7 +408,7 @@ class PhysicsConstraint(SymbolicConstraint):
         second_deriv = np.diff(np.diff(toe_values))
         # Penalize positive second derivatives (convex behavior)
         positive_second = np.maximum(second_deriv, 0)
-        return float(np.mean(positive_second ** 2))
+        return float(np.mean(positive_second**2))
 
     def _evaluate_shoulder_region(self, shoulder_values: NDArray[np.float64]) -> float:
         """Evaluate shoulder region physics (should show saturation)."""
@@ -433,7 +424,7 @@ class PhysicsConstraint(SymbolicConstraint):
         deriv_change = np.diff(first_deriv)
         # Penalize increasing derivatives (no saturation)
         positive_change = np.maximum(deriv_change, 0)
-        return float(np.mean(positive_change ** 2))
+        return float(np.mean(positive_change**2))
 
     def compute_loss(self, values: NDArray[np.float64]) -> float:
         """Compute physics loss."""
@@ -461,8 +452,8 @@ class SmoothnessConstraint(SymbolicConstraint):
     def __init__(
         self,
         order: int = 2,
-        weight: Optional[float] = None,
-        settings: Optional[NeuroSymbolicSettings] = None,
+        weight: float | None = None,
+        settings: NeuroSymbolicSettings | None = None,
     ):
         """Initialize smoothness constraint.
 
@@ -526,7 +517,7 @@ class SmoothnessConstraint(SymbolicConstraint):
         for _ in range(self.order):
             deriv = np.diff(deriv)
 
-        return float(np.sum(deriv ** 2))
+        return float(np.sum(deriv**2))
 
     def _compute_roughness(self, values: NDArray[np.float64]) -> float:
         """Compute normalized roughness metric."""
@@ -555,8 +546,8 @@ class ConstraintSet:
 
     def __init__(
         self,
-        constraints: Optional[list[SymbolicConstraint]] = None,
-        settings: Optional[NeuroSymbolicSettings] = None,
+        constraints: list[SymbolicConstraint] | None = None,
+        settings: NeuroSymbolicSettings | None = None,
     ):
         """Initialize constraint set.
 
@@ -568,9 +559,7 @@ class ConstraintSet:
         self.constraints: list[SymbolicConstraint] = constraints or []
 
     @classmethod
-    def default_set(
-        cls, settings: Optional[NeuroSymbolicSettings] = None
-    ) -> "ConstraintSet":
+    def default_set(cls, settings: NeuroSymbolicSettings | None = None) -> "ConstraintSet":
         """Create default constraint set for Pt/Pd calibration.
 
         Args:
@@ -624,9 +613,7 @@ class ConstraintSet:
         """
         return sum(c.weighted_loss(values) for c in self.constraints)
 
-    def compute_total_gradient(
-        self, values: NDArray[np.float64]
-    ) -> NDArray[np.float64]:
+    def compute_total_gradient(self, values: NDArray[np.float64]) -> NDArray[np.float64]:
         """Compute total gradient from all constraints.
 
         Args:
@@ -644,9 +631,7 @@ class ConstraintSet:
         """Check if all constraints are satisfied."""
         return all(c.evaluate(values).is_satisfied for c in self.constraints)
 
-    def get_violations(
-        self, values: NDArray[np.float64]
-    ) -> list[ConstraintViolation]:
+    def get_violations(self, values: NDArray[np.float64]) -> list[ConstraintViolation]:
         """Get all constraint violations."""
         violations = []
         for c in self.constraints:
@@ -700,7 +685,7 @@ class DifferentiableLoss:
     def __init__(
         self,
         constraint_set: ConstraintSet,
-        target_values: Optional[NDArray[np.float64]] = None,
+        target_values: NDArray[np.float64] | None = None,
         data_loss_weight: float = 1.0,
         data_loss_type: str = "mse",
     ):
@@ -725,7 +710,7 @@ class DifferentiableLoss:
         diff = values - self.target_values
 
         if self.data_loss_type == "mse":
-            return float(np.mean(diff ** 2))
+            return float(np.mean(diff**2))
         elif self.data_loss_type == "mae":
             return float(np.mean(np.abs(diff)))
         elif self.data_loss_type == "huber":
@@ -733,9 +718,9 @@ class DifferentiableLoss:
             abs_diff = np.abs(diff)
             quadratic = np.minimum(abs_diff, delta)
             linear = abs_diff - quadratic
-            return float(np.mean(0.5 * quadratic ** 2 + delta * linear))
+            return float(np.mean(0.5 * quadratic**2 + delta * linear))
         else:
-            return float(np.mean(diff ** 2))
+            return float(np.mean(diff**2))
 
     def __call__(self, values: NDArray[np.float64]) -> float:
         """Compute total loss.
@@ -763,25 +748,13 @@ class DifferentiableLoss:
         data_grad = np.zeros_like(values)
         if self.target_values is not None:
             if self.data_loss_type == "mse":
-                data_grad = (
-                    2
-                    * self.data_loss_weight
-                    * (values - self.target_values)
-                    / len(values)
-                )
+                data_grad = 2 * self.data_loss_weight * (values - self.target_values) / len(values)
             elif self.data_loss_type == "mae":
                 data_grad = (
-                    self.data_loss_weight
-                    * np.sign(values - self.target_values)
-                    / len(values)
+                    self.data_loss_weight * np.sign(values - self.target_values) / len(values)
                 )
             else:
-                data_grad = (
-                    2
-                    * self.data_loss_weight
-                    * (values - self.target_values)
-                    / len(values)
-                )
+                data_grad = 2 * self.data_loss_weight * (values - self.target_values) / len(values)
 
         # Constraint gradient
         constraint_grad = self.constraint_set.compute_total_gradient(values)
@@ -802,8 +775,8 @@ class ConstrainedCurveOptimizer:
 
     def __init__(
         self,
-        constraint_set: Optional[ConstraintSet] = None,
-        settings: Optional[NeuroSymbolicSettings] = None,
+        constraint_set: ConstraintSet | None = None,
+        settings: NeuroSymbolicSettings | None = None,
     ):
         """Initialize optimizer.
 
@@ -817,8 +790,8 @@ class ConstrainedCurveOptimizer:
     def optimize(
         self,
         initial_values: NDArray[np.float64],
-        target_values: Optional[NDArray[np.float64]] = None,
-        bounds: Optional[tuple[float, float]] = None,
+        target_values: NDArray[np.float64] | None = None,
+        bounds: tuple[float, float] | None = None,
     ) -> dict[str, Any]:
         """Optimize curve to satisfy constraints.
 
@@ -895,9 +868,7 @@ class ConstrainedCurveOptimizer:
         )
         return result["optimized_values"]
 
-    def validate_curve(
-        self, values: NDArray[np.float64]
-    ) -> tuple[bool, list[ConstraintViolation]]:
+    def validate_curve(self, values: NDArray[np.float64]) -> tuple[bool, list[ConstraintViolation]]:
         """Validate curve against all constraints.
 
         Args:

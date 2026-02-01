@@ -9,16 +9,16 @@ Key Design Principles:
 5. Support for train/val/test splits with no data leakage
 """
 
-from dataclasses import dataclass, field
-from enum import Enum
-from pathlib import Path
-from typing import Any, Iterator, Optional, Tuple
 import json
 import logging
+from collections.abc import Iterator
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
 
 logger = logging.getLogger(__name__)
 
@@ -50,30 +50,30 @@ class SyntheticDataConfig:
     density_noise_scaling: float = 0.5  # Scaling factor for density noise
 
     # Image generation
-    image_size: Tuple[int, int] = (640, 480)
-    num_patches_range: Tuple[int, int] = (11, 41)
+    image_size: tuple[int, int] = (640, 480)
+    num_patches_range: tuple[int, int] = (11, 41)
 
     # Curve generation
     curve_points: int = 256
-    density_range: Tuple[float, float] = (0.1, 2.5)
+    density_range: tuple[float, float] = (0.1, 2.5)
 
     # Exposure generation
-    exposure_range: Tuple[float, float] = (30.0, 600.0)
-    humidity_range: Tuple[float, float] = (30.0, 80.0)
-    temperature_range: Tuple[float, float] = (15.0, 30.0)
+    exposure_range: tuple[float, float] = (30.0, 600.0)
+    humidity_range: tuple[float, float] = (30.0, 80.0)
+    temperature_range: tuple[float, float] = (15.0, 30.0)
 
     # Defect generation
     defect_probability: float = 0.3
     max_defects_per_image: int = 10
-    defect_size_range: Tuple[int, int] = (10, 100)
+    defect_size_range: tuple[int, int] = (10, 100)
 
     # Augmentation
-    rotation_range: Tuple[float, float] = (-15.0, 15.0)
-    scale_range: Tuple[float, float] = (0.8, 1.2)
-    brightness_range: Tuple[float, float] = (0.8, 1.2)
+    rotation_range: tuple[float, float] = (-15.0, 15.0)
+    scale_range: tuple[float, float] = (0.8, 1.2)
+    brightness_range: tuple[float, float] = (0.8, 1.2)
 
     # Output paths
-    output_dir: Optional[Path] = None
+    output_dir: Path | None = None
     save_images: bool = False
 
     def __post_init__(self):
@@ -88,6 +88,7 @@ class SyntheticDataConfig:
 
 class PaperType(str, Enum):
     """Simulated paper types for training data."""
+
     ARCHES_PLATINE = "arches_platine"
     BERGGER_COT320 = "bergger_cot320"
     HAHNEMUHLE_PLATINUM = "hahnemuhle_platinum"
@@ -100,6 +101,7 @@ class PaperType(str, Enum):
 
 class UVSourceType(str, Enum):
     """Simulated UV sources for training data."""
+
     NUARC = "nuarc"
     FLUORESCENT_BL = "fluorescent_bl"
     LED_365NM = "led_365nm"
@@ -126,7 +128,7 @@ class BaseDataGenerator:
         self.rng = np.random.default_rng(config.seed)
         self._sample_count = 0
 
-    def reset(self, seed: Optional[int] = None):
+    def reset(self, seed: int | None = None):
         """Reset generator state.
 
         Args:
@@ -270,20 +272,24 @@ class DetectionDataGenerator(BaseDataGenerator):
 
             # Create patch with slight edge variation
             edge_noise = self.rng.integers(-2, 3, 4)
-            image[py + edge_noise[0]:py + ph + edge_noise[1],
-                  px + edge_noise[2]:px + pw + edge_noise[3]] = gray_value
+            image[
+                py + edge_noise[0] : py + ph + edge_noise[1],
+                px + edge_noise[2] : px + pw + edge_noise[3],
+            ] = gray_value
 
             # Create mask
             mask = np.zeros((height, width), dtype=np.uint8)
-            mask[py:py + ph, px:px + pw] = 1
+            mask[py : py + ph, px : px + pw] = 1
             patch_masks.append(mask)
 
-            patches.append({
-                "index": i,
-                "density": density,
-                "gray_value": gray_value,
-                "bbox": patch_bbox,
-            })
+            patches.append(
+                {
+                    "index": i,
+                    "density": density,
+                    "gray_value": gray_value,
+                    "bbox": patch_bbox,
+                }
+            )
 
         # Apply rotation
         if abs(rotation) > 0.5:
@@ -335,8 +341,7 @@ class DetectionDataGenerator(BaseDataGenerator):
         # Add paper texture
         texture = self._paper_textures[self.rng.integers(0, len(self._paper_textures))]
         texture_tiled = np.tile(
-            texture,
-            (height // texture.shape[0] + 1, width // texture.shape[1] + 1)
+            texture, (height // texture.shape[0] + 1, width // texture.shape[1] + 1)
         )[:height, :width]
 
         # Apply texture
@@ -370,12 +375,14 @@ class DetectionDataGenerator(BaseDataGenerator):
             dx, dy = cx - center[0], cy - center[1]
             new_cx = center[0] + dx * cos_a - dy * sin_a
             new_cy = center[1] + dx * sin_a + dy * cos_a
-            new_bboxes.append((
-                int(new_cx - w / 2),
-                int(new_cy - h / 2),
-                w,
-                h,
-            ))
+            new_bboxes.append(
+                (
+                    int(new_cx - w / 2),
+                    int(new_cy - h / 2),
+                    w,
+                    h,
+                )
+            )
 
         return rotated, new_bboxes
 
@@ -507,9 +514,7 @@ class CurveDataGenerator(BaseDataGenerator):
         measured_densities = np.interp(step_x, x, y)
 
         # Add input noise to densities (to prevent exact matching)
-        measured_densities = self._add_noise(
-            measured_densities, self.config.input_noise_std
-        )
+        measured_densities = self._add_noise(measured_densities, self.config.input_noise_std)
         measured_densities = np.clip(measured_densities, 0, 1)
 
         # Convert to actual density values
@@ -557,7 +562,7 @@ class CurveDataGenerator(BaseDataGenerator):
             Output values with realistic curve shape
         """
         # Base power curve
-        y = x ** gamma
+        y = x**gamma
 
         # Add shoulder and toe regions
         toe_strength = 0.1 + self.rng.uniform(-0.05, 0.05)
@@ -678,9 +683,7 @@ class ExposureDataGenerator(BaseDataGenerator):
 
         # Add realistic variation (prevent exact mapping)
         exposure = exposure * self.rng.uniform(0.9, 1.1)
-        exposure = self._add_noise(
-            np.array([exposure]), self.config.output_noise_std * exposure
-        )[0]
+        exposure = self._add_noise(np.array([exposure]), self.config.output_noise_std * exposure)[0]
 
         # Confidence interval
         uncertainty = exposure * 0.15
@@ -737,6 +740,7 @@ class ExposureDataGenerator(BaseDataGenerator):
 
 class DefectType(str, Enum):
     """Defect types for synthetic data."""
+
     BRUSH_MARK = "brush_mark"
     POOLING = "pooling"
     DUST = "dust"
@@ -792,9 +796,7 @@ class DefectDataGenerator(BaseDataGenerator):
 
         # Add label noise
         for defect in defect_info:
-            defect["class_idx"] = self._add_label_noise(
-                defect["class_idx"], len(DefectType)
-            )
+            defect["class_idx"] = self._add_label_noise(defect["class_idx"], len(DefectType))
 
         return {
             "image": image,
@@ -835,7 +837,7 @@ class DefectDataGenerator(BaseDataGenerator):
         image: np.ndarray,
         mask: np.ndarray,
         defect_type: DefectType,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Add a defect to the image and mask."""
         height, width = image.shape[:2]
 
@@ -854,43 +856,39 @@ class DefectDataGenerator(BaseDataGenerator):
             length = size * 2
             angle = self.rng.uniform(-30, 30)
             self._draw_streak(defect_mask, cx, cy, length, size // 4, angle)
-            self._draw_streak(image[:, :, 0], cx, cy, length, size // 4, angle,
-                              value=int(image[cy, cx, 0] * 0.9))
+            self._draw_streak(
+                image[:, :, 0], cx, cy, length, size // 4, angle, value=int(image[cy, cx, 0] * 0.9)
+            )
 
         elif defect_type == DefectType.DUST:
             # Small circular spot
             radius = min(size // 4, 10)
             self._draw_circle(defect_mask, cx, cy, radius)
-            self._draw_circle(image[:, :, 0], cx, cy, radius,
-                              value=self.rng.integers(30, 80))
+            self._draw_circle(image[:, :, 0], cx, cy, radius, value=self.rng.integers(30, 80))
 
         elif defect_type == DefectType.SCRATCH:
             # Thin line
             length = size
             angle = self.rng.uniform(0, 180)
             self._draw_line(defect_mask, cx, cy, length, 2, angle)
-            self._draw_line(image[:, :, 0], cx, cy, length, 2, angle,
-                            value=255)
+            self._draw_line(image[:, :, 0], cx, cy, length, 2, angle, value=255)
 
         elif defect_type == DefectType.STAIN:
             # Irregular blob
             self._draw_blob(defect_mask, cx, cy, size)
             base_val = image[cy, cx, 0]
-            self._draw_blob(image[:, :, 0], cx, cy, size,
-                            value=int(base_val * 0.7))
+            self._draw_blob(image[:, :, 0], cx, cy, size, value=int(base_val * 0.7))
 
         elif defect_type == DefectType.WATER_SPOT:
             # Circular with edge
             radius = size // 2
             self._draw_ring(defect_mask, cx, cy, radius, 3)
-            self._draw_ring(image[:, :, 0], cx, cy, radius, 3,
-                            value=int(image[cy, cx, 0] * 1.1))
+            self._draw_ring(image[:, :, 0], cx, cy, radius, 3, value=int(image[cy, cx, 0] * 1.1))
 
         else:  # POOLING, UNEVEN_COATING
             # Large irregular area
             self._draw_blob(defect_mask, cx, cy, size * 2)
-            self._draw_blob(image[:, :, 0], cx, cy, size * 2,
-                            value=int(image[cy, cx, 0] * 0.85))
+            self._draw_blob(image[:, :, 0], cx, cy, size * 2, value=int(image[cy, cx, 0] * 0.85))
 
         # Update main mask
         mask |= defect_mask
@@ -925,7 +923,7 @@ class DefectDataGenerator(BaseDataGenerator):
         value: int = 1,
     ):
         """Draw a filled circle."""
-        y, x = np.ogrid[:arr.shape[0], :arr.shape[1]]
+        y, x = np.ogrid[: arr.shape[0], : arr.shape[1]]
         dist = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
         arr[dist <= radius] = value
 
@@ -970,7 +968,7 @@ class DefectDataGenerator(BaseDataGenerator):
         value: int = 1,
     ):
         """Draw a ring/circle outline."""
-        y, x = np.ogrid[:arr.shape[0], :arr.shape[1]]
+        y, x = np.ogrid[: arr.shape[0], : arr.shape[1]]
         dist = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
         arr[(dist >= radius - thickness) & (dist <= radius + thickness)] = value
 
@@ -1159,7 +1157,7 @@ class RecipeDataGenerator(BaseDataGenerator):
 
 
 def create_generators(
-    config: Optional[SyntheticDataConfig] = None,
+    config: SyntheticDataConfig | None = None,
 ) -> dict[str, BaseDataGenerator]:
     """Create all data generators with shared configuration.
 

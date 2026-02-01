@@ -12,8 +12,6 @@ References:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
-import math
 
 
 class LightSource(str, Enum):
@@ -147,7 +145,7 @@ class ExposureCalculator:
     # Standard density for one stop
     DENSITY_PER_STOP = 0.3
 
-    def __init__(self, settings: Optional[ExposureSettings] = None):
+    def __init__(self, settings: ExposureSettings | None = None):
         """Initialize exposure calculator.
 
         Args:
@@ -158,11 +156,11 @@ class ExposureCalculator:
     def calculate(
         self,
         negative_density: float,
-        distance_inches: Optional[float] = None,
-        light_source: Optional[LightSource] = None,
-        paper_speed: Optional[float] = None,
-        platinum_ratio: Optional[float] = None,
-        humidity_factor: Optional[float] = None,
+        distance_inches: float | None = None,
+        light_source: LightSource | None = None,
+        paper_speed: float | None = None,
+        platinum_ratio: float | None = None,
+        humidity_factor: float | None = None,
     ) -> ExposureResult:
         """Calculate exposure time for given conditions.
 
@@ -195,9 +193,13 @@ class ExposureCalculator:
         density_adjustment = 2 ** (density_delta / self.DENSITY_PER_STOP)
 
         if density_delta > 0.3:
-            notes.append(f"Dense negative: +{density_delta:.2f} density requires {density_adjustment:.1f}x exposure")
+            notes.append(
+                f"Dense negative: +{density_delta:.2f} density requires {density_adjustment:.1f}x exposure"
+            )
         elif density_delta < -0.3:
-            notes.append(f"Thin negative: {density_delta:.2f} density requires {density_adjustment:.2f}x exposure")
+            notes.append(
+                f"Thin negative: {density_delta:.2f} density requires {density_adjustment:.2f}x exposure"
+            )
 
         # 2. Light source adjustment
         if source == LightSource.CUSTOM:
@@ -209,7 +211,9 @@ class ExposureCalculator:
         distance_adjustment = (distance / self.settings.base_distance_inches) ** 2
 
         if distance != self.settings.base_distance_inches:
-            notes.append(f"Distance {distance}\" vs base {self.settings.base_distance_inches}\": {distance_adjustment:.2f}x")
+            notes.append(
+                f'Distance {distance}" vs base {self.settings.base_distance_inches}": {distance_adjustment:.2f}x'
+            )
 
         # 4. Paper adjustment
         paper_adjustment = paper
@@ -220,27 +224,31 @@ class ExposureCalculator:
         chemistry_adjustment = pt_speed_factor * self.settings.contrast_agent_factor
 
         if pt_ratio > 0.5:
-            notes.append(f"High platinum ({pt_ratio*100:.0f}%): slower exposure needed")
+            notes.append(f"High platinum ({pt_ratio * 100:.0f}%): slower exposure needed")
 
         # 6. Environmental adjustment
         environmental_adjustment = 1.0 / humidity  # Higher humidity = faster
 
         # Calculate final exposure
         exposure_minutes = (
-            base *
-            density_adjustment *
-            light_adjustment *
-            distance_adjustment *
-            paper_adjustment *
-            chemistry_adjustment *
-            environmental_adjustment
+            base
+            * density_adjustment
+            * light_adjustment
+            * distance_adjustment
+            * paper_adjustment
+            * chemistry_adjustment
+            * environmental_adjustment
         )
 
         # Add warnings for extreme values
         if exposure_minutes > 30:
-            notes.append("Warning: Long exposure time. Consider reducing negative density or using faster light source.")
+            notes.append(
+                "Warning: Long exposure time. Consider reducing negative density or using faster light source."
+            )
         if exposure_minutes < 2:
-            notes.append("Warning: Short exposure. Risk of underexposure. Consider adding neutral density or increasing distance.")
+            notes.append(
+                "Warning: Short exposure. Risk of underexposure. Consider adding neutral density or increasing distance."
+            )
 
         return ExposureResult(
             exposure_minutes=exposure_minutes,

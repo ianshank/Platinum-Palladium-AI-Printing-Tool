@@ -8,7 +8,7 @@ import pytest
 
 # Try to import benchmark, skip if not available
 try:
-    import pytest_benchmark
+    import pytest_benchmark  # noqa: F401
 
     BENCHMARK_AVAILABLE = True
 except ImportError:
@@ -28,9 +28,7 @@ class TestCurveGenerationPerformance:
         return CurveGenerator()
 
     @pytest.mark.skipif(not BENCHMARK_AVAILABLE, reason="pytest-benchmark not installed")
-    def test_generate_linear_curve_small(
-        self, benchmark, generator, small_densities
-    ):
+    def test_generate_linear_curve_small(self, benchmark, generator, small_densities):
         """Benchmark linear curve generation with small dataset."""
         from ptpd_calibration.core.types import CurveType
 
@@ -45,9 +43,7 @@ class TestCurveGenerationPerformance:
         assert len(result.input_values) > 0
 
     @pytest.mark.skipif(not BENCHMARK_AVAILABLE, reason="pytest-benchmark not installed")
-    def test_generate_linear_curve_large(
-        self, benchmark, generator, large_densities
-    ):
+    def test_generate_linear_curve_large(self, benchmark, generator, large_densities):
         """Benchmark linear curve generation with large dataset."""
         from ptpd_calibration.core.types import CurveType
 
@@ -203,9 +199,7 @@ class TestCurveBlendingPerformance:
         from ptpd_calibration.curves import BlendMode
 
         curve1, curve2 = curve_pair
-        result = benchmark(
-            modifier.blend, curve1, curve2, mode=BlendMode.AVERAGE
-        )
+        result = benchmark(modifier.blend, curve1, curve2, mode=BlendMode.AVERAGE)
 
         assert result is not None
 
@@ -215,9 +209,7 @@ class TestCurveBlendingPerformance:
         from ptpd_calibration.curves import BlendMode
 
         curve1, curve2 = curve_pair
-        result = benchmark(
-            modifier.blend, curve1, curve2, mode=BlendMode.WEIGHTED, weight=0.7
-        )
+        result = benchmark(modifier.blend, curve1, curve2, mode=BlendMode.WEIGHTED, weight=0.7)
 
         assert result is not None
 
@@ -230,8 +222,8 @@ class TestCurvePerformanceThresholds:
         """Curve generation should complete in under 100ms."""
         import time
 
-        from ptpd_calibration.curves import CurveGenerator
         from ptpd_calibration.core.types import CurveType
+        from ptpd_calibration.curves import CurveGenerator
 
         generator = CurveGenerator()
 
@@ -246,8 +238,8 @@ class TestCurvePerformanceThresholds:
         """Curve modification should complete in under 50ms."""
         import time
 
-        from ptpd_calibration.curves import CurveModifier
         from ptpd_calibration.core.models import CurveData
+        from ptpd_calibration.curves import CurveModifier
 
         modifier = CurveModifier()
         curve = CurveData(

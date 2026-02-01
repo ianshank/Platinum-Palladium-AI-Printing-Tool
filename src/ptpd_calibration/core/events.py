@@ -24,12 +24,14 @@ Usage:
     bus.publish(CalibrationCompleted(record_id="abc", curve_quality=0.95))
 """
 
-from typing import Callable, TypeVar, Any, Awaitable
-from collections import defaultdict
-from datetime import datetime, timezone
-from pydantic import BaseModel, Field
 import asyncio
 import weakref
+from collections import defaultdict
+from collections.abc import Awaitable, Callable
+from datetime import datetime, timezone
+from typing import Any, TypeVar
+
+from pydantic import BaseModel, Field
 
 from ptpd_calibration.core.logging import get_logger
 
@@ -49,15 +51,12 @@ class Event(BaseModel):
         timestamp: When the event was created.
         metadata: Additional event metadata.
     """
+
     event_type: str = Field(description="Event type identifier")
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        description="Event creation timestamp"
+        default_factory=lambda: datetime.now(timezone.utc), description="Event creation timestamp"
     )
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional event metadata"
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional event metadata")
 
     model_config = {"extra": "allow"}
 
@@ -190,9 +189,11 @@ class EventBus:
             def handle_completion(event):
                 print(f"Completed: {event}")
         """
+
         def decorator(handler: Handler) -> Handler:
             self.subscribe(event_type, handler)
             return handler
+
         return decorator
 
     def _get_handlers(self, event_type: str) -> list[Handler]:
@@ -216,8 +217,10 @@ class EventBus:
 
         # Check weak references
         for pattern, weak_refs in self._weak_subscribers.items():
-            if pattern == event_type or pattern == "*" or (
-                pattern.endswith(".*") and event_type.startswith(pattern[:-2])
+            if (
+                pattern == event_type
+                or pattern == "*"
+                or (pattern.endswith(".*") and event_type.startswith(pattern[:-2]))
             ):
                 # Clean up dead references
                 alive_refs = []
@@ -241,9 +244,7 @@ class EventBus:
             event: Event to publish.
         """
         handlers = self._get_handlers(event.event_type)
-        logger.debug(
-            f"Publishing {event.event_type} to {len(handlers)} handlers"
-        )
+        logger.debug(f"Publishing {event.event_type} to {len(handlers)} handlers")
 
         for handler in handlers:
             try:
@@ -258,9 +259,7 @@ class EventBus:
                 else:
                     handler(event)
             except Exception as e:
-                logger.exception(
-                    f"Handler {handler.__name__} failed for {event.event_type}: {e}"
-                )
+                logger.exception(f"Handler {handler.__name__} failed for {event.event_type}: {e}")
 
     async def publish_async(self, event: Event) -> None:
         """Publish an event asynchronously.
@@ -271,9 +270,7 @@ class EventBus:
             event: Event to publish.
         """
         handlers = self._get_handlers(event.event_type)
-        logger.debug(
-            f"Publishing async {event.event_type} to {len(handlers)} handlers"
-        )
+        logger.debug(f"Publishing async {event.event_type} to {len(handlers)} handlers")
 
         async def call_handler(handler: Handler) -> None:
             try:
@@ -282,9 +279,7 @@ class EventBus:
                 else:
                     handler(event)
             except Exception as e:
-                logger.exception(
-                    f"Handler {handler.__name__} failed for {event.event_type}: {e}"
-                )
+                logger.exception(f"Handler {handler.__name__} failed for {event.event_type}: {e}")
 
         tasks = [call_handler(h) for h in handlers]
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -308,6 +303,7 @@ class EventBus:
 # Pre-defined event types for the calibration system
 class CalibrationStarted(Event):
     """Event emitted when a calibration session starts."""
+
     event_type: str = "calibration.started"
     session_id: str
     paper_type: str | None = None
@@ -315,6 +311,7 @@ class CalibrationStarted(Event):
 
 class CalibrationCompleted(Event):
     """Event emitted when a calibration session completes."""
+
     event_type: str = "calibration.completed"
     session_id: str
     record_id: str
@@ -323,6 +320,7 @@ class CalibrationCompleted(Event):
 
 class CalibrationFailed(Event):
     """Event emitted when a calibration session fails."""
+
     event_type: str = "calibration.failed"
     session_id: str
     error: str
@@ -331,6 +329,7 @@ class CalibrationFailed(Event):
 
 class CurveGenerated(Event):
     """Event emitted when a curve is generated."""
+
     event_type: str = "curve.generated"
     curve_name: str
     num_points: int
@@ -340,6 +339,7 @@ class CurveGenerated(Event):
 
 class CurveExported(Event):
     """Event emitted when a curve is exported."""
+
     event_type: str = "curve.exported"
     curve_name: str
     format: str
@@ -348,6 +348,7 @@ class CurveExported(Event):
 
 class HardwareConnected(Event):
     """Event emitted when hardware device connects."""
+
     event_type: str = "hardware.connected"
     device_type: str
     device_id: str
@@ -357,6 +358,7 @@ class HardwareConnected(Event):
 
 class HardwareDisconnected(Event):
     """Event emitted when hardware device disconnects."""
+
     event_type: str = "hardware.disconnected"
     device_type: str
     device_id: str
@@ -365,6 +367,7 @@ class HardwareDisconnected(Event):
 
 class MeasurementTaken(Event):
     """Event emitted when a measurement is taken."""
+
     event_type: str = "measurement.taken"
     device_id: str
     measurement_type: str

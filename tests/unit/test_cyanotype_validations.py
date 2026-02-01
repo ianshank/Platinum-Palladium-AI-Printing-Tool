@@ -5,22 +5,23 @@ Tests input validation, boundary conditions, data integrity, and error handling
 for the cyanotype chemistry and exposure calculators.
 """
 
-import pytest
 from dataclasses import asdict
+
+import pytest
 
 from ptpd_calibration.chemistry.cyanotype_calculator import (
     CyanotypeCalculator,
+    CyanotypePaperType,
     CyanotypeRecipe,
     CyanotypeSettings,
-    CyanotypePaperType,
 )
+from ptpd_calibration.core.types import CyanotypeFormula
 from ptpd_calibration.exposure.alternative_calculators import (
+    UV_SOURCE_SPEEDS,
     CyanotypeExposureCalculator,
     CyanotypeExposureResult,
     UVSource,
-    UV_SOURCE_SPEEDS,
 )
-from ptpd_calibration.core.types import CyanotypeFormula
 
 
 class TestCyanotypeChemistryValidation:
@@ -81,22 +82,16 @@ class TestCyanotypeChemistryValidation:
 
         # Zero should raise error
         with pytest.raises(ValueError, match="concentration"):
-            calculator.calculate(
-                width_inches=8.0, height_inches=10.0, concentration_factor=0.0
-            )
+            calculator.calculate(width_inches=8.0, height_inches=10.0, concentration_factor=0.0)
 
         # Negative should raise error
         with pytest.raises(ValueError, match="concentration"):
-            calculator.calculate(
-                width_inches=8.0, height_inches=10.0, concentration_factor=-0.5
-            )
+            calculator.calculate(width_inches=8.0, height_inches=10.0, concentration_factor=-0.5)
 
     def test_negative_margin_raises_error(self, calculator):
         """Test that negative margin raises ValueError."""
         with pytest.raises(ValueError, match="margin"):
-            calculator.calculate(
-                width_inches=8.0, height_inches=10.0, margin_inches=-0.5
-            )
+            calculator.calculate(width_inches=8.0, height_inches=10.0, margin_inches=-0.5)
 
     # --- Formula Type Validation ---
 
@@ -116,17 +111,19 @@ class TestCyanotypeChemistryValidation:
     def test_classic_vs_new_formula_differences(self, calculator):
         """Test that classic and new formulas produce different results."""
         classic = calculator.calculate(
-            width_inches=8.0, height_inches=10.0,
+            width_inches=8.0,
+            height_inches=10.0,
             formula=CyanotypeFormula.CLASSIC,
         )
         new = calculator.calculate(
-            width_inches=8.0, height_inches=10.0,
+            width_inches=8.0,
+            height_inches=10.0,
             formula=CyanotypeFormula.NEW,
         )
 
         # Different formulas should have different ratios
-        classic_ratio = classic.solution_a_ml / classic.solution_b_ml
-        new_ratio = new.solution_a_ml / new.solution_b_ml
+        classic.solution_a_ml / classic.solution_b_ml
+        new.solution_a_ml / new.solution_b_ml
 
         # Allow for formula-specific differences
         assert classic.formula != new.formula
@@ -147,11 +144,13 @@ class TestCyanotypeChemistryValidation:
     def test_paper_type_affects_volume(self, calculator):
         """Test that different paper types affect solution volume."""
         cotton = calculator.calculate(
-            width_inches=8.0, height_inches=10.0,
+            width_inches=8.0,
+            height_inches=10.0,
             paper_type=CyanotypePaperType.COTTON_RAG,
         )
         watercolor = calculator.calculate(
-            width_inches=8.0, height_inches=10.0,
+            width_inches=8.0,
+            height_inches=10.0,
             paper_type=CyanotypePaperType.WATERCOLOR_HOT,
         )
 
@@ -182,11 +181,9 @@ class TestCyanotypeChemistryValidation:
 
     def test_recipe_cost_calculation(self, calculator):
         """Test that cost is calculated correctly when requested."""
-        result = calculator.calculate(
-            width_inches=8.0, height_inches=10.0, include_cost=True
-        )
+        result = calculator.calculate(width_inches=8.0, height_inches=10.0, include_cost=True)
 
-        if hasattr(result, 'estimated_cost') and result.estimated_cost is not None:
+        if hasattr(result, "estimated_cost") and result.estimated_cost is not None:
             assert result.estimated_cost >= 0
 
     def test_recipe_serialization(self, calculator):
@@ -195,8 +192,8 @@ class TestCyanotypeChemistryValidation:
 
         result_dict = asdict(result)
         assert isinstance(result_dict, dict)
-        assert 'solution_a_ml' in result_dict
-        assert 'solution_b_ml' in result_dict
+        assert "solution_a_ml" in result_dict
+        assert "solution_b_ml" in result_dict
 
     # --- Scaling Validation ---
 
@@ -229,8 +226,8 @@ class TestCyanotypeChemistryValidation:
         stock = calculator.calculate_stock_solutions(total_volume_ml=100.0)
 
         assert isinstance(stock, dict)
-        assert 'solution_a' in stock
-        assert 'solution_b' in stock
+        assert "solution_a" in stock
+        assert "solution_b" in stock
 
     def test_stock_solution_volume_validation(self, calculator):
         """Test stock solution volume validation."""
@@ -310,9 +307,7 @@ class TestCyanotypeExposureValidation:
         """Test humidity percentage validation."""
         # Valid humidity range
         for humidity in [20.0, 50.0, 80.0]:
-            result = calculator.calculate(
-                negative_density=1.6, humidity_percent=humidity
-            )
+            result = calculator.calculate(negative_density=1.6, humidity_percent=humidity)
             assert result.exposure_seconds > 0
 
         # Invalid: negative humidity
@@ -410,10 +405,10 @@ class TestCyanotypeExposureValidation:
         """Test that exposure result contains all expected fields."""
         result = calculator.calculate(negative_density=1.6)
 
-        assert hasattr(result, 'exposure_seconds')
-        assert hasattr(result, 'format_time')
-        assert hasattr(result, 'uv_source')
-        assert hasattr(result, 'formula')
+        assert hasattr(result, "exposure_seconds")
+        assert hasattr(result, "format_time")
+        assert hasattr(result, "uv_source")
+        assert hasattr(result, "formula")
 
     def test_exposure_time_formatted_is_readable(self, calculator):
         """Test that formatted exposure time is human-readable."""
@@ -423,7 +418,7 @@ class TestCyanotypeExposureValidation:
         assert isinstance(formatted, str)
         assert len(formatted) > 0
         # Should contain time units
-        assert any(unit in formatted.lower() for unit in ['min', 'sec', ':'])
+        assert any(unit in formatted.lower() for unit in ["min", "sec", ":"])
 
     # --- Distance/Inverse Square Law ---
 

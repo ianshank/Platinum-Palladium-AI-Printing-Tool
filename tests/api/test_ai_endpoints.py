@@ -172,9 +172,7 @@ class TestTroubleshootEndpoints:
     def test_troubleshoot_mocked(self, mock_create_assistant, client):
         """Test troubleshooting with mocked LLM."""
         mock_assistant = AsyncMock()
-        mock_assistant.troubleshoot.return_value = (
-            "Try reducing exposure time by 10%"
-        )
+        mock_assistant.troubleshoot.return_value = "Try reducing exposure time by 10%"
         mock_create_assistant.return_value = mock_assistant
 
         request_data = {"problem": "Test problem"}

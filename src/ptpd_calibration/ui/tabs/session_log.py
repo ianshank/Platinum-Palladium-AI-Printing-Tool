@@ -5,10 +5,12 @@ Displays print history timeline, calculates statistics, and generates
 personalized best practices recommendations based on printing history.
 """
 
-import gradio as gr
-from pathlib import Path
 from collections import defaultdict
-from ptpd_calibration.session import SessionLogger, PrintRecord, PrintResult, ChemistryUsed
+from pathlib import Path
+
+import gradio as gr
+
+from ptpd_calibration.session import PrintResult, SessionLogger
 
 
 def calculate_session_statistics(session_logger: SessionLogger) -> dict:
@@ -67,10 +69,12 @@ def calculate_session_statistics(session_logger: SessionLogger) -> dict:
                         stats["exposure_times"].append(record.exposure_time_minutes)
 
                     # Track chemistry patterns for successful prints
-                    if record.result in (PrintResult.EXCELLENT, PrintResult.GOOD):
-                        if record.chemistry:
-                            ratio = record.chemistry.platinum_ratio
-                            stats["chemistry_patterns"]["platinum_ratio"].append(ratio)
+                    if (
+                        record.result in (PrintResult.EXCELLENT, PrintResult.GOOD)
+                        and record.chemistry
+                    ):
+                        ratio = record.chemistry.platinum_ratio
+                        stats["chemistry_patterns"]["platinum_ratio"].append(ratio)
 
             except Exception:
                 continue
@@ -85,9 +89,7 @@ def calculate_session_statistics(session_logger: SessionLogger) -> dict:
             stats["success_rate"] = (successful / stats["total_prints"]) * 100
 
         if stats["exposure_times"]:
-            stats["avg_exposure"] = sum(stats["exposure_times"]) / len(
-                stats["exposure_times"]
-            )
+            stats["avg_exposure"] = sum(stats["exposure_times"]) / len(stats["exposure_times"])
             # Calculate optimal exposure range (middle 80% of successful exposures)
             sorted_times = sorted(stats["exposure_times"])
             n = len(sorted_times)
@@ -173,9 +175,7 @@ def generate_best_practices(stats: dict) -> str:
             f"(based on {len(stats['exposure_times'])} successful prints)"
         )
     elif stats["avg_exposure"] > 0:
-        recommendations.append(
-            f"**Average exposure time:** {stats['avg_exposure']:.1f} minutes"
-        )
+        recommendations.append(f"**Average exposure time:** {stats['avg_exposure']:.1f} minutes")
 
     # Paper diversity insight
     num_papers = len(stats["papers_used"])
@@ -193,9 +193,7 @@ def generate_best_practices(stats: dict) -> str:
     pt_ratios = stats["chemistry_patterns"].get("platinum_ratio", [])
     if len(pt_ratios) >= 5:
         avg_pt = sum(pt_ratios) / len(pt_ratios) * 100
-        recommendations.append(
-            f"**Typical Pt ratio:** {avg_pt:.0f}% platinum in successful prints"
-        )
+        recommendations.append(f"**Typical Pt ratio:** {avg_pt:.0f}% platinum in successful prints")
 
     # Results breakdown
     results = stats["results_by_type"]
@@ -240,20 +238,18 @@ def build_session_log_tab(session_logger: SessionLogger):
                 # Filter controls
                 with gr.Row():
                     refresh_btn = gr.Button("🔄 Refresh History")
-                    filter_paper = gr.Dropdown(
-                        label="Filter Paper", choices=["All"], value="All"
-                    )
+                    _filter_paper = gr.Dropdown(label="Filter Paper", choices=["All"], value="All")
 
                 # Timeline visualization
                 timeline_view = gr.HTML(label="Timeline")
 
                 # Hidden data store
-                session_data = gr.State([])
+                _session_data = gr.State([])  # Reserved for event handler
 
             # Stats sidebar
             with gr.Column(scale=1):
                 gr.Markdown("### 📊 Statistics")
-                stats_plot = gr.Plot(label="Success Rate Over Time")
+                _stats_plot = gr.Plot(label="Success Rate Over Time")  # Reserved for event handler
 
                 gr.Markdown("### 🏆 Best Practices")
                 best_practices = gr.Markdown("Not enough data yet.")
