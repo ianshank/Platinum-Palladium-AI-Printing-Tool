@@ -6,16 +6,16 @@ Provides FastAPI test client, mock services, and test data generators.
 
 import os
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 # Try to import test dependencies
 try:
-    from fastapi.testclient import TestClient
     import httpx
+    from fastapi.testclient import TestClient
 
     FASTAPI_AVAILABLE = True
 except ImportError:
@@ -29,7 +29,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "api: mark test as an API endpoint test")
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config, items):  # noqa: ARG001
     """Skip API tests if FastAPI is not available."""
     if not FASTAPI_AVAILABLE:
         skip_api = pytest.mark.skip(reason="FastAPI not installed")
@@ -103,8 +103,8 @@ def sample_curve_data():
 @pytest.fixture
 def sample_step_tablet_image(tmp_path):
     """Create a sample step tablet image for testing."""
-    from PIL import Image
     import numpy as np
+    from PIL import Image
 
     width, height = 420, 100
     num_patches = 21
@@ -179,9 +179,7 @@ def calibration_request_data():
 @pytest.fixture
 def mock_llm_response():
     """Mock LLM response for AI endpoints."""
-    return AsyncMock(
-        return_value="This is a mock LLM response for testing purposes."
-    )
+    return AsyncMock(return_value="This is a mock LLM response for testing purposes.")
 
 
 @pytest.fixture

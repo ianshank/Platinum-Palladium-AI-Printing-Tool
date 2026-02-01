@@ -5,39 +5,37 @@ Tests the AI-powered analysis, prediction, and optimization tools
 for platinum-palladium printing workflow.
 """
 
+from unittest.mock import Mock
+
 import numpy as np
 import pytest
-from pathlib import Path
 from PIL import Image
-from unittest.mock import Mock, patch
 
 from ptpd_calibration.ai.platinum_palladium_ai import (
-    PlatinumPalladiumAI,
-    TonePreference,
+    ChemistryRecommendation,
     ContrastLevel,
+    DigitalNegativeResult,
+    ExposurePrediction,
+    PlatinumPalladiumAI,
     PrinterProfile,
+    PrintQualityAnalysis,
     ProblemArea,
     TonalityAnalysisResult,
-    ExposurePrediction,
-    ChemistryRecommendation,
-    DigitalNegativeResult,
-    PrintQualityAnalysis,
+    TonePreference,
     WorkflowOptimization,
+)
+from ptpd_calibration.core.models import (
+    CalibrationRecord,
+    CurveData,
 )
 from ptpd_calibration.core.types import (
     ChemistryType,
     ContrastAgent,
-    DeveloperType,
     CurveType,
+    DeveloperType,
 )
-from ptpd_calibration.core.models import (
-    CurveData,
-    CalibrationRecord,
-)
-from ptpd_calibration.imaging.processor import ImageFormat
 from ptpd_calibration.exposure.calculator import LightSource
-from ptpd_calibration.config import get_settings
-
+from ptpd_calibration.imaging.processor import ImageFormat
 
 # ============================================================================
 # Fixtures - Test Images
@@ -170,7 +168,7 @@ def sample_print_history():
         history.append(record)
 
     # Add 3 failed prints (low Dmax)
-    for i in range(3):
+    for _ in range(3):
         record = CalibrationRecord(
             paper_type="Arches Platine",
             paper_weight=310,
@@ -886,8 +884,10 @@ class TestAnalyzePrintQuality:
         # Should detect highlight issues
         problem_types = [p[0] for p in result.problem_areas]
         if len(problem_types) > 0:
-            assert (ProblemArea.HIGHLIGHTS in problem_types or
-                    ProblemArea.OVERALL_DENSITY in problem_types)
+            assert (
+                ProblemArea.HIGHLIGHTS in problem_types
+                or ProblemArea.OVERALL_DENSITY in problem_types
+            )
 
     def test_problem_area_detection_shadows(self, ai, normal_image, low_key_image):
         """Test detection of shadow problems."""
@@ -899,8 +899,9 @@ class TestAnalyzePrintQuality:
         # Should detect shadow or density issues
         problem_types = [p[0] for p in result.problem_areas]
         if len(problem_types) > 0:
-            assert (ProblemArea.SHADOWS in problem_types or
-                    ProblemArea.OVERALL_DENSITY in problem_types)
+            assert (
+                ProblemArea.SHADOWS in problem_types or ProblemArea.OVERALL_DENSITY in problem_types
+            )
 
     def test_zone_differences_calculated(self, ai, normal_image, low_key_image):
         """Test that zone-by-zone differences are calculated."""
@@ -947,7 +948,9 @@ class TestAnalyzePrintQuality:
         # Corrections should be strings
         assert all(isinstance(c, str) for c in result.corrections)
 
-    def test_low_match_triggers_calibration_suggestion(self, ai, high_contrast_image, low_contrast_image):
+    def test_low_match_triggers_calibration_suggestion(
+        self, ai, high_contrast_image, low_contrast_image
+    ):
         """Test that poor match suggests new calibration."""
         result = ai.analyze_print_quality(
             scan_image=low_contrast_image,
@@ -1052,7 +1055,7 @@ class TestOptimizeWorkflow:
             # Should have recommendations for specific papers
             assert len(result.recommended_paper_settings) > 0
             # Each paper should have recommended exposure
-            for paper, settings in result.recommended_paper_settings.items():
+            for _paper, settings in result.recommended_paper_settings.items():
                 assert "recommended_exposure" in settings
                 assert settings["recommended_exposure"] > 0
 
@@ -1111,11 +1114,10 @@ class TestOptimizeWorkflow:
         """Test identification of metal ratio trends."""
         result = ai.optimize_workflow(sample_print_history)
 
-        if result.successful_prints > 5:
+        if result.successful_prints > 5 and "metal_ratio" in result.parameter_trends:
             # Should identify metal ratio trends
-            if "metal_ratio" in result.parameter_trends:
-                trend = result.parameter_trends["metal_ratio"]
-                assert trend in ["palladium_dominant", "platinum_dominant", "balanced"]
+            trend = result.parameter_trends["metal_ratio"]
+            assert trend in ["palladium_dominant", "platinum_dominant", "balanced"]
 
     def test_identifies_exposure_consistency(self, ai):
         """Test identification of exposure consistency."""
@@ -1283,7 +1285,9 @@ class TestIntegrationScenarios:
         assert isinstance(negative, DigitalNegativeResult)
         assert negative.output_path.exists()
 
-    def test_print_evaluation_and_optimization_scenario(self, ai, normal_image, sample_print_history):
+    def test_print_evaluation_and_optimization_scenario(
+        self, ai, normal_image, sample_print_history
+    ):
         """Test print evaluation and workflow optimization scenario."""
         # 1. Analyze print quality
         # Simulate slight density shift in "print"

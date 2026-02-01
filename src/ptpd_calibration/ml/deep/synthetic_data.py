@@ -14,7 +14,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 import numpy as np
 
@@ -85,7 +84,7 @@ class ProcessModel:
         temperature: float,
         num_steps: int = 21,
         noise_std: float = 0.015,
-        rng: Optional[np.random.Generator] = None,
+        rng: np.random.Generator | None = None,
     ) -> np.ndarray:
         """
         Compute a realistic density curve based on physical parameters.
@@ -197,7 +196,7 @@ class SyntheticDataConfig:
     batch_variability: float = 0.05
 
     # Random seed for reproducibility
-    seed: Optional[int] = None
+    seed: int | None = None
 
     def __post_init__(self):
         """Initialize default papers if not provided."""
@@ -279,7 +278,7 @@ class SyntheticDataGenerator:
     of the Pt/Pd printing process.
     """
 
-    def __init__(self, config: Optional[SyntheticDataConfig] = None):
+    def __init__(self, config: SyntheticDataConfig | None = None):
         """
         Initialize the generator.
 
@@ -292,13 +291,13 @@ class SyntheticDataGenerator:
 
     def generate_record(
         self,
-        paper: Optional[PaperProfile] = None,
-        metal_ratio: Optional[float] = None,
-        exposure_time: Optional[float] = None,
-        contrast_agent: Optional[ContrastAgent] = None,
-        contrast_amount: Optional[float] = None,
-        humidity: Optional[float] = None,
-        temperature: Optional[float] = None,
+        paper: PaperProfile | None = None,
+        metal_ratio: float | None = None,
+        exposure_time: float | None = None,
+        contrast_agent: ContrastAgent | None = None,
+        contrast_amount: float | None = None,
+        humidity: float | None = None,
+        temperature: float | None = None,
     ) -> CalibrationRecord:
         """
         Generate a single calibration record.
@@ -327,9 +326,7 @@ class SyntheticDataGenerator:
 
         if contrast_agent is None:
             # 70% chance of using NA2
-            contrast_agent = (
-                ContrastAgent.NA2 if self.rng.random() < 0.7 else ContrastAgent.NONE
-            )
+            contrast_agent = ContrastAgent.NA2 if self.rng.random() < 0.7 else ContrastAgent.NONE
 
         if contrast_amount is None:
             if contrast_agent != ContrastAgent.NONE:
@@ -385,7 +382,7 @@ class SyntheticDataGenerator:
 
     def generate_database(
         self,
-        num_records: Optional[int] = None,
+        num_records: int | None = None,
     ) -> CalibrationDatabase:
         """
         Generate a full database of calibration records.
@@ -465,7 +462,7 @@ class SyntheticDataGenerator:
 
     def generate_exposure_series(
         self,
-        paper: Optional[PaperProfile] = None,
+        paper: PaperProfile | None = None,
         metal_ratio: float = 0.5,
         num_exposures: int = 7,
     ) -> list[CalibrationRecord]:
@@ -505,7 +502,7 @@ class SyntheticDataGenerator:
 
     def generate_metal_ratio_series(
         self,
-        paper: Optional[PaperProfile] = None,
+        paper: PaperProfile | None = None,
         num_ratios: int = 5,
     ) -> list[CalibrationRecord]:
         """
@@ -538,7 +535,7 @@ class SyntheticDataGenerator:
 
 def generate_training_data(
     num_records: int = 500,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> CalibrationDatabase:
     """
     Convenience function to generate training data.

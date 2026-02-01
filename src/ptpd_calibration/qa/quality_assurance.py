@@ -16,14 +16,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union, Tuple, Dict, List
 from uuid import uuid4
 
 import numpy as np
 from PIL import Image
 
 from ptpd_calibration.config import QASettings
-
 
 # ============================================================================
 # Configuration
@@ -87,9 +85,9 @@ class DensityAnalysis:
     highlight_blocked: bool
     shadow_blocked: bool
     histogram: np.ndarray
-    zone_distribution: Dict[int, float]
-    warnings: List[str] = field(default_factory=list)
-    suggestions: List[str] = field(default_factory=list)
+    zone_distribution: dict[int, float]
+    warnings: list[str] = field(default_factory=list)
+    suggestions: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -101,8 +99,7 @@ class DensityAnalysis:
             "highlight_blocked": self.highlight_blocked,
             "shadow_blocked": self.shadow_blocked,
             "zone_distribution": {
-                f"Zone {z}": f"{pct*100:.1f}%"
-                for z, pct in self.zone_distribution.items()
+                f"Zone {z}": f"{pct * 100:.1f}%" for z, pct in self.zone_distribution.items()
             },
             "warnings": self.warnings,
             "suggestions": self.suggestions,
@@ -119,7 +116,7 @@ class ChemistrySolution:
     initial_volume_ml: float
     current_volume_ml: float
     shelf_life_days: int
-    usage_log: List[Tuple[datetime, float]] = field(default_factory=list)
+    usage_log: list[tuple[datetime, float]] = field(default_factory=list)
     notes: str = ""
 
     @property
@@ -169,8 +166,8 @@ class HumidityReading:
 
     timestamp: datetime
     humidity_percent: float
-    temperature_celsius: Optional[float] = None
-    paper_type: Optional[str] = None
+    temperature_celsius: float | None = None
+    paper_type: str | None = None
     notes: str = ""
 
     def to_dict(self) -> dict:
@@ -178,7 +175,9 @@ class HumidityReading:
         return {
             "timestamp": self.timestamp.isoformat(),
             "humidity_percent": round(self.humidity_percent, 1),
-            "temperature_celsius": round(self.temperature_celsius, 1) if self.temperature_celsius else None,
+            "temperature_celsius": round(self.temperature_celsius, 1)
+            if self.temperature_celsius
+            else None,
             "paper_type": self.paper_type,
             "notes": self.notes,
         }
@@ -190,8 +189,8 @@ class UVReading:
 
     timestamp: datetime
     intensity: float
-    wavelength: Optional[float] = None
-    bulb_hours: Optional[float] = None
+    wavelength: float | None = None
+    bulb_hours: float | None = None
     notes: str = ""
 
     def to_dict(self) -> dict:
@@ -215,7 +214,7 @@ class Alert:
     message: str
     timestamp: datetime
     dismissed: bool = False
-    dismissed_at: Optional[datetime] = None
+    dismissed_at: datetime | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -243,7 +242,7 @@ class NegativeDensityValidator:
     highlights/shadows, and suggests corrections.
     """
 
-    def __init__(self, settings: Optional[QASettings] = None):
+    def __init__(self, settings: QASettings | None = None):
         """
         Initialize validator.
 
@@ -252,7 +251,7 @@ class NegativeDensityValidator:
         """
         self.settings = settings or QASettings()
 
-    def validate_density_range(self, image: Union[np.ndarray, Image.Image]) -> DensityAnalysis:
+    def validate_density_range(self, image: np.ndarray | Image.Image) -> DensityAnalysis:
         """
         Check if image density is in printable range.
 
@@ -264,7 +263,7 @@ class NegativeDensityValidator:
         """
         # Convert to numpy array if needed
         if isinstance(image, Image.Image):
-            image = np.array(image.convert('L'))
+            image = np.array(image.convert("L"))
         elif len(image.shape) == 3:
             # Convert RGB to grayscale
             image = np.mean(image, axis=2)
@@ -322,7 +321,7 @@ class NegativeDensityValidator:
             suggestions=suggestions,
         )
 
-    def check_highlight_detail(self, image: Union[np.ndarray, Image.Image]) -> Tuple[bool, str]:
+    def check_highlight_detail(self, image: np.ndarray | Image.Image) -> tuple[bool, str]:
         """
         Check if highlights have detail or are blocked.
 
@@ -338,13 +337,15 @@ class NegativeDensityValidator:
             return False, f"Highlights blocked at Dmin={analysis.min_density:.3f}"
 
         # Check if we have good highlight detail
-        highlight_zone_percent = analysis.zone_distribution.get(1, 0) + analysis.zone_distribution.get(2, 0)
+        highlight_zone_percent = analysis.zone_distribution.get(
+            1, 0
+        ) + analysis.zone_distribution.get(2, 0)
         if highlight_zone_percent < 0.05:
             return False, "Very little highlight detail present"
 
         return True, f"Good highlight detail (Dmin={analysis.min_density:.3f})"
 
-    def check_shadow_detail(self, image: Union[np.ndarray, Image.Image]) -> Tuple[bool, str]:
+    def check_shadow_detail(self, image: np.ndarray | Image.Image) -> tuple[bool, str]:
         """
         Check if shadows have detail or are blocked.
 
@@ -360,15 +361,17 @@ class NegativeDensityValidator:
             return False, f"Shadows blocked at Dmax={analysis.max_density:.3f}"
 
         # Check if we have good shadow detail
-        shadow_zone_percent = analysis.zone_distribution.get(8, 0) + analysis.zone_distribution.get(9, 0)
+        shadow_zone_percent = analysis.zone_distribution.get(8, 0) + analysis.zone_distribution.get(
+            9, 0
+        )
         if shadow_zone_percent < 0.05:
             return False, "Very little shadow detail present"
 
         return True, f"Good shadow detail (Dmax={analysis.max_density:.3f})"
 
     def get_density_histogram(
-        self, image: Union[np.ndarray, Image.Image], bins: int = 256
-    ) -> Tuple[np.ndarray, np.ndarray]:
+        self, image: np.ndarray | Image.Image, bins: int = 256
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Return density histogram with zones.
 
@@ -381,7 +384,7 @@ class NegativeDensityValidator:
         """
         # Convert to numpy array if needed
         if isinstance(image, Image.Image):
-            image = np.array(image.convert('L'))
+            image = np.array(image.convert("L"))
         elif len(image.shape) == 3:
             image = np.mean(image, axis=2)
 
@@ -401,7 +404,7 @@ class NegativeDensityValidator:
         density_range: float,
         highlight_blocked: bool,
         shadow_blocked: bool,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Suggest exposure/contrast adjustments.
 
@@ -425,7 +428,9 @@ class NegativeDensityValidator:
 
         # Contrast adjustments
         if density_range < 1.5:
-            suggestions.append("Increase negative contrast - consider using Grade 3+ paper or longer development")
+            suggestions.append(
+                "Increase negative contrast - consider using Grade 3+ paper or longer development"
+            )
         elif density_range > 3.0:
             suggestions.append("Reduce negative contrast - may be too contrasty for Pt/Pd process")
 
@@ -433,7 +438,9 @@ class NegativeDensityValidator:
         if highlight_blocked:
             suggestions.append("Reduce exposure or development time to recover highlight detail")
         if shadow_blocked:
-            suggestions.append("Increase exposure to add shadow detail, or use higher platinum ratio for deeper blacks")
+            suggestions.append(
+                "Increase exposure to add shadow detail, or use higher platinum ratio for deeper blacks"
+            )
 
         # Curve adjustments
         if not highlight_blocked and not shadow_blocked and density_range < 2.0:
@@ -446,7 +453,7 @@ class NegativeDensityValidator:
         hist, _ = np.histogram(density, bins=bins, range=(0, 4.0))
         return hist
 
-    def _calculate_zone_distribution(self, density: np.ndarray) -> Dict[int, float]:
+    def _calculate_zone_distribution(self, density: np.ndarray) -> dict[int, float]:
         """
         Calculate distribution across Ansel Adams zones.
 
@@ -491,7 +498,7 @@ class ChemistryFreshnessTracker:
     Monitors expiration dates, volume remaining, and usage patterns.
     """
 
-    def __init__(self, settings: Optional[QASettings] = None):
+    def __init__(self, settings: QASettings | None = None):
         """
         Initialize tracker.
 
@@ -499,7 +506,7 @@ class ChemistryFreshnessTracker:
             settings: QA settings. If None, uses defaults.
         """
         self.settings = settings or QASettings()
-        self.solutions: Dict[str, ChemistrySolution] = {}
+        self.solutions: dict[str, ChemistrySolution] = {}
         self._shelf_life_map = {
             SolutionType.FERRIC_OXALATE_1: self.settings.ferric_oxalate_shelf_life,
             SolutionType.FERRIC_OXALATE_2: self.settings.ferric_oxalate_shelf_life,
@@ -517,7 +524,7 @@ class ChemistryFreshnessTracker:
         date_mixed: datetime,
         volume_ml: float,
         notes: str = "",
-        solution_id: Optional[str] = None,
+        solution_id: str | None = None,
     ) -> str:
         """
         Register a new chemistry solution.
@@ -550,7 +557,7 @@ class ChemistryFreshnessTracker:
         self.solutions[solution_id] = solution
         return solution_id
 
-    def check_freshness(self, solution_id: str) -> Tuple[bool, str]:
+    def check_freshness(self, solution_id: str) -> tuple[bool, str]:
         """
         Check if solution is still fresh.
 
@@ -577,7 +584,7 @@ class ChemistryFreshnessTracker:
         else:
             return True, f"Fresh ({days_left} days remaining)"
 
-    def get_expiration_date(self, solution_id: str) -> Optional[datetime]:
+    def get_expiration_date(self, solution_id: str) -> datetime | None:
         """
         Get solution expiration date.
 
@@ -591,7 +598,9 @@ class ChemistryFreshnessTracker:
             return None
         return self.solutions[solution_id].expiration_date
 
-    def log_usage(self, solution_id: str, amount_ml: float, timestamp: Optional[datetime] = None) -> bool:
+    def log_usage(
+        self, solution_id: str, amount_ml: float, timestamp: datetime | None = None
+    ) -> bool:
         """
         Log solution usage.
 
@@ -619,7 +628,7 @@ class ChemistryFreshnessTracker:
 
         return True
 
-    def get_remaining_volume(self, solution_id: str) -> Optional[float]:
+    def get_remaining_volume(self, solution_id: str) -> float | None:
         """
         Get remaining volume of solution.
 
@@ -633,7 +642,7 @@ class ChemistryFreshnessTracker:
             return None
         return self.solutions[solution_id].current_volume_ml
 
-    def get_alerts(self) -> List[Dict[str, str]]:
+    def get_alerts(self) -> list[dict[str, str]]:
         """
         Get list of expiring/expired solutions.
 
@@ -645,47 +654,57 @@ class ChemistryFreshnessTracker:
         for solution in self.solutions.values():
             # Check expiration
             if solution.is_expired:
-                alerts.append({
-                    "solution_id": solution.solution_id,
-                    "type": "expired",
-                    "severity": "critical",
-                    "message": f"{solution.solution_type.value} expired {abs(solution.days_until_expiration)} days ago",
-                })
+                alerts.append(
+                    {
+                        "solution_id": solution.solution_id,
+                        "type": "expired",
+                        "severity": "critical",
+                        "message": f"{solution.solution_type.value} expired {abs(solution.days_until_expiration)} days ago",
+                    }
+                )
             elif solution.days_until_expiration < self.settings.expiration_critical_days:
-                alerts.append({
-                    "solution_id": solution.solution_id,
-                    "type": "expiring_soon",
-                    "severity": "error",
-                    "message": f"{solution.solution_type.value} expires in {solution.days_until_expiration} days",
-                })
+                alerts.append(
+                    {
+                        "solution_id": solution.solution_id,
+                        "type": "expiring_soon",
+                        "severity": "error",
+                        "message": f"{solution.solution_type.value} expires in {solution.days_until_expiration} days",
+                    }
+                )
             elif solution.days_until_expiration < self.settings.expiration_warning_days:
-                alerts.append({
-                    "solution_id": solution.solution_id,
-                    "type": "expiring",
-                    "severity": "warning",
-                    "message": f"{solution.solution_type.value} expires in {solution.days_until_expiration} days",
-                })
+                alerts.append(
+                    {
+                        "solution_id": solution.solution_id,
+                        "type": "expiring",
+                        "severity": "warning",
+                        "message": f"{solution.solution_type.value} expires in {solution.days_until_expiration} days",
+                    }
+                )
 
             # Check volume
             volume_pct = solution.volume_percent_remaining
             if volume_pct < self.settings.critical_volume_percent:
-                alerts.append({
-                    "solution_id": solution.solution_id,
-                    "type": "low_volume",
-                    "severity": "error",
-                    "message": f"{solution.solution_type.value} critically low ({volume_pct:.1f}% remaining)",
-                })
+                alerts.append(
+                    {
+                        "solution_id": solution.solution_id,
+                        "type": "low_volume",
+                        "severity": "error",
+                        "message": f"{solution.solution_type.value} critically low ({volume_pct:.1f}% remaining)",
+                    }
+                )
             elif volume_pct < self.settings.low_volume_warning_percent:
-                alerts.append({
-                    "solution_id": solution.solution_id,
-                    "type": "low_volume",
-                    "severity": "warning",
-                    "message": f"{solution.solution_type.value} running low ({volume_pct:.1f}% remaining)",
-                })
+                alerts.append(
+                    {
+                        "solution_id": solution.solution_id,
+                        "type": "low_volume",
+                        "severity": "warning",
+                        "message": f"{solution.solution_type.value} running low ({volume_pct:.1f}% remaining)",
+                    }
+                )
 
         return alerts
 
-    def recommend_replenishment(self, solution_id: str) -> Optional[str]:
+    def recommend_replenishment(self, solution_id: str) -> str | None:
         """
         Suggest when to replenish solution.
 
@@ -713,17 +732,19 @@ class ChemistryFreshnessTracker:
         # Estimate days remaining
         if daily_usage > 0:
             days_of_supply = solution.current_volume_ml / daily_usage
-            return f"Approximately {days_of_supply:.0f} days of supply remaining at current usage rate"
+            return (
+                f"Approximately {days_of_supply:.0f} days of supply remaining at current usage rate"
+            )
         else:
             return "No recent usage detected"
 
-    def get_solution_info(self, solution_id: str) -> Optional[Dict]:
+    def get_solution_info(self, solution_id: str) -> dict | None:
         """Get complete solution information."""
         if solution_id not in self.solutions:
             return None
         return self.solutions[solution_id].to_dict()
 
-    def list_all_solutions(self) -> List[Dict]:
+    def list_all_solutions(self) -> list[dict]:
         """Get list of all tracked solutions."""
         return [sol.to_dict() for sol in self.solutions.values()]
 
@@ -740,7 +761,7 @@ class PaperHumidityChecker:
     Tracks humidity readings and provides recommendations for paper conditioning.
     """
 
-    def __init__(self, settings: Optional[QASettings] = None):
+    def __init__(self, settings: QASettings | None = None):
         """
         Initialize checker.
 
@@ -748,16 +769,16 @@ class PaperHumidityChecker:
             settings: QA settings. If None, uses defaults.
         """
         self.settings = settings or QASettings()
-        self.readings: List[HumidityReading] = []
-        self.ambient_conditions: List[Tuple[datetime, float, float]] = []
+        self.readings: list[HumidityReading] = []
+        self.ambient_conditions: list[tuple[datetime, float, float]] = []
 
     def measure_paper_humidity(
         self,
         humidity_percent: float,
-        temperature_celsius: Optional[float] = None,
-        paper_type: Optional[str] = None,
+        temperature_celsius: float | None = None,
+        paper_type: str | None = None,
         notes: str = "",
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
     ) -> HumidityReading:
         """
         Log a paper humidity reading.
@@ -788,9 +809,9 @@ class PaperHumidityChecker:
 
     def is_paper_ready(
         self,
-        target_humidity_min: Optional[float] = None,
-        target_humidity_max: Optional[float] = None,
-    ) -> Tuple[bool, str]:
+        target_humidity_min: float | None = None,
+        target_humidity_max: float | None = None,
+    ) -> tuple[bool, str]:
         """
         Check if paper is ready to coat.
 
@@ -824,9 +845,9 @@ class PaperHumidityChecker:
     def estimate_drying_time(
         self,
         current_humidity: float,
-        target_humidity: Optional[float] = None,
-        room_temperature: Optional[float] = None,
-    ) -> Tuple[float, str]:
+        target_humidity: float | None = None,
+        room_temperature: float | None = None,
+    ) -> tuple[float, str]:
         """
         Estimate time needed to reach target humidity.
 
@@ -852,10 +873,7 @@ class PaperHumidityChecker:
             temp_factor = 1.0 - ((room_temperature - 20) * 0.05)
             hours *= max(0.5, min(2.0, temp_factor))
 
-        if current_humidity > target_humidity:
-            action = "drying"
-        else:
-            action = "humidifying"
+        action = "drying" if current_humidity > target_humidity else "humidifying"
 
         message = f"Approximately {hours:.1f} hours of {action} needed"
         return hours, message
@@ -864,7 +882,7 @@ class PaperHumidityChecker:
         self,
         humidity_percent: float,
         temperature_celsius: float,
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
     ) -> None:
         """
         Track ambient room conditions.
@@ -879,7 +897,7 @@ class PaperHumidityChecker:
 
         self.ambient_conditions.append((timestamp, humidity_percent, temperature_celsius))
 
-    def recommend_humidity_adjustment(self) -> Optional[str]:
+    def recommend_humidity_adjustment(self) -> str | None:
         """
         Suggest humidifying or dehumidifying.
 
@@ -903,13 +921,13 @@ class PaperHumidityChecker:
         else:
             return "Paper humidity in acceptable range"
 
-    def get_latest_reading(self) -> Optional[HumidityReading]:
+    def get_latest_reading(self) -> HumidityReading | None:
         """Get the most recent humidity reading."""
         if not self.readings:
             return None
         return self.readings[-1]
 
-    def get_readings_history(self, hours: int = 24) -> List[HumidityReading]:
+    def get_readings_history(self, hours: int = 24) -> list[HumidityReading]:
         """Get humidity readings from the last N hours."""
         cutoff = datetime.now() - timedelta(hours=hours)
         return [r for r in self.readings if r.timestamp >= cutoff]
@@ -927,7 +945,7 @@ class UVLightMeterIntegration:
     Tracks UV intensity, bulb degradation, and provides exposure adjustments.
     """
 
-    def __init__(self, settings: Optional[QASettings] = None):
+    def __init__(self, settings: QASettings | None = None):
         """
         Initialize UV meter integration.
 
@@ -935,11 +953,11 @@ class UVLightMeterIntegration:
             settings: QA settings. If None, uses defaults.
         """
         self.settings = settings or QASettings()
-        self.readings: List[UVReading] = []
-        self.calibration_date: Optional[datetime] = None
+        self.readings: list[UVReading] = []
+        self.calibration_date: datetime | None = None
         self.calibration_factor: float = 1.0
 
-    def calibrate_meter(self, reference_intensity: Optional[float] = None) -> str:
+    def calibrate_meter(self, reference_intensity: float | None = None) -> str:
         """
         Calibrate UV meter.
 
@@ -951,22 +969,21 @@ class UVLightMeterIntegration:
         """
         self.calibration_date = datetime.now()
 
-        if reference_intensity is not None:
+        if reference_intensity is not None and self.readings:
             # If we have recent readings, calculate calibration factor
-            if self.readings:
-                latest = self.readings[-1]
-                if latest.intensity > 0:
-                    self.calibration_factor = reference_intensity / latest.intensity
+            latest = self.readings[-1]
+            if latest.intensity > 0:
+                self.calibration_factor = reference_intensity / latest.intensity
 
         return f"Meter calibrated at {self.calibration_date.strftime('%Y-%m-%d %H:%M')}"
 
     def read_intensity(
         self,
         intensity: float,
-        wavelength: Optional[float] = None,
-        bulb_hours: Optional[float] = None,
+        wavelength: float | None = None,
+        bulb_hours: float | None = None,
         notes: str = "",
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
     ) -> UVReading:
         """
         Record a UV intensity reading.
@@ -1001,8 +1018,8 @@ class UVLightMeterIntegration:
     def log_reading(
         self,
         intensity: float,
-        wavelength: Optional[float] = None,
-        timestamp: Optional[datetime] = None,
+        wavelength: float | None = None,
+        timestamp: datetime | None = None,
     ) -> UVReading:
         """
         Log a UV reading (alias for read_intensity).
@@ -1019,9 +1036,9 @@ class UVLightMeterIntegration:
 
     def calculate_exposure_adjustment(
         self,
-        target_intensity: Optional[float] = None,
-        actual_intensity: Optional[float] = None,
-    ) -> Tuple[float, str]:
+        target_intensity: float | None = None,
+        actual_intensity: float | None = None,
+    ) -> tuple[float, str]:
         """
         Calculate exposure time adjustment based on UV intensity.
 
@@ -1058,7 +1075,7 @@ class UVLightMeterIntegration:
     def check_bulb_degradation(
         self,
         readings_window_hours: int = 168,  # 1 week
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Detect bulb aging based on intensity trends.
 
@@ -1076,8 +1093,8 @@ class UVLightMeterIntegration:
 
         # Calculate trend (simple linear regression)
         intensities = [r.intensity for r in recent_readings]
-        initial_avg = np.mean(intensities[:len(intensities)//3])
-        recent_avg = np.mean(intensities[-len(intensities)//3:])
+        initial_avg = np.mean(intensities[: len(intensities) // 3])
+        recent_avg = np.mean(intensities[-len(intensities) // 3 :])
 
         if initial_avg == 0:
             return False, "Invalid baseline intensity"
@@ -1116,13 +1133,13 @@ class UVLightMeterIntegration:
 
         return "Bulb replacement not currently needed based on available data"
 
-    def get_latest_reading(self) -> Optional[UVReading]:
+    def get_latest_reading(self) -> UVReading | None:
         """Get the most recent UV reading."""
         if not self.readings:
             return None
         return self.readings[-1]
 
-    def get_readings_history(self, hours: int = 24) -> List[UVReading]:
+    def get_readings_history(self, hours: int = 24) -> list[UVReading]:
         """Get UV readings from the last N hours."""
         cutoff = datetime.now() - timedelta(hours=hours)
         return [r for r in self.readings if r.timestamp >= cutoff]
@@ -1140,7 +1157,7 @@ class QualityReport:
     Combines multiple QA checks into pre-print checklists and post-print analysis.
     """
 
-    def __init__(self, settings: Optional[QASettings] = None):
+    def __init__(self, settings: QASettings | None = None):
         """
         Initialize report generator.
 
@@ -1151,11 +1168,11 @@ class QualityReport:
 
     def generate_pre_print_checklist(
         self,
-        image: Optional[Union[np.ndarray, Image.Image]] = None,
-        chemistry_tracker: Optional[ChemistryFreshnessTracker] = None,
-        humidity_checker: Optional[PaperHumidityChecker] = None,
-        uv_meter: Optional[UVLightMeterIntegration] = None,
-    ) -> Dict:
+        image: np.ndarray | Image.Image | None = None,
+        chemistry_tracker: ChemistryFreshnessTracker | None = None,
+        humidity_checker: PaperHumidityChecker | None = None,
+        uv_meter: UVLightMeterIntegration | None = None,
+    ) -> dict:
         """
         Generate pre-print checklist.
 
@@ -1210,7 +1227,9 @@ class QualityReport:
                 checklist["ready_to_print"] = False
                 checklist["errors"].extend([a["message"] for a in critical_alerts])
             elif alerts:
-                checklist["warnings"].extend([a["message"] for a in alerts if a["severity"] != "critical"])
+                checklist["warnings"].extend(
+                    [a["message"] for a in alerts if a["severity"] != "critical"]
+                )
 
         # Paper humidity check
         if humidity_checker is not None:
@@ -1244,9 +1263,9 @@ class QualityReport:
 
     def generate_post_print_analysis(
         self,
-        scan: Union[np.ndarray, Image.Image],
-        expected_density_range: Optional[Tuple[float, float]] = None,
-    ) -> Dict:
+        scan: np.ndarray | Image.Image,
+        expected_density_range: tuple[float, float] | None = None,
+    ) -> dict:
         """
         Generate post-print analysis report.
 
@@ -1318,9 +1337,9 @@ class QualityReport:
 
     def export_report(
         self,
-        report_data: Dict,
+        report_data: dict,
         format: ReportFormat,
-        output_path: Optional[Path] = None,
+        output_path: Path | None = None,
     ) -> str:
         """
         Export report to specified format.
@@ -1335,6 +1354,7 @@ class QualityReport:
         """
         if format == ReportFormat.JSON:
             import json
+
             content = json.dumps(report_data, indent=2)
 
         elif format == ReportFormat.MARKDOWN:
@@ -1373,7 +1393,7 @@ class QualityReport:
         else:
             return "F"
 
-    def _format_as_markdown(self, data: Dict) -> str:
+    def _format_as_markdown(self, data: dict) -> str:
         """Format report as Markdown."""
         lines = [
             "# Quality Assurance Report",
@@ -1390,12 +1410,14 @@ class QualityReport:
                 lines.append("")
 
         if "quality_score" in data:
-            lines.extend([
-                "## Quality Assessment",
-                "",
-                f"**Score:** {data['quality_score']:.1f}/100 (Grade: {data['grade']})",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## Quality Assessment",
+                    "",
+                    f"**Score:** {data['quality_score']:.1f}/100 (Grade: {data['grade']})",
+                    "",
+                ]
+            )
 
         if "recommendations" in data and data["recommendations"]:
             lines.extend(["## Recommendations", ""])
@@ -1405,7 +1427,7 @@ class QualityReport:
 
         return "\n".join(lines)
 
-    def _format_as_html(self, data: Dict) -> str:
+    def _format_as_html(self, data: dict) -> str:
         """Format report as HTML."""
         html = f"""<!DOCTYPE html>
 <html>
@@ -1422,13 +1444,13 @@ class QualityReport:
 </head>
 <body>
     <h1>Quality Assurance Report</h1>
-    <p><strong>Generated:</strong> {data.get('timestamp', 'N/A')}</p>
+    <p><strong>Generated:</strong> {data.get("timestamp", "N/A")}</p>
 """
 
         if "quality_score" in data:
             html += f"""
     <h2>Quality Assessment</h2>
-    <p class="score">Score: {data['quality_score']:.1f}/100 (Grade: {data['grade']})</p>
+    <p class="score">Score: {data["quality_score"]:.1f}/100 (Grade: {data["grade"]})</p>
 """
 
         if "recommendations" in data and data["recommendations"]:
@@ -1456,7 +1478,7 @@ class AlertSystem:
     Tracks active alerts, dismissals, and maintains alert history.
     """
 
-    def __init__(self, settings: Optional[QASettings] = None):
+    def __init__(self, settings: QASettings | None = None):
         """
         Initialize alert system.
 
@@ -1464,15 +1486,15 @@ class AlertSystem:
             settings: QA settings. If None, uses defaults.
         """
         self.settings = settings or QASettings()
-        self.alerts: Dict[str, Alert] = {}
+        self.alerts: dict[str, Alert] = {}
 
     def add_alert(
         self,
         alert_type: AlertType,
         message: str,
         severity: AlertSeverity,
-        alert_id: Optional[str] = None,
-        timestamp: Optional[datetime] = None,
+        alert_id: str | None = None,
+        timestamp: datetime | None = None,
     ) -> str:
         """
         Add a new alert.
@@ -1506,9 +1528,9 @@ class AlertSystem:
 
     def get_active_alerts(
         self,
-        severity: Optional[AlertSeverity] = None,
-        alert_type: Optional[AlertType] = None,
-    ) -> List[Alert]:
+        severity: AlertSeverity | None = None,
+        alert_type: AlertType | None = None,
+    ) -> list[Alert]:
         """
         Get list of active (non-dismissed) alerts.
 
@@ -1557,9 +1579,9 @@ class AlertSystem:
 
     def get_alert_history(
         self,
-        hours: Optional[int] = None,
+        hours: int | None = None,
         include_dismissed: bool = True,
-    ) -> List[Alert]:
+    ) -> list[Alert]:
         """
         Get alert history.
 
@@ -1594,7 +1616,8 @@ class AlertSystem:
         cutoff = datetime.now() - timedelta(days=self.settings.alert_history_days)
 
         old_alerts = [
-            alert_id for alert_id, alert in self.alerts.items()
+            alert_id
+            for alert_id, alert in self.alerts.items()
             if alert.dismissed and alert.dismissed_at and alert.dismissed_at < cutoff
         ]
 
@@ -1603,7 +1626,7 @@ class AlertSystem:
 
         return len(old_alerts)
 
-    def get_alert_summary(self) -> Dict[str, int]:
+    def get_alert_summary(self) -> dict[str, int]:
         """
         Get summary of active alerts by severity.
 
@@ -1625,6 +1648,6 @@ class AlertSystem:
 
         return summary
 
-    def get_alert(self, alert_id: str) -> Optional[Alert]:
+    def get_alert(self, alert_id: str) -> Alert | None:
         """Get a specific alert by ID."""
         return self.alerts.get(alert_id)

@@ -5,7 +5,6 @@ Planning system for agent task decomposition.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 from uuid import UUID, uuid4
 
 
@@ -27,12 +26,12 @@ class PlanStep:
     id: UUID = field(default_factory=uuid4)
     description: str = ""
     status: PlanStatus = PlanStatus.PENDING
-    tool_name: Optional[str] = None
+    tool_name: str | None = None
     tool_args: dict = field(default_factory=dict)
-    result: Optional[str] = None
-    error: Optional[str] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    result: str | None = None
+    error: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     dependencies: list[UUID] = field(default_factory=list)
 
     def can_execute(self, completed_steps: set[UUID]) -> bool:
@@ -78,7 +77,7 @@ class Plan:
         return len(self.steps)
 
     @property
-    def current_step(self) -> Optional[PlanStep]:
+    def current_step(self) -> PlanStep | None:
         """Get current step."""
         idx = self.current_step_index
         if idx < len(self.steps):
@@ -103,7 +102,7 @@ class Plan:
         """Check if plan has failed."""
         return any(s.status == PlanStatus.FAILED for s in self.steps)
 
-    def next_step(self) -> Optional[PlanStep]:
+    def next_step(self) -> PlanStep | None:
         """Get the next step to execute."""
         completed = {s.id for s in self.steps if s.status == PlanStatus.COMPLETED}
 
@@ -142,7 +141,7 @@ class Plan:
         """Generate a plan summary."""
         total = len(self.steps)
         completed = sum(1 for s in self.steps if s.status == PlanStatus.COMPLETED)
-        failed = sum(1 for s in self.steps if s.status == PlanStatus.FAILED)
+        _failed = sum(1 for s in self.steps if s.status == PlanStatus.FAILED)  # noqa: F841
 
         return (
             f"Plan: {self.goal}\n"
@@ -169,7 +168,7 @@ class Planner:
         self.max_steps = max_steps
         self._plan_templates: dict[str, list[str]] = self._default_templates()
 
-    def create_plan(self, goal: str, context: Optional[dict] = None) -> Plan:
+    def create_plan(self, goal: str, context: dict | None = None) -> Plan:
         """
         Create a plan for achieving a goal.
 
@@ -193,7 +192,7 @@ class Planner:
         steps = [PlanStep(description=desc) for desc in step_descriptions]
         return Plan(goal=goal, steps=steps)
 
-    def _create_generic_plan(self, goal: str, context: Optional[dict]) -> Plan:
+    def _create_generic_plan(self, goal: str, _context: dict | None) -> Plan:
         """Create a generic plan."""
         steps = [
             PlanStep(description="Analyze the request and gather requirements"),
@@ -203,9 +202,7 @@ class Planner:
         ]
         return Plan(goal=goal, steps=steps)
 
-    def suggest_adaptation(
-        self, plan: Plan, observation: str
-    ) -> Optional[list[str]]:
+    def suggest_adaptation(self, _plan: Plan, observation: str) -> list[str] | None:
         """
         Suggest plan adaptation based on observation.
 

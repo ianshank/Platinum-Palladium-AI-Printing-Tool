@@ -7,7 +7,6 @@ Environment variables:
 - PTPD_API_URL: Base URL for the API (default: http://localhost:8000)
 """
 
-import json
 import os
 import random
 
@@ -22,7 +21,7 @@ except ImportError:
     def between(*args):
         pass
 
-    def task(weight=1):
+    def task(weight=1):  # noqa: ARG001
         def decorator(func):
             return func
 
@@ -89,9 +88,7 @@ class PTPDAPIUser(HttpUser):
                 "input_values": input_values,
                 "output_values": output_values,
                 "name": "Modified Curve",
-                "adjustment_type": random.choice(
-                    ["brightness", "contrast", "gamma"]
-                ),
+                "adjustment_type": random.choice(["brightness", "contrast", "gamma"]),
                 "amount": random.uniform(-0.2, 0.2),
             },
         )
@@ -140,9 +137,7 @@ class PTPDAPIUser(HttpUser):
         response = self.client.post(
             "/api/calibrations",
             json={
-                "paper_type": random.choice(
-                    ["Arches Platine", "Bergger COT320", "Test Paper"]
-                ),
+                "paper_type": random.choice(["Arches Platine", "Bergger COT320", "Test Paper"]),
                 "exposure_time": random.uniform(120, 240),
                 "metal_ratio": random.uniform(0.3, 0.7),
                 "densities": self.sample_densities,

@@ -8,40 +8,40 @@ Tests the hardware abstraction layer including:
 - Protocol compliance
 """
 
-import pytest
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
-from ptpd_calibration.integrations.protocols import (
-    DeviceStatus,
-    DeviceInfo,
-    DensityMeasurement,
-    SpectralData,
-    PrintJob,
-    PrintResult,
-)
+import pytest
+
 from ptpd_calibration.integrations.hardware import (
-    get_spectrophotometer_driver,
-    get_printer_driver,
-    HardwareError,
-    DeviceNotFoundError,
-    DeviceConnectionError,
-    DeviceCommunicationError,
     CalibrationError,
+    DeviceCommunicationError,
+    DeviceConnectionError,
+    DeviceNotFoundError,
+    HardwareError,
     MeasurementError,
     PrinterError,
     PrintJobError,
+    get_printer_driver,
+    get_spectrophotometer_driver,
 )
 from ptpd_calibration.integrations.hardware.simulated import (
-    SimulatedSpectrophotometer,
     SimulatedPrinter,
+    SimulatedSpectrophotometer,
 )
-
+from ptpd_calibration.integrations.protocols import (
+    DensityMeasurement,
+    DeviceInfo,
+    DeviceStatus,
+    PrintJob,
+    PrintResult,
+    SpectralData,
+)
 
 # =============================================================================
 # Test DeviceStatus Enum
 # =============================================================================
+
 
 class TestDeviceStatus:
     """Tests for DeviceStatus enum."""
@@ -67,6 +67,7 @@ class TestDeviceStatus:
 # Test DeviceInfo Model
 # =============================================================================
 
+
 class TestDeviceInfo:
     """Tests for DeviceInfo dataclass."""
 
@@ -77,7 +78,7 @@ class TestDeviceInfo:
             model="i1Pro2",
             serial_number="ABC123",
             firmware_version="1.2.3",
-            capabilities=["density", "lab", "spectral"]
+            capabilities=["density", "lab", "spectral"],
         )
         assert info.vendor == "X-Rite"
         assert info.model == "i1Pro2"
@@ -100,6 +101,7 @@ class TestDeviceInfo:
 # Test DensityMeasurement Model
 # =============================================================================
 
+
 class TestDensityMeasurement:
     """Tests for DensityMeasurement dataclass."""
 
@@ -111,7 +113,7 @@ class TestDensityMeasurement:
             lab_a=2.0,
             lab_b=-1.5,
             timestamp=datetime.now(),
-            measurement_mode="reflection"
+            measurement_mode="reflection",
         )
         assert measurement.density == 1.5
         assert measurement.lab_l == 50.0
@@ -132,6 +134,7 @@ class TestDensityMeasurement:
 # =============================================================================
 # Test SpectralData Model
 # =============================================================================
+
 
 class TestSpectralData:
     """Tests for SpectralData dataclass."""
@@ -168,6 +171,7 @@ class TestSpectralData:
 # Test PrintJob Model
 # =============================================================================
 
+
 class TestPrintJob:
     """Tests for PrintJob dataclass."""
 
@@ -200,6 +204,7 @@ class TestPrintJob:
 # Test PrintResult Model
 # =============================================================================
 
+
 class TestPrintResult:
     """Tests for PrintResult dataclass."""
 
@@ -230,6 +235,7 @@ class TestPrintResult:
 # Test Exception Hierarchy
 # =============================================================================
 
+
 class TestExceptionHierarchy:
     """Tests for hardware exception classes."""
 
@@ -242,9 +248,7 @@ class TestExceptionHierarchy:
     def test_device_not_found_error(self):
         """Test DeviceNotFoundError."""
         error = DeviceNotFoundError(
-            "No device found",
-            device_type="spectrophotometer",
-            port="/dev/ttyUSB0"
+            "No device found", device_type="spectrophotometer", port="/dev/ttyUSB0"
         )
         assert "No device found" in str(error)
         assert error.details.get("port") == "/dev/ttyUSB0"
@@ -252,65 +256,46 @@ class TestExceptionHierarchy:
     def test_device_connection_error(self):
         """Test DeviceConnectionError."""
         error = DeviceConnectionError(
-            "Connection refused",
-            device_type="spectrophotometer",
-            port="/dev/ttyUSB0"
+            "Connection refused", device_type="spectrophotometer", port="/dev/ttyUSB0"
         )
         assert error.details.get("port") == "/dev/ttyUSB0"
 
     def test_device_communication_error(self):
         """Test DeviceCommunicationError."""
         error = DeviceCommunicationError(
-            "Timeout",
-            device_type="spectrophotometer",
-            command="*MSR:DENSITY",
-            response=None
+            "Timeout", device_type="spectrophotometer", command="*MSR:DENSITY", response=None
         )
         assert error.details.get("command") == "*MSR:DENSITY"
 
     def test_calibration_error(self):
         """Test CalibrationError."""
         error = CalibrationError(
-            "White calibration failed",
-            device_type="spectrophotometer",
-            calibration_type="white"
+            "White calibration failed", device_type="spectrophotometer", calibration_type="white"
         )
         assert error.details.get("calibration_type") == "white"
 
     def test_measurement_error(self):
         """Test MeasurementError."""
         error = MeasurementError(
-            "Invalid reading",
-            device_type="spectrophotometer",
-            measurement_type="density"
+            "Invalid reading", device_type="spectrophotometer", measurement_type="density"
         )
         assert error.details.get("measurement_type") == "density"
 
     def test_printer_error(self):
         """Test PrinterError."""
-        error = PrinterError(
-            "Printer offline",
-            printer_name="EPSON-P800",
-            operation="connect"
-        )
+        error = PrinterError("Printer offline", printer_name="EPSON-P800", operation="connect")
         assert error.details.get("printer_name") == "EPSON-P800"
 
     def test_print_job_error(self):
         """Test PrintJobError."""
-        error = PrintJobError(
-            "Job cancelled",
-            job_name="Test Print",
-            job_id="12345"
-        )
+        error = PrintJobError("Job cancelled", job_name="Test Print", job_id="12345")
         assert error.details.get("job_name") == "Test Print"
         assert error.details.get("job_id") == "12345"
 
     def test_exception_inheritance(self):
         """Test exception inheritance chain."""
         error = MeasurementError(
-            "Test",
-            device_type="spectrophotometer",
-            measurement_type="density"
+            "Test", device_type="spectrophotometer", measurement_type="density"
         )
         assert isinstance(error, HardwareError)
         assert isinstance(error, Exception)
@@ -319,6 +304,7 @@ class TestExceptionHierarchy:
 # =============================================================================
 # Test SimulatedSpectrophotometer
 # =============================================================================
+
 
 class TestSimulatedSpectrophotometer:
     """Tests for SimulatedSpectrophotometer."""
@@ -452,6 +438,7 @@ class TestSimulatedSpectrophotometer:
 # Test SimulatedPrinter
 # =============================================================================
 
+
 class TestSimulatedPrinter:
     """Tests for SimulatedPrinter."""
 
@@ -476,7 +463,9 @@ class TestSimulatedPrinter:
         result = printer.connect(printer_name="Test Printer")
 
         assert result is True
-        assert "Test Printer" in printer.device_info.model or printer.status == DeviceStatus.CONNECTED
+        assert (
+            "Test Printer" in printer.device_info.model or printer.status == DeviceStatus.CONNECTED
+        )
 
     def test_disconnect(self):
         """Test disconnecting from printer."""
@@ -607,6 +596,7 @@ class TestSimulatedPrinter:
 # Test Factory Functions
 # =============================================================================
 
+
 class TestFactoryFunctions:
     """Tests for driver factory functions."""
 
@@ -643,6 +633,7 @@ class TestFactoryFunctions:
 # Test XRiteI1ProDriver (Mocked Serial)
 # =============================================================================
 
+
 class TestXRiteI1ProDriver:
     """Tests for XRiteI1ProDriver with mocked serial."""
 
@@ -662,9 +653,10 @@ class TestXRiteI1ProDriver:
     def test_import_lazy_loading(self):
         """Test that XRiteI1ProDriver can be imported."""
         from ptpd_calibration.integrations.hardware.xrite_i1pro import XRiteI1ProDriver
+
         assert XRiteI1ProDriver is not None
 
-    def test_initial_state(self, mock_serial):
+    def test_initial_state(self, mock_serial):  # noqa: ARG002
         """Test initial driver state."""
         from ptpd_calibration.integrations.hardware.xrite_i1pro import XRiteI1ProDriver
 
@@ -672,7 +664,7 @@ class TestXRiteI1ProDriver:
         assert driver.status == DeviceStatus.DISCONNECTED
         assert driver.device_info is None
 
-    def test_auto_detect_no_device(self, mock_serial):
+    def test_auto_detect_no_device(self, mock_serial):  # noqa: ARG002
         """Test auto-detect when no device present."""
         from ptpd_calibration.integrations.hardware.xrite_i1pro import XRiteI1ProDriver
 
@@ -720,6 +712,7 @@ class TestXRiteI1ProDriver:
 # Test CUPSPrinterDriver (Mocked CUPS)
 # =============================================================================
 
+
 class TestCUPSPrinterDriver:
     """Tests for CUPSPrinterDriver with mocked CUPS."""
 
@@ -740,7 +733,7 @@ class TestCUPSPrinterDriver:
             with pytest.raises(ImportError, match="Windows"):
                 _import_cups()
 
-    def test_initial_state(self, mock_cups):
+    def test_initial_state(self, mock_cups):  # noqa: ARG002
         """Test initial driver state."""
         from ptpd_calibration.integrations.hardware.cups_printer import CUPSPrinterDriver
 
@@ -785,16 +778,14 @@ class TestCUPSPrinterDriver:
         from ptpd_calibration.integrations.hardware.cups_printer import CUPSPrinterDriver
 
         mock_conn = mock_cups.Connection.return_value
-        mock_conn.getPrinters.return_value = {
-            "EPSON-P800": {"device-uri": "usb://..."}
-        }
+        mock_conn.getPrinters.return_value = {"EPSON-P800": {"device-uri": "usb://..."}}
 
         driver = CUPSPrinterDriver(printer_name="NonExistent")
 
-        with pytest.raises(Exception):  # PrinterNotFoundError
+        with pytest.raises(Exception):  # PrinterNotFoundError  # noqa: B017
             driver.connect()
 
-    def test_paper_size_mapping(self, mock_cups):
+    def test_paper_size_mapping(self, mock_cups):  # noqa: ARG002
         """Test paper size mapping to CUPS names."""
         from ptpd_calibration.integrations.hardware.cups_printer import CUPSPrinterDriver
 
@@ -802,7 +793,7 @@ class TestCUPSPrinterDriver:
         assert CUPSPrinterDriver.PAPER_SIZE_MAP["letter"] == "Letter"
         assert CUPSPrinterDriver.PAPER_SIZE_MAP["a4"] == "A4"
 
-    def test_build_print_options(self, mock_cups):
+    def test_build_print_options(self, mock_cups):  # noqa: ARG002
         """Test building CUPS print options."""
         from ptpd_calibration.integrations.hardware.cups_printer import CUPSPrinterDriver
 
@@ -827,6 +818,7 @@ class TestCUPSPrinterDriver:
 # =============================================================================
 # Test Integration Scenarios
 # =============================================================================
+
 
 class TestIntegrationScenarios:
     """Integration tests for hardware workflows."""

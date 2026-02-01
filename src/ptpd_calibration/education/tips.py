@@ -6,7 +6,7 @@ recommendations to improve printing workflow and results.
 """
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -49,9 +49,7 @@ class Tip(BaseModel):
         default_factory=list, description="Conditions when this tip is relevant"
     )
     priority: int = Field(default=1, ge=1, le=5, description="Importance (1=low, 5=critical)")
-    related_terms: list[str] = Field(
-        default_factory=list, description="Related glossary terms"
-    )
+    related_terms: list[str] = Field(default_factory=list, description="Related glossary terms")
 
 
 # Comprehensive tips database
@@ -551,7 +549,7 @@ class TipsManager:
     def get_contextual_tips(
         self,
         context: str,
-        difficulty: Optional[TipDifficulty] = None,
+        difficulty: TipDifficulty | None = None,
         limit: int = 5,
     ) -> list[Tip]:
         """
@@ -582,10 +580,10 @@ class TipsManager:
 
     def get_random_tip(
         self,
-        category: Optional[TipCategory] = None,
-        difficulty: Optional[TipDifficulty] = None,
+        category: TipCategory | None = None,
+        difficulty: TipDifficulty | None = None,
         unseen_only: bool = False,
-    ) -> Optional[Tip]:
+    ) -> Tip | None:
         """
         Get a random tip.
 
@@ -606,9 +604,7 @@ class TipsManager:
             candidates = [t for t in candidates if t.category == category]
 
         if difficulty:
-            candidates = [
-                t for t in candidates if t.difficulty in [difficulty, TipDifficulty.ALL]
-            ]
+            candidates = [t for t in candidates if t.difficulty in [difficulty, TipDifficulty.ALL]]
 
         if unseen_only:
             candidates = [t for t in candidates if t.id not in self.seen_tips]
@@ -621,7 +617,7 @@ class TipsManager:
         return tip
 
     def get_tips_by_category(
-        self, category: TipCategory, difficulty: Optional[TipDifficulty] = None
+        self, category: TipCategory, difficulty: TipDifficulty | None = None
     ) -> list[Tip]:
         """
         Get all tips in a specific category.
@@ -652,8 +648,8 @@ class TipsManager:
 
     def get_unseen_tips(
         self,
-        category: Optional[TipCategory] = None,
-        difficulty: Optional[TipDifficulty] = None,
+        category: TipCategory | None = None,
+        difficulty: TipDifficulty | None = None,
     ) -> list[Tip]:
         """
         Get all unseen tips.
@@ -680,7 +676,7 @@ class TipsManager:
         self.seen_tips.clear()
 
     def get_high_priority_tips(
-        self, min_priority: int = 4, difficulty: Optional[TipDifficulty] = None
+        self, min_priority: int = 4, difficulty: TipDifficulty | None = None
     ) -> list[Tip]:
         """
         Get high-priority tips (critical information).
@@ -723,7 +719,7 @@ class TipsManager:
         Returns:
             List of TipCategory values
         """
-        categories = set(tip.category for tip in self.tips)
+        categories = {tip.category for tip in self.tips}
         return sorted(categories, key=lambda c: c.value)
 
     def get_tips_for_related_term(self, term: str) -> list[Tip]:
@@ -737,11 +733,7 @@ class TipsManager:
             List of related Tip objects
         """
         term_lower = term.lower()
-        related = [
-            t
-            for t in self.tips
-            if any(term_lower in rt.lower() for rt in t.related_terms)
-        ]
+        related = [t for t in self.tips if any(term_lower in rt.lower() for rt in t.related_terms)]
 
         return sorted(related, key=lambda t: t.priority, reverse=True)
 
@@ -757,8 +749,7 @@ class TipsManager:
             "seen_tips": len(self.seen_tips),
             "unseen_tips": len(self.tips) - len(self.seen_tips),
             "tips_by_category": {
-                cat.value: len([t for t in self.tips if t.category == cat])
-                for cat in TipCategory
+                cat.value: len([t for t in self.tips if t.category == cat]) for cat in TipCategory
             },
             "tips_by_difficulty": {
                 diff.value: len([t for t in self.tips if t.difficulty == diff])

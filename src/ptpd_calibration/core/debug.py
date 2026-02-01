@@ -23,10 +23,10 @@ Usage:
 
 import functools
 import time
-from typing import Callable, TypeVar, ParamSpec, Any
-from contextlib import contextmanager
 import traceback
-import sys
+from collections.abc import Callable
+from contextlib import contextmanager
+from typing import Any, ParamSpec, TypeVar
 
 from ptpd_calibration.core.logging import get_logger
 
@@ -40,6 +40,7 @@ def _is_debug_enabled() -> bool:
     """Check if debug mode is enabled in settings."""
     try:
         from ptpd_calibration.config import get_settings
+
         return get_settings().debug
     except Exception:
         return False
@@ -62,6 +63,7 @@ def timer(func: Callable[P, T]) -> Callable[P, T]:
             # ... processing ...
             return result
     """
+
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
         if not _is_debug_enabled():
@@ -75,14 +77,14 @@ def timer(func: Callable[P, T]) -> Callable[P, T]:
             elapsed = time.perf_counter() - start
             logger.debug(
                 f"TIMER | {func_name} | {elapsed:.4f}s",
-                extra={"function": func_name, "duration": elapsed}
+                extra={"function": func_name, "duration": elapsed},
             )
             return result
         except Exception as e:
             elapsed = time.perf_counter() - start
             logger.debug(
                 f"TIMER | {func_name} | {elapsed:.4f}s | FAILED: {e}",
-                extra={"function": func_name, "duration": elapsed, "error": str(e)}
+                extra={"function": func_name, "duration": elapsed, "error": str(e)},
             )
             raise
 
@@ -117,6 +119,7 @@ def trace(
             # password won't be logged
             pass
     """
+
     def _truncate(val: Any, max_len: int) -> str:
         """Truncate string representation for readability."""
         s = repr(val)
@@ -230,10 +233,7 @@ class DebugMixin:
             **extra: Additional context.
         """
         if self._debug_enabled:
-            logger.debug(
-                f"[{self.__class__.__name__}] {message}",
-                extra=extra
-            )
+            logger.debug(f"[{self.__class__.__name__}] {message}", extra=extra)
 
     def _debug_enter(self, method: str, **params: Any) -> float:
         """Log method entry and return start time.
@@ -337,6 +337,7 @@ def breakpoint_if_debug() -> None:
     """
     if _is_debug_enabled():
         import pdb
+
         pdb.set_trace()
 
 
@@ -369,13 +370,16 @@ class MemoryTracker:
 
         try:
             import psutil
+
             process = psutil.Process()
             mem_info = process.memory_info()
-            self.checkpoints.append((
-                name,
-                time.perf_counter(),
-                mem_info.rss / 1024 / 1024,  # MB
-            ))
+            self.checkpoints.append(
+                (
+                    name,
+                    time.perf_counter(),
+                    mem_info.rss / 1024 / 1024,  # MB
+                )
+            )
         except ImportError:
             # psutil not available
             pass
@@ -399,9 +403,7 @@ class MemoryTracker:
             delta_time = timestamp - prev_time
             delta_str = f"+{delta_mem:.1f}" if delta_mem >= 0 else f"{delta_mem:.1f}"
 
-            lines.append(
-                f"{name:30} | {mem_mb:8.1f} MB | {delta_str:8} MB | {delta_time:.3f}s"
-            )
+            lines.append(f"{name:30} | {mem_mb:8.1f} MB | {delta_str:8} MB | {delta_time:.3f}s")
 
             prev_mem = mem_mb
             prev_time = timestamp

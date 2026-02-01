@@ -1,20 +1,15 @@
-import gradio as gr
 from datetime import datetime, timedelta
 from pathlib import Path
-from ptpd_calibration.session import SessionLogger, PrintResult
+
+import gradio as gr
+
+from ptpd_calibration.session import PrintResult, SessionLogger
+
 
 def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogger):
     """
     Build the Dashboard tab.
-    
-    Args:
-        onboarding_state: Gradio state for onboarding.
-        session_logger: SessionLogger instance for retrieving stats.
-    """
-def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogger):
-    """
-    Build the Dashboard tab.
-    
+
     Args:
         onboarding_state: Gradio state for onboarding.
         session_logger: SessionLogger instance for retrieving stats.
@@ -74,9 +69,7 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
                         if record.result
                         in (PrintResult.EXCELLENT, PrintResult.GOOD, PrintResult.ACCEPTABLE)
                     )
-                    success_pct = (
-                        (successful / session_records) * 100 if session_records else 0
-                    )
+                    success_pct = (successful / session_records) * 100 if session_records else 0
                     summary_rows.append(
                         [
                             session.records[0].timestamp.strftime("%b %d"),
@@ -105,9 +98,7 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
                         ]
                     )
 
-            overall_success_rate = (
-                (success_count / total_records * 100) if total_records else 0.0
-            )
+            overall_success_rate = (success_count / total_records * 100) if total_records else 0.0
 
             return (
                 make_stat_card("Print Volume (7d)", recent_count),
@@ -144,8 +135,8 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
             )
 
         # Auto-refresh dashboard on load
-        dashboard_timer = gr.Timer(value=10) # Refresh every 10 seconds or on load
-        
+        dashboard_timer = gr.Timer(value=10)  # Refresh every 10 seconds or on load
+
         dashboard_timer.tick(
             compute_dashboard_metrics,
             outputs=[
@@ -160,12 +151,15 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
         # Helper to generate JS click
         def jump_js(tab_index):
             # Using querySelectorAll is brittle if DOM changes, but works for now.
-            return f"() => {{ document.querySelectorAll('.main-tabs button')[{tab_index}].click(); }}"
-        
-        btn_scan.click(None, None, None, js=jump_js(1)) # Calibration
-        # Darkroom tab might be at index 3 or 4 depending on tab order
-        btn_chem.click(None, None, None, js=jump_js(4)) # Chemistry (Assuming separate tab now or subtab)
-        btn_expo.click(None, None, None, js=jump_js(4)) 
-        btn_neg.click(None, None, None, js=jump_js(3)) # Image Prep
-        btn_ai.click(None, None, None, js=jump_js(6))   # AI Assistant
+            return (
+                f"() => {{ document.querySelectorAll('.main-tabs button')[{tab_index}].click(); }}"
+            )
 
+        btn_scan.click(None, None, None, js=jump_js(1))  # Calibration
+        # Darkroom tab might be at index 3 or 4 depending on tab order
+        btn_chem.click(
+            None, None, None, js=jump_js(4)
+        )  # Chemistry (Assuming separate tab now or subtab)
+        btn_expo.click(None, None, None, js=jump_js(4))
+        btn_neg.click(None, None, None, js=jump_js(3))  # Image Prep
+        btn_ai.click(None, None, None, js=jump_js(6))  # AI Assistant

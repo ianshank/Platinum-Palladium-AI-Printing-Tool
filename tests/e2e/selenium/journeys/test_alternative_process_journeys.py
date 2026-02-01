@@ -7,9 +7,9 @@ working with cyanotype, silver gelatin, and other alternative processes.
 
 import pytest
 
+from tests.e2e.selenium.pages.chemistry_calculator_page import ChemistryCalculatorPage
 from tests.e2e.selenium.pages.cyanotype_calculator_page import CyanotypeCalculatorPage
 from tests.e2e.selenium.pages.silver_gelatin_calculator_page import SilverGelatinCalculatorPage
-from tests.e2e.selenium.pages.chemistry_calculator_page import ChemistryCalculatorPage
 
 
 @pytest.mark.selenium
@@ -86,7 +86,7 @@ class TestCyanotypePrintingJourney:
             (11.0, 14.0, "large print"),
         ]
 
-        for width, height, purpose in print_sizes:
+        for width, height, _purpose in print_sizes:
             cyanotype_page.set_print_dimensions(width, height)
             cyanotype_page.select_classic_formula()
             cyanotype_page.click_calculate_chemistry()
@@ -160,7 +160,7 @@ class TestCyanotypePrintingJourney:
             instructions = cyanotype_page.get_stock_solution_instructions()
 
             # Verify instructions were provided
-            assert instructions is not None or True  # Feature may not exist
+            assert instructions is not None  # Feature may not exist
         except Exception:
             pass  # Stock solution feature may not be implemented
 
@@ -208,10 +208,10 @@ class TestSilverGelatinDarkroomJourney:
         silver_gelatin_page.set_num_prints(5)
 
         # Step 6: Use 8x10 trays
-        try:
+        import contextlib
+
+        with contextlib.suppress(Exception):
             silver_gelatin_page.select_tray_size("8x10")
-        except Exception:
-            pass
 
         # Step 7: Calculate chemistry
         silver_gelatin_page.click_calculate_chemistry()
@@ -260,10 +260,10 @@ class TestSilverGelatinDarkroomJourney:
         silver_gelatin_page.check_include_hypo_clear(True)
 
         # Step 5: Use large trays
-        try:
+        import contextlib
+
+        with contextlib.suppress(Exception):
             silver_gelatin_page.select_tray_size("16x20")
-        except Exception:
-            pass
 
         # Step 6: Plan for single print (fine art)
         silver_gelatin_page.set_num_prints(1)
@@ -344,10 +344,10 @@ class TestSilverGelatinDarkroomJourney:
         silver_gelatin_page.set_num_prints(25)
 
         # Step 3: Use large trays for efficiency
-        try:
+        import contextlib
+
+        with contextlib.suppress(Exception):
             silver_gelatin_page.select_tray_size("16x20")
-        except Exception:
-            pass
 
         # Step 4: Include all processing steps
         silver_gelatin_page.check_include_hypo_clear(True)
@@ -385,7 +385,13 @@ class TestMultiProcessWorkshopJourney:
         """Create ChemistryCalculatorPage for Pt/Pd."""
         return ChemistryCalculatorPage(driver)
 
-    def test_process_comparison_journey(self, driver, cyanotype_page, silver_gelatin_page, chemistry_page):
+    def test_process_comparison_journey(
+        self,
+        driver,
+        cyanotype_page,
+        silver_gelatin_page,
+        chemistry_page,  # noqa: ARG002
+    ):
         """
         Journey: Comparing multiple processes for the same image.
 
@@ -435,7 +441,7 @@ class TestMultiProcessWorkshopJourney:
         # All processes should produce results without errors
         assert not cyanotype_page.is_error_displayed()
 
-    def test_switching_between_processes_journey(self, driver, cyanotype_page, silver_gelatin_page):
+    def test_switching_between_processes_journey(self, driver, cyanotype_page, silver_gelatin_page):  # noqa: ARG002
         """
         Journey: Rapidly switching between processes during a workshop.
 
@@ -443,7 +449,7 @@ class TestMultiProcessWorkshopJourney:
         different processes to students.
         """
         # Switch between processes multiple times
-        for i in range(3):
+        for _ in range(3):
             # Demonstrate cyanotype
             cyanotype_page.navigate_to_cyanotype()
             cyanotype_page.set_print_dimensions(8.0, 10.0)

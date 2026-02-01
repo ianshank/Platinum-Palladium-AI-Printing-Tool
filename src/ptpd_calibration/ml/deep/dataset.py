@@ -7,8 +7,9 @@ calibration records from the database.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional, Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -65,7 +66,7 @@ class FeatureEncoder:
     feature_names: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_database(cls, database: CalibrationDatabase) -> "FeatureEncoder":
+    def from_database(cls, database: CalibrationDatabase) -> FeatureEncoder:
         """
         Create encoder from a calibration database.
 
@@ -80,10 +81,10 @@ class FeatureEncoder:
             raise DatasetError("Cannot create encoder from empty database")
 
         # Build categorical mappings
-        papers = sorted(set(r.paper_type for r in records))
-        chemistries = sorted(set(r.chemistry_type.value for r in records))
-        developers = sorted(set(r.developer.value for r in records))
-        contrast_agents = sorted(set(r.contrast_agent.value for r in records))
+        papers = sorted({r.paper_type for r in records})
+        chemistries = sorted({r.chemistry_type.value for r in records})
+        developers = sorted({r.developer.value for r in records})
+        contrast_agents = sorted({r.contrast_agent.value for r in records})
 
         paper_to_idx = {p: i for i, p in enumerate(papers)}
         chemistry_to_idx = {c: i for i, c in enumerate(chemistries)}
@@ -99,7 +100,9 @@ class FeatureEncoder:
         # For exposure times, compute mean/std on log-transformed values (standard approach)
         log_exposures = [np.log(e + 1) for e in exposures] if exposures else [np.log(181)]
         log_exposure_mean = np.mean(log_exposures)
-        log_exposure_std = max(float(np.std(log_exposures)), 0.1)  # Minimum std to avoid division issues
+        log_exposure_std = max(
+            float(np.std(log_exposures)), 0.1
+        )  # Minimum std to avoid division issues
 
         humidity_mean = np.mean(humidities) if humidities else 50.0
         humidity_std = max(float(np.std(humidities)), 1.0) if humidities else 15.0
@@ -233,7 +236,7 @@ class FeatureEncoder:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "FeatureEncoder":
+    def from_dict(cls, data: dict) -> FeatureEncoder:
         """Load encoder from dictionary."""
         return cls(**data)
 
@@ -253,7 +256,7 @@ class DataAugmentation:
     density_shift_range: tuple[float, float] = (-0.02, 0.02)
 
     def augment_features(
-        self, features: np.ndarray, rng: Optional[np.random.Generator] = None
+        self, features: np.ndarray, rng: np.random.Generator | None = None
     ) -> np.ndarray:
         """
         Apply augmentation to feature vector.
@@ -281,7 +284,7 @@ class DataAugmentation:
         return features
 
     def augment_densities(
-        self, densities: np.ndarray, rng: Optional[np.random.Generator] = None
+        self, densities: np.ndarray, rng: np.random.Generator | None = None
     ) -> np.ndarray:
         """
         Apply augmentation to density values.
@@ -327,9 +330,9 @@ class CalibrationDataset(Dataset):
         self,
         database: CalibrationDatabase,
         target_length: int = 256,
-        encoder: Optional[FeatureEncoder] = None,
-        augmentation: Optional[DataAugmentation] = None,
-        transform: Optional[Callable] = None,
+        encoder: FeatureEncoder | None = None,
+        augmentation: DataAugmentation | None = None,
+        transform: Callable | None = None,
     ):
         """
         Initialize CalibrationDataset.
@@ -350,9 +353,7 @@ class CalibrationDataset(Dataset):
         self._rng = np.random.default_rng()
 
         # Filter records with valid density measurements
-        self.records = [
-            r for r in database.get_all_records() if r.measured_densities
-        ]
+        self.records = [r for r in database.get_all_records() if r.measured_densities]
 
         if not self.records:
             raise DatasetError("No records with density measurements found")
@@ -400,9 +401,7 @@ class CalibrationDataset(Dataset):
 
         # Apply transform if provided
         if self.transform is not None:
-            features_tensor, densities_tensor = self.transform(
-                features_tensor, densities_tensor
-            )
+            features_tensor, densities_tensor = self.transform(features_tensor, densities_tensor)
 
         return features_tensor, densities_tensor
 
@@ -414,8 +413,8 @@ class CalibrationDataset(Dataset):
     def split(
         self,
         val_ratio: float = 0.2,
-        seed: Optional[int] = None,
-    ) -> tuple["SubsetDataset", "SubsetDataset"]:
+        seed: int | None = None,
+    ) -> tuple[SubsetDataset, SubsetDataset]:
         """
         Split dataset into train and validation sets.
 
@@ -489,9 +488,9 @@ def create_dataloaders(
     batch_size: int = 32,
     val_ratio: float = 0.2,
     target_length: int = 256,
-    augmentation: Optional[DataAugmentation] = None,
+    augmentation: DataAugmentation | None = None,
     num_workers: int = 0,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> tuple:
     """
     Create train and validation dataloaders.

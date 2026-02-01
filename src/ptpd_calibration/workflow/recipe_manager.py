@@ -9,10 +9,12 @@ chemistry, exposure, environmental conditions, and calibration curves.
 
 import json
 import sqlite3
+from collections.abc import Callable
+from contextlib import suppress
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 from uuid import UUID, uuid4
 
 import yaml
@@ -53,16 +55,14 @@ class PrintRecipe(BaseModel):
     # Identity
     recipe_id: UUID = Field(default_factory=uuid4, description="Unique recipe identifier")
     name: str = Field(..., min_length=1, max_length=256, description="Recipe name")
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None, max_length=2048, description="Detailed recipe description"
     )
     tags: list[str] = Field(default_factory=list, description="Searchable tags")
 
     # Paper settings
     paper_type: str = Field(..., description="Paper type name")
-    paper_profile_id: Optional[UUID] = Field(
-        default=None, description="Reference to paper profile"
-    )
+    paper_profile_id: UUID | None = Field(default=None, description="Reference to paper profile")
 
     # Chemistry settings
     chemistry_type: ChemistryType = Field(
@@ -81,9 +81,7 @@ class PrintRecipe(BaseModel):
     contrast_agent: ContrastAgent = Field(
         default=ContrastAgent.NONE, description="Contrast agent type"
     )
-    contrast_agent_drops: float = Field(
-        default=0.0, ge=0.0, description="Contrast agent drops"
-    )
+    contrast_agent_drops: float = Field(default=0.0, ge=0.0, description="Contrast agent drops")
 
     # Developer settings
     developer: DeveloperType = Field(
@@ -101,59 +99,55 @@ class PrintRecipe(BaseModel):
         default=10.0, ge=0.1, le=120.0, description="Exposure time (minutes)"
     )
     uv_source: str = Field(default="UV LED", description="UV light source type")
-    uv_intensity_percent: Optional[float] = Field(
+    uv_intensity_percent: float | None = Field(
         default=None, ge=0.0, le=100.0, description="UV source intensity (%)"
     )
 
     # Environmental conditions
-    humidity_percent: Optional[float] = Field(
+    humidity_percent: float | None = Field(
         default=None, ge=0.0, le=100.0, description="Relative humidity (%)"
     )
-    temperature_f: Optional[float] = Field(
+    temperature_f: float | None = Field(
         default=None, ge=40.0, le=90.0, description="Ambient temperature (F)"
     )
-    coating_humidity_percent: Optional[float] = Field(
+    coating_humidity_percent: float | None = Field(
         default=None, ge=0.0, le=100.0, description="Humidity during coating (%)"
     )
-    drying_time_hours: Optional[float] = Field(
+    drying_time_hours: float | None = Field(
         default=None, ge=0.0, le=48.0, description="Drying time before exposure (hours)"
     )
 
     # Curve settings
-    curve_id: Optional[UUID] = Field(
-        default=None, description="Calibration curve identifier"
-    )
-    curve_name: Optional[str] = Field(default=None, description="Curve name for reference")
+    curve_id: UUID | None = Field(default=None, description="Calibration curve identifier")
+    curve_name: str | None = Field(default=None, description="Curve name for reference")
 
     # Version tracking
     version: int = Field(default=1, ge=1, description="Recipe version number")
-    created_at: datetime = Field(
-        default_factory=datetime.now, description="Creation timestamp"
-    )
+    created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp")
     modified_at: datetime = Field(
         default_factory=datetime.now, description="Last modification timestamp"
     )
-    parent_recipe_id: Optional[UUID] = Field(
+    parent_recipe_id: UUID | None = Field(
         default=None, description="Parent recipe for version tracking"
     )
 
     # Quality metrics
-    quality_rating: Optional[float] = Field(
+    quality_rating: float | None = Field(
         default=None, ge=0.0, le=5.0, description="Quality rating from past prints (0-5)"
     )
     successful_prints: int = Field(
         default=0, ge=0, description="Number of successful prints with this recipe"
     )
-    dmin_achieved: Optional[float] = Field(
+    dmin_achieved: float | None = Field(
         default=None, ge=0.0, description="Achieved minimum density"
     )
-    dmax_achieved: Optional[float] = Field(
+    dmax_achieved: float | None = Field(
         default=None, ge=0.0, description="Achieved maximum density"
     )
 
     # Notes and metadata
-    notes: Optional[str] = Field(default=None, description="Additional notes")
-    author: Optional[str] = Field(default=None, description="Recipe author")
+    notes: str | None = Field(default=None, description="Additional notes")
+    author: str | None = Field(default=None, description="Recipe author")
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -163,9 +157,9 @@ class PrintRecipe(BaseModel):
             return []
         if isinstance(v, str):
             v = [v]
-        return sorted(list(set(tag.lower().strip() for tag in v if tag.strip())))
+        return sorted({tag.lower().strip() for tag in v if tag.strip()})
 
-    def clone(self, modifications: Optional[dict[str, Any]] = None) -> "PrintRecipe":
+    def clone(self, modifications: dict[str, Any] | None = None) -> "PrintRecipe":
         """
         Clone this recipe with optional modifications.
 
@@ -184,7 +178,7 @@ class PrintRecipe(BaseModel):
 
         return PrintRecipe(**data)
 
-    def update_quality(self, rating: float, dmin: Optional[float], dmax: Optional[float]) -> None:
+    def update_quality(self, rating: float, dmin: float | None, dmax: float | None) -> None:
         """
         Update quality metrics based on a print result.
 
@@ -259,7 +253,7 @@ class RecipeManager:
         return recipe
 
     def clone_recipe(
-        self, recipe_id: UUID, modifications: Optional[dict[str, Any]] = None
+        self, recipe_id: UUID, modifications: dict[str, Any] | None = None
     ) -> PrintRecipe:
         """
         Clone an existing recipe with optional modifications.
@@ -321,7 +315,7 @@ class RecipeManager:
         """
         return self.database.delete_recipe(recipe_id)
 
-    def list_recipes(self, filters: Optional[dict[str, Any]] = None) -> list[PrintRecipe]:
+    def list_recipes(self, filters: dict[str, Any] | None = None) -> list[PrintRecipe]:
         """
         List recipes with optional filters.
 
@@ -363,7 +357,7 @@ class RecipeManager:
 
         return results
 
-    def get_recipe_by_id(self, recipe_id: UUID) -> Optional[PrintRecipe]:
+    def get_recipe_by_id(self, recipe_id: UUID) -> PrintRecipe | None:
         """
         Get a single recipe by ID.
 
@@ -510,7 +504,7 @@ class RecipeManager:
 
         for field in fields_to_compare:
             values = [getattr(r, field) for r in recipes]
-            if len(set(str(v) for v in values)) == 1:
+            if len({str(v) for v in values}) == 1:
                 comparison["similarities"][field] = values[0]
             else:
                 comparison["differences"][field] = {
@@ -585,9 +579,7 @@ class RecipeManager:
 
             exp_param = float(params["exposure_time_minutes"])
             if recipe.exposure_time_minutes > 0 and exp_param > 0:
-                log_ratio = abs(
-                    math.log(recipe.exposure_time_minutes) - math.log(exp_param)
-                )
+                log_ratio = abs(math.log(recipe.exposure_time_minutes) - math.log(exp_param))
                 score += 0.15 * max(0, 1 - log_ratio / 2)
             weights += 0.15
 
@@ -626,10 +618,10 @@ class WorkflowStep(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict, description="Step parameters")
     depends_on: list[UUID] = Field(default_factory=list, description="Step dependencies")
     status: WorkflowStatus = Field(default=WorkflowStatus.PENDING)
-    result: Optional[Any] = Field(default=None, description="Step result")
-    error: Optional[str] = Field(default=None, description="Error message if failed")
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    result: Any | None = Field(default=None, description="Step result")
+    error: str | None = Field(default=None, description="Error message if failed")
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 class WorkflowJob(BaseModel):
@@ -639,19 +631,17 @@ class WorkflowJob(BaseModel):
 
     job_id: UUID = Field(default_factory=uuid4)
     name: str = Field(..., description="Job name")
-    recipe_id: Optional[UUID] = Field(default=None, description="Associated recipe")
+    recipe_id: UUID | None = Field(default=None, description="Associated recipe")
     steps: list[WorkflowStep] = Field(default_factory=list)
     status: WorkflowStatus = Field(default=WorkflowStatus.PENDING)
     created_at: datetime = Field(default_factory=datetime.now)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    scheduled_for: Optional[datetime] = Field(
-        default=None, description="Scheduled execution time"
-    )
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    scheduled_for: datetime | None = Field(default=None, description="Scheduled execution time")
     progress: float = Field(default=0.0, ge=0.0, le=1.0, description="Job progress (0-1)")
 
     @property
-    def duration_seconds(self) -> Optional[float]:
+    def duration_seconds(self) -> float | None:
         """Get job duration in seconds."""
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
@@ -699,7 +689,7 @@ class WorkflowAutomation:
         )
 
         # Create workflow steps
-        for idx, image_path in enumerate(images):
+        for _idx, image_path in enumerate(images):
             step = WorkflowStep(
                 name=f"Process {image_path.name}",
                 action="process_image",
@@ -745,9 +735,7 @@ class WorkflowAutomation:
 
         return job
 
-    def schedule_workflow(
-        self, workflow: list[WorkflowStep], schedule: datetime
-    ) -> WorkflowJob:
+    def schedule_workflow(self, workflow: list[WorkflowStep], schedule: datetime) -> WorkflowJob:
         """
         Schedule a workflow for later execution.
 
@@ -761,7 +749,7 @@ class WorkflowAutomation:
         job = WorkflowJob(name="Scheduled workflow", steps=workflow, scheduled_for=schedule)
         return self._register_job(job)
 
-    def get_workflow_status(self, job_id: UUID) -> Optional[WorkflowJob]:
+    def get_workflow_status(self, job_id: UUID) -> WorkflowJob | None:
         """
         Get the current status of a workflow job.
 
@@ -845,7 +833,7 @@ class WorkflowAutomation:
         self._job_callbacks[job_id].append(callback)
 
     def list_jobs(
-        self, status: Optional[WorkflowStatus] = None, limit: Optional[int] = None
+        self, status: WorkflowStatus | None = None, limit: int | None = None
     ) -> list[WorkflowJob]:
         """
         List workflow jobs with optional filtering.
@@ -933,11 +921,9 @@ class WorkflowAutomation:
 
         callbacks = self._job_callbacks.get(job_id, [])
         for callback in callbacks:
-            try:
-                callback(job)
-            except Exception:
+            with suppress(Exception):
                 # Silently ignore callback errors
-                pass
+                callback(job)
 
 
 class RecipeDatabase:
@@ -948,7 +934,7 @@ class RecipeDatabase:
     filtering, and export/import capabilities.
     """
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         """
         Initialize recipe database.
 
@@ -1014,16 +1000,10 @@ class RecipeDatabase:
         """)
 
         # Create indices for common queries
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_paper_type ON recipes(paper_type)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_chemistry_type ON recipes(chemistry_type)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_paper_type ON recipes(paper_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_chemistry_type ON recipes(chemistry_type)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_created_at ON recipes(created_at)")
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_quality_rating ON recipes(quality_rating)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_quality_rating ON recipes(quality_rating)")
 
         conn.commit()
         conn.close()
@@ -1101,7 +1081,7 @@ class RecipeDatabase:
         # Update cache
         self._recipe_cache[recipe.recipe_id] = recipe
 
-    def get_recipe(self, recipe_id: UUID) -> Optional[PrintRecipe]:
+    def get_recipe(self, recipe_id: UUID) -> PrintRecipe | None:
         """
         Get a recipe by ID.
 
@@ -1202,27 +1182,23 @@ class RecipeDatabase:
 
         # Apply filters
         if "paper_type" in filters:
-            recipes = [
-                r for r in recipes if r.paper_type.lower() == filters["paper_type"].lower()
-            ]
+            recipes = [r for r in recipes if r.paper_type.lower() == filters["paper_type"].lower()]
 
         if "chemistry_type" in filters:
             recipes = [r for r in recipes if r.chemistry_type.value == filters["chemistry_type"]]
 
         if "min_quality_rating" in filters:
             min_rating = filters["min_quality_rating"]
-            recipes = [
-                r for r in recipes if r.quality_rating and r.quality_rating >= min_rating
-            ]
+            recipes = [r for r in recipes if r.quality_rating and r.quality_rating >= min_rating]
 
         if "tags" in filters:
-            filter_tags = set(filters["tags"]) if isinstance(filters["tags"], list) else {filters["tags"]}
+            filter_tags = (
+                set(filters["tags"]) if isinstance(filters["tags"], list) else {filters["tags"]}
+            )
             recipes = [r for r in recipes if any(tag in r.tags for tag in filter_tags)]
 
         if "uv_source" in filters:
-            recipes = [
-                r for r in recipes if r.uv_source.lower() == filters["uv_source"].lower()
-            ]
+            recipes = [r for r in recipes if r.uv_source.lower() == filters["uv_source"].lower()]
 
         if "developer" in filters:
             recipes = [r for r in recipes if r.developer.value == filters["developer"]]

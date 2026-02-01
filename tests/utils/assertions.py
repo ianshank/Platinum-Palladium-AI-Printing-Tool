@@ -4,8 +4,8 @@ Custom assertion helpers for PTPD Calibration tests.
 Provides domain-specific assertions for common test scenarios.
 """
 
-import math
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
@@ -47,20 +47,20 @@ def assert_densities_monotonic(
         if increasing:
             if strict:
                 assert densities[i] > densities[i - 1], (
-                    f"Non-strictly increasing at index {i}: {densities[i-1]} >= {densities[i]}"
+                    f"Non-strictly increasing at index {i}: {densities[i - 1]} >= {densities[i]}"
                 )
             else:
                 assert densities[i] >= densities[i - 1], (
-                    f"Non-monotonic at index {i}: {densities[i-1]} > {densities[i]}"
+                    f"Non-monotonic at index {i}: {densities[i - 1]} > {densities[i]}"
                 )
         else:
             if strict:
                 assert densities[i] < densities[i - 1], (
-                    f"Non-strictly decreasing at index {i}: {densities[i-1]} <= {densities[i]}"
+                    f"Non-strictly decreasing at index {i}: {densities[i - 1]} <= {densities[i]}"
                 )
             else:
                 assert densities[i] <= densities[i - 1], (
-                    f"Non-monotonic at index {i}: {densities[i-1]} < {densities[i]}"
+                    f"Non-monotonic at index {i}: {densities[i - 1]} < {densities[i]}"
                 )
 
 
@@ -103,11 +103,11 @@ def assert_curve_monotonic(
     for i in range(1, len(output_values)):
         if increasing:
             assert output_values[i] >= output_values[i - 1] - tolerance, (
-                f"Non-monotonic at index {i}: {output_values[i-1]} > {output_values[i]}"
+                f"Non-monotonic at index {i}: {output_values[i - 1]} > {output_values[i]}"
             )
         else:
             assert output_values[i] <= output_values[i - 1] + tolerance, (
-                f"Non-monotonic at index {i}: {output_values[i-1]} < {output_values[i]}"
+                f"Non-monotonic at index {i}: {output_values[i - 1]} < {output_values[i]}"
             )
 
 
@@ -213,9 +213,10 @@ def assert_response_has_fields(response: dict, fields: list[str]) -> None:
 
 # --- Cyanotype Assertions ---
 
+
 def assert_cyanotype_recipe_valid(recipe: dict | object) -> None:
     """Assert that a cyanotype recipe is valid."""
-    if hasattr(recipe, '__dict__'):
+    if hasattr(recipe, "__dict__"):
         # It's an object, convert to dict-like access
         assert recipe.solution_a_ml > 0, "Solution A must be positive"
         assert recipe.solution_b_ml > 0, "Solution B must be positive"
@@ -229,7 +230,7 @@ def assert_cyanotype_recipe_valid(recipe: dict | object) -> None:
 
 def assert_cyanotype_exposure_valid(exposure: dict | object) -> None:
     """Assert that a cyanotype exposure result is valid."""
-    if hasattr(exposure, '__dict__'):
+    if hasattr(exposure, "__dict__"):
         assert exposure.exposure_seconds > 0, "Exposure time must be positive"
         assert exposure.exposure_minutes >= 0, "Exposure minutes must be non-negative"
     else:
@@ -271,21 +272,24 @@ def assert_uv_exposure_inverse_square(
 
 # --- Silver Gelatin Assertions ---
 
+
 def assert_silver_gelatin_chemistry_valid(chemistry: dict | object) -> None:
     """Assert that silver gelatin processing chemistry is valid."""
-    if hasattr(chemistry, '__dict__'):
+    if hasattr(chemistry, "__dict__"):
         assert chemistry.developer.total_ml > 0, "Developer volume must be positive"
         assert chemistry.stop_bath_ml > 0, "Stop bath volume must be positive"
         assert chemistry.fixer_ml > 0, "Fixer volume must be positive"
     else:
-        assert chemistry.get("developer", {}).get("total_ml", 0) > 0, "Developer volume must be positive"
+        assert chemistry.get("developer", {}).get("total_ml", 0) > 0, (
+            "Developer volume must be positive"
+        )
         assert chemistry.get("stop_bath_ml", 0) > 0, "Stop bath volume must be positive"
         assert chemistry.get("fixer_ml", 0) > 0, "Fixer volume must be positive"
 
 
 def assert_silver_gelatin_exposure_valid(exposure: dict | object) -> None:
     """Assert that silver gelatin exposure result is valid."""
-    if hasattr(exposure, '__dict__'):
+    if hasattr(exposure, "__dict__"):
         assert exposure.exposure_seconds > 0, "Exposure time must be positive"
         assert exposure.f_stop > 0, "F-stop must be positive"
     else:
@@ -314,7 +318,7 @@ def assert_test_strip_times_valid(times: list[float]) -> None:
     # Times should be increasing
     for i in range(1, len(times)):
         assert times[i] > times[i - 1], (
-            f"Test strip times must be increasing: {times[i-1]} >= {times[i]}"
+            f"Test strip times must be increasing: {times[i - 1]} >= {times[i]}"
         )
 
 
@@ -350,14 +354,19 @@ def assert_processing_times_valid(
 
     # Typical ranges
     if paper_base.lower() == "fiber":
-        assert 60 <= development_time <= 300, f"Fiber development time out of range: {development_time}"
+        assert 60 <= development_time <= 300, (
+            f"Fiber development time out of range: {development_time}"
+        )
         assert 180 <= fix_time <= 600, f"Fiber fix time out of range: {fix_time}"
     else:  # RC
-        assert 60 <= development_time <= 180, f"RC development time out of range: {development_time}"
+        assert 60 <= development_time <= 180, (
+            f"RC development time out of range: {development_time}"
+        )
         assert 60 <= fix_time <= 180, f"RC fix time out of range: {fix_time}"
 
 
 # --- Alternative Process Generic Assertions ---
+
 
 def assert_alternative_process_result_valid(
     result: dict | object,
@@ -365,14 +374,14 @@ def assert_alternative_process_result_valid(
 ) -> None:
     """Assert that an alternative process result is valid based on type."""
     if process_type.lower() == "cyanotype":
-        if hasattr(result, 'solution_a_ml'):
+        if hasattr(result, "solution_a_ml"):
             assert_cyanotype_recipe_valid(result)
-        elif hasattr(result, 'exposure_seconds'):
+        elif hasattr(result, "exposure_seconds"):
             assert_cyanotype_exposure_valid(result)
     elif process_type.lower() in ["silver_gelatin", "darkroom"]:
-        if hasattr(result, 'developer'):
+        if hasattr(result, "developer"):
             assert_silver_gelatin_chemistry_valid(result)
-        elif hasattr(result, 'exposure_seconds'):
+        elif hasattr(result, "exposure_seconds"):
             assert_silver_gelatin_exposure_valid(result)
     else:
         # Generic validation

@@ -129,9 +129,7 @@ class SilverGelatinCalculatorPage(BasePage):
         """Get the calculated chemistry results."""
         results = {}
         try:
-            rows = self.find_elements(
-                By.CSS_SELECTOR, ".recipe-row, .result-item, tr"
-            )
+            rows = self.find_elements(By.CSS_SELECTOR, ".recipe-row, .result-item, tr")
             for row in rows:
                 try:
                     label = row.find_element(By.CSS_SELECTOR, ".label, td:first-child").text
@@ -215,10 +213,10 @@ class SilverGelatinCalculatorPage(BasePage):
     def get_exposure_results(self) -> dict:
         """Get all exposure calculation results."""
         results = {}
-        try:
+        import contextlib
+
+        with contextlib.suppress(Exception):
             results["exposure_time"] = self.get_exposure_time()
-        except Exception:
-            pass
         return results
 
     # --- Split Filter Settings ---

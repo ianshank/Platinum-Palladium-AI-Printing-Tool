@@ -5,13 +5,12 @@ Logs prints with metadata including chemistry, exposure, paper, and results.
 Enables learning from past prints to improve future outcomes.
 """
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 from uuid import UUID, uuid4
-import json
 
 
 class PrintResult(str, Enum):
@@ -43,11 +42,11 @@ class ChemistryUsed:
     def total_drops(self) -> float:
         """Get total drops used."""
         return (
-            self.ferric_oxalate_drops +
-            self.ferric_oxalate_contrast_drops +
-            self.palladium_drops +
-            self.platinum_drops +
-            self.na2_drops
+            self.ferric_oxalate_drops
+            + self.ferric_oxalate_contrast_drops
+            + self.palladium_drops
+            + self.platinum_drops
+            + self.na2_drops
         )
 
     @property
@@ -97,7 +96,7 @@ class PrintRecord:
 
     # Image info
     image_name: str = ""
-    negative_path: Optional[str] = None
+    negative_path: str | None = None
 
     # Paper info
     paper_type: str = ""
@@ -112,21 +111,21 @@ class PrintRecord:
     uv_unit: str = ""  # e.g., "NuArc 26-1K"
 
     # Curve used
-    curve_name: Optional[str] = None
-    curve_file: Optional[str] = None
+    curve_name: str | None = None
+    curve_file: str | None = None
 
     # Results
     result: PrintResult = PrintResult.ACCEPTABLE
-    dmax_achieved: Optional[float] = None
-    dmin_achieved: Optional[float] = None
+    dmax_achieved: float | None = None
+    dmin_achieved: float | None = None
 
     # Notes
     notes: str = ""
     tags: list[str] = field(default_factory=list)
 
     # Environmental
-    humidity_percent: Optional[float] = None
-    temperature_f: Optional[float] = None
+    humidity_percent: float | None = None
+    temperature_f: float | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary for serialization."""
@@ -157,7 +156,9 @@ class PrintRecord:
         """Create from dictionary."""
         return cls(
             id=UUID(data["id"]) if "id" in data else uuid4(),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if "timestamp" in data else datetime.now(),
+            timestamp=datetime.fromisoformat(data["timestamp"])
+            if "timestamp" in data
+            else datetime.now(),
             image_name=data.get("image_name", ""),
             negative_path=data.get("negative_path"),
             paper_type=data.get("paper_type", ""),
@@ -185,7 +186,7 @@ class PrintSession:
     id: UUID = field(default_factory=uuid4)
     name: str = ""
     started_at: datetime = field(default_factory=datetime.now)
-    ended_at: Optional[datetime] = None
+    ended_at: datetime | None = None
     records: list[PrintRecord] = field(default_factory=list)
     notes: str = ""
 
@@ -198,7 +199,7 @@ class PrintSession:
         self.ended_at = datetime.now()
 
     @property
-    def duration_hours(self) -> Optional[float]:
+    def duration_hours(self) -> float | None:
         """Get session duration in hours."""
         end = self.ended_at or datetime.now()
         return (end - self.started_at).total_seconds() / 3600
@@ -209,7 +210,8 @@ class PrintSession:
         if not self.records:
             return 0.0
         successful = sum(
-            1 for r in self.records
+            1
+            for r in self.records
             if r.result in (PrintResult.EXCELLENT, PrintResult.GOOD, PrintResult.ACCEPTABLE)
         )
         return (successful / len(self.records)) * 100
@@ -228,8 +230,9 @@ class PrintSession:
             "results": results_count,
             "success_rate": f"{self.success_rate:.1f}%",
             "duration_hours": round(self.duration_hours or 0, 2),
-            "papers_used": list(set(r.paper_type for r in self.records if r.paper_type)),
-            "avg_exposure_minutes": sum(r.exposure_time_minutes for r in self.records) / len(self.records),
+            "papers_used": list({r.paper_type for r in self.records if r.paper_type}),
+            "avg_exposure_minutes": sum(r.exposure_time_minutes for r in self.records)
+            / len(self.records),
         }
 
     def to_dict(self) -> dict:
@@ -250,7 +253,9 @@ class PrintSession:
         return cls(
             id=UUID(data["id"]) if "id" in data else uuid4(),
             name=data.get("name", ""),
-            started_at=datetime.fromisoformat(data["started_at"]) if "started_at" in data else datetime.now(),
+            started_at=datetime.fromisoformat(data["started_at"])
+            if "started_at" in data
+            else datetime.now(),
             ended_at=datetime.fromisoformat(data["ended_at"]) if data.get("ended_at") else None,
             records=[PrintRecord.from_dict(r) for r in data.get("records", [])],
             notes=data.get("notes", ""),
@@ -263,7 +268,7 @@ class SessionLogger:
     Stores session data in JSON files for persistence.
     """
 
-    def __init__(self, storage_dir: Optional[Path] = None):
+    def __init__(self, storage_dir: Path | None = None):
         """Initialize session logger.
 
         Args:
@@ -272,7 +277,7 @@ class SessionLogger:
         """
         self.storage_dir = storage_dir or Path.home() / ".ptpd" / "sessions"
         self.storage_dir.mkdir(parents=True, exist_ok=True)
-        self._current_session: Optional[PrintSession] = None
+        self._current_session: PrintSession | None = None
 
     def start_session(self, name: str = "") -> PrintSession:
         """Start a new printing session.
@@ -289,7 +294,7 @@ class SessionLogger:
         self._current_session = PrintSession(name=name)
         return self._current_session
 
-    def get_current_session(self) -> Optional[PrintSession]:
+    def get_current_session(self) -> PrintSession | None:
         """Get the current active session."""
         return self._current_session
 
@@ -305,7 +310,7 @@ class SessionLogger:
         self._current_session.add_record(record)
         self._auto_save()
 
-    def end_session(self) -> Optional[PrintSession]:
+    def end_session(self) -> PrintSession | None:
         """End the current session and save.
 
         Returns:
@@ -330,7 +335,9 @@ class SessionLogger:
         Returns:
             Path to saved file
         """
-        filename = f"session_{session.started_at.strftime('%Y%m%d_%H%M%S')}_{session.id.hex[:8]}.json"
+        filename = (
+            f"session_{session.started_at.strftime('%Y%m%d_%H%M%S')}_{session.id.hex[:8]}.json"
+        )
         filepath = self.storage_dir / filename
 
         with open(filepath, "w") as f:
@@ -368,14 +375,17 @@ class SessionLogger:
             try:
                 with open(filepath) as f:
                     data = json.load(f)
-                sessions.append({
-                    "filepath": str(filepath),
-                    "name": data.get("name", ""),
-                    "started_at": data.get("started_at"),
-                    "total_prints": len(data.get("records", [])),
-                })
+                sessions.append(
+                    {
+                        "filepath": str(filepath),
+                        "name": data.get("name", ""),
+                        "started_at": data.get("started_at"),
+                        "total_prints": len(data.get("records", [])),
+                    }
+                )
             except Exception as e:
                 import logging
+
                 logging.warning(f"Failed to list session {filepath}: {e}")
                 continue
 
@@ -383,9 +393,9 @@ class SessionLogger:
 
     def search_records(
         self,
-        paper_type: Optional[str] = None,
-        result: Optional[PrintResult] = None,
-        tags: Optional[list[str]] = None,
+        paper_type: str | None = None,
+        result: PrintResult | None = None,
+        tags: list[str] | None = None,
         limit: int = 100,
     ) -> list[PrintRecord]:
         """Search print records across all sessions.
@@ -418,6 +428,7 @@ class SessionLogger:
                         return records
             except Exception as e:
                 import logging
+
                 logging.warning(f"Failed to search session {filepath}: {e}")
                 continue
 
@@ -456,9 +467,12 @@ class SessionLogger:
                         stats[record.paper_type]["failed"] += 1
 
                     if record.exposure_time_minutes > 0:
-                        stats[record.paper_type]["avg_exposure"].append(record.exposure_time_minutes)
+                        stats[record.paper_type]["avg_exposure"].append(
+                            record.exposure_time_minutes
+                        )
             except Exception as e:
                 import logging
+
                 logging.warning(f"Failed to get stats for session {filepath}: {e}")
                 continue
 

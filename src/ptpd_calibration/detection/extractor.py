@@ -6,7 +6,6 @@ Implements robust measurement with outlier rejection for Pt/Pd prints.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 from PIL import Image
@@ -35,7 +34,7 @@ class DensityExtractor:
     dust, scratches, and coating irregularities common in Pt/Pd prints.
     """
 
-    def __init__(self, settings: Optional[ExtractionSettings] = None):
+    def __init__(self, settings: ExtractionSettings | None = None):
         """
         Initialize the extractor.
 
@@ -46,9 +45,9 @@ class DensityExtractor:
 
     def extract(
         self,
-        image: Union[np.ndarray, Image.Image, Path, str],
+        image: np.ndarray | Image.Image | Path | str,
         detection: DetectionResult,
-        reference_white: Optional[tuple[float, float, float]] = None,
+        reference_white: tuple[float, float, float] | None = None,
     ) -> ExtractionResult:
         """
         Extract density measurements from detected patches.
@@ -105,7 +104,7 @@ class DensityExtractor:
             warnings=warnings + detection.warnings,
         )
 
-    def _load_image(self, image: Union[np.ndarray, Image.Image, Path, str]) -> np.ndarray:
+    def _load_image(self, image: np.ndarray | Image.Image | Path | str) -> np.ndarray:
         """Load image from various sources."""
         if isinstance(image, np.ndarray):
             return image
@@ -310,7 +309,7 @@ class DensityExtractor:
     def _rgb_to_density(
         self,
         rgb: np.ndarray,
-        reference: Optional[tuple[float, float, float]] = None,
+        reference: tuple[float, float, float] | None = None,
     ) -> float:
         """
         Convert RGB to visual density using Status A weighting.
@@ -399,9 +398,7 @@ class DensityExtractor:
 
         return float(uniformity)
 
-    def _calculate_quality(
-        self, patches: list[PatchData], detection: DetectionResult
-    ) -> float:
+    def _calculate_quality(self, patches: list[PatchData], detection: DetectionResult) -> float:
         """Calculate overall extraction quality score."""
         if not patches:
             return 0.0
@@ -427,9 +424,7 @@ class DensityExtractor:
 
         return float(quality)
 
-    def _generate_warnings(
-        self, patches: list[PatchData], detection: DetectionResult
-    ) -> list[str]:
+    def _generate_warnings(self, patches: list[PatchData], detection: DetectionResult) -> list[str]:
         """Generate warnings based on extraction quality."""
         warnings = []
 

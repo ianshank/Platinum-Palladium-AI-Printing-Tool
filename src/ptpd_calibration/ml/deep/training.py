@@ -13,9 +13,10 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -45,8 +46,7 @@ def _check_torch() -> None:
     """Raise error if PyTorch is not available."""
     if not TORCH_AVAILABLE:
         raise ImportError(
-            "PyTorch is required for training. "
-            "Install with: pip install ptpd-calibration[deep]"
+            "PyTorch is required for training. Install with: pip install ptpd-calibration[deep]"
         )
 
 
@@ -267,8 +267,8 @@ class CurveTrainer:
     def __init__(
         self,
         model: nn.Module,
-        settings: Optional[DeepLearningSettings] = None,
-        device: Optional[str] = None,
+        settings: DeepLearningSettings | None = None,
+        device: str | None = None,
     ):
         """
         Initialize CurveTrainer.
@@ -280,7 +280,7 @@ class CurveTrainer:
         """
         _check_torch()
 
-        from ptpd_calibration.config import DeepLearningSettings, get_settings
+        from ptpd_calibration.config import get_settings
 
         self.settings = settings or get_settings().deep_learning
         self.device = get_device(device or self.settings.device)
@@ -317,7 +317,7 @@ class CurveTrainer:
 
         # Training state
         self.history = TrainingHistory()
-        self.best_model_state: Optional[dict[str, Any]] = None
+        self.best_model_state: dict[str, Any] | None = None
         self.callbacks: list[Callable] = []
 
     def add_callback(self, callback: Callable) -> None:
@@ -328,8 +328,8 @@ class CurveTrainer:
         self,
         train_loader: DataLoader,
         val_loader: DataLoader,
-        num_epochs: Optional[int] = None,
-        checkpoint_dir: Optional[Path] = None,
+        num_epochs: int | None = None,
+        checkpoint_dir: Path | None = None,
     ) -> TrainingHistory:
         """
         Train the model.

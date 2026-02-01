@@ -7,8 +7,8 @@ from PIL import Image
 from ptpd_calibration.imaging import (
     HistogramAnalyzer,
     HistogramResult,
-    HistogramStats,
     HistogramScale,
+    HistogramStats,
 )
 
 

@@ -1,10 +1,9 @@
 import gradio as gr
+
 from ptpd_calibration.chemistry import (
     ChemistryCalculator,
-    PaperAbsorbency,
     CoatingMethod,
-    MetalMix,
-    METAL_MIX_RATIOS,
+    PaperAbsorbency,
 )
 
 
@@ -47,7 +46,9 @@ def calculate_recipe_ui(w, h, pt_ratio, absorbency, method, cont, na2_val):
         if recipe.ferric_oxalate_drops > 0:
             html += add_drops("FO#1", recipe.ferric_oxalate_drops, "#fbbf24")  # Amber
         if recipe.ferric_oxalate_contrast_drops > 0:
-            html += add_drops("FO#2", recipe.ferric_oxalate_contrast_drops, "#d97706")  # Darker Amber
+            html += add_drops(
+                "FO#2", recipe.ferric_oxalate_contrast_drops, "#d97706"
+            )  # Darker Amber
         if recipe.platinum_drops > 0:
             html += add_drops("Pt", recipe.platinum_drops, "#c0c0c0")  # Silver
         if recipe.palladium_drops > 0:
@@ -85,7 +86,7 @@ def build_chemistry_tab():
                 with gr.Row():
                     btn_11x14 = gr.Button("11×14", size="sm")
                     btn_16x20 = gr.Button("16×20", size="sm")
-                    btn_custom = gr.Button("Custom", size="sm")
+                    _btn_custom = gr.Button("Custom", size="sm")  # Reserved for event handler
 
                 with gr.Row():
                     width = gr.Number(label="Width (inches)", value=8)
@@ -93,8 +94,7 @@ def build_chemistry_tab():
 
                 gr.Markdown("### Metal Ratio")
                 ratio_slider = gr.Slider(
-                    minimum=0, maximum=100, value=50,
-                    label="← More Palladium | More Platinum →"
+                    minimum=0, maximum=100, value=50, label="← More Palladium | More Platinum →"
                 )
 
                 # Visual indicator
@@ -111,14 +111,22 @@ def build_chemistry_tab():
 
                 gr.Markdown("### Coating & Contrast")
                 paper_absorbency = gr.Dropdown(
-                    choices=[("Low (Hot Press)", "low"), ("Medium", "medium"), ("High (Cold Press)", "high")],
+                    choices=[
+                        ("Low (Hot Press)", "low"),
+                        ("Medium", "medium"),
+                        ("High (Cold Press)", "high"),
+                    ],
                     value="medium",
-                    label="Paper Absorbency"
+                    label="Paper Absorbency",
                 )
                 coating_method = gr.Dropdown(
-                    choices=[("Brush", "brush"), ("Glass Rod", "rod"), ("Puddle Pusher", "puddle_pusher")],
+                    choices=[
+                        ("Brush", "brush"),
+                        ("Glass Rod", "rod"),
+                        ("Puddle Pusher", "puddle_pusher"),
+                    ],
                     value="brush",
-                    label="Coating Method"
+                    label="Coating Method",
                 )
                 contrast = gr.Slider(0, 100, 0, label="Contrast Boost (FO#2) %")
                 na2 = gr.Slider(0, 50, 25, label="Na2 % (of metal)")
@@ -168,11 +176,15 @@ def build_chemistry_tab():
         calculate_btn.click(
             calculate_recipe_ui,
             inputs=[width, height, ratio_slider, paper_absorbency, coating_method, contrast, na2],
-            outputs=[recipe_html, recipe_text, recipe_json]
+            outputs=[recipe_html, recipe_text, recipe_json],
         )
 
         # Copy button (simulated with Javascript)
-        copy_btn.click(None, [recipe_text], None, js="(text) => navigator.clipboard.writeText(text)")
+        copy_btn.click(
+            None, [recipe_text], None, js="(text) => navigator.clipboard.writeText(text)"
+        )
 
         # Log to session (placeholder)
-        log_btn.click(lambda x: gr.Info("Recipe logged to session!"), inputs=[recipe_json], outputs=[])
+        log_btn.click(
+            lambda x: gr.Info("Recipe logged to session!"), inputs=[recipe_json], outputs=[]
+        )

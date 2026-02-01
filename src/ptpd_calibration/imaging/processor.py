@@ -5,17 +5,17 @@ Applies calibration curves to images, creates inverted negatives,
 and exports in various formats while preserving resolution.
 """
 
+import io
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
-import io
 
 import numpy as np
 from PIL import Image
 
 try:
     import tifffile
+
     HAS_TIFFFILE = True
 except ImportError:
     HAS_TIFFFILE = False
@@ -51,8 +51,8 @@ class ExportSettings:
     jpeg_quality: int = 95  # 0-100
     preserve_metadata: bool = True
     preserve_resolution: bool = True
-    target_dpi: Optional[int] = None  # Override DPI if set
-    compression: Optional[str] = None  # Format-specific compression
+    target_dpi: int | None = None  # Override DPI if set
+    compression: str | None = None  # Format-specific compression
 
 
 @dataclass
@@ -62,8 +62,8 @@ class ProcessingResult:
     image: Image.Image
     original_size: tuple[int, int]
     original_mode: str
-    original_format: Optional[str]
-    original_dpi: Optional[tuple[int, int]]
+    original_format: str | None
+    original_dpi: tuple[int, int] | None
     curve_applied: bool
     inverted: bool
     processing_notes: list[str] = field(default_factory=list)
@@ -99,7 +99,7 @@ class ImageProcessor:
 
     def load_image(
         self,
-        source: Union[str, Path, Image.Image, np.ndarray, bytes],
+        source: str | Path | Image.Image | np.ndarray | bytes,
     ) -> ProcessingResult:
         """Load an image from various sources.
 
@@ -163,12 +163,10 @@ class ImageProcessor:
         img = result.image
 
         # Convert to appropriate mode for processing
-        if color_mode == ColorMode.GRAYSCALE:
-            if img.mode not in ("L", "LA"):
-                img = img.convert("L")
-        elif color_mode == ColorMode.RGB:
-            if img.mode not in ("RGB", "RGBA"):
-                img = img.convert("RGB")
+        if color_mode == ColorMode.GRAYSCALE and img.mode not in ("L", "LA"):
+            img = img.convert("L")
+        elif color_mode == ColorMode.RGB and img.mode not in ("RGB", "RGBA"):
+            img = img.convert("RGB")
 
         # Create lookup table from curve
         lut = self._create_lut(curve)
@@ -196,8 +194,8 @@ class ImageProcessor:
             try:
                 rgb = img.convert("RGB")
                 processed = self._apply_lut_rgb(rgb, lut)
-            except Exception:
-                raise ValueError(f"Unsupported image mode: {img.mode}")
+            except Exception as e:
+                raise ValueError(f"Unsupported image mode: {img.mode}") from e
 
         notes = list(result.processing_notes)
         notes.append(f"Applied curve: {curve.name}")
@@ -238,9 +236,7 @@ class ImageProcessor:
 
         # Validate input mode
         if img.mode not in ("RGB", "RGBA"):
-            raise ValueError(
-                f"Per-channel curves require RGB/RGBA image, got {img.mode}"
-            )
+            raise ValueError(f"Per-channel curves require RGB/RGBA image, got {img.mode}")
 
         # Extract alpha if present
         has_alpha = img.mode == "RGBA"
@@ -277,10 +273,7 @@ class ImageProcessor:
             processed_img.putalpha(a_channel)
 
         notes = list(result.processing_notes)
-        applied_channels = [
-            ch for ch in ("R", "G", "B")
-            if ch in curves and curves[ch] is not None
-        ]
+        applied_channels = [ch for ch in ("R", "G", "B") if ch in curves and curves[ch] is not None]
         if applied_channels:
             notes.append(f"Applied per-channel curves: {', '.join(applied_channels)}")
         else:
@@ -300,7 +293,7 @@ class ImageProcessor:
     def _validate_channel_dimensions(
         self,
         arr: np.ndarray,
-        expected_channels: Optional[int] = None,
+        expected_channels: int | None = None,
     ) -> None:
         """Validate that all channels have consistent dimensions.
 
@@ -321,9 +314,7 @@ class ImageProcessor:
         height, width, channels = arr.shape
 
         if expected_channels is not None and channels != expected_channels:
-            raise ValueError(
-                f"Expected {expected_channels} channels, got {channels}"
-            )
+            raise ValueError(f"Expected {expected_channels} channels, got {channels}")
 
         # Validate no channel is empty (all zeros)
         for c in range(channels):
@@ -364,12 +355,14 @@ class ImageProcessor:
 
         if arr.ndim == 2:
             stats["channels"] = 1
-            stats["per_channel_stats"] = [{
-                "min": int(arr.min()),
-                "max": int(arr.max()),
-                "mean": float(arr.mean()),
-                "std": float(arr.std()),
-            }]
+            stats["per_channel_stats"] = [
+                {
+                    "min": int(arr.min()),
+                    "max": int(arr.max()),
+                    "mean": float(arr.mean()),
+                    "std": float(arr.std()),
+                }
+            ]
             stats["all_channels_processed"] = arr.max() != arr.min()
         else:
             stats["channels"] = arr.shape[2]
@@ -395,8 +388,7 @@ class ImageProcessor:
         if require_uniform and not stats["all_channels_processed"]:
             # Check if any channel is constant (might indicate unprocessed)
             constant_channels = [
-                i for i, s in enumerate(stats["per_channel_stats"])
-                if s["min"] == s["max"]
+                i for i, s in enumerate(stats["per_channel_stats"]) if s["min"] == s["max"]
             ]
             if constant_channels:
                 raise ValueError(
@@ -444,8 +436,8 @@ class ImageProcessor:
                 arr = np.array(rgb)
                 inverted_arr = 255 - arr
                 inverted = Image.fromarray(inverted_arr.astype(np.uint8), mode="RGB")
-            except Exception:
-                raise ValueError(f"Cannot invert image mode: {img.mode}")
+            except Exception as e:
+                raise ValueError(f"Cannot invert image mode: {img.mode}") from e
 
         notes = list(result.processing_notes)
         notes.append("Image inverted (negative created)")
@@ -463,8 +455,8 @@ class ImageProcessor:
 
     def create_digital_negative(
         self,
-        source: Union[str, Path, Image.Image, np.ndarray, bytes],
-        curve: Optional[CurveData] = None,
+        source: str | Path | Image.Image | np.ndarray | bytes,
+        curve: CurveData | None = None,
         invert: bool = True,
         color_mode: ColorMode = ColorMode.GRAYSCALE,
     ) -> ProcessingResult:
@@ -484,18 +476,17 @@ class ImageProcessor:
         result = self.load_image(source)
 
         # Convert to appropriate color mode
-        if color_mode == ColorMode.GRAYSCALE:
-            if result.image.mode not in ("L", "LA"):
-                result = ProcessingResult(
-                    image=result.image.convert("L"),
-                    original_size=result.original_size,
-                    original_mode=result.original_mode,
-                    original_format=result.original_format,
-                    original_dpi=result.original_dpi,
-                    curve_applied=result.curve_applied,
-                    inverted=result.inverted,
-                    processing_notes=result.processing_notes + ["Converted to grayscale"],
-                )
+        if color_mode == ColorMode.GRAYSCALE and result.image.mode not in ("L", "LA"):
+            result = ProcessingResult(
+                image=result.image.convert("L"),
+                original_size=result.original_size,
+                original_mode=result.original_mode,
+                original_format=result.original_format,
+                original_dpi=result.original_dpi,
+                curve_applied=result.curve_applied,
+                inverted=result.inverted,
+                processing_notes=result.processing_notes + ["Converted to grayscale"],
+            )
 
         # Apply curve if provided
         if curve is not None:
@@ -509,10 +500,10 @@ class ImageProcessor:
 
     def preview_curve_effect(
         self,
-        source: Union[str, Path, Image.Image, np.ndarray, bytes],
+        source: str | Path | Image.Image | np.ndarray | bytes,
         curve: CurveData,
         color_mode: ColorMode = ColorMode.PRESERVE,
-        thumbnail_size: Optional[tuple[int, int]] = None,
+        thumbnail_size: tuple[int, int] | None = None,
     ) -> tuple[Image.Image, Image.Image]:
         """Preview the effect of a curve on an image.
 
@@ -549,8 +540,8 @@ class ImageProcessor:
     def export(
         self,
         result: ProcessingResult,
-        output_path: Union[str, Path],
-        settings: Optional[ExportSettings] = None,
+        output_path: str | Path,
+        settings: ExportSettings | None = None,
     ) -> Path:
         """Export processed image to file.
 
@@ -633,7 +624,7 @@ class ImageProcessor:
     def export_to_bytes(
         self,
         result: ProcessingResult,
-        settings: Optional[ExportSettings] = None,
+        settings: ExportSettings | None = None,
     ) -> tuple[bytes, str]:
         """Export processed image to bytes.
 
@@ -807,8 +798,16 @@ class ImageProcessor:
     def get_supported_formats() -> list[str]:
         """Get list of supported image formats for import."""
         return [
-            ".jpg", ".jpeg", ".png", ".tiff", ".tif",
-            ".bmp", ".gif", ".webp", ".ppm", ".pgm",
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".tiff",
+            ".tif",
+            ".bmp",
+            ".gif",
+            ".webp",
+            ".ppm",
+            ".pgm",
         ]
 
     @staticmethod

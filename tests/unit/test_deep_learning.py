@@ -12,10 +12,7 @@ Tests are marked with @pytest.mark.deep to allow skipping when PyTorch is unavai
 """
 
 import importlib.util
-import json
-import tempfile
 from pathlib import Path
-from typing import Generator
 
 import numpy as np
 import pytest

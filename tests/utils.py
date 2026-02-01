@@ -19,12 +19,14 @@ Usage:
         assert_curves_equal(curve.output_values, expected_values, tolerance=0.01)
 """
 
-import numpy as np
-from typing import Callable, TypeVar, Any, Sequence
+import time
+from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
-import time
 from pathlib import Path
+from typing import TypeVar
+
+import numpy as np
 from PIL import Image
 
 T = TypeVar("T")
@@ -58,7 +60,7 @@ def assert_curves_equal(
         f"{prefix}Curve lengths differ: {len(curve1)} vs {len(curve2)}"
     )
 
-    for i, (v1, v2) in enumerate(zip(curve1, curve2)):
+    for i, (v1, v2) in enumerate(zip(curve1, curve2, strict=True)):
         diff = abs(v1 - v2)
         assert diff < tolerance, (
             f"{prefix}Curves differ at index {i}: {v1:.6f} vs {v2:.6f} "
@@ -87,21 +89,15 @@ def assert_monotonic(
         diff = values[i] - values[i - 1]
 
         if increasing:
-            if strict:
-                valid = diff > -allow_tolerance
-            else:
-                valid = diff >= -allow_tolerance
+            valid = diff > -allow_tolerance if strict else diff >= -allow_tolerance
             direction = "increasing"
         else:
-            if strict:
-                valid = diff < allow_tolerance
-            else:
-                valid = diff <= allow_tolerance
+            valid = diff < allow_tolerance if strict else diff <= allow_tolerance
             direction = "decreasing"
 
         assert valid, (
             f"Not monotonically {direction} at index {i}: "
-            f"{values[i-1]:.6f} -> {values[i]:.6f} (diff={diff:.6f})"
+            f"{values[i - 1]:.6f} -> {values[i]:.6f} (diff={diff:.6f})"
         )
 
 
@@ -122,9 +118,7 @@ def assert_in_range(
     Raises:
         AssertionError: If value is out of range.
     """
-    assert min_val <= value <= max_val, (
-        f"{name} {value:.6f} not in range [{min_val}, {max_val}]"
-    )
+    assert min_val <= value <= max_val, f"{name} {value:.6f} not in range [{min_val}, {max_val}]"
 
 
 def assert_all_in_range(
@@ -145,9 +139,7 @@ def assert_all_in_range(
         AssertionError: If any value is out of range.
     """
     for i, v in enumerate(values):
-        assert min_val <= v <= max_val, (
-            f"{name}[{i}] = {v:.6f} not in range [{min_val}, {max_val}]"
-        )
+        assert min_val <= v <= max_val, f"{name}[{i}] = {v:.6f} not in range [{min_val}, {max_val}]"
 
 
 def assert_approximately_equal(
@@ -175,8 +167,7 @@ def assert_approximately_equal(
     threshold = max(rel_tolerance * abs(expected), abs_tolerance)
 
     assert diff <= threshold, (
-        f"{name}: {actual:.6f} != {expected:.6f} "
-        f"(diff={diff:.6f}, threshold={threshold:.6f})"
+        f"{name}: {actual:.6f} != {expected:.6f} (diff={diff:.6f}, threshold={threshold:.6f})"
     )
 
 
@@ -188,6 +179,7 @@ def assert_approximately_equal(
 @dataclass
 class PerformanceResult:
     """Result from performance measurement."""
+
     duration_seconds: float
     iterations: int
     avg_per_iteration: float
@@ -220,10 +212,7 @@ def assert_performance(
     yield
     elapsed = time.perf_counter() - start
 
-    assert elapsed < max_seconds, (
-        f"{operation_name} took {elapsed:.4f}s, "
-        f"expected < {max_seconds}s"
-    )
+    assert elapsed < max_seconds, f"{operation_name} took {elapsed:.4f}s, expected < {max_seconds}s"
 
 
 def measure_performance(
@@ -294,7 +283,7 @@ def generate_synthetic_densities(
         np.random.seed(seed)
 
     steps = np.linspace(0, 1, num_steps)
-    densities = dmin + (dmax - dmin) * (steps ** gamma)
+    densities = dmin + (dmax - dmin) * (steps**gamma)
 
     if noise_std > 0:
         densities += np.random.normal(0, noise_std, num_steps)
@@ -346,7 +335,7 @@ def generate_synthetic_step_tablet(
         full_height = height + 2 * border_size
         full_width = width + 2 * border_size
         full_img = np.full((full_height, full_width), border_color, dtype=np.uint8)
-        full_img[border_size:border_size + height, border_size:border_size + width] = img
+        full_img[border_size : border_size + height, border_size : border_size + width] = img
         return full_img
 
     return img
@@ -411,7 +400,7 @@ def generate_curve_data(
     if curve_type == "linear":
         y = x
     elif curve_type == "gamma":
-        y = x ** gamma
+        y = x**gamma
     elif curve_type == "s-curve":
         # Sigmoid-based S-curve
         y = 1 / (1 + np.exp(-10 * (x - 0.5)))

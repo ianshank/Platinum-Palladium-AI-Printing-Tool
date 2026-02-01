@@ -5,8 +5,6 @@ Tests the complete calibration workflow from step tablet upload
 through curve generation and export.
 """
 
-from pathlib import Path
-
 import pytest
 
 from tests.e2e.selenium.pages.calibration_wizard_page import CalibrationWizardPage
@@ -31,8 +29,8 @@ class TestCalibrationJourney:
     @pytest.fixture
     def sample_step_tablet(self, tmp_path):
         """Create a sample step tablet image for testing."""
-        from PIL import Image
         import numpy as np
+        from PIL import Image
 
         # Create a simple grayscale step tablet
         width, height = 420, 100
@@ -156,9 +154,7 @@ class TestCalibrationJourney:
         papers = [c["paper"] for c in calibrations]
         assert any("Dashboard Test" in p for p in papers)
 
-    def test_workflow_with_environment_settings(
-        self, wizard_page, sample_step_tablet
-    ):
+    def test_workflow_with_environment_settings(self, wizard_page, sample_step_tablet):
         """Test calibration workflow with environment settings."""
         wizard_page.navigate_to_wizard()
         wizard_page.upload_step_tablet(sample_step_tablet)

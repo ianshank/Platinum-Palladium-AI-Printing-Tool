@@ -5,16 +5,15 @@ Tests the helper functions and simulation logic
 used in the neural curve prediction UI tab.
 """
 
-import pytest
-import numpy as np
-from datetime import datetime
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+import pytest
 
 # =============================================================================
 # Test Helper Functions
 # =============================================================================
+
 
 class TestCreateRatioVisualization:
     """Tests for the Pt:Pd ratio visualization helper."""
@@ -61,6 +60,7 @@ class TestCreateRatioVisualization:
 # =============================================================================
 # Test Synthetic Data Generation
 # =============================================================================
+
 
 class TestSyntheticDataGeneration:
     """Tests for synthetic training data generation."""
@@ -119,7 +119,7 @@ class TestSyntheticDataGeneration:
             outputs = sample["output_densities"]
             # Check monotonic (each value >= previous)
             for i in range(1, len(outputs)):
-                assert outputs[i] >= outputs[i-1], "Curve should be monotonic"
+                assert outputs[i] >= outputs[i - 1], "Curve should be monotonic"
 
     def test_synthetic_data_bounds(self):
         """Test that values stay within bounds."""
@@ -135,6 +135,7 @@ class TestSyntheticDataGeneration:
 # =============================================================================
 # Test Training Simulation
 # =============================================================================
+
 
 class TestTrainingSimulation:
     """Tests for training simulation."""
@@ -191,6 +192,7 @@ class TestTrainingSimulation:
 # =============================================================================
 # Test Curve Prediction
 # =============================================================================
+
 
 class TestCurvePrediction:
     """Tests for curve prediction generation."""
@@ -256,7 +258,7 @@ class TestCurvePrediction:
 
         outputs = prediction["output"]
         for i in range(1, len(outputs)):
-            assert outputs[i] >= outputs[i-1]
+            assert outputs[i] >= outputs[i - 1]
 
     def test_curve_prediction_confidence(self):
         """Test that confidence is in valid range."""
@@ -333,6 +335,7 @@ class TestCurvePrediction:
 # Test Deep Learning Availability Check
 # =============================================================================
 
+
 class TestDLAvailabilityCheck:
     """Tests for deep learning availability checking."""
 
@@ -343,20 +346,23 @@ class TestDLAvailabilityCheck:
         # Reset cached value
         neural_curve._DL_AVAILABLE = None
 
-        with patch.dict("sys.modules", {"torch": None}):
-            with patch("builtins.__import__", side_effect=ImportError("No torch")):
-                # Force re-check by resetting
-                neural_curve._DL_AVAILABLE = None
+        with (
+            patch.dict("sys.modules", {"torch": None}),
+            patch("builtins.__import__", side_effect=ImportError("No torch")),
+        ):
+            # Force re-check by resetting
+            neural_curve._DL_AVAILABLE = None
 
-                # This should handle ImportError gracefully
-                result = neural_curve._check_dl_available()
-                # May be True or False depending on actual torch availability
-                assert isinstance(result, bool)
+            # This should handle ImportError gracefully
+            result = neural_curve._check_dl_available()
+            # May be True or False depending on actual torch availability
+            assert isinstance(result, bool)
 
 
 # =============================================================================
 # Test Custom Data Loading
 # =============================================================================
+
 
 class TestCustomDataLoading:
     """Tests for loading custom training data."""
@@ -364,6 +370,7 @@ class TestCustomDataLoading:
     def test_load_custom_data_json(self, tmp_path):
         """Test loading custom data from JSON."""
         import json
+
         from ptpd_calibration.ui.tabs.neural_curve import _load_custom_data
 
         # Create test JSON file
@@ -409,6 +416,7 @@ class TestCustomDataLoading:
 # =============================================================================
 # Test Session Data Loading
 # =============================================================================
+
 
 class TestSessionDataLoading:
     """Tests for loading data from session history."""
@@ -460,6 +468,7 @@ class TestSessionDataLoading:
 # Test Tab Building
 # =============================================================================
 
+
 class TestTabBuilding:
     """Tests for the tab building function."""
 
@@ -467,8 +476,9 @@ class TestTabBuilding:
         """Test building tab without session logger."""
         pytest.importorskip("gradio")
 
-        from ptpd_calibration.ui.tabs.neural_curve import build_neural_curve_tab
         import gradio as gr
+
+        from ptpd_calibration.ui.tabs.neural_curve import build_neural_curve_tab
 
         # Should not raise error
         with gr.Blocks() as demo:
@@ -480,8 +490,9 @@ class TestTabBuilding:
         """Test building tab with mock session logger."""
         pytest.importorskip("gradio")
 
-        from ptpd_calibration.ui.tabs.neural_curve import build_neural_curve_tab
         import gradio as gr
+
+        from ptpd_calibration.ui.tabs.neural_curve import build_neural_curve_tab
 
         mock_logger = MagicMock()
         mock_logger.list_sessions.return_value = []

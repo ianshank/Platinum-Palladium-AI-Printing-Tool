@@ -99,10 +99,13 @@ class TestDetectionModelSettings:
 
     def test_env_variable_override(self):
         """Test environment variable configuration."""
-        with patch.dict(os.environ, {
-            "PTPD_DL_DETECTION_DEVICE": "cuda:1",
-            "PTPD_DL_DETECTION_YOLO_MODEL_SIZE": "x",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "PTPD_DL_DETECTION_DEVICE": "cuda:1",
+                "PTPD_DL_DETECTION_YOLO_MODEL_SIZE": "x",
+            },
+        ):
             settings = DetectionModelSettings()
             assert settings.device == "cuda:1"
             assert settings.yolo_model_size == "x"

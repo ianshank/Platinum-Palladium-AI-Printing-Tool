@@ -10,7 +10,6 @@ from typing import TypeAlias
 
 import numpy as np
 
-
 # =============================================================================
 # Array Type Aliases
 # =============================================================================
@@ -25,6 +24,7 @@ Mask: TypeAlias = np.ndarray  # Shape: (H, W), dtype: bool or uint8
 # =============================================================================
 # Detection Types (YOLOv8 + SAM)
 # =============================================================================
+
 
 class DetectionBackend(str, Enum):
     """Backend for object detection models."""
@@ -63,6 +63,7 @@ class DetectionConfidence(str, Enum):
 # =============================================================================
 # Image Quality Assessment Types (Vision Transformer)
 # =============================================================================
+
 
 class IQAMetric(str, Enum):
     """Image quality assessment metrics."""
@@ -111,6 +112,7 @@ class ZoneQuality(str, Enum):
 # =============================================================================
 # Diffusion Model Types
 # =============================================================================
+
 
 class DiffusionScheduler(str, Enum):
     """Noise scheduler for diffusion models."""
@@ -170,6 +172,7 @@ class ControlNetType(str, Enum):
 # Neural Curve Prediction Types
 # =============================================================================
 
+
 class CurvePredictorArchitecture(str, Enum):
     """Neural network architecture for curve prediction."""
 
@@ -209,6 +212,7 @@ class CurveLossFunction(str, Enum):
 # UV Exposure Prediction Types
 # =============================================================================
 
+
 class UVSourceType(str, Enum):
     """Types of UV light sources."""
 
@@ -238,6 +242,7 @@ class ExposureConfidence(str, Enum):
 # =============================================================================
 # Defect Detection Types
 # =============================================================================
+
 
 class DefectType(str, Enum):
     """Types of print defects."""
@@ -306,6 +311,7 @@ class DefectDetectorArchitecture(str, Enum):
 # Recipe Recommendation Types
 # =============================================================================
 
+
 class RecommendationStrategy(str, Enum):
     """Strategy for recipe recommendations."""
 
@@ -350,6 +356,7 @@ class RecipeCategory(str, Enum):
 # Deep Print Comparison Types (LPIPS)
 # =============================================================================
 
+
 class PerceptualMetric(str, Enum):
     """Perceptual similarity metrics."""
 
@@ -387,6 +394,7 @@ class ComparisonResult(str, Enum):
 # =============================================================================
 # Multi-Modal AI Assistant Types
 # =============================================================================
+
 
 class VisionLanguageModel(str, Enum):
     """Vision-language model options."""
@@ -435,6 +443,7 @@ class AssistantMode(str, Enum):
 # =============================================================================
 # Federated Learning Types
 # =============================================================================
+
 
 class AggregationStrategy(str, Enum):
     """Strategy for federated model aggregation."""

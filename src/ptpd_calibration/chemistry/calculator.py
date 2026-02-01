@@ -15,7 +15,6 @@ Rule: Drops of metals (C) should equal drops of ferric oxalate (A + B)
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 from ptpd_calibration.config import ChemistrySettings, get_settings
 
@@ -96,7 +95,7 @@ class ChemistryRecipe:
     contrast_boost: float  # 0.0-1.0, ratio of FO#2 to total FO
 
     # Cost estimate (if enabled)
-    estimated_cost_usd: Optional[float] = None
+    estimated_cost_usd: float | None = None
 
     # Notes and recommendations
     notes: list[str] = field(default_factory=list)
@@ -136,7 +135,9 @@ class ChemistryRecipe:
                 "coating_method": self.coating_method.value,
                 "contrast_boost": round(self.contrast_boost * 100, 1),
             },
-            "estimated_cost_usd": round(self.estimated_cost_usd, 2) if self.estimated_cost_usd else None,
+            "estimated_cost_usd": round(self.estimated_cost_usd, 2)
+            if self.estimated_cost_usd
+            else None,
             "notes": self.notes,
         }
 
@@ -147,8 +148,8 @@ class ChemistryRecipe:
             "PLATINUM/PALLADIUM COATING RECIPE",
             "=" * 50,
             "",
-            f"Print Size: {self.print_width_inches}\" x {self.print_height_inches}\"",
-            f"Coating Area: {self.coating_width_inches:.1f}\" x {self.coating_height_inches:.1f}\" "
+            f'Print Size: {self.print_width_inches}" x {self.print_height_inches}"',
+            f'Coating Area: {self.coating_width_inches:.1f}" x {self.coating_height_inches:.1f}" '
             f"({self.coating_area_sq_inches:.1f} sq in)",
             "",
             "-" * 50,
@@ -176,19 +177,23 @@ class ChemistryRecipe:
         ]
 
         if self.estimated_cost_usd is not None:
-            lines.extend([
-                "",
-                "-" * 50,
-                f"ESTIMATED COST: ${self.estimated_cost_usd:.2f} USD",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "-" * 50,
+                    f"ESTIMATED COST: ${self.estimated_cost_usd:.2f} USD",
+                ]
+            )
 
         if self.notes:
-            lines.extend([
-                "",
-                "-" * 50,
-                "NOTES",
-                "-" * 50,
-            ])
+            lines.extend(
+                [
+                    "",
+                    "-" * 50,
+                    "NOTES",
+                    "-" * 50,
+                ]
+            )
             for note in self.notes:
                 lines.append(f"• {note}")
 
@@ -206,7 +211,7 @@ class ChemistryCalculator:
     - Na2 adds contrast (typically ~25% of metal drops)
     """
 
-    def __init__(self, settings: Optional[ChemistrySettings] = None):
+    def __init__(self, settings: ChemistrySettings | None = None):
         """Initialize calculator with optional custom settings.
 
         Args:
@@ -222,8 +227,8 @@ class ChemistryCalculator:
         paper_absorbency: PaperAbsorbency = PaperAbsorbency.MEDIUM,
         coating_method: CoatingMethod = CoatingMethod.BRUSH,
         contrast_boost: float = 0.0,
-        na2_ratio: Optional[float] = None,
-        margin_inches: Optional[float] = None,
+        na2_ratio: float | None = None,
+        margin_inches: float | None = None,
         include_cost: bool = True,
     ) -> ChemistryRecipe:
         """Calculate chemistry recipe for a given print size.
@@ -289,11 +294,15 @@ class ChemistryCalculator:
         palladium_drops = metal_total * (1 - platinum_ratio)
 
         # Calculate Na2
-        na2_ratio_value = na2_ratio if na2_ratio is not None else self.settings.default_na2_drops_ratio
+        na2_ratio_value = (
+            na2_ratio if na2_ratio is not None else self.settings.default_na2_drops_ratio
+        )
         na2_drops = metal_total * na2_ratio_value
 
         # Total drops
-        total_drops = fo_standard_drops + fo_contrast_drops + palladium_drops + platinum_drops + na2_drops
+        total_drops = (
+            fo_standard_drops + fo_contrast_drops + palladium_drops + platinum_drops + na2_drops
+        )
 
         # Convert to milliliters
         drops_per_ml = self.settings.drops_per_ml
@@ -308,16 +317,20 @@ class ChemistryCalculator:
         estimated_cost = None
         if include_cost:
             estimated_cost = (
-                (fo_standard_ml + fo_contrast_ml) * self.settings.ferric_oxalate_cost_per_ml +
-                palladium_ml * self.settings.palladium_cost_per_ml +
-                platinum_ml * self.settings.platinum_cost_per_ml +
-                na2_ml * self.settings.na2_cost_per_ml
+                (fo_standard_ml + fo_contrast_ml) * self.settings.ferric_oxalate_cost_per_ml
+                + palladium_ml * self.settings.palladium_cost_per_ml
+                + platinum_ml * self.settings.platinum_cost_per_ml
+                + na2_ml * self.settings.na2_cost_per_ml
             )
 
         # Generate notes
         notes = self._generate_notes(
-            width_inches, height_inches, platinum_ratio,
-            paper_absorbency, coating_method, contrast_boost
+            width_inches,
+            height_inches,
+            platinum_ratio,
+            paper_absorbency,
+            coating_method,
+            contrast_boost,
         )
 
         return ChemistryRecipe(
@@ -408,7 +421,9 @@ class ChemistryCalculator:
         scaled_total_drops = recipe.total_drops * scale_factor
 
         notes = list(recipe.notes)
-        notes.append(f"Scaled {scale_factor}x from original {recipe.print_width_inches}\"x{recipe.print_height_inches}\" recipe")
+        notes.append(
+            f'Scaled {scale_factor}x from original {recipe.print_width_inches}"x{recipe.print_height_inches}" recipe'
+        )
 
         return ChemistryRecipe(
             print_width_inches=recipe.print_width_inches,
@@ -433,7 +448,9 @@ class ChemistryCalculator:
             paper_absorbency=recipe.paper_absorbency,
             coating_method=recipe.coating_method,
             contrast_boost=recipe.contrast_boost,
-            estimated_cost_usd=(recipe.estimated_cost_usd * scale_factor) if recipe.estimated_cost_usd else None,
+            estimated_cost_usd=(recipe.estimated_cost_usd * scale_factor)
+            if recipe.estimated_cost_usd
+            else None,
             notes=notes,
         )
 
@@ -461,7 +478,9 @@ class ChemistryCalculator:
 
         # Paper absorbency notes
         if absorbency == PaperAbsorbency.HIGH:
-            notes.append("Cold press paper may need additional solution - adjust if coating appears thin")
+            notes.append(
+                "Cold press paper may need additional solution - adjust if coating appears thin"
+            )
         elif absorbency == PaperAbsorbency.LOW:
             notes.append("Hot press paper coats efficiently - watch for pooling")
 
@@ -473,7 +492,9 @@ class ChemistryCalculator:
 
         # Contrast notes
         if contrast > 0:
-            notes.append(f"FO#2 adds {contrast * 100:.0f}% contrast boost - good for flat negatives")
+            notes.append(
+                f"FO#2 adds {contrast * 100:.0f}% contrast boost - good for flat negatives"
+            )
 
         # Size notes
         area = width * height

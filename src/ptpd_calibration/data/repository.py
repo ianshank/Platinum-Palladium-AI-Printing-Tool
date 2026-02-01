@@ -21,18 +21,19 @@ Usage:
     record = repo.get(record_id)
 """
 
-from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Sequence, Any
-from pathlib import Path
-from datetime import datetime, timezone
-import sqlite3
 import json
-from contextlib import contextmanager
+import sqlite3
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
+from contextlib import contextmanager, suppress
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
 
-from ptpd_calibration.core.logging import get_logger
 from ptpd_calibration.config import get_settings
+from ptpd_calibration.core.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -188,14 +189,12 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
 
             # Create indexed field columns
             for field in self.indexed_fields:
-                try:
+                with suppress(sqlite3.OperationalError):
+                    # Column may already exist
                     cursor.execute(f"""
                         ALTER TABLE {self.table_name}
                         ADD COLUMN {field} TEXT
                     """)
-                except sqlite3.OperationalError:
-                    # Column already exists
-                    pass
 
                 # Create index
                 cursor.execute(f"""
@@ -218,6 +217,7 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
     def _generate_id(self) -> str:
         """Generate a unique ID."""
         import uuid
+
         return str(uuid.uuid4())
 
     def _extract_indexed_values(self, entity: T) -> dict[str, Any]:
@@ -229,10 +229,7 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
         """Get entity by ID."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                f"SELECT data FROM {self.table_name} WHERE id = ?",
-                (id,)
-            )
+            cursor.execute(f"SELECT data FROM {self.table_name} WHERE id = ?", (id,))
             row = cursor.fetchone()
 
             if row:
@@ -249,22 +246,19 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
                 """,
-                (limit, offset)
+                (limit, offset),
             )
             rows = cursor.fetchall()
 
-            return [
-                self.model_class.model_validate_json(row["data"])
-                for row in rows
-            ]
+            return [self.model_class.model_validate_json(row["data"]) for row in rows]
 
     def add(self, entity: T) -> T:
         """Add a new entity."""
         entity_id = self._generate_id()
 
         # Try to get existing ID from entity
-        if hasattr(entity, "id") and getattr(entity, "id"):
-            entity_id = str(getattr(entity, "id"))
+        if hasattr(entity, "id") and entity.id:
+            entity_id = str(entity.id)
 
         now = datetime.now(timezone.utc).isoformat()
 
@@ -289,10 +283,10 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
 
             cursor.execute(
                 f"""
-                INSERT INTO {self.table_name} ({', '.join(fields)})
-                VALUES ({', '.join(placeholders)})
+                INSERT INTO {self.table_name} ({", ".join(fields)})
+                VALUES ({", ".join(placeholders)})
                 """,
-                values
+                values,
             )
             conn.commit()
 
@@ -324,10 +318,10 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
             cursor.execute(
                 f"""
                 UPDATE {self.table_name}
-                SET {', '.join(set_clauses)}
+                SET {", ".join(set_clauses)}
                 WHERE id = ?
                 """,
-                values
+                values,
             )
             conn.commit()
 
@@ -338,10 +332,7 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
         """Delete an entity."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                f"DELETE FROM {self.table_name} WHERE id = ?",
-                (id,)
-            )
+            cursor.execute(f"DELETE FROM {self.table_name} WHERE id = ?", (id,))
             conn.commit()
             deleted = cursor.rowcount > 0
 
@@ -364,9 +355,7 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
                     values.append(value)
                 else:
                     # For non-indexed fields, use JSON extraction
-                    where_clauses.append(
-                        f"json_extract(data, '$.{field}') = ?"
-                    )
+                    where_clauses.append(f"json_extract(data, '$.{field}') = ?")
                     values.append(json.dumps(value) if not isinstance(value, str) else value)
 
             sql = f"SELECT data FROM {self.table_name}"
@@ -377,10 +366,7 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
             cursor.execute(sql, values)
             rows = cursor.fetchall()
 
-            return [
-                self.model_class.model_validate_json(row["data"])
-                for row in rows
-            ]
+            return [self.model_class.model_validate_json(row["data"]) for row in rows]
 
     def count(self, **criteria: Any) -> int:
         """Count entities matching criteria."""
@@ -395,9 +381,7 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
                     where_clauses.append(f"{field} = ?")
                     values.append(value)
                 else:
-                    where_clauses.append(
-                        f"json_extract(data, '$.{field}') = ?"
-                    )
+                    where_clauses.append(f"json_extract(data, '$.{field}') = ?")
                     values.append(json.dumps(value) if not isinstance(value, str) else value)
 
             sql = f"SELECT COUNT(*) as count FROM {self.table_name}"
@@ -443,7 +427,7 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
 
             sql = f"""
                 SELECT data FROM {self.table_name}
-                WHERE {' OR '.join(like_clauses)}
+                WHERE {" OR ".join(like_clauses)}
                 ORDER BY created_at DESC
                 LIMIT ?
             """
@@ -452,10 +436,7 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
             cursor.execute(sql, values)
             rows = cursor.fetchall()
 
-            return [
-                self.model_class.model_validate_json(row["data"])
-                for row in rows
-            ]
+            return [self.model_class.model_validate_json(row["data"]) for row in rows]
 
 
 class InMemoryRepository(Repository[T, str], Generic[T]):
@@ -484,7 +465,7 @@ class InMemoryRepository(Repository[T, str], Generic[T]):
 
     def get_all(self, limit: int = 100, offset: int = 0) -> Sequence[T]:
         items = list(self._store.values())
-        return items[offset:offset + limit]
+        return items[offset : offset + limit]
 
     def add(self, entity: T) -> T:
         entity_id = self._generate_id()

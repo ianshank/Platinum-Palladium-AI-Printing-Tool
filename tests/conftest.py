@@ -4,14 +4,14 @@ Shared fixtures for PTPD Calibration tests.
 This module provides common fixtures used across all test suites.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
-from pathlib import Path
 from PIL import Image
 
 from ptpd_calibration.core.models import CalibrationRecord, CurveData
 from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
-
 
 # =============================================================================
 # Pytest Configuration
@@ -30,7 +30,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "slow: Long-running tests")
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config, items):  # noqa: ARG001
     """Automatically add markers based on test location."""
     for item in items:
         # Add markers based on test path
@@ -54,10 +54,10 @@ def real_quad_path():
     # Assumes fixture is in tests/fixtures/Platinum_Palladium_V6-CC.quad
     base_dir = Path(__file__).parent
     fixture_path = base_dir / "fixtures" / "Platinum_Palladium_V6-CC.quad"
-    
+
     if not fixture_path.exists():
         pytest.skip(f"Real world fixture not found at {fixture_path}")
-        
+
     return fixture_path
 
 
@@ -96,7 +96,7 @@ def sample_densities():
     """Create sample density measurements."""
     # Simulate typical Pt/Pd response
     steps = np.linspace(0, 1, 21)
-    densities = 0.1 + 2.0 * (steps ** 0.85)
+    densities = 0.1 + 2.0 * (steps**0.85)
     return list(densities)
 
 
@@ -141,8 +141,7 @@ def populated_database():
                     contrast_amount=5.0,
                     developer=DeveloperType.POTASSIUM_OXALATE,
                     measured_densities=[
-                        0.1 + 2.0 * (i / 20) ** (0.7 + ratio * 0.3)
-                        for i in range(21)
+                        0.1 + 2.0 * (i / 20) ** (0.7 + ratio * 0.3) for i in range(21)
                     ],
                 )
                 db.add_record(record)
@@ -159,7 +158,7 @@ def populated_database():
 def sample_curve_data():
     """Create sample curve data."""
     input_values = list(np.linspace(0, 1, 256))
-    output_values = [x ** 0.9 for x in input_values]
+    output_values = [x**0.9 for x in input_values]
     return {
         "input_values": input_values,
         "output_values": output_values,
@@ -192,9 +191,7 @@ def high_contrast_curve():
     """Create a high-contrast S-curve."""
     input_values = list(np.linspace(0, 1, 256))
     # S-curve formula
-    output_values = [
-        1 / (1 + np.exp(-10 * (x - 0.5))) for x in input_values
-    ]
+    output_values = [1 / (1 + np.exp(-10 * (x - 0.5))) for x in input_values]
     # Normalize to 0-1
     min_val, max_val = min(output_values), max(output_values)
     output_values = [(y - min_val) / (max_val - min_val) for y in output_values]
@@ -280,5 +277,3 @@ def api_headers():
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
-
-

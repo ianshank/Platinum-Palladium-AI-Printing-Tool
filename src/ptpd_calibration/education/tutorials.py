@@ -7,7 +7,7 @@ from complete beginner guides to advanced techniques.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -41,14 +41,14 @@ class TutorialStep(BaseModel):
     title: str = Field(..., min_length=1, max_length=200, description="Step title")
     content: str = Field(..., min_length=1, description="Detailed step instructions")
     action: ActionType = Field(..., description="Type of action required")
-    validation: Optional[str] = Field(
+    validation: str | None = Field(
         default=None, description="Validation criteria or expected outcome"
     )
     tips: list[str] = Field(default_factory=list, description="Additional tips for this step")
     warnings: list[str] = Field(
         default_factory=list, description="Important warnings or safety notes"
     )
-    estimated_time_minutes: Optional[int] = Field(
+    estimated_time_minutes: int | None = Field(
         default=None, ge=1, description="Estimated time to complete step"
     )
 
@@ -81,8 +81,8 @@ class UserProgress(BaseModel):
     tutorial_name: str = Field(..., description="Tutorial identifier")
     current_step: int = Field(default=0, ge=0, description="Current step number (0 = not started)")
     completed_steps: list[int] = Field(default_factory=list, description="Completed step numbers")
-    started_at: Optional[datetime] = Field(default=None, description="When tutorial was started")
-    completed_at: Optional[datetime] = Field(default=None, description="When tutorial was completed")
+    started_at: datetime | None = Field(default=None, description="When tutorial was started")
+    completed_at: datetime | None = Field(default=None, description="When tutorial was completed")
     notes: str = Field(default="", description="User notes")
 
 
@@ -1516,7 +1516,7 @@ class TutorialManager:
             self.tutorials[name] = tutorial
 
     def get_available_tutorials(
-        self, difficulty: Optional[TutorialDifficulty] = None
+        self, difficulty: TutorialDifficulty | None = None
     ) -> list[Tutorial]:
         """
         Get list of available tutorials.
@@ -1532,7 +1532,7 @@ class TutorialManager:
             tutorials = [t for t in tutorials if t.difficulty == difficulty]
         return sorted(tutorials, key=lambda t: (t.difficulty.value, t.name))
 
-    def get_tutorial(self, name: str) -> Optional[Tutorial]:
+    def get_tutorial(self, name: str) -> Tutorial | None:
         """
         Get specific tutorial by name.
 
@@ -1544,7 +1544,7 @@ class TutorialManager:
         """
         return self.tutorials.get(name)
 
-    def start_tutorial(self, name: str, user_progress: Optional[UserProgress] = None) -> UserProgress:
+    def start_tutorial(self, name: str, user_progress: UserProgress | None = None) -> UserProgress:
         """
         Start a tutorial, creating or updating progress.
 
@@ -1648,7 +1648,7 @@ class TutorialManager:
 
         return user_progress
 
-    def get_next_tutorial(self, completed_tutorial: str) -> Optional[Tutorial]:
+    def get_next_tutorial(self, completed_tutorial: str) -> Tutorial | None:
         """
         Get recommended next tutorial based on prerequisites.
 
@@ -1659,11 +1659,7 @@ class TutorialManager:
             Recommended next Tutorial or None
         """
         # Find tutorials that list this one as a prerequisite
-        candidates = [
-            t
-            for t in self.tutorials.values()
-            if completed_tutorial in t.prerequisites
-        ]
+        candidates = [t for t in self.tutorials.values() if completed_tutorial in t.prerequisites]
 
         if candidates:
             # Return the easiest matching tutorial

@@ -21,10 +21,9 @@ New Cyanotype Formula (Mike Ware):
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
-from ptpd_calibration.core.types import CyanotypeFormula
 from ptpd_calibration.config import CyanotypeSettings
+from ptpd_calibration.core.types import CyanotypeFormula
 
 
 class CyanotypePaperType(str, Enum):
@@ -87,7 +86,7 @@ class CyanotypeRecipe:
     estimated_exposure_minutes: float  # Rough estimate for sunlight
 
     # Cost estimate
-    estimated_cost_usd: Optional[float] = None
+    estimated_cost_usd: float | None = None
 
     # Notes and recommendations
     notes: list[str] = field(default_factory=list)
@@ -121,7 +120,9 @@ class CyanotypeRecipe:
                 "method": self.development_method,
                 "estimated_exposure_minutes": self.estimated_exposure_minutes,
             },
-            "estimated_cost_usd": round(self.estimated_cost_usd, 2) if self.estimated_cost_usd else None,
+            "estimated_cost_usd": round(self.estimated_cost_usd, 2)
+            if self.estimated_cost_usd
+            else None,
             "notes": self.notes,
         }
 
@@ -133,16 +134,16 @@ class CyanotypeRecipe:
             "=" * 50,
             "",
             f"Formula: {self.formula.value.title()}",
-            f"Print Size: {self.print_width_inches}\" x {self.print_height_inches}\"",
-            f"Coating Area: {self.coating_width_inches:.1f}\" x {self.coating_height_inches:.1f}\" "
+            f'Print Size: {self.print_width_inches}" x {self.print_height_inches}"',
+            f'Coating Area: {self.coating_width_inches:.1f}" x {self.coating_height_inches:.1f}" '
             f"({self.coating_area_sq_inches:.1f} sq in)",
             "",
             "-" * 50,
             "SOLUTION AMOUNTS (ml / drops)",
             "-" * 50,
-            f"Solution A (Ferric Ammonium Citrate):",
+            "Solution A (Ferric Ammonium Citrate):",
             f"                       {self.solution_a_ml:6.2f} ml  ({self.solution_a_drops:.1f} drops)",
-            f"Solution B (Potassium Ferricyanide):",
+            "Solution B (Potassium Ferricyanide):",
             f"                       {self.solution_b_ml:6.2f} ml  ({self.solution_b_drops:.1f} drops)",
             "-" * 50,
             f"TOTAL:                 {self.total_sensitizer_ml:6.2f} ml  ({self.total_drops:.1f} drops)",
@@ -166,28 +167,29 @@ class CyanotypeRecipe:
         ]
 
         if self.estimated_cost_usd is not None:
-            lines.extend([
-                "",
-                "-" * 50,
-                f"ESTIMATED COST: ${self.estimated_cost_usd:.2f} USD",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "-" * 50,
+                    f"ESTIMATED COST: ${self.estimated_cost_usd:.2f} USD",
+                ]
+            )
 
         if self.notes:
-            lines.extend([
-                "",
-                "-" * 50,
-                "NOTES",
-                "-" * 50,
-            ])
+            lines.extend(
+                [
+                    "",
+                    "-" * 50,
+                    "NOTES",
+                    "-" * 50,
+                ]
+            )
             for note in self.notes:
                 lines.append(f"* {note}")
 
         lines.append("=" * 50)
 
         return "\n".join(lines)
-
-
-
 
 
 class CyanotypeCalculator:
@@ -207,7 +209,7 @@ class CyanotypeCalculator:
     - Faster exposure times
     """
 
-    def __init__(self, settings: Optional[CyanotypeSettings] = None):
+    def __init__(self, settings: CyanotypeSettings | None = None):
         """Initialize calculator with optional custom settings.
 
         Args:
@@ -222,7 +224,7 @@ class CyanotypeCalculator:
         formula: CyanotypeFormula = CyanotypeFormula.CLASSIC,
         paper_type: CyanotypePaperType = CyanotypePaperType.COTTON_RAG,
         concentration_factor: float = 1.0,
-        margin_inches: Optional[float] = None,
+        margin_inches: float | None = None,
         include_cost: bool = True,
     ) -> CyanotypeRecipe:
         """Calculate cyanotype sensitizer recipe for a given print size.
@@ -285,8 +287,8 @@ class CyanotypeCalculator:
         estimated_cost = None
         if include_cost:
             estimated_cost = (
-                solution_a_ml * self.settings.solution_a_cost_per_ml +
-                solution_b_ml * self.settings.solution_b_cost_per_ml
+                solution_a_ml * self.settings.solution_a_cost_per_ml
+                + solution_b_ml * self.settings.solution_b_cost_per_ml
             )
 
         # Generate notes
@@ -329,13 +331,13 @@ class CyanotypeCalculator:
 
         Returns:
             Dictionary with solution preparation instructions
-        
+
         Raises:
             ValueError: If volume is invalid
         """
         if total_volume_ml <= 0:
             raise ValueError("total volume must be positive")
-        
+
         if formula == CyanotypeFormula.CLASSIC:
             return {
                 "solution_a": {
@@ -408,7 +410,7 @@ class CyanotypeCalculator:
         # Concentration adjustment
         conc_factor = 1.0 / concentration  # More concentrated = slightly faster
 
-        return base * formula_factor * (paper_factor ** 0.5) * conc_factor
+        return base * formula_factor * (paper_factor**0.5) * conc_factor
 
     def _get_development_method(self, formula: CyanotypeFormula) -> str:
         """Get recommended development method for formula."""

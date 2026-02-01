@@ -11,12 +11,12 @@ if TYPE_CHECKING:
     from selenium.webdriver.remote.webelement import WebElement
 
 try:
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.common.exceptions import NoSuchElementException, TimeoutException
     from selenium.webdriver.common.action_chains import ActionChains
-    from selenium.webdriver.common.keys import Keys
-    from selenium.common.exceptions import TimeoutException, NoSuchElementException
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.common.keys import Keys  # noqa: F401
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
 
     SELENIUM_AVAILABLE = True
 except ImportError:
@@ -46,33 +46,25 @@ class BasePage:
         """Find multiple elements."""
         return self.driver.find_elements(by, value)
 
-    def wait_for_element(
-        self, by: str, value: str, timeout: int | None = None
-    ) -> "WebElement":
+    def wait_for_element(self, by: str, value: str, timeout: int | None = None) -> "WebElement":
         """Wait for element to be present."""
         timeout = timeout or self.DEFAULT_TIMEOUT
         wait = WebDriverWait(self.driver, timeout)
         return wait.until(EC.presence_of_element_located((by, value)))
 
-    def wait_for_clickable(
-        self, by: str, value: str, timeout: int | None = None
-    ) -> "WebElement":
+    def wait_for_clickable(self, by: str, value: str, timeout: int | None = None) -> "WebElement":
         """Wait for element to be clickable."""
         timeout = timeout or self.DEFAULT_TIMEOUT
         wait = WebDriverWait(self.driver, timeout)
         return wait.until(EC.element_to_be_clickable((by, value)))
 
-    def wait_for_visible(
-        self, by: str, value: str, timeout: int | None = None
-    ) -> "WebElement":
+    def wait_for_visible(self, by: str, value: str, timeout: int | None = None) -> "WebElement":
         """Wait for element to be visible."""
         timeout = timeout or self.DEFAULT_TIMEOUT
         wait = WebDriverWait(self.driver, timeout)
         return wait.until(EC.visibility_of_element_located((by, value)))
 
-    def wait_for_invisible(
-        self, by: str, value: str, timeout: int | None = None
-    ) -> bool:
+    def wait_for_invisible(self, by: str, value: str, timeout: int | None = None) -> bool:
         """Wait for element to become invisible."""
         timeout = timeout or self.DEFAULT_TIMEOUT
         wait = WebDriverWait(self.driver, timeout)
@@ -102,19 +94,15 @@ class BasePage:
         wait = WebDriverWait(self.driver, timeout)
 
         # Wait for main container
-        wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, ".gradio-container"))
-        )
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".gradio-container")))
 
         # Wait for loading overlays to disappear
-        try:
+        import contextlib
+
+        with contextlib.suppress(TimeoutException):
             wait.until(
-                EC.invisibility_of_element_located(
-                    (By.CSS_SELECTOR, ".loading, .svelte-loading")
-                )
+                EC.invisibility_of_element_located((By.CSS_SELECTOR, ".loading, .svelte-loading"))
             )
-        except TimeoutException:
-            pass  # Loading indicator may not exist
 
     def click_tab(self, tab_name: str) -> None:
         """Click on a Gradio tab by its name."""
@@ -128,9 +116,7 @@ class BasePage:
 
     def get_active_tab(self) -> str:
         """Get the name of the currently active tab."""
-        active_tab = self.find_element(
-            By.CSS_SELECTOR, "button[role='tab'][aria-selected='true']"
-        )
+        active_tab = self.find_element(By.CSS_SELECTOR, "button[role='tab'][aria-selected='true']")
         return active_tab.text
 
     def fill_textbox(self, label: str, value: str) -> None:
@@ -154,9 +140,7 @@ class BasePage:
         # Wait for dropdown to open and find option
         self.wait_for_element(By.CSS_SELECTOR, ".dropdown-content, ul[role='listbox']")
 
-        options = self.find_elements(
-            By.CSS_SELECTOR, ".dropdown-item, li[role='option']"
-        )
+        options = self.find_elements(By.CSS_SELECTOR, ".dropdown-item, li[role='option']")
         for opt in options:
             if option.lower() in opt.text.lower():
                 opt.click()
@@ -246,9 +230,7 @@ class BasePage:
         except NoSuchElementException:
             pass
 
-        raise NoSuchElementException(
-            f"Could not find Gradio {component_type} with label '{label}'"
-        )
+        raise NoSuchElementException(f"Could not find Gradio {component_type} with label '{label}'")
 
     # --- Navigation Methods ---
 

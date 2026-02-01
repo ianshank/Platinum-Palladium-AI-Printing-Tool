@@ -5,11 +5,11 @@ import pytest
 from PIL import Image
 
 from ptpd_calibration.zones import (
-    ZoneMapper,
-    ZoneMapping,
+    ZONE_DESCRIPTIONS,
     Zone,
     ZoneAnalysis,
-    ZONE_DESCRIPTIONS,
+    ZoneMapper,
+    ZoneMapping,
 )
 
 
@@ -230,7 +230,7 @@ class TestZoneMapper:
         arr = np.zeros((100, 100, 3), dtype=np.uint8)
         arr[:, :, 0] = 200  # Red
         arr[:, :, 1] = 100  # Green
-        arr[:, :, 2] = 50   # Blue
+        arr[:, :, 2] = 50  # Blue
         rgb_image = Image.fromarray(arr, mode="RGB")
 
         analysis = mapper.analyze_image(rgb_image)

@@ -3,12 +3,11 @@ Tests for the QTR .quad file parser.
 """
 
 import pytest
-from pathlib import Path
 
 from ptpd_calibration.curves.parser import (
-    QuadProfile,
-    QuadFileParser,
     ChannelCurve,
+    QuadFileParser,
+    QuadProfile,
     load_quad_file,
     load_quad_string,
 )
@@ -98,7 +97,7 @@ class TestQuadProfile:
     def test_summary(self):
         """Test summary generation."""
         profile = QuadProfile(profile_name="Test Profile", resolution=1440)
-        profile.channels["K"] = ChannelCurve(name="K", values=[i for i in range(256)])
+        profile.channels["K"] = ChannelCurve(name="K", values=list(range(256)))
 
         summary = profile.summary()
 

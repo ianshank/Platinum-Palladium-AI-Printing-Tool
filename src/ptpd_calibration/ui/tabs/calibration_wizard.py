@@ -1,29 +1,30 @@
-import gradio as gr
-import numpy as np
-import matplotlib.pyplot as plt
-from pathlib import Path
 import tempfile
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, List, Tuple, Dict, Any
+from pathlib import Path
+from typing import Any
 
+import gradio as gr
+import matplotlib.pyplot as plt
+import numpy as np
+
+from ptpd_calibration.analysis import StepWedgeAnalyzer, WedgeAnalysisConfig
 from ptpd_calibration.config import TabletType
-from ptpd_calibration.analysis import WedgeAnalysisConfig, StepWedgeAnalyzer
-from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.core.models import CurveData
+from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.curves import save_curve
 from ptpd_calibration.curves.linearization import (
     AutoLinearizer,
+    LinearizationConfig,
     LinearizationMethod,
     TargetResponse,
-    LinearizationConfig,
 )
 from ptpd_calibration.papers.profiles import PaperDatabase
-
 
 # =============================================================================
 # Linearization Mode Configuration
 # =============================================================================
+
 
 class WizardLinearizationMode(str, Enum):
     """High-level linearization modes for the wizard."""
@@ -49,7 +50,7 @@ class LinearizationModeConfig:
 
 
 # Define the linearization modes with their configurations
-LINEARIZATION_MODES: Dict[str, LinearizationModeConfig] = {
+LINEARIZATION_MODES: dict[str, LinearizationModeConfig] = {
     WizardLinearizationMode.SINGLE_CURVE.value: LinearizationModeConfig(
         value=WizardLinearizationMode.SINGLE_CURVE.value,
         label="Single-curve linearization (recommended)",
@@ -93,12 +94,12 @@ LINEARIZATION_MODES: Dict[str, LinearizationModeConfig] = {
 }
 
 
-def get_linearization_mode_choices() -> List[str]:
+def get_linearization_mode_choices() -> list[str]:
     """Get list of linearization mode labels for dropdown."""
     return [config.label for config in LINEARIZATION_MODES.values()]
 
 
-def get_mode_by_label(label: str) -> Optional[LinearizationModeConfig]:
+def get_mode_by_label(label: str) -> LinearizationModeConfig | None:
     """Get mode configuration by its display label."""
     for config in LINEARIZATION_MODES.values():
         if config.label == label:
@@ -106,7 +107,7 @@ def get_mode_by_label(label: str) -> Optional[LinearizationModeConfig]:
     return None
 
 
-def get_mode_value_by_label(label: str) -> Optional[str]:
+def get_mode_value_by_label(label: str) -> str | None:
     """Get mode value by its display label."""
     config = get_mode_by_label(label)
     return config.value if config else None
@@ -116,7 +117,8 @@ def get_mode_value_by_label(label: str) -> Optional[str]:
 # Strategy (Method) Configuration
 # =============================================================================
 
-def get_strategy_choices() -> List[Tuple[str, str]]:
+
+def get_strategy_choices() -> list[tuple[str, str]]:
     """Get user-friendly strategy choices mapped to LinearizationMethod values."""
     return [
         ("Smooth spline (recommended)", LinearizationMethod.SPLINE_FIT.value),
@@ -127,12 +129,12 @@ def get_strategy_choices() -> List[Tuple[str, str]]:
     ]
 
 
-def get_strategy_labels() -> List[str]:
+def get_strategy_labels() -> list[str]:
     """Get list of strategy labels for dropdown."""
     return [label for label, _ in get_strategy_choices()]
 
 
-def get_strategy_value_by_label(label: str) -> Optional[str]:
+def get_strategy_value_by_label(label: str) -> str | None:
     """Get LinearizationMethod value by label."""
     for lbl, val in get_strategy_choices():
         if lbl == label:
@@ -144,7 +146,8 @@ def get_strategy_value_by_label(label: str) -> Optional[str]:
 # Target Response Configuration
 # =============================================================================
 
-def get_target_choices() -> List[Tuple[str, str]]:
+
+def get_target_choices() -> list[tuple[str, str]]:
     """Get user-friendly target response choices mapped to TargetResponse values."""
     return [
         ("Even tonal steps (linear)", TargetResponse.LINEAR.value),
@@ -155,12 +158,12 @@ def get_target_choices() -> List[Tuple[str, str]]:
     ]
 
 
-def get_target_labels() -> List[str]:
+def get_target_labels() -> list[str]:
     """Get list of target labels for dropdown."""
     return [label for label, _ in get_target_choices()]
 
 
-def get_target_value_by_label(label: str) -> Optional[str]:
+def get_target_value_by_label(label: str) -> str | None:
     """Get TargetResponse value by label."""
     for lbl, val in get_target_choices():
         if lbl == label:
@@ -172,7 +175,8 @@ def get_target_value_by_label(label: str) -> Optional[str]:
 # Paper Preset Configuration
 # =============================================================================
 
-def get_paper_preset_choices() -> List[str]:
+
+def get_paper_preset_choices() -> list[str]:
     """Get paper preset choices including custom option."""
     db = PaperDatabase()
     papers = db.list_paper_names()
@@ -201,15 +205,16 @@ def get_paper_chemistry_notes(paper_name: str) -> str:
 # Validation Helpers
 # =============================================================================
 
+
 def wizard_is_valid_config(
     mode_label: str,
     target_label: str,
     strategy_label: str,
     paper_preset: str,
-    existing_profile: Optional[str],
+    existing_profile: str | None,
     custom_chemistry: str,
     curve_name: str,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """
     Validate wizard configuration.
 
@@ -234,9 +239,13 @@ def wizard_is_valid_config(
     if mode_config.requires_paper_preset and not paper_preset:
         return False, "Please select a paper preset."
 
-    if mode_config.requires_existing_profile:
-        if not existing_profile or existing_profile == "No curves available":
-            return False, "Please select an existing curve profile. Load curves in the Curve Display tab first."
+    if mode_config.requires_existing_profile and (
+        not existing_profile or existing_profile == "No curves available"
+    ):
+        return (
+            False,
+            "Please select an existing curve profile. Load curves in the Curve Display tab first.",
+        )
 
     # Custom paper validation
     if paper_preset == "Other / custom" and not custom_chemistry.strip():
@@ -249,7 +258,8 @@ def wizard_is_valid_config(
 # Mode Change Handler
 # =============================================================================
 
-def wizard_on_mode_change(mode_label: str) -> Tuple[Any, ...]:
+
+def wizard_on_mode_change(mode_label: str) -> tuple[Any, ...]:
     """
     Handle linearization mode change.
 
@@ -260,13 +270,13 @@ def wizard_on_mode_change(mode_label: str) -> Tuple[Any, ...]:
     if not mode_config:
         # Default: show everything
         return (
-            gr.update(visible=True, interactive=True),   # target dropdown
-            gr.update(visible=True, interactive=True),   # strategy dropdown
-            gr.update(visible=True, interactive=True),   # paper preset dropdown
-            gr.update(visible=False),                    # existing profile dropdown
-            gr.update(visible=False),                    # advanced options accordion
-            gr.update(visible=True),                     # curve name textbox
-            gr.update(visible=False),                    # custom chemistry textbox
+            gr.update(visible=True, interactive=True),  # target dropdown
+            gr.update(visible=True, interactive=True),  # strategy dropdown
+            gr.update(visible=True, interactive=True),  # paper preset dropdown
+            gr.update(visible=False),  # existing profile dropdown
+            gr.update(visible=False),  # advanced options accordion
+            gr.update(visible=True),  # curve name textbox
+            gr.update(visible=False),  # custom chemistry textbox
         )
 
     # Determine visibility based on mode requirements
@@ -287,7 +297,7 @@ def wizard_on_mode_change(mode_label: str) -> Tuple[Any, ...]:
     )
 
 
-def wizard_on_paper_change(paper_preset: str) -> Tuple[Any, ...]:
+def wizard_on_paper_change(paper_preset: str) -> tuple[Any, ...]:
     """
     Handle paper preset change.
 
@@ -298,7 +308,7 @@ def wizard_on_paper_change(paper_preset: str) -> Tuple[Any, ...]:
 
     return (
         gr.update(visible=is_custom, interactive=is_custom),  # custom chemistry textbox
-        gr.update(value=chemistry_notes),                     # chemistry notes display
+        gr.update(value=chemistry_notes),  # chemistry notes display
     )
 
 
@@ -307,10 +317,10 @@ def wizard_on_config_change(
     target_label: str,
     strategy_label: str,
     paper_preset: str,
-    existing_profile: Optional[str],
+    existing_profile: str | None,
     custom_chemistry: str,
     curve_name: str,
-) -> Tuple[Any, str]:
+) -> tuple[Any, str]:
     """
     Handle any configuration change to validate and update button state.
 
@@ -318,8 +328,13 @@ def wizard_on_config_change(
         Tuple of (button update, validation message)
     """
     is_valid, message = wizard_is_valid_config(
-        mode_label, target_label, strategy_label,
-        paper_preset, existing_profile, custom_chemistry, curve_name
+        mode_label,
+        target_label,
+        strategy_label,
+        paper_preset,
+        existing_profile,
+        custom_chemistry,
+        curve_name,
     )
 
     return (
@@ -327,13 +342,14 @@ def wizard_on_config_change(
         message if not is_valid else "✓ Configuration valid",
     )
 
+
 def build_calibration_wizard_tab():
     """Build the Calibration Wizard tab."""
     with gr.TabItem("Calibration Wizard"):
         gr.Markdown(
             """
             ### 🧙 Calibration Wizard
-            
+
             Follow the guided five-step wizard to analyze a step tablet, choose a method,
             generate a curve, and export it for your printer driver.
             """
@@ -354,7 +370,7 @@ def build_calibration_wizard_tab():
             updates = [gr.update(visible=index + 1 == target_step) for index in range(5)]
             return (
                 target_step,
-                f"**Step {target_step} of 5:** {step_titles[target_step-1]}",
+                f"**Step {target_step} of 5:** {step_titles[target_step - 1]}",
                 *updates,
             )
 
@@ -419,7 +435,7 @@ def build_calibration_wizard_tab():
 
         # State for available curves (for "Use existing profile" mode)
         wizard_available_curves = gr.State([])
-        wizard_available_curve_names = gr.State([])
+        _wizard_available_curve_names = gr.State([])  # Reserved for UI integration
 
         with gr.Group(visible=False) as wizard_step_three:
             gr.Markdown(
@@ -481,7 +497,9 @@ def build_calibration_wizard_tab():
             # Chemistry notes display (read-only helper)
             wizard_chemistry_notes_display = gr.Textbox(
                 label="Chemistry Notes (from preset)",
-                value=get_paper_chemistry_notes(get_paper_preset_choices()[0] if get_paper_preset_choices() else ""),
+                value=get_paper_chemistry_notes(
+                    get_paper_preset_choices()[0] if get_paper_preset_choices() else ""
+                ),
                 interactive=False,
                 lines=1,
             )
@@ -503,7 +521,9 @@ def build_calibration_wizard_tab():
             )
 
             # Advanced options accordion (shown for advanced modes)
-            with gr.Accordion("Advanced Options", open=False, visible=False) as wizard_advanced_options:
+            with gr.Accordion(
+                "Advanced Options", open=False, visible=False
+            ) as wizard_advanced_options:
                 wizard_smoothing = gr.Slider(
                     minimum=0.0,
                     maximum=1.0,
@@ -559,7 +579,9 @@ def build_calibration_wizard_tab():
                     """
                 )
 
-            wizard_generate_curve = gr.Button("Generate Curve →", variant="primary", interactive=True)
+            wizard_generate_curve = gr.Button(
+                "Generate Curve →", variant="primary", interactive=True
+            )
 
             # Wire up mode change handler
             wizard_linearization_mode.change(
@@ -670,8 +692,7 @@ def build_calibration_wizard_tab():
                 warnings = ""
                 if result.quality and result.quality.warnings:
                     warnings = "\n".join(
-                        f"[{w.level.value.upper()}] {w.message}"
-                        for w in result.quality.warnings
+                        f"[{w.level.value.upper()}] {w.message}" for w in result.quality.warnings
                     )
                 recs = ""
                 if result.quality and result.quality.recommendations:
@@ -776,8 +797,13 @@ def build_calibration_wizard_tab():
             """Generate curve based on selected mode and options."""
             # Validate configuration first
             is_valid, error_msg = wizard_is_valid_config(
-                mode_label, target_label, strategy_label,
-                paper_preset, existing_profile, custom_chemistry, curve_name
+                mode_label,
+                target_label,
+                strategy_label,
+                paper_preset,
+                existing_profile,
+                custom_chemistry,
+                curve_name,
             )
             if not is_valid:
                 return (
@@ -844,7 +870,11 @@ def build_calibration_wizard_tab():
 
                 # Determine paper/chemistry from preset or custom
                 paper = paper_preset if paper_preset != "Other / custom" else "Custom"
-                chemistry = custom_chemistry if paper_preset == "Other / custom" else get_paper_chemistry_notes(paper_preset)
+                chemistry = (
+                    custom_chemistry
+                    if paper_preset == "Other / custom"
+                    else get_paper_chemistry_notes(paper_preset)
+                )
 
                 curve = CurveData(
                     name=curve_name or "Identity Curve",
@@ -893,12 +923,22 @@ def build_calibration_wizard_tab():
                 target_value = get_target_value_by_label(target_label)
 
                 # Convert to enum types
-                method_enum = LinearizationMethod(method_value) if method_value else LinearizationMethod.SPLINE_FIT
-                target_enum = TargetResponse(target_value) if target_value else TargetResponse.LINEAR
+                method_enum = (
+                    LinearizationMethod(method_value)
+                    if method_value
+                    else LinearizationMethod.SPLINE_FIT
+                )
+                target_enum = (
+                    TargetResponse(target_value) if target_value else TargetResponse.LINEAR
+                )
 
                 # Determine paper/chemistry
                 paper = paper_preset if paper_preset != "Other / custom" else "Custom"
-                chemistry = custom_chemistry if paper_preset == "Other / custom" else get_paper_chemistry_notes(paper_preset)
+                chemistry = (
+                    custom_chemistry
+                    if paper_preset == "Other / custom"
+                    else get_paper_chemistry_notes(paper_preset)
+                )
 
                 # Create linearization config
                 config = LinearizationConfig(
@@ -1055,4 +1095,3 @@ def build_calibration_wizard_tab():
                 wizard_step_five,
             ],
         )
-

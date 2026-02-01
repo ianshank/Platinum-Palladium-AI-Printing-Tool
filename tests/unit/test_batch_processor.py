@@ -3,20 +3,21 @@ Tests for batch processor module.
 
 Tests batch processing of multiple images with shared settings.
 """
+
 from pathlib import Path
 
 import numpy as np
 import pytest
 from PIL import Image
 
-from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.batch.processor import (
-    BatchProcessor,
-    BatchSettings,
     BatchJob,
+    BatchProcessor,
     BatchResult,
+    BatchSettings,
     JobStatus,
 )
+from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.imaging import ImageFormat
 from ptpd_calibration.imaging.processor import ColorMode
 

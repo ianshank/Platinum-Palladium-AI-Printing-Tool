@@ -10,7 +10,7 @@ import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -26,7 +26,7 @@ class VersionedItem(BaseModel):
 
     # Version metadata
     timestamp: datetime = Field(default_factory=datetime.now)
-    author: Optional[str] = Field(default=None)
+    author: str | None = Field(default=None)
     message: str = Field(..., min_length=1)
 
     # Content
@@ -34,7 +34,7 @@ class VersionedItem(BaseModel):
     content_hash: str = Field(...)
 
     # Lineage
-    parent_version_id: Optional[UUID] = Field(default=None)
+    parent_version_id: UUID | None = Field(default=None)
     branch: str = Field(default="main")
 
     # Tags
@@ -64,14 +64,14 @@ class MergeConflict(BaseModel):
     key: str
     branch1_value: Any
     branch2_value: Any
-    base_value: Optional[Any] = Field(default=None)
+    base_value: Any | None = Field(default=None)
 
 
 class MergeResult(BaseModel):
     """Result of a merge operation."""
 
     success: bool
-    merged_version_id: Optional[UUID] = Field(default=None)
+    merged_version_id: UUID | None = Field(default=None)
     conflicts: list[MergeConflict] = Field(default_factory=list)
     message: str = Field(default="")
 
@@ -79,7 +79,7 @@ class MergeResult(BaseModel):
 class VersionController:
     """Version control system for items."""
 
-    def __init__(self, db_path: Optional[Path] = None) -> None:
+    def __init__(self, db_path: Path | None = None) -> None:
         """
         Initialize the version controller.
 
@@ -87,7 +87,7 @@ class VersionController:
             db_path: Path to SQLite database file. If None, uses in-memory database.
         """
         self.db_path = db_path or Path(":memory:")
-        self.conn: Optional[sqlite3.Connection] = None
+        self.conn: sqlite3.Connection | None = None
         self._initialize_db()
 
     def _initialize_db(self) -> None:
@@ -116,15 +116,9 @@ class VersionController:
         )
 
         # Create indices
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_item_id ON versions(item_id)"
-        )
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_branch ON versions(item_id, branch)"
-        )
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_timestamp ON versions(timestamp DESC)"
-        )
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_item_id ON versions(item_id)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_branch ON versions(item_id, branch)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON versions(timestamp DESC)")
 
         # Create branches table
         self.conn.execute(
@@ -146,7 +140,7 @@ class VersionController:
         item_id: str,
         content: dict[str, Any],
         message: str,
-        author: Optional[str] = None,
+        author: str | None = None,
         branch: str = "main",
     ) -> VersionedItem:
         """
@@ -240,7 +234,7 @@ class VersionController:
         self.conn.commit()
         return version
 
-    def get_version(self, version_id: UUID) -> Optional[VersionedItem]:
+    def get_version(self, version_id: UUID) -> VersionedItem | None:
         """
         Get a specific version by ID.
 
@@ -262,7 +256,7 @@ class VersionController:
         return self._row_to_version(row)
 
     def get_history(
-        self, item_id: str, branch: str = "main", limit: Optional[int] = None
+        self, item_id: str, branch: str = "main", limit: int | None = None
     ) -> list[VersionedItem]:
         """
         Get version history for an item.
@@ -331,7 +325,7 @@ class VersionController:
 
         return diff
 
-    def rollback(self, version_id: UUID, message: Optional[str] = None) -> VersionedItem:
+    def rollback(self, version_id: UUID, message: str | None = None) -> VersionedItem:
         """
         Rollback to a previous version by creating a new commit.
 
@@ -407,7 +401,7 @@ class VersionController:
         source_branch: str,
         target_branch: str,
         strategy: str = "auto",
-        author: Optional[str] = None,
+        author: str | None = None,
     ) -> MergeResult:
         """
         Merge two branches.
@@ -543,7 +537,7 @@ class VersionController:
             data["parent_version_id"] = UUID(data["parent_version_id"])
         return VersionedItem(**data)
 
-    def _get_branch_head(self, item_id: str, branch: str) -> Optional[VersionedItem]:
+    def _get_branch_head(self, item_id: str, branch: str) -> VersionedItem | None:
         """Get the head version of a branch."""
         cursor = self.conn.execute(
             """
@@ -556,9 +550,7 @@ class VersionController:
         row = cursor.fetchone()
         return self._row_to_version(row) if row else None
 
-    def _find_common_ancestor(
-        self, v1: VersionedItem, v2: VersionedItem
-    ) -> Optional[VersionedItem]:
+    def _find_common_ancestor(self, v1: VersionedItem, v2: VersionedItem) -> VersionedItem | None:
         """Find common ancestor of two versions."""
         # Simple implementation - traverse v1's parents until we find one in v2's lineage
         v1_ancestors = self._get_ancestors(v1)
@@ -598,11 +590,7 @@ class VersionController:
             base_val = base.get(key)
 
             # Conflict if both changed from base and values differ
-            if (
-                source_val != base_val
-                and target_val != base_val
-                and source_val != target_val
-            ):
+            if source_val != base_val and target_val != base_val and source_val != target_val:
                 conflicts.append(
                     MergeConflict(
                         key=key,
@@ -626,10 +614,7 @@ class VersionController:
             base_val = base.get(key)
 
             # If only source changed, use source value
-            if source_val != base_val and target_val == base_val:
-                merged[key] = source_val
-            # If both changed to same value, use that value
-            elif source_val == target_val:
+            if source_val != base_val and target_val == base_val or source_val == target_val:
                 merged[key] = source_val
 
         return merged

@@ -4,8 +4,6 @@ Active learning for efficient calibration.
 Suggests optimal experiments to maximize learning with minimal prints.
 """
 
-from typing import Optional
-
 import numpy as np
 
 from ptpd_calibration.config import MLSettings, get_settings
@@ -23,8 +21,8 @@ class ActiveLearner:
 
     def __init__(
         self,
-        predictor: Optional[CurvePredictor] = None,
-        settings: Optional[MLSettings] = None,
+        predictor: CurvePredictor | None = None,
+        settings: MLSettings | None = None,
     ):
         """
         Initialize the active learner.
@@ -82,7 +80,9 @@ class ActiveLearner:
                 diversity_score = self._calculate_diversity_score(variation)
                 exploration_weight = self.settings.exploration_weight
 
-                score = (1 - exploration_weight) * uncertainty_score + exploration_weight * diversity_score
+                score = (
+                    1 - exploration_weight
+                ) * uncertainty_score + exploration_weight * diversity_score
 
             scores.append(score)
 
@@ -98,7 +98,7 @@ class ActiveLearner:
             "variation": best_variation,
             "rationale": rationale,
             "score": best_score,
-            "all_scores": list(zip(variations, scores)),
+            "all_scores": list(zip(variations, scores, strict=True)),
         }
 
     def suggest_exposure_bracket(
@@ -124,7 +124,7 @@ class ActiveLearner:
         brackets = []
         for i in range(num_brackets):
             stop_offset = -half_range + i * bracket_stops
-            exposure = base_exposure * (2 ** stop_offset)
+            exposure = base_exposure * (2**stop_offset)
             brackets.append(round(exposure, 1))
 
         return brackets
@@ -184,7 +184,7 @@ class ActiveLearner:
     def evaluate_calibration_quality(
         self,
         record: CalibrationRecord,
-        target_curve: Optional[list[float]] = None,
+        target_curve: list[float] | None = None,
     ) -> dict:
         """
         Evaluate quality of a completed calibration.
@@ -241,9 +241,7 @@ class ActiveLearner:
         elif dmin < 0.18:
             score += 0.1
         else:
-            recommendations.append(
-                f"High Dmin ({dmin:.2f}). Check clearing or paper quality."
-            )
+            recommendations.append(f"High Dmin ({dmin:.2f}). Check clearing or paper quality.")
 
         # Monotonicity
         diffs = np.diff(densities)
@@ -295,9 +293,7 @@ class ActiveLearner:
             "recommendations": recommendations,
         }
 
-    def _apply_variation(
-        self, record: CalibrationRecord, variation: dict
-    ) -> CalibrationRecord:
+    def _apply_variation(self, record: CalibrationRecord, variation: dict) -> CalibrationRecord:
         """Apply parameter variation to record."""
         data = record.model_dump()
         data.update(variation)
@@ -319,9 +315,7 @@ class ActiveLearner:
 
         return score
 
-    def _generate_rationale(
-        self, variation: dict, score: float, strategy: str
-    ) -> str:
+    def _generate_rationale(self, variation: dict, score: float, strategy: str) -> str:
         """Generate human-readable rationale for suggestion."""
         parts = []
 

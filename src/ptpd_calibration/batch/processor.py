@@ -5,19 +5,18 @@ Provides efficient batch workflows for digital negative creation,
 enabling processing of entire editions or test strips in one operation.
 """
 
+import concurrent.futures
+import contextlib
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Optional, Union
 from uuid import UUID, uuid4
-import concurrent.futures
-import threading
-
-from PIL import Image
 
 from ptpd_calibration.core.models import CurveData
-from ptpd_calibration.imaging import ImageProcessor, ImageFormat, ExportSettings
+from ptpd_calibration.imaging import ExportSettings, ImageFormat, ImageProcessor
 from ptpd_calibration.imaging.processor import ColorMode
 
 
@@ -36,7 +35,7 @@ class BatchSettings:
     """Settings for batch processing."""
 
     # Curve application
-    curve: Optional[CurveData] = None
+    curve: CurveData | None = None
     invert: bool = True
     color_mode: ColorMode = ColorMode.GRAYSCALE
 
@@ -60,14 +59,14 @@ class BatchJob:
 
     id: UUID = field(default_factory=uuid4)
     input_path: Path = field(default_factory=Path)
-    output_path: Optional[Path] = None
+    output_path: Path | None = None
     status: JobStatus = JobStatus.PENDING
-    error_message: Optional[str] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    error_message: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     @property
-    def duration_seconds(self) -> Optional[float]:
+    def duration_seconds(self) -> float | None:
         """Get processing duration in seconds."""
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
@@ -83,8 +82,8 @@ class BatchResult:
     failed: int = 0
     cancelled: int = 0
     jobs: list[BatchJob] = field(default_factory=list)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     @property
     def success_rate(self) -> float:
@@ -94,7 +93,7 @@ class BatchResult:
         return (self.completed / self.total_jobs) * 100
 
     @property
-    def duration_seconds(self) -> Optional[float]:
+    def duration_seconds(self) -> float | None:
         """Get total processing duration."""
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
@@ -140,7 +139,7 @@ class BatchProcessor:
     - Cancellation support
     """
 
-    def __init__(self, settings: Optional[BatchSettings] = None):
+    def __init__(self, settings: BatchSettings | None = None):
         """Initialize batch processor.
 
         Args:
@@ -153,9 +152,9 @@ class BatchProcessor:
 
     def process_batch(
         self,
-        input_paths: list[Union[str, Path]],
-        output_dir: Union[str, Path],
-        progress_callback: Optional[Callable[[int, int, str], None]] = None,
+        input_paths: list[str | Path],
+        output_dir: str | Path,
+        progress_callback: Callable[[int, int, str], None] | None = None,
     ) -> BatchResult:
         """Process a batch of images.
 
@@ -178,10 +177,12 @@ class BatchProcessor:
             output_name = self._generate_output_name(path)
             output_path = output_dir / output_name
 
-            jobs.append(BatchJob(
-                input_path=path,
-                output_path=output_path,
-            ))
+            jobs.append(
+                BatchJob(
+                    input_path=path,
+                    output_path=output_path,
+                )
+            )
 
         result = BatchResult(
             total_jobs=len(jobs),
@@ -206,8 +207,9 @@ class BatchProcessor:
 
         if progress_callback:
             progress_callback(
-                len(jobs), len(jobs),
-                f"Completed: {result.completed} successful, {result.failed} failed"
+                len(jobs),
+                len(jobs),
+                f"Completed: {result.completed} successful, {result.failed} failed",
             )
 
         return result
@@ -219,7 +221,7 @@ class BatchProcessor:
     def _process_sequential(
         self,
         jobs: list[BatchJob],
-        progress_callback: Optional[Callable],
+        progress_callback: Callable | None,
     ) -> None:
         """Process jobs sequentially."""
         for i, job in enumerate(jobs):
@@ -235,7 +237,7 @@ class BatchProcessor:
     def _process_parallel(
         self,
         jobs: list[BatchJob],
-        progress_callback: Optional[Callable],
+        progress_callback: Callable | None,
     ) -> None:
         """Process jobs in parallel."""
         completed_count = 0
@@ -253,8 +255,7 @@ class BatchProcessor:
                 completed_count += 1
                 if progress_callback:
                     progress_callback(
-                        completed_count, len(jobs),
-                        f"Processed: {job.input_path.name}"
+                        completed_count, len(jobs), f"Processed: {job.input_path.name}"
                     )
 
             return job
@@ -268,10 +269,9 @@ class BatchProcessor:
                 if self._cancelled.is_set():
                     executor.shutdown(wait=False, cancel_futures=True)
                     break
-                try:
+                with contextlib.suppress(Exception):
+                    # Errors handled in process_and_update
                     future.result()
-                except Exception:
-                    pass  # Errors handled in process_and_update
 
     def _process_single_job(self, job: BatchJob) -> None:
         """Process a single job."""

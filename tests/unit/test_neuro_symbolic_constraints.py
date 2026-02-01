@@ -7,21 +7,17 @@ physics-informed curve generation.
 
 import numpy as np
 import pytest
-from numpy.testing import assert_array_almost_equal
 
 from ptpd_calibration.config import NeuroSymbolicSettings
 from ptpd_calibration.neuro_symbolic.constraints import (
-    ConstraintType,
-    SymbolicConstraint,
-    MonotonicityConstraint,
+    ConstrainedCurveOptimizer,
+    ConstraintResult,
+    ConstraintSet,
     DensityBoundsConstraint,
+    DifferentiableLoss,
+    MonotonicityConstraint,
     PhysicsConstraint,
     SmoothnessConstraint,
-    ConstraintSet,
-    DifferentiableLoss,
-    ConstrainedCurveOptimizer,
-    ConstraintViolation,
-    ConstraintResult,
 )
 
 
@@ -172,7 +168,7 @@ class TestPhysicsConstraint:
         """Test that inverted curve has physics violations."""
         # Convex toe (wrong) instead of concave
         x = np.linspace(0, 1, 100)
-        values = x ** 2  # Convex in toe region
+        values = x**2  # Convex in toe region
 
         result = constraint.evaluate(values)
 

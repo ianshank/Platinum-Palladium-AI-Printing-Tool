@@ -45,6 +45,7 @@ def _register_temp_file(filepath: str) -> None:
 def _cleanup_old_temp_files() -> None:
     """Clean up old temporary files."""
     import os
+
     while len(_TEMP_FILES) > 25:
         old_file = _TEMP_FILES.pop(0)
         try:
@@ -61,6 +62,7 @@ def _check_dl_available() -> bool:
     if _DL_AVAILABLE is None:
         try:
             import torch  # noqa: F401
+
             _DL_AVAILABLE = True
         except ImportError:
             _DL_AVAILABLE = False
@@ -80,6 +82,7 @@ def _get_neural_predictor() -> Any:
     if _check_dl_available():
         try:
             from ptpd_calibration.deep_learning.neural_curves import NeuralCurvePredictor
+
             return NeuralCurvePredictor
         except ImportError:
             pass
@@ -97,6 +100,7 @@ def _get_dl_settings() -> Any:
     """
     try:
         from ptpd_calibration.deep_learning.config import get_deep_learning_settings
+
         return get_deep_learning_settings()
     except ImportError:
         return None
@@ -148,16 +152,20 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
 
                     # Data source selection
                     data_source = gr.Radio(
-                        choices=["From session history", "Upload custom data", "Generate synthetic"],
+                        choices=[
+                            "From session history",
+                            "Upload custom data",
+                            "Generate synthetic",
+                        ],
                         value="Generate synthetic",
-                        label="Data Source"
+                        label="Data Source",
                     )
 
                     # File upload (shown conditionally)
                     custom_data_upload = gr.File(
                         label="Upload Training Data (.csv)",
                         file_types=[".csv", ".json"],
-                        visible=False
+                        visible=False,
                     )
 
                     # Session filter (shown for history mode)
@@ -165,24 +173,16 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                         choices=["All sessions", "Last 10 sessions", "Last 30 days"],
                         value="All sessions",
                         label="Session Filter",
-                        visible=False
+                        visible=False,
                     )
 
                     # Synthetic data options (shown for synthetic mode)
                     with gr.Group(visible=True) as synthetic_options:
                         synthetic_samples = gr.Slider(
-                            minimum=50,
-                            maximum=1000,
-                            value=200,
-                            step=50,
-                            label="Number of Samples"
+                            minimum=50, maximum=1000, value=200, step=50, label="Number of Samples"
                         )
                         synthetic_noise = gr.Slider(
-                            minimum=0.0,
-                            maximum=0.1,
-                            value=0.02,
-                            step=0.01,
-                            label="Noise Level"
+                            minimum=0.0, maximum=0.1, value=0.02, step=0.01, label="Noise Level"
                         )
 
                     # Model architecture
@@ -195,7 +195,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                             ("Hybrid", "hybrid"),
                         ],
                         value="transformer",
-                        label="Model Architecture"
+                        label="Model Architecture",
                     )
 
                     # Architecture info
@@ -210,51 +210,32 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                             maximum=0.01,
                             value=0.001,
                             step=0.0001,
-                            label="Learning Rate"
+                            label="Learning Rate",
                         )
                         epochs = gr.Slider(
-                            minimum=10,
-                            maximum=500,
-                            value=100,
-                            step=10,
-                            label="Training Epochs"
+                            minimum=10, maximum=500, value=100, step=10, label="Training Epochs"
                         )
                         batch_size = gr.Dropdown(
-                            choices=[8, 16, 32, 64],
-                            value=32,
-                            label="Batch Size"
+                            choices=[8, 16, 32, 64], value=32, label="Batch Size"
                         )
                         hidden_dim = gr.Slider(
-                            minimum=32,
-                            maximum=256,
-                            value=128,
-                            step=32,
-                            label="Hidden Dimension"
+                            minimum=32, maximum=256, value=128, step=32, label="Hidden Dimension"
                         )
                         num_layers = gr.Slider(
-                            minimum=1,
-                            maximum=6,
-                            value=3,
-                            step=1,
-                            label="Number of Layers"
+                            minimum=1, maximum=6, value=3, step=1, label="Number of Layers"
                         )
                         dropout = gr.Slider(
-                            minimum=0.0,
-                            maximum=0.5,
-                            value=0.1,
-                            step=0.05,
-                            label="Dropout Rate"
+                            minimum=0.0, maximum=0.5, value=0.1, step=0.05, label="Dropout Rate"
                         )
                         use_uncertainty = gr.Checkbox(
-                            value=True,
-                            label="Enable Uncertainty Estimation"
+                            value=True, label="Enable Uncertainty Estimation"
                         )
 
                     # Model name
                     model_name = gr.Textbox(
                         label="Model Name",
                         value=f"Neural Curve {datetime.now().strftime('%Y%m%d_%H%M')}",
-                        placeholder="e.g., Arches Platine v1"
+                        placeholder="e.g., Arches Platine v1",
                     )
 
                     # Train button
@@ -269,10 +250,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
 
                     # Progress (placeholder - would use actual progress in real impl)
                     training_progress = gr.Textbox(
-                        label="Progress",
-                        value="Not started",
-                        interactive=False,
-                        lines=2
+                        label="Progress", value="Not started", interactive=False, lines=2
                     )
 
                     # Loss plot
@@ -283,21 +261,13 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                         gr.Markdown("#### Data Summary")
                         with gr.Row():
                             data_samples_display = gr.Textbox(
-                                label="Samples",
-                                value="-",
-                                interactive=False,
-                                scale=1
+                                label="Samples", value="-", interactive=False, scale=1
                             )
                             data_features_display = gr.Textbox(
-                                label="Features",
-                                value="-",
-                                interactive=False,
-                                scale=1
+                                label="Features", value="-", interactive=False, scale=1
                             )
                         data_quality_display = gr.Textbox(
-                            label="Data Quality",
-                            value="-",
-                            interactive=False
+                            label="Data Quality", value="-", interactive=False
                         )
 
         # =====================================================
@@ -315,20 +285,15 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                         choices=["No models trained yet"],
                         label="Trained Models",
                         value="No models trained yet",
-                        interactive=True
+                        interactive=True,
                     )
 
-                    model_info_display = gr.Markdown(
-                        "_Train a model first to see details_"
-                    )
+                    model_info_display = gr.Markdown("_Train a model first to see details_")
 
                     with gr.Row():
                         _refresh_models_btn = gr.Button("🔄 Refresh", size="sm")  # noqa: F841
                         delete_model_btn = gr.Button(
-                            "🗑️ Delete",
-                            variant="stop",
-                            size="sm",
-                            interactive=False
+                            "🗑️ Delete", variant="stop", size="sm", interactive=False
                         )
 
                 # Prediction Inputs
@@ -345,46 +310,29 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                             ("Custom", "custom"),
                         ],
                         value="arches_platine",
-                        label="Paper Type"
+                        label="Paper Type",
                     )
 
                     # Chemistry ratio
                     predict_pt_ratio = gr.Slider(
-                        minimum=0,
-                        maximum=100,
-                        value=50,
-                        step=5,
-                        label="Platinum Ratio (%)"
+                        minimum=0, maximum=100, value=50, step=5, label="Platinum Ratio (%)"
                     )
 
                     # Pt:Pd visualization
-                    pt_pd_viz = gr.HTML(
-                        value=_create_ratio_viz(50),
-                        label="Metal Ratio"
-                    )
+                    pt_pd_viz = gr.HTML(value=_create_ratio_viz(50), label="Metal Ratio")
 
                     # Target density
                     predict_target_dmax = gr.Slider(
-                        minimum=1.0,
-                        maximum=2.5,
-                        value=1.8,
-                        step=0.1,
-                        label="Target Dmax"
+                        minimum=1.0, maximum=2.5, value=1.8, step=0.1, label="Target Dmax"
                     )
 
                     # Curve output points
                     output_points = gr.Dropdown(
-                        choices=[21, 51, 101, 256],
-                        value=51,
-                        label="Output Points"
+                        choices=[21, 51, 101, 256], value=51, label="Output Points"
                     )
 
                     # Predict button
-                    predict_btn = gr.Button(
-                        "✨ Generate Prediction",
-                        variant="primary",
-                        size="lg"
-                    )
+                    predict_btn = gr.Button("✨ Generate Prediction", variant="primary", size="lg")
 
         # =====================================================
         # SECTION 3: Results
@@ -401,28 +349,22 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                     curve_data_table = gr.Dataframe(
                         headers=["Step", "Input", "Output", "Uncertainty"],
                         visible=False,
-                        interactive=False
+                        interactive=False,
                     )
 
                 # Summary and actions
                 with gr.Column(scale=1):
                     gr.Markdown("#### Prediction Summary")
 
-                    prediction_summary = gr.Markdown(
-                        "_Generate a prediction to see summary_"
-                    )
+                    prediction_summary = gr.Markdown("_Generate a prediction to see summary_")
 
                     # Confidence metrics
                     with gr.Row():
                         confidence_score = gr.Textbox(
-                            label="Confidence",
-                            value="-",
-                            interactive=False
+                            label="Confidence", value="-", interactive=False
                         )
                         uncertainty_score = gr.Textbox(
-                            label="Mean Uncertainty",
-                            value="-",
-                            interactive=False
+                            label="Mean Uncertainty", value="-", interactive=False
                         )
 
                     # Quality checks
@@ -438,7 +380,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                             ("JSON", "json"),
                         ],
                         value="qtr",
-                        label="Export Format"
+                        label="Export Format",
                     )
 
                     with gr.Row():
@@ -455,7 +397,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 _compare_curve_select = gr.Dropdown(  # noqa: F841
                     choices=["No curves available"],
                     label="Compare With",
-                    value="No curves available"
+                    value="No curves available",
                 )
                 _compare_btn = gr.Button("Compare")  # noqa: F841
 
@@ -467,7 +409,9 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
         # =====================================================
 
         # Data source visibility toggle
-        def toggle_data_source(source: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        def toggle_data_source(
+            source: str,
+        ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
             """Toggle visibility based on data source selection."""
             return (
                 gr.update(visible=(source == "Upload custom data")),  # custom_data_upload
@@ -478,7 +422,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
         data_source.change(
             toggle_data_source,
             inputs=[data_source],
-            outputs=[custom_data_upload, session_filter, synthetic_options]
+            outputs=[custom_data_upload, session_filter, synthetic_options],
         )
 
         # Architecture info update
@@ -494,9 +438,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
             return info_map.get(arch, "")
 
         model_architecture.change(
-            update_arch_info,
-            inputs=[model_architecture],
-            outputs=[architecture_info]
+            update_arch_info, inputs=[model_architecture], outputs=[architecture_info]
         )
 
         # Pt:Pd ratio visualization update
@@ -511,11 +453,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
             """
             return _create_ratio_viz(pt_ratio)
 
-        predict_pt_ratio.change(
-            update_ratio_viz,
-            inputs=[predict_pt_ratio],
-            outputs=[pt_pd_viz]
-        )
+        predict_pt_ratio.change(update_ratio_viz, inputs=[predict_pt_ratio], outputs=[pt_pd_viz])
 
         # Training handler
         def train_model(
@@ -533,7 +471,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
             dropout_val: float,  # noqa: ARG001
             uncertainty_val: bool,  # noqa: ARG001
             name: str,
-            current_models: list[dict[str, Any]]
+            current_models: list[dict[str, Any]],
         ) -> tuple[Any, ...]:
             """Train the neural curve model."""
             import matplotlib.pyplot as plt
@@ -542,8 +480,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 # Generate or load training data
                 if data_source_val == "Generate synthetic":
                     training_data = _generate_synthetic_training_data(
-                        num_samples=int(synthetic_samples_val),
-                        noise_level=synthetic_noise_val
+                        num_samples=int(synthetic_samples_val), noise_level=synthetic_noise_val
                     )
                     data_source_info = f"Synthetic ({len(training_data)} samples)"
                 elif data_source_val == "Upload custom data" and custom_file:
@@ -557,9 +494,11 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                         "❌ No data available. Select a data source.",
                         "Failed",
                         gr.update(visible=False),
-                        "-", "-", "-",
+                        "-",
+                        "-",
+                        "-",
                         current_models,
-                        gr.update(choices=["No models trained yet"])
+                        gr.update(choices=["No models trained yet"]),
                     )
 
                 if len(training_data) < 10:
@@ -567,32 +506,27 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                         f"❌ Not enough data ({len(training_data)} samples). Need at least 10.",
                         "Insufficient data",
                         gr.update(visible=False),
-                        str(len(training_data)), "-", "Poor",
+                        str(len(training_data)),
+                        "-",
+                        "Poor",
                         current_models,
-                        gr.update(choices=["No models trained yet"])
+                        gr.update(choices=["No models trained yet"]),
                     )
 
                 # Simulate training (in real impl, would use actual model)
                 loss_history = _simulate_training(
-                    epochs=int(epochs_val),
-                    learning_rate=lr,
-                    data_size=len(training_data)
+                    epochs=int(epochs_val), learning_rate=lr, data_size=len(training_data)
                 )
 
                 # Create loss plot
                 fig, ax = plt.subplots(figsize=(8, 4))
-                ax.plot(
-                    loss_history["train"],
-                    label="Training Loss",
-                    color="#f59e0b",
-                    linewidth=2
-                )
+                ax.plot(loss_history["train"], label="Training Loss", color="#f59e0b", linewidth=2)
                 ax.plot(
                     loss_history["val"],
                     label="Validation Loss",
                     color="#3b82f6",
                     linewidth=2,
-                    linestyle="--"
+                    linestyle="--",
                 )
                 ax.set_xlabel("Epoch")
                 ax.set_ylabel("Loss")
@@ -625,7 +559,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                         "num_layers": int(layers_val),
                         "dropout": dropout_val,
                         "uncertainty": uncertainty_val,
-                    }
+                    },
                 }
 
                 updated_models = list(current_models or [])
@@ -642,7 +576,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                     f"{arch}, {int(hidden_val)}d, {int(layers_val)}L",
                     "Good" if len(training_data) >= 50 else "Fair",
                     updated_models,
-                    gr.update(choices=model_names, value=name)
+                    gr.update(choices=model_names, value=name),
                 )
 
             except Exception as e:
@@ -651,9 +585,11 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                     f"❌ Training failed: {str(e)}",
                     "Error",
                     gr.update(visible=False),
-                    "-", "-", "Error",
+                    "-",
+                    "-",
+                    "Error",
                     current_models,
-                    gr.update(choices=["No models trained yet"])
+                    gr.update(choices=["No models trained yet"]),
                 )
 
         train_btn.click(
@@ -673,7 +609,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 dropout,
                 use_uncertainty,
                 model_name,
-                trained_models_state
+                trained_models_state,
             ],
             outputs=[
                 training_status,
@@ -683,8 +619,8 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 data_features_display,
                 data_quality_display,
                 trained_models_state,
-                model_list
-            ]
+                model_list,
+            ],
         )
 
         # Model selection handler
@@ -693,19 +629,16 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
         ) -> tuple[str, dict[str, Any]]:
             """Update model info when selection changes."""
             if not all_models or selected_name == "No models trained yet":
-                return (
-                    "_Train a model first to see details_",
-                    gr.update(interactive=False)
-                )
+                return ("_Train a model first to see details_", gr.update(interactive=False))
 
             for model in all_models:
                 if model["name"] == selected_name:
                     info = f"""
-**Architecture:** {model['architecture'].upper()}
-**Trained:** {model['created'][:10]}
-**Data:** {model['data_source']}
-**Final Loss:** {model['final_loss']:.4f}
-**Config:** {model['config']['hidden_dim']}d, {model['config']['num_layers']} layers
+**Architecture:** {model["architecture"].upper()}
+**Trained:** {model["created"][:10]}
+**Data:** {model["data_source"]}
+**Final Loss:** {model["final_loss"]:.4f}
+**Config:** {model["config"]["hidden_dim"]}d, {model["config"]["num_layers"]} layers
 """
                     return info, gr.update(interactive=True)
 
@@ -714,7 +647,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
         model_list.change(
             on_model_select,
             inputs=[model_list, trained_models_state],
-            outputs=[model_info_display, delete_model_btn]
+            outputs=[model_info_display, delete_model_btn],
         )
 
         # Prediction handler
@@ -724,7 +657,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
             paper: str,
             pt_ratio: int,
             target_dmax: float,
-            num_points: int
+            num_points: int,
         ) -> tuple[Any, ...]:
             """Generate curve prediction."""
             import matplotlib.pyplot as plt
@@ -733,9 +666,11 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 return (
                     None,
                     "_Train and select a model first_",
-                    "-", "-", "",
+                    "-",
+                    "-",
+                    "",
                     gr.update(visible=False),
-                    None
+                    None,
                 )
 
             try:
@@ -747,13 +682,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                         break
 
                 if not model_record:
-                    return (
-                        None,
-                        "_Model not found_",
-                        "-", "-", "",
-                        gr.update(visible=False),
-                        None
-                    )
+                    return (None, "_Model not found_", "-", "-", "", gr.update(visible=False), None)
 
                 # Generate prediction (simulated)
                 prediction = _generate_curve_prediction(
@@ -761,7 +690,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                     pt_ratio=pt_ratio / 100.0,
                     target_dmax=target_dmax,
                     num_points=int(num_points),
-                    model_config=model_record["config"]
+                    model_config=model_record["config"],
                 )
 
                 # Create visualization
@@ -773,7 +702,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                     prediction["output"],
                     color="#f59e0b",
                     linewidth=2,
-                    label="Predicted Curve"
+                    label="Predicted Curve",
                 )
 
                 # Uncertainty band
@@ -784,7 +713,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                         np.array(prediction["output"]) + np.array(prediction["uncertainty"]),
                         alpha=0.3,
                         color="#f59e0b",
-                        label="Uncertainty"
+                        label="Uncertainty",
                     )
 
                 # Reference line
@@ -804,7 +733,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                     range(len(correction)),
                     correction,
                     color=["#4ade80" if c >= 0 else "#f87171" for c in correction],
-                    alpha=0.7
+                    alpha=0.7,
                 )
                 ax2.axhline(y=0, color="gray", linestyle="-", alpha=0.5)
                 ax2.set_xlabel("Step")
@@ -828,12 +757,12 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 # Create summary
                 max_correction = max(abs(c) for c in correction) if len(correction) > 0 else 0.0
                 summary = f"""
-**Model:** {model_record['name']}
+**Model:** {model_record["name"]}
 **Paper:** {paper}
 **Pt Ratio:** {pt_ratio}%
 **Target Dmax:** {target_dmax}
 **Output Points:** {num_points}
-**Monotonic:** {'✓ Yes' if prediction['is_monotonic'] else '✗ No'}
+**Monotonic:** {"✓ Yes" if prediction["is_monotonic"] else "✗ No"}
 **Max Correction:** {max_correction:.3f}
 """
 
@@ -861,11 +790,13 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 # Create table data
                 table_data = []
                 # Note: Can't use strict=True with default fallback for uncertainty
-                for i, (inp, out, unc) in enumerate(zip(  # noqa: B905
-                    prediction["input"],
-                    prediction["output"],
-                    prediction.get("uncertainty", [0] * len(prediction["input"]))
-                )):
+                for i, (inp, out, unc) in enumerate(
+                    zip(  # noqa: B905
+                        prediction["input"],
+                        prediction["output"],
+                        prediction.get("uncertainty", [0] * len(prediction["input"])),
+                    )
+                ):
                     if i % max(1, len(prediction["input"]) // 10) == 0:  # Show ~10 rows
                         table_data.append([i + 1, f"{inp:.4f}", f"{out:.4f}", f"±{unc:.4f}"])
 
@@ -876,7 +807,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                     f"±{prediction['mean_uncertainty']:.4f}",
                     quality_md,
                     gr.update(visible=True, value=table_data),
-                    prediction
+                    prediction,
                 )
 
             except Exception as e:
@@ -884,9 +815,11 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 return (
                     None,
                     f"_Prediction failed: {str(e)}_",
-                    "-", "-", "",
+                    "-",
+                    "-",
+                    "",
                     gr.update(visible=False),
-                    None
+                    None,
                 )
 
         predict_btn.click(
@@ -897,7 +830,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 predict_paper,
                 predict_pt_ratio,
                 predict_target_dmax,
-                output_points
+                output_points,
             ],
             outputs=[
                 predicted_curve_plot,
@@ -906,14 +839,12 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 uncertainty_score,
                 quality_checks,
                 curve_data_table,
-                current_prediction_state
-            ]
+                current_prediction_state,
+            ],
         )
 
         # Export handler
-        def export_curve(
-            prediction: dict[str, Any] | None, format_type: str
-        ) -> Any:
+        def export_curve(prediction: dict[str, Any] | None, format_type: str) -> Any:
             """Export the predicted curve."""
             if not prediction:
                 return gr.update(visible=False)
@@ -930,37 +861,36 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
 
                 # Create export file
                 with tempfile.NamedTemporaryFile(
-                    mode="w",
-                    suffix=f".{format_type}",
-                    delete=False
+                    mode="w", suffix=f".{format_type}", delete=False
                 ) as f:
                     if format_type == "csv":
                         f.write("step,input,output,uncertainty\n")
                         # Get uncertainty with fallback (avoid KeyError)
                         uncertainties = prediction.get(
-                            "uncertainty",
-                            [0.0] * len(prediction["input"])
+                            "uncertainty", [0.0] * len(prediction["input"])
                         )
-                        for i, (inp, out) in enumerate(zip(
-                            prediction["input"],
-                            prediction["output"],
-                            strict=True
-                        )):
+                        for i, (inp, out) in enumerate(
+                            zip(prediction["input"], prediction["output"], strict=True)
+                        ):
                             unc = uncertainties[i] if i < len(uncertainties) else 0.0
                             f.write(f"{i},{inp:.6f},{out:.6f},{unc:.6f}\n")
 
                     elif format_type == "json":
-                        json.dump({
-                            "format": "neural_curve_v1",
-                            "input_values": prediction["input"],
-                            "output_values": prediction["output"],
-                            "uncertainty": prediction.get("uncertainty", []),
-                            "metadata": {
-                                "confidence": prediction["confidence"],
-                                "is_monotonic": prediction["is_monotonic"],
-                                "generated": datetime.now().isoformat()
-                            }
-                        }, f, indent=2)
+                        json.dump(
+                            {
+                                "format": "neural_curve_v1",
+                                "input_values": prediction["input"],
+                                "output_values": prediction["output"],
+                                "uncertainty": prediction.get("uncertainty", []),
+                                "metadata": {
+                                    "confidence": prediction["confidence"],
+                                    "is_monotonic": prediction["is_monotonic"],
+                                    "generated": datetime.now().isoformat(),
+                                },
+                            },
+                            f,
+                            indent=2,
+                        )
 
                     elif format_type == "qtr":
                         # QTR format (simplified)
@@ -978,11 +908,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                         f.write("# Neural Curve Prediction\n")
                         f.write(f"# Generated: {datetime.now().isoformat()}\n")
                         f.write("#\n")
-                        for inp, out in zip(
-                            prediction["input"],
-                            prediction["output"],
-                            strict=True
-                        ):
+                        for inp, out in zip(prediction["input"], prediction["output"], strict=True):
                             # Piezography uses 0-255 scale
                             inp_val = int(inp * 255)
                             out_val = int(out * 255)
@@ -1000,9 +926,7 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 return gr.update(visible=False)
 
         export_btn.click(
-            export_curve,
-            inputs=[current_prediction_state, export_format],
-            outputs=[export_file]
+            export_curve, inputs=[current_prediction_state, export_format], outputs=[export_file]
         )
 
         # Delete model handler
@@ -1019,18 +943,21 @@ def build_neural_curve_tab(session_logger: Any = None) -> None:
                 model_names = [m["name"] for m in updated_models]
                 return updated_models, gr.update(choices=model_names, value=model_names[0])
             else:
-                return [], gr.update(choices=["No models trained yet"], value="No models trained yet")
+                return [], gr.update(
+                    choices=["No models trained yet"], value="No models trained yet"
+                )
 
         delete_model_btn.click(
             delete_model,
             inputs=[model_list, trained_models_state],
-            outputs=[trained_models_state, model_list]
+            outputs=[trained_models_state, model_list],
         )
 
 
 # =====================================================
 # HELPER FUNCTIONS
 # =====================================================
+
 
 def _create_ratio_viz(pt_ratio: int) -> str:
     """Create HTML visualization for Pt:Pd ratio."""
@@ -1057,8 +984,7 @@ def _create_ratio_viz(pt_ratio: int) -> str:
 
 
 def _generate_synthetic_training_data(
-    num_samples: int = 200,
-    noise_level: float = 0.02
+    num_samples: int = 200, noise_level: float = 0.02
 ) -> list[dict[str, Any]]:
     """Generate synthetic training data for curve prediction."""
     data = []
@@ -1075,7 +1001,7 @@ def _generate_synthetic_training_data(
 
         # Base curve (sigmoid-like for typical print response)
         gamma = 0.8 + 0.4 * pt_ratio  # Pt gives more contrast
-        y = x ** gamma
+        y = x**gamma
 
         # Add paper characteristic
         y = y * paper_factor
@@ -1087,16 +1013,18 @@ def _generate_synthetic_training_data(
 
         # Ensure monotonic
         for j in range(1, len(y)):
-            if y[j] < y[j-1]:
-                y[j] = y[j-1]
+            if y[j] < y[j - 1]:
+                y[j] = y[j - 1]
 
-        data.append({
-            "input_densities": x.tolist(),
-            "output_densities": y.tolist(),
-            "pt_ratio": pt_ratio,
-            "target_dmax": target_dmax,
-            "paper_factor": paper_factor
-        })
+        data.append(
+            {
+                "input_densities": x.tolist(),
+                "output_densities": y.tolist(),
+                "pt_ratio": pt_ratio,
+                "target_dmax": target_dmax,
+                "paper_factor": paper_factor,
+            }
+        )
 
     return data
 
@@ -1151,6 +1079,7 @@ def _load_custom_data(filepath: str) -> list[dict[str, Any]]:
 
     elif filepath.endswith(".csv"):
         import csv
+
         data: list[dict[str, Any]] = []
         with open(resolved_path) as f:
             reader = csv.DictReader(f)
@@ -1181,12 +1110,14 @@ def _load_session_data(session_logger: Any, filter_val: str) -> list[dict[str, A
                 session = session_logger.load_session(Path(sess_summary["filepath"]))
                 for record in session.records:
                     if hasattr(record, "densities") and record.densities:
-                        data.append({
-                            "input_densities": list(range(len(record.densities))),
-                            "output_densities": record.densities,
-                            "paper_type": record.paper_type,
-                            "chemistry": getattr(record, "chemistry", None)
-                        })
+                        data.append(
+                            {
+                                "input_densities": list(range(len(record.densities))),
+                                "output_densities": record.densities,
+                                "paper_type": record.paper_type,
+                                "chemistry": getattr(record, "chemistry", None),
+                            }
+                        )
             except Exception as e:
                 logger.debug(f"Failed to load session data: {e}")
                 continue
@@ -1199,7 +1130,7 @@ def _load_session_data(session_logger: Any, filter_val: str) -> list[dict[str, A
 def _simulate_training(
     epochs: int,
     learning_rate: float,  # noqa: ARG001
-    data_size: int
+    data_size: int,
 ) -> dict[str, list[float]]:
     """Simulate training loss curves.
 
@@ -1237,7 +1168,7 @@ def _generate_curve_prediction(
     pt_ratio: float,
     target_dmax: float,
     num_points: int,
-    model_config: dict[str, Any]
+    model_config: dict[str, Any],
 ) -> dict[str, Any]:
     """Generate a curve prediction (simulated)."""
     # Generate input values
@@ -1249,7 +1180,7 @@ def _generate_curve_prediction(
         "bergger_cot320": 0.95,
         "hahnemuhle_platinum": 1.05,
         "revere_platinum": 0.98,
-        "custom": 1.0
+        "custom": 1.0,
     }
     paper_factor = paper_factors.get(paper_type, 1.0)
 
@@ -1258,7 +1189,7 @@ def _generate_curve_prediction(
 
     # Base gamma curve
     gamma = 0.7 + 0.5 * pt_ratio
-    y = x ** gamma
+    y = x**gamma
 
     # Apply paper factor
     y = y * paper_factor
@@ -1270,8 +1201,8 @@ def _generate_curve_prediction(
 
     # Ensure monotonic
     for i in range(1, len(y)):
-        if y[i] < y[i-1]:
-            y[i] = y[i-1]
+        if y[i] < y[i - 1]:
+            y[i] = y[i - 1]
 
     # Generate uncertainty (higher at endpoints)
     base_uncertainty = 0.02 / max(1, model_config.get("num_layers", 3))
@@ -1283,7 +1214,7 @@ def _generate_curve_prediction(
         uncertainty.append(unc)
 
     # Check monotonicity
-    is_monotonic = all(y[i] <= y[i+1] for i in range(len(y)-1))
+    is_monotonic = all(y[i] <= y[i + 1] for i in range(len(y) - 1))
 
     # Calculate confidence
     mean_unc = np.mean(uncertainty)
@@ -1295,5 +1226,5 @@ def _generate_curve_prediction(
         "uncertainty": uncertainty,
         "is_monotonic": is_monotonic,
         "mean_uncertainty": mean_unc,
-        "confidence": confidence
+        "confidence": confidence,
     }

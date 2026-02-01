@@ -17,17 +17,15 @@ All settings are configuration-driven with no hardcoded values.
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
 
 import numpy as np
 
 from ptpd_calibration.deep_learning.config import DefectDetectionSettings
 from ptpd_calibration.deep_learning.models import (
-    DetectedDefect,
     DefectDetectionResult,
+    DetectedDefect,
 )
 from ptpd_calibration.deep_learning.types import (
-    DefectDetectorArchitecture,
     DefectSeverity,
     DefectType,
 )
@@ -430,9 +428,9 @@ class DefectDetector:
 
     def __init__(
         self,
-        settings: Optional[DefectDetectionSettings] = None,
-        segmentation_model_path: Optional[Path] = None,
-        classifier_model_path: Optional[Path] = None,
+        settings: DefectDetectionSettings | None = None,
+        segmentation_model_path: Path | None = None,
+        classifier_model_path: Path | None = None,
     ):
         """
         Initialize the defect detector.
@@ -458,8 +456,8 @@ class DefectDetector:
             self._load_classifier_model(path)
 
         # Defect type to enum mapping
-        self.defect_type_mapping = {i: defect_type for i, defect_type in enumerate(DefectType)}
-        self.severity_mapping = {i: severity for i, severity in enumerate(DefectSeverity)}
+        self.defect_type_mapping = dict(enumerate(DefectType))
+        self.severity_mapping = dict(enumerate(DefectSeverity))
 
         logger.info("DefectDetector initialized successfully")
 
@@ -584,9 +582,7 @@ class DefectDetector:
             binary_mask = self._morphological_cleanup(binary_mask)
 
         # Find connected components
-        defects = self._extract_defects(
-            binary_mask, defect_type_map, scaled_image, scale
-        )
+        defects = self._extract_defects(binary_mask, defect_type_map, scaled_image, scale)
 
         return defects
 
@@ -667,9 +663,7 @@ class DefectDetector:
             defect_type_idx = defect_region_type_scores.argmax()
             confidence = float(defect_region_type_scores[defect_type_idx])
 
-            defect_type = self.defect_type_mapping.get(
-                defect_type_idx, DefectType.UNKNOWN
-            )
+            defect_type = self.defect_type_mapping.get(defect_type_idx, DefectType.UNKNOWN)
 
             # Estimate severity based on area and type
             severity = self._estimate_severity(area, defect_type, image.shape[:2])
@@ -732,9 +726,7 @@ class DefectDetector:
 
         return DefectSeverity.NEGLIGIBLE
 
-    def _get_remediation(
-        self, defect_type: DefectType, severity: DefectSeverity
-    ) -> str:
+    def _get_remediation(self, defect_type: DefectType, severity: DefectSeverity) -> str:
         """Get remediation suggestion for defect."""
         remediation_map = {
             DefectType.BRUSH_MARK: "Use softer brush or apply coating in different direction",
@@ -848,9 +840,7 @@ class DefectDetector:
             remediation=defects[0].remediation,
         )
 
-    def _determine_overall_severity(
-        self, defects: list[DetectedDefect]
-    ) -> DefectSeverity:
+    def _determine_overall_severity(self, defects: list[DetectedDefect]) -> DefectSeverity:
         """Determine overall print severity from all defects."""
         if not defects:
             return DefectSeverity.NEGLIGIBLE
@@ -871,9 +861,7 @@ class DefectDetector:
 
         return DefectSeverity.NEGLIGIBLE
 
-    def _generate_recommendations(
-        self, defects: list[DetectedDefect]
-    ) -> list[str]:
+    def _generate_recommendations(self, defects: list[DetectedDefect]) -> list[str]:
         """Generate overall recommendations based on detected defects."""
         recommendations = []
 
@@ -959,9 +947,9 @@ class DefectDetector:
 
 # Factory function for easy instantiation
 def create_defect_detector(
-    settings: Optional[DefectDetectionSettings] = None,
-    segmentation_model_path: Optional[Path] = None,
-    classifier_model_path: Optional[Path] = None,
+    settings: DefectDetectionSettings | None = None,
+    segmentation_model_path: Path | None = None,
+    classifier_model_path: Path | None = None,
 ) -> DefectDetector:
     """
     Create a defect detector.
@@ -982,5 +970,7 @@ def create_defect_detector(
         )
     except ImportError as e:
         logger.warning(f"Could not initialize defect detector: {e}")
-        logger.warning("PyTorch and torchvision are required. Install with: pip install torch torchvision")
+        logger.warning(
+            "PyTorch and torchvision are required. Install with: pip install torch torchvision"
+        )
         raise

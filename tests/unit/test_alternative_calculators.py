@@ -5,47 +5,40 @@ Tests cyanotype and silver gelatin calculator modules.
 """
 
 import pytest
+
 from ptpd_calibration.chemistry.cyanotype_calculator import (
-    CyanotypeCalculator,
-    CyanotypeRecipe,
-    CyanotypeSettings,
-    CyanotypePaperType,
     CYANOTYPE_PAPER_FACTORS,
+    CyanotypeCalculator,
+    CyanotypePaperType,
+    CyanotypeRecipe,
 )
 from ptpd_calibration.chemistry.silver_gelatin_calculator import (
-    SilverGelatinCalculator,
-    ProcessingChemistry,
-    SilverGelatinSettings,
-    DeveloperRecipe,
-    DilutionRatio,
-    TraySize,
     DILUTION_MULTIPLIERS,
     TRAY_VOLUMES_ML,
-)
-from ptpd_calibration.exposure.alternative_calculators import (
-    CyanotypeExposureCalculator,
-    CyanotypeExposureResult,
-    SilverGelatinExposureCalculator,
-    SilverGelatinExposureResult,
-    VanDykeExposureCalculator,
-    KallitypeExposureCalculator,
-    UVSource,
-    UV_SOURCE_SPEEDS,
-    EnlargerLightSource,
-    ENLARGER_LIGHT_SPEEDS,
+    DilutionRatio,
+    SilverGelatinCalculator,
+    TraySize,
 )
 from ptpd_calibration.core.types import (
     CyanotypeFormula,
     DeveloperType,
-    FixerType,
     PaperBase,
-    PaperGrade,
 )
-
+from ptpd_calibration.exposure.alternative_calculators import (
+    ENLARGER_LIGHT_SPEEDS,
+    UV_SOURCE_SPEEDS,
+    CyanotypeExposureCalculator,
+    EnlargerLightSource,
+    KallitypeExposureCalculator,
+    SilverGelatinExposureCalculator,
+    UVSource,
+    VanDykeExposureCalculator,
+)
 
 # =====================================================
 # CYANOTYPE CHEMISTRY CALCULATOR TESTS
 # =====================================================
+
 
 class TestCyanotypePaperFactors:
     """Tests for cyanotype paper absorbency factors."""
@@ -230,6 +223,7 @@ class TestCyanotypeCalculator:
 # SILVER GELATIN CHEMISTRY CALCULATOR TESTS
 # =====================================================
 
+
 class TestDilutionMultipliers:
     """Tests for dilution ratio multipliers."""
 
@@ -243,8 +237,14 @@ class TestDilutionMultipliers:
 
     def test_dilutions_decrease(self):
         """Higher dilutions should have lower multipliers."""
-        assert DILUTION_MULTIPLIERS[DilutionRatio.ONE_TO_TWO] < DILUTION_MULTIPLIERS[DilutionRatio.ONE_TO_ONE]
-        assert DILUTION_MULTIPLIERS[DilutionRatio.ONE_TO_THREE] < DILUTION_MULTIPLIERS[DilutionRatio.ONE_TO_TWO]
+        assert (
+            DILUTION_MULTIPLIERS[DilutionRatio.ONE_TO_TWO]
+            < DILUTION_MULTIPLIERS[DilutionRatio.ONE_TO_ONE]
+        )
+        assert (
+            DILUTION_MULTIPLIERS[DilutionRatio.ONE_TO_THREE]
+            < DILUTION_MULTIPLIERS[DilutionRatio.ONE_TO_TWO]
+        )
 
 
 class TestTrayVolumes:
@@ -297,7 +297,9 @@ class TestSilverGelatinCalculator:
     def test_calculate_hypo_clear_for_fb(self, calculator):
         """FB paper should include hypo clear option."""
         fb = calculator.calculate(8.0, 10.0, paper_base=PaperBase.FIBER, include_hypo_clear=True)
-        rc = calculator.calculate(8.0, 10.0, paper_base=PaperBase.RESIN_COATED, include_hypo_clear=True)
+        rc = calculator.calculate(
+            8.0, 10.0, paper_base=PaperBase.RESIN_COATED, include_hypo_clear=True
+        )
 
         assert fb.hypo_clear_ml is not None
         assert fb.hypo_clear_ml > 0
@@ -338,15 +340,20 @@ class TestSilverGelatinCalculator:
         assert len(times) == 5
         # Should be ascending
         for i in range(1, len(times)):
-            assert times[i] > times[i-1]
+            assert times[i] > times[i - 1]
 
     def test_calculate_split_filter(self, calculator):
         """Split filter calculation should work."""
-        split = calculator.calculate_split_filter_exposure(10.0, shadow_grade=5.0, highlight_grade=0.0)
+        split = calculator.calculate_split_filter_exposure(
+            10.0, shadow_grade=5.0, highlight_grade=0.0
+        )
 
         assert "shadow_exposure" in split
         assert "highlight_exposure" in split
-        assert split["shadow_exposure"]["time_seconds"] + split["highlight_exposure"]["time_seconds"] == 10.0
+        assert (
+            split["shadow_exposure"]["time_seconds"] + split["highlight_exposure"]["time_seconds"]
+            == 10.0
+        )
 
     def test_get_developer_info(self):
         """Developer info should have standard developers."""
@@ -367,6 +374,7 @@ class TestSilverGelatinCalculator:
 # CYANOTYPE EXPOSURE CALCULATOR TESTS
 # =====================================================
 
+
 class TestUVSourceSpeeds:
     """Tests for UV source speed constants."""
 
@@ -376,7 +384,9 @@ class TestUVSourceSpeeds:
 
     def test_cloudy_slowest_natural(self):
         """Cloudy should be slowest natural light."""
-        assert UV_SOURCE_SPEEDS[UVSource.SUNLIGHT_CLOUDY] > UV_SOURCE_SPEEDS[UVSource.SUNLIGHT_SHADE]
+        assert (
+            UV_SOURCE_SPEEDS[UVSource.SUNLIGHT_CLOUDY] > UV_SOURCE_SPEEDS[UVSource.SUNLIGHT_SHADE]
+        )
 
     def test_all_sources_defined(self):
         """All UV sources should have speeds defined."""
@@ -463,6 +473,7 @@ class TestCyanotypeExposureCalculator:
 # SILVER GELATIN EXPOSURE CALCULATOR TESTS
 # =====================================================
 
+
 class TestEnlargerLightSpeeds:
     """Tests for enlarger light source speeds."""
 
@@ -472,7 +483,10 @@ class TestEnlargerLightSpeeds:
 
     def test_led_faster(self):
         """LED should be faster than tungsten."""
-        assert ENLARGER_LIGHT_SPEEDS[EnlargerLightSource.LED_ENLARGER] < ENLARGER_LIGHT_SPEEDS[EnlargerLightSource.TUNGSTEN_INCANDESCENT]
+        assert (
+            ENLARGER_LIGHT_SPEEDS[EnlargerLightSource.LED_ENLARGER]
+            < ENLARGER_LIGHT_SPEEDS[EnlargerLightSource.TUNGSTEN_INCANDESCENT]
+        )
 
     def test_all_sources_defined(self):
         """All enlarger sources should have speeds defined."""
@@ -535,6 +549,7 @@ class TestSilverGelatinExposureCalculator:
 # =====================================================
 # VAN DYKE & KALLITYPE EXPOSURE CALCULATOR TESTS
 # =====================================================
+
 
 class TestVanDykeExposureCalculator:
     """Tests for Van Dyke exposure calculator."""

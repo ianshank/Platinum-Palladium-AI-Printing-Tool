@@ -22,9 +22,21 @@ for Pt/Pd printing, including:
 - Performance monitoring and profiling
 """
 
+from contextlib import suppress
+
 __version__ = "1.1.0"
 
 # Core models
+# Configuration
+from ptpd_calibration.config import (
+    ExportFormat,
+    InterpolationMethod,
+    LLMProvider,
+    Settings,
+    TabletType,
+    configure,
+    get_settings,
+)
 from ptpd_calibration.core.models import (
     CalibrationRecord,
     CurveData,
@@ -43,200 +55,163 @@ from ptpd_calibration.core.types import (
     PaperSizing,
 )
 
-# Configuration
-from ptpd_calibration.config import (
-    Settings,
-    get_settings,
-    configure,
-    TabletType,
-    ExportFormat,
-    InterpolationMethod,
-    LLMProvider,
+# Curves
+from ptpd_calibration.curves import (
+    CurveAnalyzer,
+    CurveExporter,
+    CurveGenerator,
+    PiezographyExporter,
+    QTRExporter,
+    TargetCurve,
+    generate_linearization_curve,
+    load_curve,
+    save_curve,
 )
 
 # Detection
 from ptpd_calibration.detection import (
-    StepTabletDetector,
     DensityExtractor,
-    StepTabletReader,
     ScannerCalibration,
-)
-
-# Curves
-from ptpd_calibration.curves import (
-    CurveGenerator,
-    TargetCurve,
-    generate_linearization_curve,
-    CurveExporter,
-    QTRExporter,
-    PiezographyExporter,
-    save_curve,
-    load_curve,
-    CurveAnalyzer,
+    StepTabletDetector,
+    StepTabletReader,
 )
 
 # ML (optional - requires scikit-learn)
-try:
+with suppress(ImportError):
     from ptpd_calibration.ml import (
+        ActiveLearner,
         CalibrationDatabase,
         CurvePredictor,
-        ActiveLearner,
         TransferLearner,
     )
-except ImportError:
-    pass
 
 # LLM (optional - requires anthropic/openai)
-try:
+with suppress(ImportError):
     from ptpd_calibration.llm import (
         CalibrationAssistant,
         create_assistant,
     )
-except ImportError:
-    pass
 
 # Agents (optional - requires LLM)
-try:
+with suppress(ImportError):
     from ptpd_calibration.agents import (
-        CalibrationAgent,
-        create_agent,
-        Tool,
-        ToolRegistry,
         AgentMemory,
+        CalibrationAgent,
         Plan,
         Planner,
+        Tool,
+        ToolRegistry,
+        create_agent,
     )
-except ImportError:
-    pass
 
 # Advanced features
-try:
+with suppress(ImportError):
     from ptpd_calibration.advanced import (
-        AlternativeProcessSimulator,
-        NegativeBlender,
-        QRMetadataGenerator,
-        StyleTransfer,
-        PrintComparison,
         AlternativeProcessParams,
-        StyleParameters,
-        PrintMetadata,
+        AlternativeProcessSimulator,
         BlendMode,
         HistoricStyle,
+        NegativeBlender,
+        PrintComparison,
+        PrintMetadata,
+        QRMetadataGenerator,
+        StyleParameters,
+        StyleTransfer,
     )
-except ImportError:
-    pass
 
 # Platinum/Palladium AI
-try:
+with suppress(ImportError):
     from ptpd_calibration.ai import (
-        PlatinumPalladiumAI,
-        TonalityAnalysisResult,
-        ExposurePrediction,
         ChemistrySuggestion,
         DigitalNegativeResult,
+        ExposurePrediction,
+        PlatinumPalladiumAI,
         PrintQualityAnalysis,
+        TonalityAnalysisResult,
         WorkflowOptimization,
     )
-except ImportError:
-    pass
 
 # Split-grade printing
-try:
+with suppress(ImportError):
     from ptpd_calibration.imaging.split_grade import (
-        SplitGradeSimulator,
         SplitGradeSettings,
+        SplitGradeSimulator,
         TonalCurveAdjuster,
     )
-except ImportError:
-    pass
 
 # Recipe management and workflow
-try:
+with suppress(ImportError):
     from ptpd_calibration.workflow import (
         PrintRecipe,
-        RecipeManager,
         RecipeDatabase,
+        RecipeManager,
         WorkflowAutomation,
     )
-except ImportError:
-    pass
 
 # Enhanced calculations
-try:
+with suppress(ImportError):
     from ptpd_calibration.calculations import (
-        UVExposureCalculator,
         CoatingVolumeCalculator,
         CostCalculator,
         DilutionCalculator,
         EnvironmentalCompensation,
+        UVExposureCalculator,
     )
-except ImportError:
-    pass
 
 # Data management
-try:
+with suppress(ImportError):
     from ptpd_calibration.data import (
-        PrintDatabase,
-        PrintRecord,
         DataExporter,
         DataImporter,
-        SyncManager,
         LocalStorageProvider,
+        PrintDatabase,
+        PrintRecord,
+        SyncManager,
         VersionController,
     )
-except ImportError:
-    pass
 
 # Hardware integrations
-try:
+with suppress(ImportError):
     from ptpd_calibration.integrations import (
-        SpectrophotometerInterface,
-        XRiteIntegration,
-        WeatherProvider,
+        CanonDriver,
+        EpsonDriver,
+        ICCProfileManager,
         OpenWeatherMapProvider,
         PrinterInterface,
-        EpsonDriver,
-        CanonDriver,
-        ICCProfileManager,
+        SpectrophotometerInterface,
+        WeatherProvider,
+        XRiteIntegration,
     )
-except ImportError:
-    pass
 
 # Quality assurance
-try:
+with suppress(ImportError):
     from ptpd_calibration.qa import (
-        NegativeDensityValidator,
-        ChemistryFreshnessTracker,
-        PaperHumidityChecker,
-        UVLightMeterIntegration,
-        QualityReport,
         AlertSystem,
+        ChemistryFreshnessTracker,
+        NegativeDensityValidator,
+        PaperHumidityChecker,
+        QualityReport,
+        UVLightMeterIntegration,
     )
-except ImportError:
-    pass
 
 # Education
-try:
+with suppress(ImportError):
     from ptpd_calibration.education import (
-        TutorialManager,
         Glossary,
         TipsManager,
+        TutorialManager,
     )
-except ImportError:
-    pass
 
 # Performance monitoring
-try:
+with suppress(ImportError):
     from ptpd_calibration.monitoring import (
-        PerformanceMonitor,
-        ImageProcessingProfiler,
         APIPerformanceTracker,
         CacheManager,
-        ResourceMonitor,
+        ImageProcessingProfiler,
+        PerformanceMonitor,
         PerformanceReport,
+        ResourceMonitor,
     )
-except ImportError:
-    pass
 
 __all__ = [
     # Version

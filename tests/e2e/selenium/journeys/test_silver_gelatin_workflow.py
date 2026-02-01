@@ -76,15 +76,15 @@ class TestSilverGelatinWorkflow:
 
         silver_gelatin_page.navigate_to_silver_gelatin()
 
+        import contextlib
+
         for dev in developers:
-            try:
-                results = silver_gelatin_page.calculate_processing_chemistry(
+            with contextlib.suppress(Exception):
+                _ = silver_gelatin_page.calculate_processing_chemistry(
                     width=8.0,
                     height=10.0,
                     developer=dev,
                 )
-            except Exception:
-                pass  # Some developers may not be available
 
     def test_different_dilutions(self, silver_gelatin_page):
         """Test different developer dilutions."""
@@ -92,15 +92,15 @@ class TestSilverGelatinWorkflow:
 
         silver_gelatin_page.navigate_to_silver_gelatin()
 
+        import contextlib
+
         for dilution in dilutions:
-            try:
-                results = silver_gelatin_page.calculate_processing_chemistry(
+            with contextlib.suppress(Exception):
+                _ = silver_gelatin_page.calculate_processing_chemistry(
                     width=8.0,
                     height=10.0,
                     dilution=dilution,
                 )
-            except Exception:
-                pass  # Some dilutions may not be available
 
     def test_temperature_setting(self, silver_gelatin_page):
         """Test temperature affects processing."""
@@ -173,13 +173,13 @@ class TestSilverGelatinWorkflow:
 
         silver_gelatin_page.navigate_to_silver_gelatin()
 
+        import contextlib
+
         for fstop in f_stops:
-            try:
-                results = silver_gelatin_page.calculate_enlarger_exposure(
+            with contextlib.suppress(Exception):
+                _ = silver_gelatin_page.calculate_enlarger_exposure(
                     f_stop=fstop,
                 )
-            except Exception:
-                pass  # Some f-stop values may not be supported
 
     def test_different_paper_grades(self, silver_gelatin_page):
         """Test different paper contrast grades."""
@@ -187,13 +187,13 @@ class TestSilverGelatinWorkflow:
 
         silver_gelatin_page.navigate_to_silver_gelatin()
 
+        import contextlib
+
         for grade in grades:
-            try:
-                results = silver_gelatin_page.calculate_enlarger_exposure(
+            with contextlib.suppress(Exception):
+                _ = silver_gelatin_page.calculate_enlarger_exposure(
                     paper_grade=grade,
                 )
-            except Exception:
-                pass  # Some paper grades may not be supported
 
     def test_enlarger_height_affects_exposure(self, silver_gelatin_page):
         """Test that enlarger height affects exposure time."""
@@ -233,14 +233,14 @@ class TestSilverGelatinWorkflow:
 
         silver_gelatin_page.navigate_to_silver_gelatin()
 
+        import contextlib
+
         for ratio in ratios:
-            try:
-                results = silver_gelatin_page.calculate_split_filter_print(
+            with contextlib.suppress(Exception):
+                _ = silver_gelatin_page.calculate_split_filter_print(
                     base_exposure=10.0,
                     split_ratio=ratio,
                 )
-            except Exception:
-                pass  # Some split ratios may not be supported
 
     def test_test_strip_generation(self, silver_gelatin_page):
         """Test test strip time generation."""

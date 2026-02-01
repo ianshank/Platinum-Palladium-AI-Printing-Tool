@@ -4,7 +4,6 @@ Mock object factories for PTPD Calibration tests.
 Provides factories for creating mock objects and responses.
 """
 
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 
@@ -121,7 +120,7 @@ class MockAssistantFactory:
         """Create an assistant with delayed responses."""
         import asyncio
 
-        async def delayed_response(message: str) -> str:
+        async def delayed_response(_message: str) -> str:
             await asyncio.sleep(delay)
             return MockLLMResponse.chat_response()
 
@@ -166,9 +165,7 @@ class MockHTTPResponseFactory:
         """Create a 422 validation error response."""
         mock = MagicMock()
         mock.status_code = 422
-        mock.json.return_value = {
-            "detail": errors or [{"msg": "Validation error"}]
-        }
+        mock.json.return_value = {"detail": errors or [{"msg": "Validation error"}]}
         mock.ok = False
         return mock
 

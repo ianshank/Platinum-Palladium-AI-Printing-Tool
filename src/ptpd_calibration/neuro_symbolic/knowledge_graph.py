@@ -16,11 +16,9 @@ Architecture:
 - Embeddings: Learned vector representations for similarity computation
 """
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum, auto
-from typing import Any, Callable, Iterator, Optional, TypeVar
+from enum import Enum
+from typing import Any
 from uuid import UUID, uuid4
 
 import numpy as np
@@ -83,7 +81,7 @@ class Entity(BaseModel):
     name: str = Field(..., min_length=1, max_length=256)
     entity_type: EntityType
     properties: dict[str, Any] = Field(default_factory=dict)
-    embedding: Optional[list[float]] = None
+    embedding: list[float] | None = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
@@ -148,7 +146,7 @@ class KnowledgeGraph:
     Provides entity and relationship storage with query capabilities.
     """
 
-    def __init__(self, settings: Optional[NeuroSymbolicSettings] = None):
+    def __init__(self, settings: NeuroSymbolicSettings | None = None):
         """Initialize knowledge graph.
 
         Args:
@@ -202,11 +200,11 @@ class KnowledgeGraph:
 
         return relationship.id
 
-    def get_entity(self, entity_id: UUID) -> Optional[Entity]:
+    def get_entity(self, entity_id: UUID) -> Entity | None:
         """Get entity by ID."""
         return self._entities.get(entity_id)
 
-    def get_entity_by_name(self, name: str) -> Optional[Entity]:
+    def get_entity_by_name(self, name: str) -> Entity | None:
         """Get entity by name (returns first match)."""
         ids = self._entity_index.get(name, [])
         return self._entities.get(ids[0]) if ids else None
@@ -219,7 +217,7 @@ class KnowledgeGraph:
     def get_relationships(
         self,
         entity_id: UUID,
-        relation_type: Optional[RelationType] = None,
+        relation_type: RelationType | None = None,
         direction: str = "both",
     ) -> list[Relationship]:
         """Get relationships for an entity.
@@ -252,8 +250,8 @@ class KnowledgeGraph:
         self,
         source_id: UUID,
         target_id: UUID,
-        max_depth: Optional[int] = None,
-    ) -> Optional[list[Relationship]]:
+        max_depth: int | None = None,
+    ) -> list[Relationship] | None:
         """Find path between two entities.
 
         Args:
@@ -280,10 +278,7 @@ class KnowledgeGraph:
 
             for rel in self._relation_index.get(current, []):
                 # Get the other end of the relationship
-                if rel.source_id == current:
-                    next_id = rel.target_id
-                else:
-                    next_id = rel.source_id
+                next_id = rel.target_id if rel.source_id == current else rel.source_id
 
                 if next_id == target_id:
                     return path + [rel]
@@ -332,24 +327,26 @@ class KnowledgeGraph:
         # Property similarity
         common_props = set(e1.properties.keys()) & set(e2.properties.keys())
         if common_props:
-            matches = sum(
-                1
-                for k in common_props
-                if e1.properties[k] == e2.properties[k]
-            )
+            matches = sum(1 for k in common_props if e1.properties[k] == e2.properties[k])
             prop_sim = matches / len(common_props)
         else:
             prop_sim = 0.5
 
         # Relationship similarity
-        rel1 = set(
-            (r.relation_type, self.get_entity(r.target_id).name if self.get_entity(r.target_id) else None)
+        rel1 = {
+            (
+                r.relation_type,
+                self.get_entity(r.target_id).name if self.get_entity(r.target_id) else None,
+            )
             for r in self.get_relationships(entity1_id, direction="outgoing")
-        )
-        rel2 = set(
-            (r.relation_type, self.get_entity(r.target_id).name if self.get_entity(r.target_id) else None)
+        }
+        rel2 = {
+            (
+                r.relation_type,
+                self.get_entity(r.target_id).name if self.get_entity(r.target_id) else None,
+            )
             for r in self.get_relationships(entity2_id, direction="outgoing")
-        )
+        }
 
         if rel1 or rel2:
             rel_sim = len(rel1 & rel2) / len(rel1 | rel2) if rel1 | rel2 else 0.5
@@ -394,14 +391,8 @@ class KnowledgeGraph:
             sim = self.compute_similarity(entity_id, candidate.id)
 
             # Find common relationships
-            rel1 = set(
-                r.relation_type.value
-                for r in self.get_relationships(entity_id)
-            )
-            rel2 = set(
-                r.relation_type.value
-                for r in self.get_relationships(candidate.id)
-            )
+            rel1 = {r.relation_type.value for r in self.get_relationships(entity_id)}
+            rel2 = {r.relation_type.value for r in self.get_relationships(candidate.id)}
             common = list(rel1 & rel2)
 
             results.append(
@@ -425,7 +416,7 @@ class PaperChemistryKnowledgeGraph(KnowledgeGraph):
     Pre-populated with domain knowledge about platinum/palladium printing.
     """
 
-    def __init__(self, settings: Optional[NeuroSymbolicSettings] = None):
+    def __init__(self, settings: NeuroSymbolicSettings | None = None):
         """Initialize with domain knowledge."""
         super().__init__(settings)
         self._initialize_domain_knowledge()
@@ -721,7 +712,7 @@ class PaperChemistryKnowledgeGraph(KnowledgeGraph):
         )
 
         # Paper-chemistry compatibility
-        for paper_name, paper in paper_entities.items():
+        for _paper_name, paper in paper_entities.items():
             # All papers compatible with both metals
             for metal_name, metal in metal_entities.items():
                 if "Chloride" in metal_name:
@@ -757,9 +748,9 @@ class PaperChemistryKnowledgeGraph(KnowledgeGraph):
                 )
 
         # Developer-tone relationships
-        for dev_name, dev in developer_entities.items():
+        for _dev_name, dev in developer_entities.items():
             tone = dev.properties.get("tone", "neutral")
-            for paper_name, paper in paper_entities.items():
+            for _paper_name, paper in paper_entities.items():
                 paper_warmth = paper.properties.get("warmth", "neutral")
                 # Match warm developers with warm papers, etc.
                 if tone == paper_warmth or tone == "neutral" or paper_warmth == "neutral":
@@ -772,9 +763,7 @@ class PaperChemistryKnowledgeGraph(KnowledgeGraph):
                         )
                     )
 
-    def infer_settings_for_paper(
-        self, paper_name: str
-    ) -> InferenceResult:
+    def infer_settings_for_paper(self, paper_name: str) -> InferenceResult:
         """Infer optimal settings for a paper.
 
         Args:
@@ -862,7 +851,7 @@ class PaperChemistryKnowledgeGraph(KnowledgeGraph):
             Inference result with recommended settings
         """
         # Create temporary entity for similarity comparison
-        temp_entity = Entity(
+        _temp_entity = Entity(  # Reserved for future similarity lookup
             name="Query Paper",
             entity_type=EntityType.PAPER,
             properties=properties,
@@ -878,11 +867,7 @@ class PaperChemistryKnowledgeGraph(KnowledgeGraph):
             if not common_keys:
                 continue
 
-            matches = sum(
-                1
-                for k in common_keys
-                if properties.get(k) == paper.properties.get(k)
-            )
+            matches = sum(1 for k in common_keys if properties.get(k) == paper.properties.get(k))
             similarity = matches / len(common_keys)
 
             if similarity > best_similarity:
@@ -903,27 +888,25 @@ class PaperChemistryKnowledgeGraph(KnowledgeGraph):
         adjustments = []
         result_values = dict(base_result.result_values)
 
-        if "absorbency" in properties and properties["absorbency"] != best_match.properties.get("absorbency"):
+        if "absorbency" in properties and properties["absorbency"] != best_match.properties.get(
+            "absorbency"
+        ):
             coating_factors = {"low": 0.8, "medium": 1.0, "high": 1.2}
-            result_values["coating_factor"] = coating_factors.get(
-                properties["absorbency"], 1.0
-            )
-            adjustments.append(
-                f"Adjusted coating factor for {properties['absorbency']} absorbency"
-            )
+            result_values["coating_factor"] = coating_factors.get(properties["absorbency"], 1.0)
+            adjustments.append(f"Adjusted coating factor for {properties['absorbency']} absorbency")
 
         if "warmth" in properties and properties["warmth"] != best_match.properties.get("warmth"):
             warmth_ratios = {"warm": 0.25, "neutral": 0.5, "cool": 0.75}
-            result_values["metal_ratio"] = warmth_ratios.get(
-                properties["warmth"], 0.5
-            )
-            adjustments.append(
-                f"Adjusted metal ratio for {properties['warmth']} tone preference"
-            )
+            result_values["metal_ratio"] = warmth_ratios.get(properties["warmth"], 0.5)
+            adjustments.append(f"Adjusted metal ratio for {properties['warmth']} tone preference")
 
-        reasoning = [
-            f"Most similar paper: {best_match.name} (similarity: {best_similarity:.2f})",
-        ] + adjustments + base_result.reasoning_path
+        reasoning = (
+            [
+                f"Most similar paper: {best_match.name} (similarity: {best_similarity:.2f})",
+            ]
+            + adjustments
+            + base_result.reasoning_path
+        )
 
         return InferenceResult(
             query="Settings for new paper",
@@ -934,7 +917,7 @@ class PaperChemistryKnowledgeGraph(KnowledgeGraph):
             reasoning_path=reasoning,
         )
 
-    def _find_similar_paper_by_name(self, name: str) -> Optional[Entity]:
+    def _find_similar_paper_by_name(self, name: str) -> Entity | None:
         """Find similar paper by fuzzy name matching."""
         name_lower = name.lower()
 
@@ -952,9 +935,7 @@ class PaperChemistryKnowledgeGraph(KnowledgeGraph):
 
         return None
 
-    def get_compatibility_explanation(
-        self, entity1_name: str, entity2_name: str
-    ) -> str:
+    def get_compatibility_explanation(self, entity1_name: str, entity2_name: str) -> str:
         """Get explanation for compatibility between two entities.
 
         Args:
@@ -978,15 +959,13 @@ class PaperChemistryKnowledgeGraph(KnowledgeGraph):
 
         # Build explanation
         explanations = []
-        current = e1.name
+        _current = e1.name  # Track traversal start
         for rel in path:
             source = self.get_entity(rel.source_id)
             target = self.get_entity(rel.target_id)
             if source and target:
-                explanations.append(
-                    f"{source.name} --[{rel.relation_type.value}]--> {target.name}"
-                )
-                current = target.name
+                explanations.append(f"{source.name} --[{rel.relation_type.value}]--> {target.name}")
+                _current = target.name  # Track traversal for future use
 
         return " → ".join(explanations)
 

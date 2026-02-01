@@ -6,17 +6,12 @@ Provides fixtures for benchmark tests and performance measurements.
 
 import numpy as np
 import pytest
-from pathlib import Path
 
 
 def pytest_configure(config):
     """Add performance test markers."""
-    config.addinivalue_line(
-        "markers", "performance: mark test as a performance test"
-    )
-    config.addinivalue_line(
-        "markers", "benchmark: mark test as a benchmark test"
-    )
+    config.addinivalue_line("markers", "performance: mark test as a performance test")
+    config.addinivalue_line("markers", "benchmark: mark test as a benchmark test")
 
 
 @pytest.fixture
@@ -103,9 +98,9 @@ def large_image(tmp_path):
 @pytest.fixture
 def populated_database():
     """Create a populated calibration database for performance tests."""
-    from ptpd_calibration.ml.database import CalibrationDatabase
     from ptpd_calibration.core.models import CalibrationRecord
     from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
+    from ptpd_calibration.ml.database import CalibrationDatabase
 
     db = CalibrationDatabase()
 
@@ -125,8 +120,7 @@ def populated_database():
                     contrast_amount=5.0,
                     developer=DeveloperType.POTASSIUM_OXALATE,
                     measured_densities=[
-                        0.1 + 2.0 * (i / 20) ** (0.7 + ratio * 0.3)
-                        for i in range(21)
+                        0.1 + 2.0 * (i / 20) ** (0.7 + ratio * 0.3) for i in range(21)
                     ],
                 )
                 db.add_record(record)
@@ -137,9 +131,9 @@ def populated_database():
 @pytest.fixture
 def large_database():
     """Create a large database for performance stress tests."""
-    from ptpd_calibration.ml.database import CalibrationDatabase
     from ptpd_calibration.core.models import CalibrationRecord
     from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
+    from ptpd_calibration.ml.database import CalibrationDatabase
 
     db = CalibrationDatabase()
 

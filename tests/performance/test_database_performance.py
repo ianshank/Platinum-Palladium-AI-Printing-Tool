@@ -7,7 +7,7 @@ Benchmark tests for database operations.
 import pytest
 
 try:
-    import pytest_benchmark
+    import pytest_benchmark  # noqa: F401
 
     BENCHMARK_AVAILABLE = True
 except ImportError:
@@ -22,13 +22,13 @@ class TestDatabasePerformance:
     @pytest.mark.skipif(not BENCHMARK_AVAILABLE, reason="pytest-benchmark not installed")
     def test_add_record(self, benchmark):
         """Benchmark adding records to database."""
-        from ptpd_calibration.ml.database import CalibrationDatabase
         from ptpd_calibration.core.models import CalibrationRecord
         from ptpd_calibration.core.types import (
             ChemistryType,
             ContrastAgent,
             DeveloperType,
         )
+        from ptpd_calibration.ml.database import CalibrationDatabase
 
         db = CalibrationDatabase()
 
@@ -52,9 +52,7 @@ class TestDatabasePerformance:
     @pytest.mark.skipif(not BENCHMARK_AVAILABLE, reason="pytest-benchmark not installed")
     def test_query_by_paper(self, benchmark, populated_database):
         """Benchmark querying by paper type."""
-        result = benchmark(
-            populated_database.query, paper_type="Arches Platine"
-        )
+        result = benchmark(populated_database.query, paper_type="Arches Platine")
         assert len(result) > 0
 
     @pytest.mark.skipif(not BENCHMARK_AVAILABLE, reason="pytest-benchmark not installed")
@@ -96,13 +94,13 @@ class TestDatabasePerformanceThresholds:
         """Adding a record should complete in under 10ms."""
         import time
 
-        from ptpd_calibration.ml.database import CalibrationDatabase
         from ptpd_calibration.core.models import CalibrationRecord
         from ptpd_calibration.core.types import (
             ChemistryType,
             ContrastAgent,
             DeveloperType,
         )
+        from ptpd_calibration.ml.database import CalibrationDatabase
 
         db = CalibrationDatabase()
 

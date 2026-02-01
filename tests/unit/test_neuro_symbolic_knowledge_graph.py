@@ -5,18 +5,18 @@ Tests the knowledge graph for paper/chemistry relationships
 and analogical reasoning capabilities.
 """
 
-import pytest
 from uuid import uuid4
+
+import pytest
 
 from ptpd_calibration.config import NeuroSymbolicSettings
 from ptpd_calibration.neuro_symbolic.knowledge_graph import (
-    EntityType,
-    RelationType,
     Entity,
-    Relationship,
+    EntityType,
     KnowledgeGraph,
     PaperChemistryKnowledgeGraph,
-    InferenceResult,
+    Relationship,
+    RelationType,
     SimilarityResult,
 )
 
@@ -184,9 +184,7 @@ class TestKnowledgeGraph:
     def test_get_relationships_by_type(self, populated_graph):
         """Test filtering relationships by type."""
         paper = populated_graph.get_entity_by_name("Paper A")
-        similar = populated_graph.get_relationships(
-            paper.id, RelationType.SIMILAR_TO
-        )
+        similar = populated_graph.get_relationships(paper.id, RelationType.SIMILAR_TO)
 
         assert len(similar) == 1
         assert similar[0].relation_type == RelationType.SIMILAR_TO
@@ -195,14 +193,10 @@ class TestKnowledgeGraph:
         """Test filtering relationships by direction."""
         paper = populated_graph.get_entity_by_name("Paper A")
 
-        outgoing = populated_graph.get_relationships(
-            paper.id, direction="outgoing"
-        )
+        outgoing = populated_graph.get_relationships(paper.id, direction="outgoing")
         assert len(outgoing) == 2
 
-        incoming = populated_graph.get_relationships(
-            paper.id, direction="incoming"
-        )
+        incoming = populated_graph.get_relationships(paper.id, direction="incoming")
         assert len(incoming) == 0  # Paper A is source, not target
 
     def test_find_path(self, populated_graph):
@@ -347,9 +341,7 @@ class TestPaperChemistryKnowledgeGraph:
 
     def test_compatibility_explanation(self, kg):
         """Test generating compatibility explanation."""
-        explanation = kg.get_compatibility_explanation(
-            "Arches Platine", "Palladium Chloride"
-        )
+        explanation = kg.get_compatibility_explanation("Arches Platine", "Palladium Chloride")
 
         assert "Arches Platine" in explanation or "compatible" in explanation.lower()
 

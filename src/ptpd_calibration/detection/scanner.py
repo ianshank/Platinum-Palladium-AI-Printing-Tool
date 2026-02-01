@@ -5,7 +5,6 @@ Scanner calibration and profiling for accurate measurements.
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 from PIL import Image
@@ -34,8 +33,8 @@ class ScannerProfile:
 
     name: str
     created_at: str = ""
-    scanner_model: Optional[str] = None
-    resolution_dpi: Optional[int] = None
+    scanner_model: str | None = None
+    resolution_dpi: int | None = None
 
     # Response curves per channel
     red_curve: ChannelCurve = field(default_factory=ChannelCurve)
@@ -43,8 +42,8 @@ class ScannerProfile:
     blue_curve: ChannelCurve = field(default_factory=ChannelCurve)
 
     # Uniformity correction
-    uniformity_map: Optional[np.ndarray] = None
-    uniformity_map_size: Optional[tuple[int, int]] = None
+    uniformity_map: np.ndarray | None = None
+    uniformity_map_size: tuple[int, int] | None = None
 
 
 class ScannerCalibration:
@@ -55,7 +54,7 @@ class ScannerCalibration:
     corrections to subsequent scans for accurate measurements.
     """
 
-    def __init__(self, profile: Optional[ScannerProfile] = None):
+    def __init__(self, profile: ScannerProfile | None = None):
         """
         Initialize scanner calibration.
 
@@ -66,7 +65,7 @@ class ScannerCalibration:
 
     def calibrate_from_target(
         self,
-        target_scan: Union[np.ndarray, Image.Image, Path, str],
+        target_scan: np.ndarray | Image.Image | Path | str,
         reference_values: dict[str, tuple[float, float, float]],
         name: str = "Scanner Profile",
     ) -> ScannerProfile:
@@ -129,11 +128,29 @@ class ScannerCalibration:
         )
 
         # Create linear correction curves for each channel
-        for i, (curve, ws, bs, tw, tb) in enumerate(
+        for _i, (curve, ws, bs, tw, tb) in enumerate(
             [
-                (profile.red_curve, white_sample[0], black_sample[0], target_white[0], target_black[0]),
-                (profile.green_curve, white_sample[1], black_sample[1], target_white[1], target_black[1]),
-                (profile.blue_curve, white_sample[2], black_sample[2], target_white[2], target_black[2]),
+                (
+                    profile.red_curve,
+                    white_sample[0],
+                    black_sample[0],
+                    target_white[0],
+                    target_black[0],
+                ),
+                (
+                    profile.green_curve,
+                    white_sample[1],
+                    black_sample[1],
+                    target_white[1],
+                    target_black[1],
+                ),
+                (
+                    profile.blue_curve,
+                    white_sample[2],
+                    black_sample[2],
+                    target_white[2],
+                    target_black[2],
+                ),
             ]
         ):
             # Linear mapping from sample range to target range
@@ -244,7 +261,7 @@ class ScannerCalibration:
 
         return cls(profile)
 
-    def _load_image(self, image: Union[np.ndarray, Image.Image, Path, str]) -> np.ndarray:
+    def _load_image(self, image: np.ndarray | Image.Image | Path | str) -> np.ndarray:
         """Load image from various sources."""
         if isinstance(image, np.ndarray):
             return image
@@ -260,10 +277,7 @@ class ScannerCalibration:
         from scipy.ndimage import uniform_filter
 
         # Convert to grayscale if color
-        if len(image.shape) == 3:
-            gray = np.mean(image, axis=2)
-        else:
-            gray = image
+        gray = np.mean(image, axis=2) if len(image.shape) == 3 else image
 
         # Low-pass filter to find illumination pattern
         smoothed = uniform_filter(gray.astype(float), size=50)

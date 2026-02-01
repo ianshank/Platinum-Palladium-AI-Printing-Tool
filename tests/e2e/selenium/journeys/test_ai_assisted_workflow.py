@@ -61,15 +61,12 @@ class TestAIAssistedWorkflow:
         """Test troubleshooting assistance."""
         ai_page.navigate_to_assistant()
 
-        response = ai_page.get_troubleshooting_help(
-            "My prints are coming out too dark and muddy"
-        )
+        response = ai_page.get_troubleshooting_help("My prints are coming out too dark and muddy")
 
         assert len(response) > 0
         # Should contain relevant suggestions
         assert any(
-            word in response.lower()
-            for word in ["exposure", "contrast", "developer", "coating"]
+            word in response.lower() for word in ["exposure", "contrast", "developer", "coating"]
         )
 
     def test_recipe_recommendation(self, ai_page):
@@ -156,9 +153,9 @@ class TestAIAssistedWorkflow:
         """Test selecting different LLM providers."""
         ai_page.navigate_to_assistant()
 
+        import contextlib
+
         providers = ["Claude", "GPT-4", "Local"]
         for provider in providers:
-            try:
+            with contextlib.suppress(Exception):
                 ai_page.select_llm_provider(provider)
-            except Exception:
-                pass  # Provider may not be available
