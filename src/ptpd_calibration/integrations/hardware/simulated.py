@@ -235,7 +235,7 @@ class SimulatedSpectrophotometer:
 
         # Simulate photographic response curve
         base_density = self._base_density + (
-            (self._max_density - self._base_density) * (t ** SIMULATED_DENSITY_GAMMA)
+            (self._max_density - self._base_density) * (t**SIMULATED_DENSITY_GAMMA)
         )
 
         # Add noise
@@ -244,9 +244,13 @@ class SimulatedSpectrophotometer:
 
         # Generate corresponding Lab values
         # L* decreases with density (roughly 100 - density * 40)
-        lab_l = max(0, min(100, SIMULATED_LAB_L_BASE - density * SIMULATED_LAB_L_SLOPE + random.gauss(0, 1)))
+        lab_l = max(
+            0, min(100, SIMULATED_LAB_L_BASE - density * SIMULATED_LAB_L_SLOPE + random.gauss(0, 1))
+        )
         lab_a = random.gauss(0, SIMULATED_LAB_A_STD_DEV)  # Neutral gray should be near 0
-        lab_b = random.gauss(SIMULATED_LAB_B_MEAN, SIMULATED_LAB_B_STD_DEV)  # Slight warm bias typical of Pt/Pd
+        lab_b = random.gauss(
+            SIMULATED_LAB_B_MEAN, SIMULATED_LAB_B_STD_DEV
+        )  # Slight warm bias typical of Pt/Pd
 
         self._measurement_count += 1
         self._status = DeviceStatus.CONNECTED
@@ -297,11 +301,8 @@ class SimulatedSpectrophotometer:
 
             # Simulate neutral gray reflectance spectrum
             # Real Pt/Pd prints have slight warm tone (higher in red)
-            base_reflectance = (
-                SIMULATED_REFLECTANCE_BASE +
-                SIMULATED_REFLECTANCE_SLOPE * (
-                    (nm - SIMULATED_REFLECTANCE_WAVELENGTH_REF) / SIMULATED_REFLECTANCE_RANGE
-                )
+            base_reflectance = SIMULATED_REFLECTANCE_BASE + SIMULATED_REFLECTANCE_SLOPE * (
+                (nm - SIMULATED_REFLECTANCE_WAVELENGTH_REF) / SIMULATED_REFLECTANCE_RANGE
             )
             noise = random.gauss(0, self._noise_level)
             reflectance = max(0, min(1, base_reflectance + noise))

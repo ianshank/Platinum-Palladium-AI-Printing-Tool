@@ -31,14 +31,14 @@ from __future__ import annotations
 import functools
 import json
 import threading
-import time
 import uuid
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Generator, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -558,8 +558,7 @@ class HardwareDebugger:
 
         report: dict[str, Any] = {
             "total_operations": len(self._operations),
-            "success_rate": sum(1 for o in self._operations if o.success)
-            / len(self._operations),
+            "success_rate": sum(1 for o in self._operations if o.success) / len(self._operations),
             "operations": {},
         }
 
@@ -690,28 +689,32 @@ def get_diagnostic_report() -> DiagnosticReport:
 
         registry = DeviceRegistry()
         for device_id, device in registry._devices.items():
-            report.devices.append({
-                "device_id": device_id,
-                "device_type": device.device_type.value,
-                "is_simulated": device.is_simulated,
-                "connected": device.is_connected,
-            })
+            report.devices.append(
+                {
+                    "device_id": device_id,
+                    "device_type": device.device_type.value,
+                    "is_simulated": device.is_simulated,
+                    "connected": device.is_connected,
+                }
+            )
     except Exception as e:
         report.warnings.append(f"Could not get device registry: {e}")
 
     # Recent operations
     for op in debugger.get_operations(limit=50):
-        report.recent_operations.append({
-            "operation": op.operation,
-            "start_time": op.start_time.isoformat(),
-            "duration_ms": op.duration_ms,
-            "success": op.success,
-            "error": op.error,
-            "metadata": op.metadata,
-        })
+        report.recent_operations.append(
+            {
+                "operation": op.operation,
+                "start_time": op.start_time.isoformat(),
+                "duration_ms": op.duration_ms,
+                "success": op.success,
+                "error": op.error,
+                "metadata": op.metadata,
+            }
+        )
 
     # Protocol messages from all loggers
-    for device_type, pl in debugger._protocol_loggers.items():
+    for _device_type, pl in debugger._protocol_loggers.items():
         for msg in pl.get_messages(limit=100):
             report.protocol_messages.append(msg.to_dict())
 

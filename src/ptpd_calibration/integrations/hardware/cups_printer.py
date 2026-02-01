@@ -47,18 +47,15 @@ logger = get_logger(__name__)
 def _import_cups() -> Any:
     """Lazy import for pycups."""
     if platform.system() == "Windows":
-        raise ImportError(
-            "CUPS is not available on Windows. "
-            "Use Win32PrinterDriver instead."
-        )
+        raise ImportError("CUPS is not available on Windows. Use Win32PrinterDriver instead.")
 
     try:
         import cups
+
         return cups
     except ImportError as e:
         raise ImportError(
-            "pycups is required for CUPS printing. "
-            "Install with: pip install pycups"
+            "pycups is required for CUPS printing. Install with: pip install pycups"
         ) from e
 
 
@@ -423,7 +420,8 @@ class CUPSPrinterDriver:
         else:
             # Only allow alphanumeric, dots, and 'x' for custom sizes
             import re
-            if not re.match(r'^[a-zA-Z0-9.x]+$', job.paper_size):
+
+            if not re.match(r"^[a-zA-Z0-9.x]+$", job.paper_size):
                 raise PrintJobError(
                     f"Invalid paper size format: {job.paper_size}",
                     job_name=job.name,

@@ -213,3 +213,133 @@ class TestParseDeviceResponse:
         response = "FORMULA=a=b+c"
         result = parse_device_response(response)
         assert result["FORMULA"] == "a=b+c"
+
+
+class TestHardwareDeviceBaseDebugIntegration:
+    """Test HardwareDeviceBase debug/logging integration."""
+
+    def test_protocol_logger_lazy_init(self) -> None:
+        """Test protocol logger is lazily initialized."""
+        device = ConcreteDevice()
+        assert device._protocol_logger is None
+
+        # Access property
+        logger = device.protocol_logger
+        assert logger is not None
+        assert device._protocol_logger is logger
+
+    def test_protocol_logger_same_instance(self) -> None:
+        """Test protocol logger returns same instance."""
+        device = ConcreteDevice()
+        logger1 = device.protocol_logger
+        logger2 = device.protocol_logger
+        assert logger1 is logger2
+
+    def test_log_command_returns_start_time(self) -> None:
+        """Test _log_command logs and returns start time."""
+        device = ConcreteDevice()
+        count_before = len(device.protocol_logger.get_messages())
+
+        start_time = device._log_command("TEST_CMD")
+
+        assert isinstance(start_time, float)
+        assert start_time > 0
+
+        # Verify message was logged
+        messages = device.protocol_logger.get_messages()
+        assert len(messages) == count_before + 1
+        assert messages[-1].command == "TEST_CMD"
+
+    def test_log_response_with_latency(self) -> None:
+        """Test _log_response logs response with latency."""
+        device = ConcreteDevice()
+        count_before = len(device.protocol_logger.get_messages())
+
+        start_time = device._log_command("CMD_TEST")
+        device._log_response("CMD_TEST", "OK_RESPONSE", start_time)
+
+        messages = device.protocol_logger.get_messages()
+        assert len(messages) == count_before + 2
+        # Check the last receive message
+        assert messages[-1].response == "OK_RESPONSE"
+        assert messages[-1].latency_ms is not None
+
+    def test_log_response_without_start_time(self) -> None:
+        """Test _log_response works without start time."""
+        device = ConcreteDevice()
+        count_before = len(device.protocol_logger.get_messages())
+
+        device._log_response("CMD_NO_TIME", "OK_NO_LATENCY", None)
+
+        messages = device.protocol_logger.get_messages()
+        assert len(messages) == count_before + 1
+        assert messages[-1].latency_ms is None
+
+    def test_log_error_with_latency(self) -> None:
+        """Test _log_error logs errors with latency."""
+        device = ConcreteDevice()
+        count_before = len(device.protocol_logger.get_messages())
+
+        start_time = device._log_command("FAIL_CMD_TIMED")
+        device._log_error("FAIL_CMD_TIMED", "TimeoutError", start_time)
+
+        messages = device.protocol_logger.get_messages()
+        assert len(messages) == count_before + 2
+        assert messages[-1].error == "TimeoutError"
+        assert messages[-1].latency_ms is not None
+
+    def test_log_error_without_start_time(self) -> None:
+        """Test _log_error works without start time."""
+        device = ConcreteDevice()
+        count_before = len(device.protocol_logger.get_messages())
+
+        device._log_error("FAIL_CMD_NO_TIME", "ErrorNoLatency", None)
+
+        messages = device.protocol_logger.get_messages()
+        assert len(messages) == count_before + 1
+        assert messages[-1].latency_ms is None
+
+    def test_track_operation_context_manager(self) -> None:
+        """Test _track_operation initializes debugger."""
+        device = ConcreteDevice()
+        assert device._debugger is None
+
+        with device._track_operation("test_op"):
+            pass
+
+        assert device._debugger is not None
+
+    def test_track_operation_with_metadata(self) -> None:
+        """Test _track_operation accepts metadata."""
+        device = ConcreteDevice()
+
+        # Should not raise
+        with device._track_operation("test_op", key="value", num=42):
+            pass
+
+    def test_debugger_reused(self) -> None:
+        """Test debugger instance is reused."""
+        device = ConcreteDevice()
+
+        with device._track_operation("op1"):
+            pass
+        debugger1 = device._debugger
+
+        with device._track_operation("op2"):
+            pass
+        debugger2 = device._debugger
+
+        assert debugger1 is debugger2
+
+    def test_error_status_logged(self) -> None:
+        """Test error status is logged appropriately."""
+        device = ConcreteDevice()
+        device._set_status(DeviceStatus.ERROR, "Device error")
+        assert device.status == DeviceStatus.ERROR
+
+    def test_disconnected_from_connected_logged(self) -> None:
+        """Test disconnection from connected state is logged."""
+        device = ConcreteDevice()
+        device._set_status(DeviceStatus.CONNECTED, "Connected")
+        device._set_status(DeviceStatus.DISCONNECTED, "Lost connection")
+        assert device.status == DeviceStatus.DISCONNECTED

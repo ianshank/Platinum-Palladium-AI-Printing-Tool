@@ -54,11 +54,11 @@ def _import_serial() -> Any:
     try:
         import serial
         import serial.tools.list_ports
+
         return serial
     except ImportError as e:
         raise ImportError(
-            "pyserial is required for X-Rite hardware. "
-            "Install with: pip install pyserial"
+            "pyserial is required for X-Rite hardware. Install with: pip install pyserial"
         ) from e
 
 
@@ -144,8 +144,7 @@ class XRiteI1ProDriver:
             if port is None:
                 self._status = DeviceStatus.DISCONNECTED
                 raise DeviceNotFoundError(
-                    "No X-Rite spectrophotometer found. "
-                    "Ensure device is connected and powered on.",
+                    "No X-Rite spectrophotometer found. Ensure device is connected and powered on.",
                     device_type="spectrophotometer",
                 )
 

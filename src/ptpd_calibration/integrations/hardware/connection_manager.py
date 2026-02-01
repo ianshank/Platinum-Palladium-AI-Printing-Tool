@@ -28,9 +28,10 @@ from __future__ import annotations
 
 import threading
 import time
-from contextlib import contextmanager
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Generic, Iterator, TypeVar
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager, suppress
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from ptpd_calibration.core.logging import get_logger
 from ptpd_calibration.integrations.hardware.exceptions import (
@@ -194,9 +195,7 @@ class ConnectionManager(Generic[T]):
             self._connection_params = kwargs
 
             try:
-                logger.info(
-                    f"Connecting to device: {self._device.__class__.__name__}"
-                )
+                logger.info(f"Connecting to device: {self._device.__class__.__name__}")
 
                 if hasattr(self._device, "connect"):
                     success = self._device.connect(**kwargs)
@@ -288,10 +287,8 @@ class ConnectionManager(Generic[T]):
                 try:
                     # Disconnect first to clean up
                     if hasattr(self._device, "disconnect"):
-                        try:
+                        with suppress(Exception):
                             self._device.disconnect()
-                        except Exception:
-                            pass
 
                     # Attempt reconnect
                     if hasattr(self._device, "connect"):
@@ -303,9 +300,7 @@ class ConnectionManager(Generic[T]):
                             self._state.total_reconnections += 1
                             self._state.reconnect_attempts = 0
                             self._emit("connected")
-                            logger.info(
-                                f"Reconnection successful on attempt {attempt}"
-                            )
+                            logger.info(f"Reconnection successful on attempt {attempt}")
                             return True
 
                 except Exception as e:
@@ -444,9 +439,7 @@ class ConnectionManager(Generic[T]):
         """
         while not self._health_stop_event.is_set():
             # Wait for interval or stop signal
-            if self._health_stop_event.wait(
-                timeout=self._settings.health_check_interval_seconds
-            ):
+            if self._health_stop_event.wait(timeout=self._settings.health_check_interval_seconds):
                 break
 
             # Perform health check
@@ -456,20 +449,14 @@ class ConnectionManager(Generic[T]):
                         self._state.health_check_failures += 1
                         failure_count = self._state.health_check_failures
 
-                    logger.warning(
-                        f"Health check failed ({failure_count} consecutive)"
-                    )
+                    logger.warning(f"Health check failed ({failure_count} consecutive)")
 
                     # Emit event for consecutive failures
                     if failure_count >= 3:
-                        error = Exception(
-                            f"Health check failed {failure_count} times"
-                        )
+                        error = Exception(f"Health check failed {failure_count} times")
                         # Copy callbacks under lock for thread safety
                         with self._lock:
-                            callbacks = list(
-                                self._callbacks.get("health_check_failed", [])
-                            )
+                            callbacks = list(self._callbacks.get("health_check_failed", []))
 
                         for callback in callbacks:
                             try:
@@ -511,7 +498,7 @@ class ConnectionManager(Generic[T]):
             # Fallback to internal state
             return self._state.is_connected
 
-    def __enter__(self) -> "ConnectionManager[T]":
+    def __enter__(self) -> ConnectionManager[T]:
         """Enter context - connect to device."""
         self.connect(**self._connection_params)
         return self

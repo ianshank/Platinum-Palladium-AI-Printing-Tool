@@ -280,10 +280,7 @@ class Win32PrinterDiscovery:
             import win32print
 
             # Enumerate local and network printers
-            flags = (
-                win32print.PRINTER_ENUM_LOCAL
-                | win32print.PRINTER_ENUM_CONNECTIONS
-            )
+            flags = win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
             printers = win32print.EnumPrinters(flags)
 
             for printer in printers:
@@ -367,7 +364,7 @@ class IPPPrinterDiscovery:
         try:
             import time
 
-            from zeroconf import ServiceBrowser, ServiceStateChange, Zeroconf
+            from zeroconf import ServiceBrowser, Zeroconf
 
             class IPPListener:
                 def __init__(self) -> None:
@@ -382,9 +379,7 @@ class IPPPrinterDiscovery:
                     info = zeroconf.get_service_info(service_type, name)
                     if info:
                         printer_name = name.replace("._ipp._tcp.local.", "")
-                        addresses = [
-                            ".".join(map(str, addr)) for addr in info.addresses
-                        ]
+                        addresses = [".".join(map(str, addr)) for addr in info.addresses]
                         port = info.port
 
                         device_id = f"ipp-{printer_name.replace(' ', '_').lower()}"
@@ -515,9 +510,10 @@ def discover_all_devices(
     all_discovered: list[DiscoveredDevice] = []
 
     # Spectrophotometer discovery
-    if device_types is None or DeviceType.SPECTROPHOTOMETER in device_types:
-        if USBDeviceDiscovery.is_available():
-            all_discovered.extend(USBDeviceDiscovery.discover())
+    if (
+        device_types is None or DeviceType.SPECTROPHOTOMETER in device_types
+    ) and USBDeviceDiscovery.is_available():
+        all_discovered.extend(USBDeviceDiscovery.discover())
 
     # Printer discovery
     if device_types is None or DeviceType.PRINTER in device_types:

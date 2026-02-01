@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any
 
 from ptpd_calibration.core.logging import get_logger
 from ptpd_calibration.integrations.protocols import DeviceInfo, DeviceStatus
@@ -168,10 +169,14 @@ class HardwareDeviceBase(ABC):
         self._status = new_status
 
         if message:
-            log_message = f"[{self._device_type}] {message} ({old_status.value} → {new_status.value})"
+            log_message = (
+                f"[{self._device_type}] {message} ({old_status.value} → {new_status.value})"
+            )
             if new_status == DeviceStatus.ERROR:
                 logger.error(log_message)
-            elif new_status == DeviceStatus.DISCONNECTED and old_status != DeviceStatus.DISCONNECTED:
+            elif (
+                new_status == DeviceStatus.DISCONNECTED and old_status != DeviceStatus.DISCONNECTED
+            ):
                 logger.warning(log_message)
             else:
                 logger.info(log_message)

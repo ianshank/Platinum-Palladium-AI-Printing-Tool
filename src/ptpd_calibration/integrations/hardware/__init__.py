@@ -148,8 +148,7 @@ def get_spectrophotometer_driver(
         return XRiteI1ProDriver(port=port)
     except ImportError as e:
         raise ImportError(
-            "Hardware drivers not installed. Install with: "
-            "pip install ptpd-calibration[hardware]"
+            "Hardware drivers not installed. Install with: pip install ptpd-calibration[hardware]"
         ) from e
 
 
@@ -184,9 +183,7 @@ def get_printer_driver(
 
             return CUPSPrinterDriver(printer_name=printer_name)
         except ImportError as e:
-            raise ImportError(
-                "CUPS drivers not installed. Install with: pip install pycups"
-            ) from e
+            raise ImportError("CUPS drivers not installed. Install with: pip install pycups") from e
 
     elif system == "Windows":
         try:
@@ -212,7 +209,7 @@ def get_device(
     simulate: bool | None = None,
     auto_connect: bool = False,
     managed: bool = True,
-) -> ConnectionManager["SpectrophotometerProtocol"]: ...
+) -> ConnectionManager[SpectrophotometerProtocol]: ...
 
 
 @overload
@@ -223,7 +220,7 @@ def get_device(
     simulate: bool | None = None,
     auto_connect: bool = False,
     managed: bool = True,
-) -> ConnectionManager["PrinterProtocol"]: ...
+) -> ConnectionManager[PrinterProtocol]: ...
 
 
 @overload
@@ -388,9 +385,7 @@ def initialize_discovery() -> DeviceRegistry:
     registry.register_discovery_handler(
         DeviceType.PRINTER,
         lambda: [
-            d
-            for d in SimulatedDeviceDiscovery.discover()
-            if d.device_type == DeviceType.PRINTER
+            d for d in SimulatedDeviceDiscovery.discover() if d.device_type == DeviceType.PRINTER
         ],
     )
 

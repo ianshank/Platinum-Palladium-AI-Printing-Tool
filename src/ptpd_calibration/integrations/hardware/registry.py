@@ -24,9 +24,10 @@ Usage:
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from ptpd_calibration.core.logging import get_logger
 from ptpd_calibration.integrations.protocols import DeviceInfo, DeviceStatus
@@ -223,9 +224,7 @@ class DeviceRegistry:
                         for device in discovered:
                             self._register_discovered_device(device)
                     except Exception as e:
-                        logger.warning(
-                            f"Discovery handler failed for {device_type.value}: {e}"
-                        )
+                        logger.warning(f"Discovery handler failed for {device_type.value}: {e}")
 
             logger.info(f"Discovered {len(self._devices)} devices")
             return dict(self._devices)
@@ -334,8 +333,7 @@ class DeviceRegistry:
             discovered = DiscoveredDevice(
                 device_type=device_type,
                 device_id=device_id,
-                device_info=device_info
-                or DeviceInfo(vendor="Manual", model="Registration"),
+                device_info=device_info or DeviceInfo(vendor="Manual", model="Registration"),
                 connection_params=connection_params or {},
                 is_simulated=is_simulated,
             )
@@ -404,16 +402,17 @@ class DeviceRegistry:
                     return None
 
             # Auto-connect if requested
-            if auto_connect and registered.instance is not None:
-                if (
-                    hasattr(registered.instance, "status")
-                    and registered.instance.status != DeviceStatus.CONNECTED
-                ):
-                    try:
-                        params = registered.discovered_info.connection_params
-                        registered.instance.connect(**params)
-                    except Exception as e:
-                        logger.error(f"Failed to connect to device {device_id}: {e}")
+            if (
+                auto_connect
+                and registered.instance is not None
+                and hasattr(registered.instance, "status")
+                and registered.instance.status != DeviceStatus.CONNECTED
+            ):
+                try:
+                    params = registered.discovered_info.connection_params
+                    registered.instance.connect(**params)
+                except Exception as e:
+                    logger.error(f"Failed to connect to device {device_id}: {e}")
 
             return registered.instance
 
@@ -431,9 +430,7 @@ class DeviceRegistry:
         """
         with self._device_lock:
             return [
-                device
-                for device in self._devices.values()
-                if device.device_type == device_type
+                device for device in self._devices.values() if device.device_type == device_type
             ]
 
     def get_all_devices(self) -> dict[str, RegisteredDevice]:

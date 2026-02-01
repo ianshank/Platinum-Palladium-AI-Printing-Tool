@@ -21,9 +21,7 @@ Usage:
 from __future__ import annotations
 
 import platform
-import tempfile
 import time
-import uuid
 from pathlib import Path
 from typing import Any
 
@@ -35,7 +33,6 @@ from ptpd_calibration.integrations.hardware.constants import (
 )
 from ptpd_calibration.integrations.hardware.exceptions import (
     PrinterDriverError,
-    PrinterError,
     PrinterNotFoundError,
     PrintJobError,
 )
@@ -69,8 +66,7 @@ def _import_win32() -> tuple[Any, Any, Any]:
         return win32print, win32api, win32con
     except ImportError as e:
         raise ImportError(
-            "pywin32 is required for Windows printing. "
-            "Install with: pip install pywin32"
+            "pywin32 is required for Windows printing. Install with: pip install pywin32"
         ) from e
 
 
@@ -175,7 +171,6 @@ class Win32PrinterDriver(HardwareDeviceBase):
             try:
                 printer_info = win32print.GetPrinter(self._printer_handle, 2)
                 driver_name = printer_info.get("pDriverName", "Unknown")
-                port_name = printer_info.get("pPortName", "Unknown")
                 status = printer_info.get("Status", 0)
 
                 # Determine vendor from driver name
@@ -444,10 +439,7 @@ class Win32PrinterDriver(HardwareDeviceBase):
         try:
             win32print, _, _ = _import_win32()
 
-            flags = (
-                win32print.PRINTER_ENUM_LOCAL
-                | win32print.PRINTER_ENUM_CONNECTIONS
-            )
+            flags = win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
             printers = win32print.EnumPrinters(flags)
 
             return [p[2] for p in printers]
