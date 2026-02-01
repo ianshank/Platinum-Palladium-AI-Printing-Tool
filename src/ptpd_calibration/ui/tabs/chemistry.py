@@ -186,5 +186,5 @@ def build_chemistry_tab():
 
         # Log to session (placeholder)
         log_btn.click(
-            lambda x: gr.Info("Recipe logged to session!"), inputs=[recipe_json], outputs=[]
+            lambda _: gr.Info("Recipe logged to session!"), inputs=[recipe_json], outputs=[]
         )

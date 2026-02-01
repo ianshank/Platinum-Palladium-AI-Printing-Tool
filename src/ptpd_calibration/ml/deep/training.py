@@ -594,7 +594,7 @@ class CurveTrainer:
 
         # Correlation
         correlations = []
-        for p, t in zip(predictions, targets):
+        for p, t in zip(predictions, targets, strict=True):
             correlations.append(np.corrcoef(p, t)[0, 1])
         mean_correlation = float(np.mean(correlations))
 

@@ -25,7 +25,7 @@ except ImportError:
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.ptpd_calibration.rag.database import get_rag_db
+from src.ptpd_calibration.rag.database import get_rag_db  # noqa: E402
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

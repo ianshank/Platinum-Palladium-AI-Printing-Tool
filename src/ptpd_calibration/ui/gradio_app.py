@@ -2357,7 +2357,7 @@ def create_gradio_app(share: bool = False):
 
                 # Filter out None values and create valid points
                 points = []
-                for inp, out in zip(inputs, outputs):
+                for inp, out in zip(inputs, outputs, strict=True):
                     if inp is not None and out is not None:
                         points.append((float(inp), float(out)))
 
@@ -2491,7 +2491,7 @@ def create_gradio_app(share: bool = False):
                     outputs = list(point_values[9:18])
 
                     points = []
-                    for inp, out in zip(inputs, outputs):
+                    for inp, out in zip(inputs, outputs, strict=True):
                         if inp is not None and out is not None:
                             points.append((float(inp), float(out)))
 

@@ -345,7 +345,7 @@ class TrainingPipeline:
                 config_dict[field_name] = getattr(base_config, field_name)
 
             # Apply hyperparameters
-            for name, value in zip(param_names, combo):
+            for name, value in zip(param_names, combo, strict=True):
                 config_dict[name] = value
 
             config = ExperimentConfig(**config_dict)
