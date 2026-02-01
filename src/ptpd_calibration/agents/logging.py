@@ -8,13 +8,13 @@ import json
 import logging
 import sys
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from ptpd_calibration.config import get_settings
 
@@ -338,7 +338,7 @@ class AgentLogger:
     ) -> None:
         """Log agent completion event."""
         self.info(
-            f"Agent completed",
+            "Agent completed",
             event_type=EventType.AGENT_COMPLETED,
             duration_ms=duration_ms,
             data={"agent_id": agent_id, "result_summary": result_summary[:200], **kwargs},

@@ -4,8 +4,6 @@ Software Quality Engineering (SQE) subagent for test generation and validation.
 Creates test plans, generates test cases, and validates implementations.
 """
 
-import json
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -15,6 +13,11 @@ from ptpd_calibration.agents.subagents.base import (
     SubagentConfig,
     SubagentResult,
     register_subagent,
+)
+from ptpd_calibration.agents.utils import (
+    extract_code_block,
+    extract_imports,
+    parse_json_response,
 )
 
 
@@ -262,14 +265,9 @@ Output as JSON matching this structure:
 
         response = await self._llm_complete(prompt, system=SQE_SYSTEM_PROMPT)
 
-        try:
-            start = response.find("{")
-            end = response.rfind("}") + 1
-            if start >= 0 and end > start:
-                data = json.loads(response[start:end])
-                return TestPlan(**data)
-        except (json.JSONDecodeError, ValueError):
-            pass
+        result = parse_json_response(response, model_class=TestPlan)
+        if isinstance(result, TestPlan):
+            return result
 
         # Fallback plan
         return self._create_fallback_plan(feature_description)
@@ -386,13 +384,9 @@ Output as JSON:
 
         response = await self._llm_complete(prompt, system=SQE_SYSTEM_PROMPT)
 
-        try:
-            start = response.find("{")
-            end = response.rfind("}") + 1
-            if start >= 0 and end > start:
-                return json.loads(response[start:end])
-        except json.JSONDecodeError:
-            pass
+        result = parse_json_response(response)
+        if isinstance(result, dict):
+            return result
 
         return {
             "overall_pass": False,
@@ -402,32 +396,15 @@ Output as JSON:
 
     def _extract_code(self, response: str) -> str:
         """Extract Python code from LLM response."""
-        # Look for code blocks
-        if "```python" in response:
-            start = response.find("```python") + 9
-            end = response.find("```", start)
-            if end > start:
-                return response[start:end].strip()
-        elif "```" in response:
-            start = response.find("```") + 3
-            end = response.find("```", start)
-            if end > start:
-                return response[start:end].strip()
-
-        # Return response if it looks like Python code
-        if "import" in response or "def test_" in response:
-            return response.strip()
-
-        return ""
+        return extract_code_block(
+            response,
+            language="python",
+            fallback_keywords=["import", "def test_"],
+        )
 
     def _extract_imports(self, code: str) -> list[str]:
         """Extract import statements from code."""
-        imports = []
-        for line in code.split("\n"):
-            line = line.strip()
-            if line.startswith("import ") or line.startswith("from "):
-                imports.append(line)
-        return imports
+        return extract_imports(code)
 
     def _extract_markers(self, code: str) -> list[str]:
         """Extract pytest markers from code."""
@@ -439,7 +416,7 @@ Output as JSON:
                     markers.append(marker)
         return markers
 
-    def _generate_fallback_tests(self, code: str, module_path: str) -> str:
+    def _generate_fallback_tests(self, _code: str, module_path: str) -> str:
         """Generate basic fallback tests."""
         return f'''"""
 Auto-generated tests for {module_path}.

@@ -6,15 +6,16 @@ Provides message bus, protocols, and coordination for multi-agent workflows.
 
 import asyncio
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from ptpd_calibration.agents.logging import AgentLogger, EventType, get_agent_logger
+from ptpd_calibration.agents.logging import EventType, get_agent_logger
 
 
 class MessagePriority(int, Enum):
@@ -93,10 +94,7 @@ class MessageHandler:
             return False
 
         # Check action
-        if self.actions and message.action not in self.actions:
-            return False
-
-        return True
+        return not (self.actions and message.action not in self.actions)
 
     async def handle(self, message: AgentMessage) -> Any:
         """Handle the message."""

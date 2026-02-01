@@ -4,8 +4,6 @@ Planner subagent for task decomposition and architecture planning.
 Generates C4-aligned plans with epics, stories, and acceptance criteria.
 """
 
-import json
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +14,7 @@ from ptpd_calibration.agents.subagents.base import (
     SubagentResult,
     register_subagent,
 )
+from ptpd_calibration.agents.utils import parse_json_response
 
 
 class AcceptanceCriteria(BaseModel):
@@ -216,19 +215,9 @@ class PlannerAgent(BaseSubagent):
 
     def _parse_plan_response(self, response: str, task: str) -> ImplementationPlan:
         """Parse LLM response into ImplementationPlan."""
-        # Try to extract JSON from response
-        try:
-            # Find JSON in response
-            start = response.find("{")
-            end = response.rfind("}") + 1
-            if start >= 0 and end > start:
-                json_str = response[start:end]
-                data = json.loads(json_str)
-                return ImplementationPlan(**data)
-        except (json.JSONDecodeError, ValueError):
-            pass
-
-        # If parsing fails, create a basic plan
+        result = parse_json_response(response, model_class=ImplementationPlan)
+        if isinstance(result, ImplementationPlan):
+            return result
         return self._create_fallback_plan(task)
 
     def _create_fallback_plan(self, task: str) -> ImplementationPlan:
@@ -325,7 +314,7 @@ class PlannerAgent(BaseSubagent):
     async def create_epic_plan(
         self,
         epic_description: str,
-        context: dict | None = None,
+        _context: dict | None = None,
     ) -> Epic:
         """
         Create a detailed epic with stories.
@@ -357,14 +346,9 @@ Output as JSON matching this structure:
 
         response = await self._llm_complete(prompt, system=PLANNER_SYSTEM_PROMPT)
 
-        try:
-            start = response.find("{")
-            end = response.rfind("}") + 1
-            if start >= 0 and end > start:
-                data = json.loads(response[start:end])
-                return Epic(**data)
-        except (json.JSONDecodeError, ValueError):
-            pass
+        result = parse_json_response(response, model_class=Epic)
+        if isinstance(result, Epic):
+            return result
 
         # Fallback
         return Epic(
@@ -386,7 +370,7 @@ Output as JSON matching this structure:
     async def decompose_task(
         self,
         task: str,
-        max_depth: int = 2,
+        _max_depth: int = 2,
     ) -> list[dict]:
         """
         Recursively decompose a task into subtasks.
@@ -412,16 +396,8 @@ Output as JSON array:
 
         response = await self._llm_complete(prompt)
 
-        try:
-            start = response.find("[")
-            end = response.rfind("]") + 1
-            if start >= 0 and end > start:
-                return json.loads(response[start:end])
-        except json.JSONDecodeError:
-            pass
+        result = parse_json_response(response, parse_array=True)
+        if isinstance(result, list):
+            return result
 
         return [{"title": task, "description": task, "complexity": "medium"}]
-
-    def get_cached_plan(self, task_key: str) -> ImplementationPlan | None:
-        """Get a cached plan by task key."""
-        return self._plan_cache.get(task_key[:50])

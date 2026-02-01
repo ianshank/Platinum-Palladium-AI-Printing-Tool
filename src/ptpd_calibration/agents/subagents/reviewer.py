@@ -4,9 +4,7 @@ Reviewer subagent for code review and quality analysis.
 Reviews code for quality, security, and best practices.
 """
 
-import json
 from enum import Enum
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -17,6 +15,7 @@ from ptpd_calibration.agents.subagents.base import (
     SubagentResult,
     register_subagent,
 )
+from ptpd_calibration.agents.utils import parse_json_response
 
 
 class IssueSeverity(str, Enum):
@@ -271,14 +270,9 @@ Output as JSON with this structure:
 
         response = await self._llm_complete(prompt, system=REVIEWER_SYSTEM_PROMPT)
 
-        try:
-            start = response.find("{")
-            end = response.rfind("}") + 1
-            if start >= 0 and end > start:
-                data = json.loads(response[start:end])
-                return CodeReview(**data)
-        except (json.JSONDecodeError, ValueError):
-            pass
+        result = parse_json_response(response, model_class=CodeReview)
+        if isinstance(result, CodeReview):
+            return result
 
         # Fallback review
         return self._create_fallback_review(code)
@@ -324,14 +318,9 @@ Output as JSON array of issues:
 
         response = await self._llm_complete(prompt, system=REVIEWER_SYSTEM_PROMPT)
 
-        try:
-            start = response.find("[")
-            end = response.rfind("]") + 1
-            if start >= 0 and end > start:
-                data = json.loads(response[start:end])
-                return [CodeIssue(**issue) for issue in data]
-        except (json.JSONDecodeError, ValueError):
-            pass
+        result = parse_json_response(response, parse_array=True)
+        if isinstance(result, list):
+            return [CodeIssue(**issue) for issue in result]
 
         return []
 
@@ -374,14 +363,9 @@ Output as JSON array of issues:
 
         response = await self._llm_complete(prompt, system=REVIEWER_SYSTEM_PROMPT)
 
-        try:
-            start = response.find("[")
-            end = response.rfind("]") + 1
-            if start >= 0 and end > start:
-                data = json.loads(response[start:end])
-                return [CodeIssue(**issue) for issue in data]
-        except (json.JSONDecodeError, ValueError):
-            pass
+        result = parse_json_response(response, parse_array=True)
+        if isinstance(result, list):
+            return [CodeIssue(**issue) for issue in result]
 
         return []
 
@@ -432,13 +416,9 @@ Output as JSON:
 
         response = await self._llm_complete(prompt, system=REVIEWER_SYSTEM_PROMPT)
 
-        try:
-            start = response.find("{")
-            end = response.rfind("}") + 1
-            if start >= 0 and end > start:
-                return json.loads(response[start:end])
-        except json.JSONDecodeError:
-            pass
+        result = parse_json_response(response)
+        if isinstance(result, dict):
+            return result
 
         return {
             "changes": ["Unable to parse changes"],
@@ -478,13 +458,9 @@ Output as JSON array of strings:
 
         response = await self._llm_complete(prompt, system=REVIEWER_SYSTEM_PROMPT)
 
-        try:
-            start = response.find("[")
-            end = response.rfind("]") + 1
-            if start >= 0 and end > start:
-                return json.loads(response[start:end])
-        except json.JSONDecodeError:
-            pass
+        result = parse_json_response(response, parse_array=True)
+        if isinstance(result, list):
+            return result
 
         return []
 

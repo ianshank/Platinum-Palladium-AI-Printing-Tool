@@ -5,11 +5,8 @@ Coordinates Planner, SQE, Coder, and Reviewer subagents.
 """
 
 import asyncio
-import time
-from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -17,23 +14,19 @@ from pydantic import BaseModel, Field
 from ptpd_calibration.agents.communication import (
     AgentMessage,
     ConversationManager,
-    MessageBus,
     MessageHandler,
-    MessagePriority,
     MessageType,
     get_message_bus,
 )
-from ptpd_calibration.agents.logging import AgentLogger, EventType, LogContext, get_agent_logger
+from ptpd_calibration.agents.logging import EventType, LogContext, get_agent_logger
 from ptpd_calibration.agents.subagents.base import (
     BaseSubagent,
-    SubagentCapability,
     SubagentConfig,
-    SubagentRegistry,
     SubagentResult,
     SubagentStatus,
     get_subagent_registry,
 )
-from ptpd_calibration.config import AgentSettings, LLMSettings, get_settings
+from ptpd_calibration.config import AgentSettings, LLMSettings
 
 
 class WorkflowStatus(str, Enum):
@@ -206,7 +199,7 @@ class OrchestratorAgent:
         if message.message_type == MessageType.RESPONSE:
             # Handle subagent response
             self._logger.debug(
-                f"Subagent response received",
+                "Subagent response received",
                 data={"correlation_id": message.correlation_id},
             )
 

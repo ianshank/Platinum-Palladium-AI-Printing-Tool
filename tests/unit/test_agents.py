@@ -4,11 +4,8 @@ Comprehensive unit tests for the agentic system.
 Tests for CalibrationAgent, ToolRegistry, AgentMemory, and Planning system.
 """
 
-import json
-import tempfile
-from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -30,7 +27,6 @@ from ptpd_calibration.agents.tools import (
     create_calibration_tools,
 )
 from ptpd_calibration.config import AgentSettings, LLMSettings
-
 
 # =============================================================================
 # ToolResult Tests
@@ -163,7 +159,7 @@ class TestTool:
     async def test_tool_execution_error(self):
         """Test tool execution with error."""
 
-        def failing_handler(**kwargs):
+        def failing_handler(**_kwargs):
             raise ValueError("Test error")
 
         tool = Tool(
@@ -188,7 +184,7 @@ class TestTool:
     def test_to_anthropic_format_with_optional_params(self):
         """Test Anthropic format with optional parameters."""
 
-        def handler(**kwargs):
+        def handler(**_kwargs):
             return ToolResult(success=True, data="ok")
 
         tool = Tool(
@@ -910,7 +906,7 @@ class TestCalibrationAgent:
             return_value='THOUGHT: Keep going\nACTION: {"tool": "analyze_densities", "args": {"densities": [0.1]}}'
         )
 
-        result = await agent.run("Keep analyzing forever")
+        await agent.run("Keep analyzing forever")
         # Should have stopped at max_iterations (5)
         assert agent._iteration_count <= agent.settings.max_iterations
 

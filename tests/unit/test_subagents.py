@@ -4,25 +4,20 @@ Unit tests for the subagent system.
 Tests for BaseSubagent, SubagentRegistry, and specialized subagents.
 """
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
 from ptpd_calibration.agents.subagents.base import (
-    BaseSubagent,
     SubagentCapability,
-    SubagentConfig,
     SubagentRegistry,
     SubagentResult,
     SubagentStatus,
-    get_subagent_registry,
-    register_subagent,
 )
 from ptpd_calibration.agents.subagents.coder import (
-    CoderAgent,
-    CodeFile,
     CodeChange,
+    CodeFile,
+    CoderAgent,
     ImplementationResult,
 )
 from ptpd_calibration.agents.subagents.planner import (
@@ -36,19 +31,17 @@ from ptpd_calibration.agents.subagents.planner import (
 from ptpd_calibration.agents.subagents.reviewer import (
     CodeIssue,
     CodeReview,
-    IssueSeverity,
     IssueCategory,
+    IssueSeverity,
     ReviewerAgent,
     ReviewScore,
 )
 from ptpd_calibration.agents.subagents.sqa import (
-    GeneratedTest,
     SQEAgent,
     TestCase,
     TestPlan,
     TestSuite,
 )
-
 
 # =============================================================================
 # SubagentResult Tests

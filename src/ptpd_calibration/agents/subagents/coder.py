@@ -4,8 +4,6 @@ Coder subagent for code generation and implementation.
 Generates Python code following project conventions and best practices.
 """
 
-import json
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -15,6 +13,12 @@ from ptpd_calibration.agents.subagents.base import (
     SubagentConfig,
     SubagentResult,
     register_subagent,
+)
+from ptpd_calibration.agents.utils import (
+    extract_classes,
+    extract_code_block,
+    extract_functions,
+    extract_imports,
 )
 
 
@@ -499,52 +503,16 @@ Output the refactored code.
 
     def _extract_code(self, response: str) -> str:
         """Extract Python code from LLM response."""
-        # Look for code blocks
-        if "```python" in response:
-            start = response.find("```python") + 9
-            end = response.find("```", start)
-            if end > start:
-                return response[start:end].strip()
-        elif "```" in response:
-            start = response.find("```") + 3
-            end = response.find("```", start)
-            if end > start:
-                return response[start:end].strip()
-
-        # Check if response is valid Python
-        if any(kw in response for kw in ["def ", "class ", "import "]):
-            return response.strip()
-
-        return ""
+        return extract_code_block(response)
 
     def _extract_imports(self, code: str) -> list[str]:
         """Extract import statements."""
-        imports = []
-        for line in code.split("\n"):
-            line = line.strip()
-            if line.startswith("import ") or line.startswith("from "):
-                imports.append(line)
-        return imports
+        return extract_imports(code)
 
     def _extract_classes(self, code: str) -> list[str]:
         """Extract class names."""
-        classes = []
-        for line in code.split("\n"):
-            if line.startswith("class "):
-                name = line.split("class ")[1].split("(")[0].split(":")[0].strip()
-                classes.append(name)
-        return classes
+        return extract_classes(code)
 
     def _extract_functions(self, code: str) -> list[str]:
         """Extract function names."""
-        functions = []
-        for line in code.split("\n"):
-            stripped = line.lstrip()
-            if stripped.startswith("def "):
-                name = stripped.split("def ")[1].split("(")[0].strip()
-                functions.append(name)
-        return functions
-
-    def get_generated_file(self, filename: str) -> CodeFile | None:
-        """Get a previously generated file."""
-        return self._generated_files.get(filename)
+        return extract_functions(code)

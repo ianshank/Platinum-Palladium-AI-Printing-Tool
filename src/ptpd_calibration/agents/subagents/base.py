@@ -6,15 +6,16 @@ Provides abstract base class for all subagents and centralized registry.
 
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, TypeVar
-from uuid import UUID, uuid4
+from typing import Any
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from ptpd_calibration.agents.logging import AgentLogger, EventType, LogContext, get_agent_logger
+from ptpd_calibration.agents.logging import EventType, LogContext, get_agent_logger
 from ptpd_calibration.agents.tools import ToolRegistry
 from ptpd_calibration.config import AgentSettings, LLMSettings, get_settings
 from ptpd_calibration.llm.client import LLMClient, create_client
@@ -176,9 +177,9 @@ class BaseSubagent(ABC):
     async def _execute_with_retry(
         self,
         operation: str,
-        func,
-        *args,
-        **kwargs,
+        func: Callable,
+        *args: Any,
+        **kwargs: Any,
     ) -> Any:
         """
         Execute an operation with retry logic.
@@ -325,42 +326,6 @@ class BaseSubagent(ABC):
         )
         return message
 
-    def receive_message(self, message: SubagentMessage) -> None:
-        """
-        Receive a message from another agent.
-
-        Args:
-            message: Received message.
-        """
-        self._messages.append(message)
-        self._logger.debug(
-            f"Message received from {message.sender_type}",
-            event_type=EventType.MESSAGE_RECEIVED,
-            data={"message_type": message.message_type},
-        )
-
-    def get_messages(
-        self,
-        message_type: str | None = None,
-        sender_type: str | None = None,
-    ) -> list[SubagentMessage]:
-        """
-        Get messages matching criteria.
-
-        Args:
-            message_type: Filter by message type.
-            sender_type: Filter by sender type.
-
-        Returns:
-            List of matching messages.
-        """
-        result = self._messages
-        if message_type:
-            result = [m for m in result if m.message_type == message_type]
-        if sender_type:
-            result = [m for m in result if m.sender_type == sender_type]
-        return result
-
 
 class SubagentRegistry:
     """
@@ -440,7 +405,7 @@ class SubagentRegistry:
         agent = agent_class(config)
         self._instances[agent.id] = agent
         self._logger.info(
-            f"Created agent instance",
+            "Created agent instance",
             event_type=EventType.SUBAGENT_SPAWNED,
             data={"agent_id": agent.id, "agent_type": agent_type},
         )

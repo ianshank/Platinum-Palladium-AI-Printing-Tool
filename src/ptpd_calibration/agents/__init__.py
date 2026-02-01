@@ -80,6 +80,16 @@ from ptpd_calibration.agents.tools import (
     ToolResult,
     create_calibration_tools,
 )
+from ptpd_calibration.agents.utils import (
+    extract_classes,
+    extract_code_block,
+    extract_functions,
+    extract_imports,
+    format_bullet_list,
+    parse_json_response,
+    sanitize_identifier,
+    truncate_text,
+)
 
 __all__ = [
     # Core Agent
@@ -143,4 +153,13 @@ __all__ = [
     "get_agent_logger",
     "configure_agent_logging",
     "timed_operation",
+    # Utils
+    "extract_classes",
+    "extract_code_block",
+    "extract_functions",
+    "extract_imports",
+    "format_bullet_list",
+    "parse_json_response",
+    "sanitize_identifier",
+    "truncate_text",
 ]
