@@ -7,14 +7,14 @@ health monitoring, and event callbacks.
 
 import threading
 import time
-from unittest.mock import MagicMock, patch
+from contextlib import suppress
+from unittest.mock import MagicMock
 
 import pytest
 
 from ptpd_calibration.integrations.hardware.connection_manager import (
     ConnectionManager,
     ConnectionSettings,
-    ConnectionState,
 )
 from ptpd_calibration.integrations.hardware.exceptions import (
     DeviceConnectionError,
@@ -52,10 +52,8 @@ def manager(simulated_device, connection_settings):
     mgr = ConnectionManager(simulated_device, connection_settings)
     yield mgr
     # Ensure cleanup
-    try:
+    with suppress(Exception):
         mgr.disconnect()
-    except Exception:
-        pass
 
 
 class TestConnectionSettings:
@@ -202,7 +200,7 @@ class TestReconnect:
         result = manager.reconnect()
         assert result is True
 
-    def test_reconnect_failure_raises(self, simulated_device, connection_settings):
+    def test_reconnect_failure_raises(self, connection_settings):
         """Test reconnection failure raises DeviceReconnectionError."""
         # Create a device that fails to connect
         mock_device = MagicMock()
@@ -215,7 +213,7 @@ class TestReconnect:
         with pytest.raises(DeviceReconnectionError):
             manager.reconnect()
 
-    def test_reconnect_attempts_tracked(self, simulated_device, connection_settings):
+    def test_reconnect_attempts_tracked(self, connection_settings):
         """Test reconnection attempts are tracked."""
         mock_device = MagicMock()
         mock_device.connect.return_value = False
@@ -282,7 +280,9 @@ class TestEventCallbacks:
     def test_off_removes_callback(self, manager):
         """Test removing an event callback."""
         events = []
-        callback = lambda: events.append("connected")
+
+        def callback():
+            events.append("connected")
 
         manager.on("connected", callback)
         manager.off("connected", callback)
@@ -319,7 +319,7 @@ class TestContextManager:
         """Test session context manager with connection kwargs."""
         manager = ConnectionManager(simulated_device, connection_settings)
 
-        with manager.session(port="/dev/ttyUSB0") as device:
+        with manager.session(port="/dev/ttyUSB0") as _device:
             assert manager.is_connected is True
 
     def test_enter_exit_protocol(self, simulated_device, connection_settings):
@@ -411,15 +411,12 @@ class TestHealthMonitoring:
 
         assert manager._health_thread is None or not manager._health_thread.is_alive()
 
-    def test_health_check_failure_triggers_reconnect(self, connection_settings):
+    def test_health_check_failure_triggers_reconnect(self):
         """Test health check failure triggers reconnection."""
         # Create a mock device that reports disconnected status
         mock_device = MagicMock()
         mock_device.connect.return_value = True
         mock_device.disconnect.return_value = None
-
-        # Start connected, then report disconnected
-        status_sequence = [DeviceStatus.CONNECTED, DeviceStatus.DISCONNECTED]
         mock_device.status = DeviceStatus.CONNECTED
 
         settings = ConnectionSettings(
@@ -430,9 +427,13 @@ class TestHealthMonitoring:
             reconnect_delay_seconds=0.01,
         )
         manager = ConnectionManager(mock_device, settings)
+        manager.connect()
 
-        # This test verifies the health check detects disconnection
-        # Full reconnection testing is covered in test_reconnect
+        # Verify connection was established
+        assert manager.is_connected
+
+        # Cleanup
+        manager.disconnect()
 
 
 class TestThreadSafety:

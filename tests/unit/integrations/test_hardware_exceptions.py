@@ -5,8 +5,6 @@ Tests all exception types including the new exceptions added
 for connection management and discovery.
 """
 
-import pytest
-
 from ptpd_calibration.integrations.hardware.exceptions import (
     CalibrationError,
     DeviceCommunicationError,

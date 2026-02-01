@@ -123,14 +123,16 @@ class TestCUPSPrinterDiscovery:
             }
             mock_connection_class.return_value = mock_conn
 
-            with patch.object(CUPSPrinterDiscovery, "is_available", return_value=True):
-                with patch("platform.system", return_value="Linux"):
-                    result = CUPSPrinterDiscovery.discover()
+            with (
+                patch.object(CUPSPrinterDiscovery, "is_available", return_value=True),
+                patch("platform.system", return_value="Linux"),
+            ):
+                result = CUPSPrinterDiscovery.discover()
 
-                    assert len(result) == 1
-                    assert result[0].device_type == DeviceType.PRINTER
-                    assert result[0].device_info.vendor == "Epson"
-                    assert result[0].connection_params["printer_name"] == "EPSON_P800"
+                assert len(result) == 1
+                assert result[0].device_type == DeviceType.PRINTER
+                assert result[0].device_info.vendor == "Epson"
+                assert result[0].connection_params["printer_name"] == "EPSON_P800"
 
 
 class TestWin32PrinterDiscovery:
@@ -165,13 +167,15 @@ class TestWin32PrinterDiscovery:
                 (0, "Epson SureColor P800", "EPSON SureColor P800", ""),
             ]
 
-            with patch.object(Win32PrinterDiscovery, "is_available", return_value=True):
-                with patch("platform.system", return_value="Windows"):
-                    result = Win32PrinterDiscovery.discover()
+            with (
+                patch.object(Win32PrinterDiscovery, "is_available", return_value=True),
+                patch("platform.system", return_value="Windows"),
+            ):
+                result = Win32PrinterDiscovery.discover()
 
-                    assert len(result) == 1
-                    assert result[0].device_type == DeviceType.PRINTER
-                    assert result[0].device_info.vendor == "Epson"
+                assert len(result) == 1
+                assert result[0].device_type == DeviceType.PRINTER
+                assert result[0].device_info.vendor == "Epson"
 
 
 class TestIPPPrinterDiscovery:

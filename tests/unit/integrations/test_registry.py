@@ -11,13 +11,12 @@ from ptpd_calibration.integrations.hardware.registry import (
     DeviceRegistry,
     DeviceType,
     DiscoveredDevice,
-    RegisteredDevice,
 )
 from ptpd_calibration.integrations.hardware.simulated import (
     SimulatedPrinter,
     SimulatedSpectrophotometer,
 )
-from ptpd_calibration.integrations.protocols import DeviceInfo, DeviceStatus
+from ptpd_calibration.integrations.protocols import DeviceInfo
 
 
 @pytest.fixture
@@ -59,14 +58,14 @@ def sample_discovered_device(sample_device_info):
 class TestDeviceRegistrySingleton:
     """Tests for singleton pattern."""
 
-    def test_singleton_returns_same_instance(self, clean_registry):
+    def test_singleton_returns_same_instance(self, clean_registry):  # noqa: ARG002
         """Verify singleton returns same instance."""
         registry1 = DeviceRegistry()
         registry2 = DeviceRegistry()
 
         assert registry1 is registry2
 
-    def test_reset_singleton_creates_new_instance(self, clean_registry):
+    def test_reset_singleton_creates_new_instance(self, clean_registry):  # noqa: ARG002
         """Verify reset_singleton creates new instance."""
         registry1 = DeviceRegistry()
         DeviceRegistry.reset_singleton()

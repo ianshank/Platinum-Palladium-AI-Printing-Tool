@@ -200,10 +200,7 @@ class TestParseDeviceResponse:
         """Test parsing with custom delimiters."""
         response = "D:1.234;L:50.12"
         result = parse_device_response(
-            response,
-            delimiter=";",
-            key_value_separator=":",
-            remove_prefix=""
+            response, delimiter=";", key_value_separator=":", remove_prefix=""
         )
         assert result["D"] == 1.234
         assert result["L"] == 50.12

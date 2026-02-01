@@ -8,7 +8,6 @@ import json
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -311,9 +310,8 @@ class TestHardwareDebugger:
         debugger.enable(DebugLevel.VERBOSE)
         debugger._operations.clear()
 
-        with pytest.raises(ValueError):
-            with debugger.track_operation("failing_operation"):
-                raise ValueError("Test error")
+        with pytest.raises(ValueError), debugger.track_operation("failing_operation"):
+            raise ValueError("Test error")
 
         ops = debugger.get_operations()
         assert len(ops) >= 1
