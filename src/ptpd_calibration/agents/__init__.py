@@ -15,6 +15,16 @@ from ptpd_calibration.agents.agent import (
     ReasoningStep,
     create_agent,
 )
+from ptpd_calibration.agents.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerSettings,
+    CircuitBreakerState,
+    CircuitOpenError,
+    CircuitState,
+    get_all_circuit_breaker_stats,
+    get_circuit_breaker,
+    reset_all_circuit_breakers,
+)
 from ptpd_calibration.agents.communication import (
     AgentMessage,
     ConversationContext,
@@ -26,6 +36,19 @@ from ptpd_calibration.agents.communication import (
     get_message_bus,
     start_message_bus,
     stop_message_bus,
+)
+
+# Observability components
+from ptpd_calibration.agents.health import (
+    AgentHealthReport,
+    DependencyHealth,
+    DependencyType,
+    HealthChecker,
+    HealthCheckResult,
+    HealthCheckSettings,
+    HealthStatus,
+    check_agent_health,
+    get_health_checker,
 )
 from ptpd_calibration.agents.logging import (
     AgentLogger,
@@ -41,6 +64,20 @@ from ptpd_calibration.agents.memory import (
     AgentMemory,
     MemoryItem,
 )
+from ptpd_calibration.agents.metrics import (
+    Counter,
+    Gauge,
+    Histogram,
+    MetricSample,
+    MetricsRegistry,
+    MetricsSettings,
+    MetricType,
+    get_agent_metrics,
+    get_metrics_registry,
+    record_request,
+    record_token_usage,
+    record_tool_call,
+)
 from ptpd_calibration.agents.orchestrator import (
     OrchestratorAgent,
     OrchestratorConfig,
@@ -49,6 +86,15 @@ from ptpd_calibration.agents.orchestrator import (
     WorkflowStatus,
     WorkflowTask,
     orchestrate_development,
+)
+from ptpd_calibration.agents.persistence import (
+    PersistenceSettings,
+    TaskCheckpoint,
+    WorkflowCheckpoint,
+    WorkflowPersistence,
+    WorkflowState,
+    create_workflow_checkpoint,
+    get_persistence,
 )
 from ptpd_calibration.agents.planning import (
     Plan,
@@ -162,4 +208,44 @@ __all__ = [
     "parse_json_response",
     "sanitize_identifier",
     "truncate_text",
+    # Health Checks
+    "HealthStatus",
+    "HealthChecker",
+    "HealthCheckSettings",
+    "HealthCheckResult",
+    "AgentHealthReport",
+    "DependencyHealth",
+    "DependencyType",
+    "check_agent_health",
+    "get_health_checker",
+    # Circuit Breaker
+    "CircuitBreaker",
+    "CircuitBreakerSettings",
+    "CircuitBreakerState",
+    "CircuitOpenError",
+    "CircuitState",
+    "get_circuit_breaker",
+    "reset_all_circuit_breakers",
+    "get_all_circuit_breaker_stats",
+    # Metrics
+    "Counter",
+    "Gauge",
+    "Histogram",
+    "MetricSample",
+    "MetricsRegistry",
+    "MetricsSettings",
+    "MetricType",
+    "get_metrics_registry",
+    "get_agent_metrics",
+    "record_request",
+    "record_tool_call",
+    "record_token_usage",
+    # Persistence
+    "WorkflowPersistence",
+    "WorkflowCheckpoint",
+    "TaskCheckpoint",
+    "WorkflowState",
+    "PersistenceSettings",
+    "get_persistence",
+    "create_workflow_checkpoint",
 ]

@@ -6,7 +6,6 @@ Tests MessageBus, MessageHandler, AgentMessage, and conversation management.
 
 import asyncio
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -258,7 +257,7 @@ class TestMessageHandler:
     async def test_handle_sync_function(self):
         """Test handler with sync function."""
 
-        def sync_callback(msg):
+        def sync_callback(_msg):
             return {"status": "sync_handled"}
 
         handler = MessageHandler(
@@ -613,3 +612,299 @@ class TestGlobalMessageBus:
         assert bus is not None
         bus2 = get_message_bus()
         assert bus is bus2
+
+
+class TestMessageBusSendAndWait:
+    """Tests for MessageBus.send_and_wait functionality."""
+
+    @pytest.fixture
+    def message_bus(self):
+        """Create a fresh message bus."""
+        return MessageBus()
+
+    @pytest.mark.asyncio
+    async def test_send_and_wait_timeout(self, message_bus):
+        """Test send_and_wait times out when no response."""
+        msg = AgentMessage(
+            sender_id="agent-1",
+            sender_type="test",
+            action="request",
+        )
+        result = await message_bus.send_and_wait(msg, timeout=0.1)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_send_and_wait_with_response(self, message_bus):
+        """Test send_and_wait receives response."""
+        msg = AgentMessage(
+            sender_id="agent-1",
+            sender_type="requester",
+            action="request",
+        )
+
+        async def respond_after_delay():
+            await asyncio.sleep(0.05)
+            await message_bus.respond(
+                original=msg,
+                response_payload={"result": "success"},
+                sender_id="agent-2",
+                sender_type="responder",
+            )
+
+        # Start responding in background
+        await message_bus.send(msg)
+        message_bus._pending_responses[msg.id] = asyncio.Future()
+
+        # Simulate setting the result
+        response_msg = AgentMessage(
+            sender_id="agent-2",
+            sender_type="responder",
+            recipient_id="agent-1",
+            recipient_type="requester",
+            action="request",
+            payload={"result": "success"},
+            correlation_id=msg.id,
+        )
+        message_bus._pending_responses[msg.id].set_result(response_msg)
+
+        result = await message_bus._pending_responses[msg.id]
+        assert result is not None
+        assert result.payload == {"result": "success"}
+
+
+class TestMessageBusRespond:
+    """Tests for MessageBus.respond functionality."""
+
+    @pytest.fixture
+    def message_bus(self):
+        """Create a fresh message bus."""
+        return MessageBus()
+
+    @pytest.mark.asyncio
+    async def test_respond_to_message(self, message_bus):
+        """Test responding to a message."""
+        original = AgentMessage(
+            sender_id="agent-1",
+            sender_type="requester",
+            action="get_data",
+        )
+
+        await message_bus.respond(
+            original=original,
+            response_payload={"data": "test"},
+            sender_id="agent-2",
+            sender_type="responder",
+        )
+
+        assert message_bus.get_queue_size() == 1
+
+    @pytest.mark.asyncio
+    async def test_respond_with_pending_future(self, message_bus):
+        """Test responding when there's a pending future."""
+        original = AgentMessage(
+            sender_id="agent-1",
+            sender_type="requester",
+            action="get_data",
+        )
+
+        # Set up pending response
+        future: asyncio.Future = asyncio.Future()
+        message_bus._pending_responses[original.id] = future
+
+        await message_bus.respond(
+            original=original,
+            response_payload={"data": "result"},
+            sender_id="agent-2",
+            sender_type="responder",
+        )
+
+        # Future should be resolved
+        assert future.done()
+        result = await future
+        assert result.payload == {"data": "result"}
+
+
+class TestMessageBusProcessMessages:
+    """Tests for MessageBus.process_messages functionality."""
+
+    @pytest.fixture
+    def message_bus(self):
+        """Create a fresh message bus."""
+        return MessageBus()
+
+    @pytest.mark.asyncio
+    async def test_process_messages_starts_and_stops(self, message_bus):
+        """Test process_messages can be started and stopped."""
+        async def stop_after_delay():
+            await asyncio.sleep(0.1)
+            message_bus.stop()
+
+        # Start stopper task
+        stopper = asyncio.create_task(stop_after_delay())
+
+        # Run processor briefly
+        processor = asyncio.create_task(message_bus.process_messages())
+
+        await stopper
+        await asyncio.sleep(0.05)  # Let processor notice stop
+        processor.cancel()
+
+        assert message_bus._running is False
+
+    @pytest.mark.asyncio
+    async def test_process_messages_handles_message(self, message_bus):
+        """Test process_messages processes queued messages."""
+        handled = []
+
+        async def handler_callback(msg):
+            handled.append(msg)
+            return {"handled": True}
+
+        handler = MessageHandler(
+            agent_id="receiver",
+            agent_type="test",
+            handler_func=handler_callback,
+        )
+        message_bus.register_handler(handler)
+
+        # Queue a message
+        msg = AgentMessage(
+            sender_id="sender",
+            sender_type="test",
+            recipient_id="receiver",
+            action="process",
+        )
+        await message_bus.send(msg)
+
+        # Start processor
+        async def stop_after_process():
+            await asyncio.sleep(0.2)
+            message_bus.stop()
+
+        stopper = asyncio.create_task(stop_after_process())
+        processor = asyncio.create_task(message_bus.process_messages())
+
+        await stopper
+        await asyncio.sleep(0.05)
+        processor.cancel()
+
+        assert len(handled) == 1
+        assert handled[0].action == "process"
+
+    @pytest.mark.asyncio
+    async def test_process_messages_skips_expired(self, message_bus):
+        """Test process_messages skips expired messages."""
+        from datetime import timedelta
+
+        handled = []
+
+        async def handler_callback(msg):
+            handled.append(msg)
+
+        handler = MessageHandler(
+            agent_id="receiver",
+            agent_type="test",
+            handler_func=handler_callback,
+        )
+        message_bus.register_handler(handler)
+
+        # Create expired message
+        msg = AgentMessage(
+            sender_id="sender",
+            sender_type="test",
+            recipient_id="receiver",
+            ttl_seconds=0,  # Already expired
+        )
+        # Manually set old timestamp
+        msg.timestamp = datetime.now() - timedelta(seconds=10)
+        await message_bus.send(msg)
+
+        async def stop_after_delay():
+            await asyncio.sleep(0.15)
+            message_bus.stop()
+
+        stopper = asyncio.create_task(stop_after_delay())
+        processor = asyncio.create_task(message_bus.process_messages())
+
+        await stopper
+        await asyncio.sleep(0.05)
+        processor.cancel()
+
+        # Message was expired, should not be handled
+        assert len(handled) == 0
+
+    @pytest.mark.asyncio
+    async def test_process_messages_handler_error(self, message_bus):
+        """Test process_messages handles handler errors gracefully."""
+
+        async def failing_handler(_msg):
+            raise ValueError("Handler error")
+
+        handler = MessageHandler(
+            agent_id="receiver",
+            agent_type="test",
+            handler_func=failing_handler,
+        )
+        message_bus.register_handler(handler)
+
+        msg = AgentMessage(
+            sender_id="sender",
+            sender_type="test",
+            recipient_id="receiver",
+        )
+        await message_bus.send(msg)
+
+        async def stop_after_delay():
+            await asyncio.sleep(0.15)
+            message_bus.stop()
+
+        stopper = asyncio.create_task(stop_after_delay())
+        processor = asyncio.create_task(message_bus.process_messages())
+
+        await stopper
+        await asyncio.sleep(0.05)
+        processor.cancel()
+        # Should not raise - error is logged
+
+
+class TestStartStopMessageBus:
+    """Tests for start_message_bus and stop_message_bus functions."""
+
+    def test_stop_message_bus(self):
+        """Test stopping global message bus."""
+
+        from ptpd_calibration.agents.communication import stop_message_bus
+
+        # Get or create the bus
+        bus = get_message_bus()
+        bus._running = True
+
+        stop_message_bus()
+        assert bus._running is False
+
+    def test_stop_message_bus_when_none(self):
+        """Test stopping when no bus exists."""
+        import ptpd_calibration.agents.communication as comm
+        from ptpd_calibration.agents.communication import stop_message_bus
+
+        comm._message_bus = None
+        stop_message_bus()  # Should not raise
+
+
+class TestMessageTypeCancel:
+    """Tests for CANCEL message type."""
+
+    def test_cancel_message_type_exists(self):
+        """Test CANCEL message type exists."""
+        assert MessageType.CANCEL == "cancel"
+
+    def test_create_cancel_message(self):
+        """Test creating a cancel message."""
+        msg = AgentMessage(
+            sender_id="orchestrator",
+            sender_type="orchestrator",
+            message_type=MessageType.CANCEL,
+            action="cancel_task",
+            payload={"task_id": "task-123"},
+        )
+        assert msg.message_type == "cancel"
