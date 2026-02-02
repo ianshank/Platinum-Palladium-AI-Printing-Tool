@@ -193,7 +193,7 @@ def extract_classes(code: str) -> list[str]:
         >>> extract_classes(code)
         ['Foo', 'Bar']
     """
-    pattern = r"class\s+(\w+)[\s:(]"
+    pattern = r"\bclass\s+(\w+)[\s:(]"
     return re.findall(pattern, code)
 
 
