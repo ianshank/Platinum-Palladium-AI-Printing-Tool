@@ -4,7 +4,6 @@ Unit tests for agents/orchestrator.py module.
 Tests workflow management, task execution, and orchestrator functionality.
 """
 
-from datetime import datetime
 
 import pytest
 
@@ -325,7 +324,7 @@ class TestOrchestratorWorkflowExecution:
         agent.status = SubagentStatus.IDLE
 
         # Mock successful run
-        async def mock_run(task, context=None):
+        async def mock_run(task, _context=None):
             return SubagentResult(
                 success=True,
                 agent_id=agent.id,
@@ -446,7 +445,7 @@ class TestOrchestratorWorkflowExecution:
 
         call_count = 0
 
-        async def mock_run_with_retry(task, context=None):
+        async def mock_run_with_retry(task, _context=None):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
@@ -540,7 +539,7 @@ class TestOrchestratorParallelExecution:
 
         execution_order = []
 
-        async def mock_run(task, context=None):
+        async def mock_run(task, _context=None):
             execution_order.append(f"start_{task[:10]}")
             await asyncio.sleep(0.01)  # Small delay
             execution_order.append(f"end_{task[:10]}")

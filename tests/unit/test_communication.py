@@ -6,7 +6,6 @@ Tests MessageBus, MessageHandler, AgentMessage, and conversation management.
 
 import asyncio
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -258,7 +257,7 @@ class TestMessageHandler:
     async def test_handle_sync_function(self):
         """Test handler with sync function."""
 
-        def sync_callback(msg):
+        def sync_callback(_msg):
             return {"status": "sync_handled"}
 
         handler = MessageHandler(
@@ -838,7 +837,7 @@ class TestMessageBusProcessMessages:
     async def test_process_messages_handler_error(self, message_bus):
         """Test process_messages handles handler errors gracefully."""
 
-        async def failing_handler(msg):
+        async def failing_handler(_msg):
             raise ValueError("Handler error")
 
         handler = MessageHandler(
@@ -873,7 +872,6 @@ class TestStartStopMessageBus:
 
     def test_stop_message_bus(self):
         """Test stopping global message bus."""
-        import ptpd_calibration.agents.communication as comm
 
         from ptpd_calibration.agents.communication import stop_message_bus
 
@@ -887,7 +885,6 @@ class TestStartStopMessageBus:
     def test_stop_message_bus_when_none(self):
         """Test stopping when no bus exists."""
         import ptpd_calibration.agents.communication as comm
-
         from ptpd_calibration.agents.communication import stop_message_bus
 
         comm._message_bus = None
