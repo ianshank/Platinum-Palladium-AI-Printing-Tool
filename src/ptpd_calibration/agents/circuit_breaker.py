@@ -7,9 +7,10 @@ Provides protection against cascading failures when external services
 
 import asyncio
 import time
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar, cast
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -194,9 +195,11 @@ class CircuitBreaker:
         if self._state.state == CircuitState.HALF_OPEN:
             # Any failure in half-open goes back to open
             self._transition_to_open()
-        elif self._state.state == CircuitState.CLOSED:
-            if self._state.failure_count >= self.settings.failure_threshold:
-                self._transition_to_open()
+        elif (
+            self._state.state == CircuitState.CLOSED
+            and self._state.failure_count >= self.settings.failure_threshold
+        ):
+            self._transition_to_open()
 
     def _transition_to_open(self) -> None:
         """Transition to open state."""
@@ -287,10 +290,10 @@ class CircuitBreaker:
 
     async def call(
         self,
-        func: Callable[..., T],
-        *args,
+        func: Callable[..., Awaitable[T]],
+        *args: Any,
         fallback: T | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> T:
         """
         Execute a function with circuit breaker protection.
@@ -330,7 +333,7 @@ class CircuitBreaker:
                         f"Circuit open, using cached fallback: {self.name}",
                         data={"circuit": self.name},
                     )
-                    return cached
+                    return cast(T, cached)
 
             if fallback is not None:
                 return fallback
@@ -344,6 +347,7 @@ class CircuitBreaker:
         # Execute the function
         try:
             # Set timeout for half-open state
+            result: T
             if self._state.state == CircuitState.HALF_OPEN:
                 result = await asyncio.wait_for(
                     func(*args, **kwargs),

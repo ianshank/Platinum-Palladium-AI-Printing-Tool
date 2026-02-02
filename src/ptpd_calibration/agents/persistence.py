@@ -6,10 +6,8 @@ failures and long-running workflow management.
 """
 
 import json
-import os
 import time
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -494,7 +492,7 @@ def create_workflow_checkpoint(
     """
     current_time = time.time()
 
-    task_checkpoints = []
+    task_checkpoints: list[TaskCheckpoint] = []
     if tasks:
         for task in tasks:
             task_checkpoints.append(

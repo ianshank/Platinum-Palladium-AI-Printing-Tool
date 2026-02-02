@@ -196,9 +196,9 @@ class HealthChecker:
                 )
 
             # Check if we can create a client (without making actual API call)
-            from ptpd_calibration.llm.client import LLMClient
+            from ptpd_calibration.llm.client import create_client
 
-            client = LLMClient()
+            _client = create_client()  # noqa: F841 - Validates client can be created
             latency_ms = (time.time() - start) * 1000
 
             return HealthCheckResult(
@@ -236,7 +236,7 @@ class HealthChecker:
             from ptpd_calibration.agents.communication import get_message_bus
 
             bus = get_message_bus()
-            queue_depth = bus.queue_size() if bus else 0
+            queue_depth = bus.get_queue_size() if bus else 0
             latency_ms = (time.time() - start) * 1000
 
             healthy = bus is not None
@@ -358,7 +358,7 @@ class HealthChecker:
             from ptpd_calibration.agents.subagents.base import get_subagent_registry
 
             registry = get_subagent_registry()
-            subagent_count = len(registry.list_subagents())
+            subagent_count = len(registry.list_agent_types())
             latency_ms = (time.time() - start) * 1000
 
             return HealthCheckResult(
@@ -497,7 +497,7 @@ class HealthChecker:
         }
 
         for result in results:
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 # Handle exception as unhealthy result
                 check_results.append(
                     HealthCheckResult(
@@ -507,7 +507,7 @@ class HealthChecker:
                         message=str(result),
                     )
                 )
-            else:
+            elif isinstance(result, HealthCheckResult):
                 check_results.append(result)
                 dependencies.append(
                     DependencyHealth(

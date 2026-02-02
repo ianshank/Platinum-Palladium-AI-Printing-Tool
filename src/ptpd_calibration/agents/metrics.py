@@ -7,6 +7,7 @@ resource usage, and operational health.
 
 import time
 from collections import defaultdict
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -16,7 +17,7 @@ from typing import Any
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from ptpd_calibration.agents.logging import EventType, get_agent_logger
+from ptpd_calibration.agents.logging import get_agent_logger
 
 
 class MetricType(str, Enum):
@@ -265,7 +266,7 @@ class Histogram:
     def _init_buckets(self, key: tuple) -> None:
         """Initialize bucket counters for a label combination."""
         if key not in self._buckets:
-            self._buckets[key] = {b: 0 for b in self.buckets}
+            self._buckets[key] = dict.fromkeys(self.buckets, 0)
             self._buckets[key][float("inf")] = 0
 
     def observe(self, value: float, labels: dict[str, str] | None = None) -> None:
@@ -287,7 +288,7 @@ class Histogram:
                 self._buckets[key][bucket] += 1
 
     @contextmanager
-    def time(self, labels: dict[str, str] | None = None):
+    def time(self, labels: dict[str, str] | None = None) -> Generator[None, None, None]:
         """
         Context manager for timing operations.
 
@@ -614,10 +615,14 @@ def record_request(
         operation: Operation type.
     """
     metrics = get_agent_metrics()
-    metrics["requests_total"].inc(labels={"agent_type": agent_type, "status": status})
-    metrics["request_latency"].observe(
-        duration_seconds, labels={"agent_type": agent_type, "operation": operation}
-    )
+    requests_counter = metrics["requests_total"]
+    latency_histogram = metrics["request_latency"]
+    if isinstance(requests_counter, Counter):
+        requests_counter.inc(labels={"agent_type": agent_type, "status": status})
+    if isinstance(latency_histogram, Histogram):
+        latency_histogram.observe(
+            duration_seconds, labels={"agent_type": agent_type, "operation": operation}
+        )
 
 
 def record_tool_call(tool_name: str, success: bool) -> None:
@@ -630,7 +635,9 @@ def record_tool_call(tool_name: str, success: bool) -> None:
     """
     metrics = get_agent_metrics()
     status = "success" if success else "failure"
-    metrics["tool_calls_total"].inc(labels={"tool_name": tool_name, "status": status})
+    tool_counter = metrics["tool_calls_total"]
+    if isinstance(tool_counter, Counter):
+        tool_counter.inc(labels={"tool_name": tool_name, "status": status})
 
 
 def record_token_usage(
@@ -649,11 +656,13 @@ def record_token_usage(
         completion_tokens: Number of completion tokens.
     """
     metrics = get_agent_metrics()
-    metrics["token_usage_total"].inc(
-        prompt_tokens,
-        labels={"agent_type": agent_type, "model": model, "token_type": "prompt"},
-    )
-    metrics["token_usage_total"].inc(
-        completion_tokens,
-        labels={"agent_type": agent_type, "model": model, "token_type": "completion"},
-    )
+    token_counter = metrics["token_usage_total"]
+    if isinstance(token_counter, Counter):
+        token_counter.inc(
+            prompt_tokens,
+            labels={"agent_type": agent_type, "model": model, "token_type": "prompt"},
+        )
+        token_counter.inc(
+            completion_tokens,
+            labels={"agent_type": agent_type, "model": model, "token_type": "completion"},
+        )
