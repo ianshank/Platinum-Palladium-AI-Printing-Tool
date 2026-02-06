@@ -20,6 +20,7 @@ class LLMProvider(str, Enum):
 
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
+    VERTEX_AI = "vertex_ai"
 
 
 class ExportFormat(str, Enum):
@@ -288,6 +289,18 @@ class LLMSettings(BaseSettings):
     # Model selection
     anthropic_model: str = Field(default="claude-sonnet-4-20250514")
     openai_model: str = Field(default="gpt-4o")
+    vertex_model: str = Field(
+        default="gemini-2.5-flash",
+        description="Gemini model for Vertex AI (gemini-2.5-flash, gemini-2.5-pro)",
+    )
+
+    # Vertex AI configuration
+    vertex_project: str | None = Field(
+        default=None, description="Google Cloud project ID for Vertex AI"
+    )
+    vertex_location: str = Field(
+        default="us-central1", description="Google Cloud region for Vertex AI"
+    )
 
     # Request parameters
     max_tokens: int = Field(default=4096, ge=100, le=32000)
@@ -306,6 +319,8 @@ class LLMSettings(BaseSettings):
             return self.anthropic_api_key or self.api_key
         elif self.provider == LLMProvider.OPENAI:
             return self.openai_api_key or self.api_key
+        elif self.provider == LLMProvider.VERTEX_AI:
+            return None  # Vertex AI uses service account credentials, not API keys
         return self.api_key
 
 
@@ -1099,6 +1114,131 @@ class NeuroSymbolicSettings(BaseSettings):
     )
 
 
+class VertexAISettings(BaseSettings):
+    """Settings for Vertex AI integration.
+
+    Configures Vertex AI Search, Gemini Vision, ADK agents, and Memory Bank.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_VERTEX_")
+
+    # Google Cloud project configuration
+    project_id: str | None = Field(default=None, description="Google Cloud project ID")
+    location: str = Field(default="us-central1", description="Google Cloud region")
+    staging_bucket: str | None = Field(
+        default=None, description="GCS bucket for staging (e.g., gs://ptpd-vertex-staging)"
+    )
+
+    # Vertex AI Search
+    search_data_store_id: str | None = Field(
+        default=None,
+        description="Vertex AI Search data store ID for Pt/Pd knowledge base",
+    )
+    search_serving_config: str = Field(
+        default="default_search",
+        description="Search serving configuration name",
+    )
+    search_max_results: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Maximum search results to return",
+    )
+
+    # Gemini Vision
+    vision_model: str = Field(
+        default="gemini-2.5-flash",
+        description="Gemini model for vision tasks",
+    )
+    vision_max_output_tokens: int = Field(
+        default=4096,
+        ge=256,
+        le=16384,
+        description="Max output tokens for vision responses",
+    )
+
+    # ADK Agent Engine
+    agent_engine_id: str | None = Field(
+        default=None,
+        description="Deployed Agent Engine resource ID",
+    )
+    coordinator_model: str = Field(
+        default="gemini-2.5-pro",
+        description="Model for the coordinator agent",
+    )
+    specialist_model: str = Field(
+        default="gemini-2.5-flash",
+        description="Model for specialist agents",
+    )
+
+    # Memory Bank
+    enable_memory_bank: bool = Field(
+        default=True,
+        description="Enable Vertex AI Memory Bank for persistent user profiles",
+    )
+    memory_scope: str = Field(
+        default="user",
+        description="Memory scope: 'user' for per-user, 'session' for per-session",
+    )
+
+    # Search summary model
+    search_summary_model: str = Field(
+        default="gemini-2.5-flash",
+        description="Model version for search summary generation",
+    )
+    search_collection: str = Field(
+        default="default_collection",
+        description="Discovery Engine collection name",
+    )
+    search_summary_result_count: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+        description="Max results to include in generative summary",
+    )
+    search_max_extractive_answers: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Max extractive answers per search result",
+    )
+    search_max_context_length: int = Field(
+        default=4000,
+        ge=500,
+        le=50000,
+        description="Max character length of formatted search context for LLM",
+    )
+    search_snippet_max_length: int = Field(
+        default=2000,
+        ge=100,
+        le=10000,
+        description="Max character length for document snippets",
+    )
+
+    # Deployment
+    deployment_requirements: list[str] = Field(
+        default=[
+            "google-cloud-aiplatform[agent_engines,adk]",
+            "numpy>=1.24.0",
+            "scipy>=1.11.0",
+            "Pillow>=10.0.0",
+            "pydantic>=2.5.0",
+            "pydantic-settings>=2.1.0",
+        ],
+        description="Python packages required for Agent Engine deployment",
+    )
+
+    # Corpus preparation
+    corpus_bucket: str | None = Field(
+        default=None,
+        description="GCS bucket for knowledge corpus (e.g., gs://ptpd-knowledge-corpus)",
+    )
+    corpus_local_staging: str = Field(
+        default="./ptpd_corpus_staging",
+        description="Local directory for staging corpus documents",
+    )
+
+
 class CalculationsSettings(BaseSettings):
     """Settings for environmental calculations and cost estimation."""
 
@@ -1192,6 +1332,9 @@ class Settings(BaseSettings):
     data_management: DataManagementSettings = Field(default_factory=DataManagementSettings)
     calculations: CalculationsSettings = Field(default_factory=CalculationsSettings)
     neuro_symbolic: NeuroSymbolicSettings = Field(default_factory=NeuroSymbolicSettings)
+
+    # Vertex AI integration
+    vertex: VertexAISettings = Field(default_factory=VertexAISettings)
 
     # Alternative process settings
     cyanotype: CyanotypeSettings = Field(default_factory=CyanotypeSettings)
