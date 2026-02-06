@@ -242,13 +242,16 @@ class MemoryBankClient:
             UserProfile for the given user.
         """
         if user_id in self._cache:
+            logger.debug("Profile cache hit for user %s", user_id)
             return self._cache[user_id]
 
         path = self._profile_path(user_id)
         if path.exists():
+            logger.debug("Loading profile from disk: %s", path)
             data = json.loads(path.read_text(encoding="utf-8"))
             profile = UserProfile(**data)
         else:
+            logger.debug("Creating new profile for user %s", user_id)
             profile = UserProfile(user_id=user_id)
 
         self._cache[user_id] = profile
@@ -279,8 +282,14 @@ class MemoryBankClient:
         self._cache.pop(user_id, None)
 
         if path.exists():
-            path.unlink()
-            return True
+            try:
+                path.unlink()
+                logger.debug("Deleted profile for user %s", user_id)
+                return True
+            except OSError as exc:
+                logger.warning("Failed to delete profile %s: %s", path, exc)
+                return False
+        logger.debug("No profile to delete for user %s", user_id)
         return False
 
     def list_profiles(self) -> list[str]:
@@ -289,7 +298,11 @@ class MemoryBankClient:
         Returns:
             List of user IDs with stored profiles.
         """
-        return [p.stem for p in self.storage_path.iterdir() if p.is_file() and p.suffix == ".json"]
+        profiles = [
+            p.stem for p in self.storage_path.iterdir() if p.is_file() and p.suffix == ".json"
+        ]
+        logger.debug("Found %d stored profiles", len(profiles))
+        return profiles
 
     def get_context_for_session(self, user_id: str) -> str:
         """Get formatted context for injecting into an AI session.

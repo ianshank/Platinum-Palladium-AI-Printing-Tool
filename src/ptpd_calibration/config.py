@@ -1186,6 +1186,47 @@ class VertexAISettings(BaseSettings):
         default="gemini-2.5-flash",
         description="Model version for search summary generation",
     )
+    search_collection: str = Field(
+        default="default_collection",
+        description="Discovery Engine collection name",
+    )
+    search_summary_result_count: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+        description="Max results to include in generative summary",
+    )
+    search_max_extractive_answers: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Max extractive answers per search result",
+    )
+    search_max_context_length: int = Field(
+        default=4000,
+        ge=500,
+        le=50000,
+        description="Max character length of formatted search context for LLM",
+    )
+    search_snippet_max_length: int = Field(
+        default=2000,
+        ge=100,
+        le=10000,
+        description="Max character length for document snippets",
+    )
+
+    # Deployment
+    deployment_requirements: list[str] = Field(
+        default=[
+            "google-cloud-aiplatform[agent_engines,adk]",
+            "numpy>=1.24.0",
+            "scipy>=1.11.0",
+            "Pillow>=10.0.0",
+            "pydantic>=2.5.0",
+            "pydantic-settings>=2.1.0",
+        ],
+        description="Python packages required for Agent Engine deployment",
+    )
 
     # Corpus preparation
     corpus_bucket: str | None = Field(

@@ -81,7 +81,11 @@ class CorpusPreparator:
             if not filepath.exists():
                 continue
 
-            content = filepath.read_text(encoding="utf-8")
+            try:
+                content = filepath.read_text(encoding="utf-8")
+            except OSError as exc:
+                logger.warning("Could not read %s: %s", filepath, exc)
+                continue
             enriched = (
                 f"# Pt/Pd Calibration Studio Documentation\n"
                 f"## Source: {doc_name}\n"
@@ -134,7 +138,11 @@ class CorpusPreparator:
             if not filepath.exists():
                 continue
 
-            content = filepath.read_text(encoding="utf-8", errors="replace")
+            try:
+                content = filepath.read_text(encoding="utf-8", errors="replace")
+            except OSError as exc:
+                logger.warning("Could not read %s: %s", filepath, exc)
+                continue
             enriched = (
                 f"# Pt/Pd Calibration Studio - Source Code\n"
                 f"## Module: {module_path}\n"
@@ -167,7 +175,11 @@ class CorpusPreparator:
         if knowledge_dir.exists():
             for filepath in knowledge_dir.iterdir():
                 if filepath.is_file() and filepath.suffix == ".txt":
-                    content = filepath.read_text(encoding="utf-8")
+                    try:
+                        content = filepath.read_text(encoding="utf-8")
+                    except OSError as exc:
+                        logger.warning("Could not read %s: %s", filepath, exc)
+                        continue
                     out_path = self.output_dir / filepath.name
                     out_path.write_text(content, encoding="utf-8")
                     count += 1
@@ -241,7 +253,9 @@ def prepare_and_upload_corpus(
     Returns:
         Dict with counts: {"prepared": N, "uploaded": M}.
     """
+    logger.info("Starting corpus preparation and upload (repo=%s)", repo_path)
     preparator = CorpusPreparator(repo_path=repo_path, output_dir=output_dir)
     prepared = preparator.prepare_all()
     uploaded = preparator.upload_to_gcs(bucket_name=bucket_name)
+    logger.info("Corpus pipeline complete: %d prepared, %d uploaded", prepared, uploaded)
     return {"prepared": prepared, "uploaded": uploaded}

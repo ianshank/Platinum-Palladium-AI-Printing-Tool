@@ -97,6 +97,12 @@ class TestVertexAIConfig:
         assert hasattr(settings, "corpus_bucket")
         assert hasattr(settings, "corpus_local_staging")
         assert hasattr(settings, "search_summary_model")
+        assert hasattr(settings, "search_collection")
+        assert hasattr(settings, "search_summary_result_count")
+        assert hasattr(settings, "search_max_extractive_answers")
+        assert hasattr(settings, "search_max_context_length")
+        assert hasattr(settings, "search_snippet_max_length")
+        assert hasattr(settings, "deployment_requirements")
 
     def test_vertex_settings_search_summary_model_default(self):
         """VertexAISettings should have search_summary_model with default."""
@@ -104,6 +110,20 @@ class TestVertexAIConfig:
 
         settings = VertexAISettings()
         assert settings.search_summary_model == "gemini-2.5-flash"
+
+    def test_vertex_settings_configurable_defaults(self):
+        """New configurable settings should have sensible defaults."""
+        from ptpd_calibration.config import VertexAISettings
+
+        settings = VertexAISettings()
+        assert settings.search_collection == "default_collection"
+        assert settings.search_summary_result_count == 5
+        assert settings.search_max_extractive_answers == 3
+        assert settings.search_max_context_length == 4000
+        assert settings.search_snippet_max_length == 2000
+        assert isinstance(settings.deployment_requirements, list)
+        assert "google-cloud-aiplatform[agent_engines,adk]" in settings.deployment_requirements
+        assert len(settings.deployment_requirements) >= 4
 
 
 # ─── LLM Client Tests ───
@@ -226,6 +246,25 @@ class TestVertexAIClient:
                 messages=[{"role": "user", "content": "Hello"}],
             )
             assert result == "Test response"
+
+    def test_prepend_system_message_with_system(self):
+        """_prepend_system_message should prepend system when provided."""
+        from ptpd_calibration.llm.client import _prepend_system_message
+
+        msgs = [{"role": "user", "content": "Hi"}]
+        result = _prepend_system_message(msgs, "You are helpful.")
+        assert len(result) == 2
+        assert result[0]["role"] == "system"
+        assert result[0]["content"] == "You are helpful."
+        assert result[1] == msgs[0]
+
+    def test_prepend_system_message_without_system(self):
+        """_prepend_system_message should pass through when system is None."""
+        from ptpd_calibration.llm.client import _prepend_system_message
+
+        msgs = [{"role": "user", "content": "Hi"}]
+        result = _prepend_system_message(msgs, None)
+        assert result == msgs
 
     def test_create_client_unsupported_provider(self):
         """create_client should raise ValueError for unsupported provider."""
@@ -545,6 +584,53 @@ class TestMemoryBank:
         assert snapshot.exposure_seconds == 0.0
         assert snapshot.timestamp  # Should have auto-generated timestamp
 
+    def test_delete_profile_success(self):
+        """delete_profile should return True when profile exists."""
+        from ptpd_calibration.vertex.memory import MemoryBankClient
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            client = MemoryBankClient(storage_path=tmpdir)
+            profile = client.get_profile("del-user")
+            client.save_profile(profile)
+
+            assert client.delete_profile("del-user") is True
+            assert "del-user" not in client._cache
+
+    def test_delete_profile_not_found(self):
+        """delete_profile should return False when profile doesn't exist."""
+        from ptpd_calibration.vertex.memory import MemoryBankClient
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            client = MemoryBankClient(storage_path=tmpdir)
+            assert client.delete_profile("nonexistent") is False
+
+    def test_delete_profile_os_error(self):
+        """delete_profile should return False on OS error."""
+        from ptpd_calibration.vertex.memory import MemoryBankClient
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            client = MemoryBankClient(storage_path=tmpdir)
+            profile = client.get_profile("err-user")
+            client.save_profile(profile)
+
+            with patch.object(Path, "unlink", side_effect=OSError("permission denied")):
+                assert client.delete_profile("err-user") is False
+
+    def test_list_profiles(self):
+        """list_profiles should return stored user IDs."""
+        from ptpd_calibration.vertex.memory import MemoryBankClient
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            client = MemoryBankClient(storage_path=tmpdir)
+
+            for uid in ["user-a", "user-b", "user-c"]:
+                p = client.get_profile(uid)
+                client.save_profile(p)
+
+            profiles = client.list_profiles()
+            assert len(profiles) == 3
+            assert set(profiles) == {"user-a", "user-b", "user-c"}
+
 
 # ─── Corpus Preparation Tests ───
 
@@ -731,6 +817,25 @@ class TestCorpusPreparation:
                     count = preparator.upload_to_gcs(bucket_name="gs://my-bucket")
                     assert count == 1
                     mock_client.bucket.assert_called_with("my-bucket")
+
+    def test_prepare_repo_docs_handles_read_error(self):
+        """prepare_repo_docs should skip files that fail to read."""
+        from ptpd_calibration.vertex.corpus import CorpusPreparator
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo = Path(tmpdir) / "repo"
+            repo.mkdir()
+            # Create a file that exists
+            readme = repo / "README.md"
+            readme.write_text("# Test", encoding="utf-8")
+
+            output = Path(tmpdir) / "output"
+            preparator = CorpusPreparator(repo_path=str(repo), output_dir=str(output))
+
+            # Mock read_text to raise an error
+            with patch.object(Path, "read_text", side_effect=OSError("disk error")):
+                count = preparator.prepare_repo_docs()
+                assert count == 0  # Should skip errored files
 
     def test_prepare_domain_knowledge_no_knowledge_dir(self):
         """prepare_domain_knowledge should return 0 if knowledge dir doesn't exist."""
@@ -1405,6 +1510,44 @@ class TestADKToolWrappers:
         # Should return error since CurveType("linear") may not exist or other issue
         assert result["status"] == "error" or result["status"] == "success"
 
+    def test_chemistry_recipe_non_standard_ratio(self):
+        """calculate_chemistry_recipe should handle non-standard ratios."""
+        from ptpd_calibration.vertex.agents import calculate_chemistry_recipe
+
+        result = json.loads(calculate_chemistry_recipe(pt_pd_ratio="80:20"))
+        assert result["status"] == "success"
+        assert result["platinum"]["drops"] > result["palladium"]["drops"]
+
+    def test_chemistry_recipe_pure_palladium(self):
+        """calculate_chemistry_recipe should handle 0:100 ratio."""
+        from ptpd_calibration.vertex.agents import calculate_chemistry_recipe
+
+        result = json.loads(calculate_chemistry_recipe(pt_pd_ratio="0:100"))
+        assert result["status"] == "success"
+        assert result["platinum"]["drops"] == 0
+
+    def test_chemistry_recipe_invalid_size_format(self):
+        """calculate_chemistry_recipe should handle malformed size input."""
+        from ptpd_calibration.vertex.agents import calculate_chemistry_recipe
+
+        result = json.loads(calculate_chemistry_recipe(print_size_inches="invalid"))
+        assert result["status"] == "error"
+
+    def test_uv_exposure_zero_dr(self):
+        """calculate_uv_exposure with near-zero DR should give minimal time."""
+        from ptpd_calibration.vertex.agents import calculate_uv_exposure
+
+        result = json.loads(calculate_uv_exposure(negative_dr=0.1))
+        assert result["status"] == "success"
+        assert result["recommended_seconds"] > 0
+
+    def test_uv_exposure_formatted_time(self):
+        """calculate_uv_exposure should include formatted time string."""
+        from ptpd_calibration.vertex.agents import calculate_uv_exposure
+
+        result = json.loads(calculate_uv_exposure())
+        assert ":" in result["recommended_formatted"]
+
     def test_module_constants(self):
         """Module-level constants should be defined and accessible."""
         from ptpd_calibration.vertex.agents import (
@@ -1583,6 +1726,8 @@ class TestSearchClient:
         assert "projects/my-project" in path
         assert "dataStores/ptpd-knowledge" in path
         assert "servingConfigs/default_search" in path
+        # Should use configurable collection from settings
+        assert "collections/" in path
 
     def test_format_context_for_llm(self):
         """format_context_for_llm should produce formatted context."""
@@ -1628,6 +1773,23 @@ class TestSearchClient:
 
         context = client.format_context_for_llm(results, max_context_length=500)
         assert len(context) <= 600
+
+    def test_format_context_uses_config_default(self):
+        """format_context_for_llm with None should use config default."""
+        from ptpd_calibration.vertex.search import PtPdSearchClient, SearchResult
+
+        client = PtPdSearchClient(project_id="test", data_store_id="test")
+
+        results = [
+            SearchResult(
+                title="Doc",
+                snippet="content",
+                document_id="doc1",
+            )
+        ]
+        # Should not raise — uses settings default
+        context = client.format_context_for_llm(results)
+        assert "Doc" in context
 
     def test_format_context_empty_results(self):
         """format_context_for_llm should handle empty results."""

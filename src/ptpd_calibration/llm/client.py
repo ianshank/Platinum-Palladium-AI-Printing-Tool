@@ -111,6 +111,23 @@ class AnthropicClient(LLMClient):
                 yield text
 
 
+def _prepend_system_message(messages: list[dict], system: str | None) -> list[dict]:
+    """Prepend a system message to the messages list if provided.
+
+    Args:
+        messages: Original messages list.
+        system: Optional system prompt.
+
+    Returns:
+        Messages list with system message prepended if provided.
+    """
+    all_messages: list[dict] = []
+    if system:
+        all_messages.append({"role": "system", "content": system})
+    all_messages.extend(messages)
+    return all_messages
+
+
 class OpenAIClient(LLMClient):
     """Client for OpenAI API."""
 
@@ -145,12 +162,7 @@ class OpenAIClient(LLMClient):
             ) from err
 
         client = AsyncOpenAI(api_key=self.api_key)
-
-        # Prepend system message
-        all_messages = []
-        if system:
-            all_messages.append({"role": "system", "content": system})
-        all_messages.extend(messages)
+        all_messages = _prepend_system_message(messages, system)
 
         response = await client.chat.completions.create(
             model=self.settings.openai_model,
@@ -177,12 +189,7 @@ class OpenAIClient(LLMClient):
             ) from err
 
         client = AsyncOpenAI(api_key=self.api_key)
-
-        # Prepend system message
-        all_messages = []
-        if system:
-            all_messages.append({"role": "system", "content": system})
-        all_messages.extend(messages)
+        all_messages = _prepend_system_message(messages, system)
 
         stream = await client.chat.completions.create(
             model=self.settings.openai_model,
@@ -333,6 +340,7 @@ def create_client(settings: LLMSettings | None = None) -> LLMClient:
         LLMClient instance for the configured provider.
     """
     settings = settings or get_settings().llm
+    logger.debug("Creating LLM client for provider: %s", settings.provider)
 
     if settings.provider == LLMProvider.ANTHROPIC:
         return AnthropicClient(settings)

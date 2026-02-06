@@ -81,16 +81,19 @@ class PtPdSearchClient:
                     "Install with: pip install ptpd-calibration[vertex]"
                 ) from err
 
+            logger.debug("Initializing Discovery Engine SearchServiceClient")
             self._client = discoveryengine.SearchServiceClient()
         return self._client
 
     @property
     def _serving_config_path(self) -> str:
         """Build the full serving config resource path."""
+        settings = get_settings().vertex
+        collection = settings.search_collection
         return (
             f"projects/{self.project_id}"
             f"/locations/{self.location}"
-            f"/collections/default_collection"
+            f"/collections/{collection}"
             f"/dataStores/{self.data_store_id}"
             f"/servingConfigs/{self.serving_config}"
         )
@@ -176,14 +179,14 @@ class PtPdSearchClient:
 
         content_search_spec = discoveryengine.SearchRequest.ContentSearchSpec(
             summary_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec(
-                summary_result_count=min(max_results, 5),
+                summary_result_count=min(max_results, settings.search_summary_result_count),
                 include_citations=True,
                 model_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec.ModelSpec(
                     version=settings.search_summary_model,
                 ),
             ),
             extractive_content_spec=discoveryengine.SearchRequest.ContentSearchSpec.ExtractiveContentSpec(
-                max_extractive_answer_count=3,
+                max_extractive_answer_count=settings.search_max_extractive_answers,
             ),
         )
 
@@ -221,7 +224,7 @@ class PtPdSearchClient:
     def format_context_for_llm(
         self,
         results: list[SearchResult],
-        max_context_length: int = 4000,
+        max_context_length: int | None = None,
     ) -> str:
         """Format search results as context for an LLM prompt.
 
@@ -232,6 +235,9 @@ class PtPdSearchClient:
         Returns:
             Formatted context string suitable for LLM system/user prompts.
         """
+        if max_context_length is None:
+            max_context_length = get_settings().vertex.search_max_context_length
+
         context_parts = []
         current_length = 0
 
@@ -260,6 +266,7 @@ def _extract_document_data(doc: Any) -> dict[str, Any]:
     Returns:
         Dict with title, snippet, and metadata.
     """
+    snippet_max = get_settings().vertex.search_snippet_max_length
     data: dict[str, Any] = {"metadata": {}}
 
     # Try struct_data first (structured documents)
@@ -290,10 +297,10 @@ def _extract_document_data(doc: Any) -> dict[str, Any]:
         if raw:
             try:
                 text = raw.decode("utf-8")
-                data["snippet"] = text[:2000]
+                data["snippet"] = text[:snippet_max]
             except (UnicodeDecodeError, AttributeError) as exc:
                 logger.debug("Could not decode raw content as UTF-8: %s", exc)
-                data["snippet"] = str(raw)[:2000]
+                data["snippet"] = str(raw)[:snippet_max]
 
     if not data.get("title"):
         data["title"] = getattr(doc, "name", "") or getattr(doc, "id", "Unknown")

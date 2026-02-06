@@ -486,8 +486,11 @@ def create_darkroom_coordinator() -> Any:
     Returns:
         LlmAgent coordinator with all sub-agents configured.
     """
+    logger.info("Creating Darkroom Coordinator agent")
     agents = create_adk_agents()
-    return agents["coordinator"]
+    coordinator = agents["coordinator"]
+    logger.debug("Darkroom Coordinator ready: model=%s", getattr(coordinator, "model", "unknown"))
+    return coordinator
 
 
 def deploy_to_agent_engine(
@@ -546,14 +549,7 @@ def deploy_to_agent_engine(
     remote_agent = client.agent_engines.create(
         agent=app,
         config={
-            "requirements": [
-                "google-cloud-aiplatform[agent_engines,adk]",
-                "numpy>=1.24.0",
-                "scipy>=1.11.0",
-                "Pillow>=10.0.0",
-                "pydantic>=2.5.0",
-                "pydantic-settings>=2.1.0",
-            ],
+            "requirements": list(settings.deployment_requirements),
             "staging_bucket": staging_bucket,
         },
     )

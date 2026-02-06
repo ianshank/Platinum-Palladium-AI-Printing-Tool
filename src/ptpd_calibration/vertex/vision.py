@@ -91,6 +91,12 @@ class GeminiVisionAnalyzer:
                     "google-genai required. Install with: pip install ptpd-calibration[vertex]"
                 ) from err
 
+            logger.debug(
+                "Initializing Gemini client: project=%s, location=%s, model=%s",
+                self.project_id,
+                self.location,
+                self.model,
+            )
             self._client = genai.Client(
                 vertexai=True,
                 project=self.project_id,
@@ -421,6 +427,7 @@ def analyze_step_tablet(
     Returns:
         JSON string with density readings and quality assessment.
     """
+    logger.debug("ADK tool: analyze_step_tablet(%s, %s)", image_path, tablet_type)
     analyzer = GeminiVisionAnalyzer()
     result = analyzer.analyze_step_tablet(image_path, tablet_type)
     return _format_result(result)
@@ -441,6 +448,7 @@ def evaluate_print_quality(
     Returns:
         JSON string with quality scores and recommendations.
     """
+    logger.debug("ADK tool: evaluate_print_quality(%s, %s)", image_path, paper_type)
     analyzer = GeminiVisionAnalyzer()
     result = analyzer.evaluate_print_quality(image_path, paper_type, chemistry)
     return _format_result(result)
@@ -459,6 +467,7 @@ def diagnose_print_problem(
     Returns:
         JSON string with diagnosis and fix suggestions.
     """
+    logger.debug("ADK tool: diagnose_print_problem(%s)", image_path)
     analyzer = GeminiVisionAnalyzer()
     result = analyzer.diagnose_print_problem(image_path, problem_description)
     return _format_result(result)
