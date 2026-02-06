@@ -199,3 +199,37 @@ def headers():
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
+
+
+@pytest.fixture
+def sample_chemistry_recipe():
+    """Create sample chemistry recipe data."""
+    return {
+        "platinum_ml": 28.0,
+        "palladium_ml": 12.0,
+        "ferric_oxalate_ml": 40.0,
+        "contrast_agent_ml": 2.0,
+        "total_volume_ml": 82.0,
+        "print_area_sq_in": 80.0,
+        "metal_ratio": 0.7,
+    }
+
+
+@pytest.fixture
+def sample_scan_measurements():
+    """Create sample scan measurements."""
+    import numpy as np
+
+    # Simulate measurements for 21-step tablet
+    steps = np.linspace(0, 1, 21)
+    measurements = []
+    for i, step in enumerate(steps):
+        measurements.append(
+            {
+                "step": i + 1,
+                "measured_density": 0.1 + 2.0 * (step**0.85),
+                "target_density": step * 2.0,
+                "deviation": 0.05,
+            }
+        )
+    return measurements
