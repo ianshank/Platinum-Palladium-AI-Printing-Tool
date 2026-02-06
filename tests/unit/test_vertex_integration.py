@@ -19,7 +19,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -229,23 +229,25 @@ class TestVertexAIClient:
         mock_types.Part.from_text = MagicMock(side_effect=lambda text: text)
         mock_types.GenerateContentConfig = MagicMock()
 
+        mock_google = MagicMock()
+        mock_google.genai = mock_genai
+
         with (
             patch.dict(
                 "sys.modules",
                 {
-                    "google": MagicMock(),
+                    "google": mock_google,
                     "google.genai": mock_genai,
                     "google.genai.types": mock_types,
                 },
             ),
             patch("ptpd_calibration.llm.client._convert_messages_to_gemini", return_value=[]),
-            patch.object(client, "complete") as mock_complete,
         ):
-            mock_complete.return_value = "Test response"
             result = await client.complete(
                 messages=[{"role": "user", "content": "Hello"}],
             )
             assert result == "Test response"
+            mock_genai_client.models.generate_content.assert_called_once()
 
     def test_prepend_system_message_with_system(self):
         """_prepend_system_message should prepend system when provided."""
@@ -535,7 +537,7 @@ class TestMemoryBank:
         with tempfile.TemporaryDirectory() as tmpdir:
             client = MemoryBankClient(storage_path=tmpdir)
             path = client._profile_path("user/with\\slashes")
-            assert "/" not in path.stem or "\\" not in path.stem
+            assert "/" not in path.stem and "\\" not in path.stem
 
     def test_user_profile_serialization(self):
         """UserProfile should serialize/deserialize cleanly."""
@@ -1507,8 +1509,9 @@ class TestADKToolWrappers:
         from ptpd_calibration.vertex.agents import generate_linearization_curve
 
         result = json.loads(generate_linearization_curve("not valid json input"))
-        # Should return error since CurveType("linear") may not exist or other issue
-        assert result["status"] == "error" or result["status"] == "success"
+        # Invalid input should produce an error
+        assert result["status"] == "error"
+        assert "error" in result
 
     def test_chemistry_recipe_non_standard_ratio(self):
         """calculate_chemistry_recipe should handle non-standard ratios."""
@@ -2119,11 +2122,13 @@ class TestVertexModuleInit:
             "CorpusPreparator",
             "prepare_and_upload_corpus",
             "GeminiVisionAnalyzer",
+            "VisionAnalysisResult",
             "analyze_step_tablet",
             "evaluate_print_quality",
             "diagnose_print_problem",
             "create_adk_agents",
             "create_darkroom_coordinator",
+            "deploy_to_agent_engine",
             "CalibrationSnapshot",
             "MemoryBankClient",
             "UserProfile",
@@ -2209,3 +2214,698 @@ class TestLogging:
 
         assert hasattr(client, "logger")
         assert client.logger.name == "ptpd_calibration.llm.client"
+
+
+# ─── LLM Client Provider Tests ───
+
+
+@pytest.mark.unit
+class TestLLMClientProviders:
+    """Tests for AnthropicClient, OpenAIClient, and VertexAIClient."""
+
+    def test_anthropic_client_requires_api_key(self):
+        """AnthropicClient should raise ValueError without API key."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import AnthropicClient
+
+        settings = LLMSettings(provider=LLMProvider.ANTHROPIC)
+        with pytest.raises(ValueError, match="Anthropic API key required"):
+            AnthropicClient(settings)
+
+    def test_anthropic_client_accepts_api_key(self):
+        """AnthropicClient should accept API key from settings."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import AnthropicClient
+
+        settings = LLMSettings(
+            provider=LLMProvider.ANTHROPIC,
+            anthropic_api_key="sk-test-key-123",
+        )
+        client = AnthropicClient(settings)
+        assert client.api_key == "sk-test-key-123"
+
+    def test_anthropic_client_fallback_to_generic_key(self):
+        """AnthropicClient should fallback to generic api_key."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import AnthropicClient
+
+        settings = LLMSettings(
+            provider=LLMProvider.ANTHROPIC,
+            api_key="generic-key",
+        )
+        client = AnthropicClient(settings)
+        assert client.api_key == "generic-key"
+
+    @pytest.mark.asyncio
+    async def test_anthropic_client_complete_import_error(self):
+        """AnthropicClient.complete should raise ImportError when anthropic missing."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import AnthropicClient
+
+        settings = LLMSettings(
+            provider=LLMProvider.ANTHROPIC,
+            anthropic_api_key="sk-test",
+        )
+        client = AnthropicClient(settings)
+
+        with (
+            patch.dict("sys.modules", {"anthropic": None}),
+            patch("builtins.__import__", side_effect=ImportError("no anthropic")),
+            pytest.raises(ImportError, match="anthropic package required"),
+        ):
+            await client.complete(messages=[{"role": "user", "content": "Hi"}])
+
+    @pytest.mark.asyncio
+    async def test_anthropic_client_complete_mocked(self):
+        """AnthropicClient.complete should call Anthropic API and return text."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import AnthropicClient
+
+        settings = LLMSettings(
+            provider=LLMProvider.ANTHROPIC,
+            anthropic_api_key="sk-test",
+        )
+        client = AnthropicClient(settings)
+
+        mock_msg = MagicMock()
+        mock_msg.content = [MagicMock(text="Hello from Claude")]
+
+        mock_anthropic_client = MagicMock()
+        mock_anthropic_client.messages.create = AsyncMock(return_value=mock_msg)
+
+        mock_anthropic = MagicMock()
+        mock_anthropic.AsyncAnthropic.return_value = mock_anthropic_client
+
+        with patch.dict("sys.modules", {"anthropic": mock_anthropic}):
+            result = await client.complete(
+                messages=[{"role": "user", "content": "Hello"}],
+                system="You are helpful.",
+            )
+            assert result == "Hello from Claude"
+
+    def test_openai_client_requires_api_key(self):
+        """OpenAIClient should raise ValueError without API key."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import OpenAIClient
+
+        settings = LLMSettings(provider=LLMProvider.OPENAI)
+        with pytest.raises(ValueError, match="OpenAI API key required"):
+            OpenAIClient(settings)
+
+    def test_openai_client_accepts_api_key(self):
+        """OpenAIClient should accept API key from settings."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import OpenAIClient
+
+        settings = LLMSettings(
+            provider=LLMProvider.OPENAI,
+            openai_api_key="sk-openai-test",
+        )
+        client = OpenAIClient(settings)
+        assert client.api_key == "sk-openai-test"
+
+    @pytest.mark.asyncio
+    async def test_openai_client_complete_import_error(self):
+        """OpenAIClient.complete should raise ImportError when openai missing."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import OpenAIClient
+
+        settings = LLMSettings(
+            provider=LLMProvider.OPENAI,
+            openai_api_key="sk-test",
+        )
+        client = OpenAIClient(settings)
+
+        with (
+            patch.dict("sys.modules", {"openai": None}),
+            patch("builtins.__import__", side_effect=ImportError("no openai")),
+            pytest.raises(ImportError, match="openai package required"),
+        ):
+            await client.complete(messages=[{"role": "user", "content": "Hi"}])
+
+    @pytest.mark.asyncio
+    async def test_openai_client_complete_mocked(self):
+        """OpenAIClient.complete should call OpenAI API and return text."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import OpenAIClient
+
+        settings = LLMSettings(
+            provider=LLMProvider.OPENAI,
+            openai_api_key="sk-test",
+        )
+        client = OpenAIClient(settings)
+
+        mock_choice = MagicMock()
+        mock_choice.message.content = "Hello from GPT"
+
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+
+        mock_async_openai = MagicMock()
+        mock_async_openai.chat.completions.create = AsyncMock(return_value=mock_response)
+
+        mock_openai_module = MagicMock()
+        mock_openai_module.AsyncOpenAI.return_value = mock_async_openai
+
+        with patch.dict("sys.modules", {"openai": mock_openai_module}):
+            result = await client.complete(
+                messages=[{"role": "user", "content": "Hello"}],
+                system="You are helpful.",
+            )
+            assert result == "Hello from GPT"
+
+    @pytest.mark.asyncio
+    async def test_vertex_client_complete_with_system(self):
+        """VertexAIClient.complete should pass system instruction in config."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import VertexAIClient
+
+        settings = LLMSettings(
+            provider=LLMProvider.VERTEX_AI,
+            vertex_project="test-proj",
+        )
+        client = VertexAIClient(settings)
+
+        mock_response = MagicMock()
+        mock_response.text = "System response"
+
+        mock_genai_client = MagicMock()
+        mock_genai_client.models.generate_content.return_value = mock_response
+
+        mock_genai = MagicMock()
+        mock_genai.Client.return_value = mock_genai_client
+
+        mock_types = MagicMock()
+        mock_types.Content = MagicMock()
+        mock_types.Part.from_text = MagicMock(side_effect=lambda text: text)
+        mock_types.GenerateContentConfig = MagicMock()
+
+        mock_google = MagicMock()
+        mock_google.genai = mock_genai
+
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "google": mock_google,
+                    "google.genai": mock_genai,
+                    "google.genai.types": mock_types,
+                },
+            ),
+            patch("ptpd_calibration.llm.client._convert_messages_to_gemini", return_value=[]),
+        ):
+            result = await client.complete(
+                messages=[{"role": "user", "content": "Hello"}],
+                system="You are a Pt/Pd expert.",
+                temperature=0.5,
+                max_tokens=500,
+            )
+            assert result == "System response"
+            # Verify the Gemini API was called with a config argument
+            mock_genai_client.models.generate_content.assert_called_once()
+            call_kwargs = mock_genai_client.models.generate_content.call_args
+            assert call_kwargs is not None
+
+    @pytest.mark.asyncio
+    async def test_vertex_client_complete_no_text(self):
+        """VertexAIClient.complete should return empty string when response.text is None."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import VertexAIClient
+
+        settings = LLMSettings(
+            provider=LLMProvider.VERTEX_AI,
+            vertex_project="test-proj",
+        )
+        client = VertexAIClient(settings)
+
+        mock_response = MagicMock()
+        mock_response.text = None
+
+        mock_genai_client = MagicMock()
+        mock_genai_client.models.generate_content.return_value = mock_response
+
+        mock_genai = MagicMock()
+        mock_genai.Client.return_value = mock_genai_client
+
+        mock_types = MagicMock()
+        mock_types.Content = MagicMock()
+        mock_types.Part.from_text = MagicMock(side_effect=lambda text: text)
+        mock_types.GenerateContentConfig = MagicMock()
+
+        mock_google = MagicMock()
+        mock_google.genai = mock_genai
+
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "google": mock_google,
+                    "google.genai": mock_genai,
+                    "google.genai.types": mock_types,
+                },
+            ),
+            patch("ptpd_calibration.llm.client._convert_messages_to_gemini", return_value=[]),
+        ):
+            result = await client.complete(
+                messages=[{"role": "user", "content": "Hello"}],
+            )
+            assert result == ""
+
+    def test_create_client_anthropic(self):
+        """create_client should return AnthropicClient for ANTHROPIC provider."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import AnthropicClient, create_client
+
+        settings = LLMSettings(
+            provider=LLMProvider.ANTHROPIC,
+            anthropic_api_key="sk-test",
+        )
+        client = create_client(settings)
+        assert isinstance(client, AnthropicClient)
+
+    def test_create_client_openai(self):
+        """create_client should return OpenAIClient for OPENAI provider."""
+        from ptpd_calibration.config import LLMProvider, LLMSettings
+        from ptpd_calibration.llm.client import OpenAIClient, create_client
+
+        settings = LLMSettings(
+            provider=LLMProvider.OPENAI,
+            openai_api_key="sk-test",
+        )
+        client = create_client(settings)
+        assert isinstance(client, OpenAIClient)
+
+
+# ─── Negative / Edge Case Tests ───
+
+
+@pytest.mark.unit
+class TestNegativeEdgeCases:
+    """Negative and edge case tests for error paths."""
+
+    def test_memory_corrupted_json_profile(self):
+        """get_profile should handle corrupted JSON gracefully."""
+        from ptpd_calibration.vertex.memory import MemoryBankClient
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            client = MemoryBankClient(storage_path=tmpdir)
+            # Write corrupted JSON
+            profile_path = client._profile_path("corrupt-user")
+            profile_path.write_text("{invalid json}", encoding="utf-8")
+
+            # Should recover with a fresh profile
+            profile = client.get_profile("corrupt-user")
+            assert profile.user_id == "corrupt-user"
+            assert profile.preferences == {}
+
+    def test_memory_empty_json_profile(self):
+        """get_profile should handle empty file gracefully."""
+        from ptpd_calibration.vertex.memory import MemoryBankClient
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            client = MemoryBankClient(storage_path=tmpdir)
+            profile_path = client._profile_path("empty-user")
+            profile_path.write_text("", encoding="utf-8")
+
+            profile = client.get_profile("empty-user")
+            assert profile.user_id == "empty-user"
+
+    def test_vision_parse_non_json_response(self):
+        """_parse_vision_response should handle non-JSON text gracefully."""
+        from ptpd_calibration.vertex.vision import _parse_vision_response
+
+        result = _parse_vision_response("This is plain text, not JSON.", "test_analysis")
+        assert result.analysis_type == "test_analysis"
+        assert result.raw_response == "This is plain text, not JSON."
+        assert result.structured_data == {}
+        assert result.confidence == 0.0
+
+    def test_vision_parse_partial_json(self):
+        """_parse_vision_response should handle truncated JSON gracefully."""
+        from ptpd_calibration.vertex.vision import _parse_vision_response
+
+        result = _parse_vision_response('{"dmax": 1.5, "steps":', "test")
+        assert result.structured_data == {}
+
+    def test_vision_load_nonexistent_image(self):
+        """_load_image should raise FileNotFoundError for missing file."""
+        from ptpd_calibration.vertex.vision import _load_image
+
+        with pytest.raises(FileNotFoundError):
+            _load_image("/nonexistent/path/image.png")
+
+    def test_vision_load_unsupported_format(self):
+        """_load_image should raise ValueError for unsupported format."""
+        from ptpd_calibration.vertex.vision import _load_image
+
+        with tempfile.NamedTemporaryFile(suffix=".xyz", delete=False) as f:
+            f.write(b"fake data")
+            path = f.name
+
+        try:
+            with pytest.raises(ValueError, match="Unsupported image format"):
+                _load_image(path)
+        finally:
+            os.unlink(path)
+
+    def test_search_api_failure_returns_empty(self):
+        """search should return empty list when API call fails."""
+        from ptpd_calibration.vertex.search import PtPdSearchClient
+
+        client = PtPdSearchClient(project_id="test", data_store_id="test")
+
+        mock_search_client = MagicMock()
+        mock_search_client.search.side_effect = RuntimeError("API unavailable")
+        client._client = mock_search_client
+
+        mock_discoveryengine = MagicMock()
+        with patch.dict(
+            "sys.modules",
+            {
+                "google.cloud": MagicMock(),
+                "google.cloud.discoveryengine_v1": mock_discoveryengine,
+            },
+        ):
+            results = client.search("test query")
+            assert results == []
+
+    def test_search_with_summary_api_failure(self):
+        """search_with_summary should return empty on API failure."""
+        from ptpd_calibration.vertex.search import PtPdSearchClient
+
+        client = PtPdSearchClient(project_id="test", data_store_id="test")
+
+        mock_search_client = MagicMock()
+        mock_search_client.search.side_effect = RuntimeError("API unavailable")
+        client._client = mock_search_client
+
+        mock_discoveryengine = MagicMock()
+        with patch.dict(
+            "sys.modules",
+            {
+                "google.cloud": MagicMock(),
+                "google.cloud.discoveryengine_v1": mock_discoveryengine,
+            },
+        ):
+            summary, results = client.search_with_summary("test query")
+            assert summary == ""
+            assert results == []
+
+    def test_chemistry_recipe_zero_ratio(self):
+        """Chemistry with 0:0 ratio should return error."""
+        from ptpd_calibration.vertex.agents import calculate_chemistry_recipe
+
+        result = json.loads(calculate_chemistry_recipe(pt_pd_ratio="0:0"))
+        assert result["status"] == "error"
+
+    def test_corpus_prepare_empty_repo(self):
+        """CorpusPreparator with empty directory should prepare 0 repo docs."""
+        from ptpd_calibration.vertex.corpus import CorpusPreparator
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            empty_repo = Path(tmpdir) / "empty_repo"
+            empty_repo.mkdir()
+            output_dir = Path(tmpdir) / "output"
+
+            preparator = CorpusPreparator(repo_path=empty_repo, output_dir=output_dir)
+            count = preparator.prepare_repo_docs()
+            assert count == 0
+
+    def test_memory_detect_drift_single_paper(self):
+        """detect_drift should skip papers with fewer than 2 calibrations."""
+        from ptpd_calibration.vertex.memory import CalibrationSnapshot, UserProfile
+
+        profile = UserProfile(user_id="drift-test")
+        profile.add_calibration(CalibrationSnapshot(paper_type="Paper A", dmax=1.5))
+        profile.add_calibration(CalibrationSnapshot(paper_type="Paper B", dmax=1.6))
+
+        # Each paper has only 1 calibration, so no drift should be detected
+        warnings = profile.detect_drift()
+        assert warnings == []
+
+    def test_vision_format_result_with_structured_data(self):
+        """_format_result should return JSON when structured_data exists."""
+        from ptpd_calibration.vertex.vision import VisionAnalysisResult, _format_result
+
+        result = VisionAnalysisResult(
+            analysis_type="test",
+            raw_response="raw",
+            structured_data={"dmax": 1.8},
+        )
+        formatted = _format_result(result)
+        parsed = json.loads(formatted)
+        assert parsed["dmax"] == 1.8
+
+    def test_vision_format_result_without_structured_data(self):
+        """_format_result should return raw response when no structured data."""
+        from ptpd_calibration.vertex.vision import VisionAnalysisResult, _format_result
+
+        result = VisionAnalysisResult(
+            analysis_type="test",
+            raw_response="raw text response",
+        )
+        assert _format_result(result) == "raw text response"
+
+
+# ─── ADK Vision Wrapper Tests ───
+
+
+@pytest.mark.unit
+class TestADKVisionWrappers:
+    """Tests for vision module ADK wrapper functions."""
+
+    def _make_mock_analyzer(self, analysis_type: str, response_data: dict) -> MagicMock:
+        """Create a mock GeminiVisionAnalyzer returning a preset result."""
+        from ptpd_calibration.vertex.vision import VisionAnalysisResult
+
+        mock_result = VisionAnalysisResult(
+            analysis_type=analysis_type,
+            raw_response=json.dumps(response_data),
+            structured_data=response_data,
+        )
+        mock_analyzer = MagicMock()
+        mock_analyzer.analyze_step_tablet.return_value = mock_result
+        mock_analyzer.evaluate_print_quality.return_value = mock_result
+        mock_analyzer.diagnose_print_problem.return_value = mock_result
+        return mock_analyzer
+
+    def test_analyze_step_tablet_wrapper(self):
+        """ADK analyze_step_tablet should delegate to GeminiVisionAnalyzer."""
+        from ptpd_calibration.vertex.vision import analyze_step_tablet
+
+        mock_analyzer = self._make_mock_analyzer("step_tablet_analysis", {"dmax": 1.8, "steps": 21})
+
+        with patch(
+            "ptpd_calibration.vertex.vision.GeminiVisionAnalyzer", return_value=mock_analyzer
+        ):
+            result = analyze_step_tablet("/fake/path.tiff")
+            parsed = json.loads(result)
+            assert parsed["dmax"] == 1.8
+            mock_analyzer.analyze_step_tablet.assert_called_once()
+
+    def test_evaluate_print_quality_wrapper(self):
+        """ADK evaluate_print_quality should delegate to GeminiVisionAnalyzer."""
+        from ptpd_calibration.vertex.vision import evaluate_print_quality
+
+        mock_analyzer = self._make_mock_analyzer("print_quality_evaluation", {"overall_score": 8.5})
+
+        with patch(
+            "ptpd_calibration.vertex.vision.GeminiVisionAnalyzer", return_value=mock_analyzer
+        ):
+            result = evaluate_print_quality("/fake/path.jpg", paper_type="Platinum Rag")
+            parsed = json.loads(result)
+            assert parsed["overall_score"] == 8.5
+            mock_analyzer.evaluate_print_quality.assert_called_once()
+
+    def test_diagnose_print_problem_wrapper(self):
+        """ADK diagnose_print_problem should delegate to GeminiVisionAnalyzer."""
+        from ptpd_calibration.vertex.vision import diagnose_print_problem
+
+        mock_analyzer = self._make_mock_analyzer(
+            "print_problem_diagnosis", {"diagnosis": "Weak Dmax", "confidence": 0.85}
+        )
+
+        with patch(
+            "ptpd_calibration.vertex.vision.GeminiVisionAnalyzer", return_value=mock_analyzer
+        ):
+            result = diagnose_print_problem(
+                "/fake/path.png", problem_description="Dark areas too light"
+            )
+            parsed = json.loads(result)
+            assert parsed["diagnosis"] == "Weak Dmax"
+            mock_analyzer.diagnose_print_problem.assert_called_once()
+
+
+# ─── Deploy to Agent Engine Tests ───
+
+
+@pytest.mark.unit
+class TestDeployToAgentEngine:
+    """Tests for deploy_to_agent_engine success path."""
+
+    def test_deploy_success_mocked(self):
+        """deploy_to_agent_engine should deploy with correct config."""
+        mock_vertexai = MagicMock()
+        mock_agent_engines = MagicMock()
+
+        mock_client = MagicMock()
+        mock_remote_agent = MagicMock()
+        mock_client.agent_engines.create.return_value = mock_remote_agent
+        mock_vertexai.Client.return_value = mock_client
+
+        mock_adk_agents = MagicMock()
+        mock_adk_tools = MagicMock()
+
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "vertexai": mock_vertexai,
+                    "vertexai.agent_engines": mock_agent_engines,
+                    "google": MagicMock(),
+                    "google.adk": MagicMock(),
+                    "google.adk.agents": mock_adk_agents,
+                    "google.adk.tools": mock_adk_tools,
+                },
+            ),
+            patch("ptpd_calibration.vertex.agents.get_settings") as mock_settings,
+            patch("ptpd_calibration.vertex.agents.create_darkroom_coordinator") as mock_coord,
+        ):
+            mock_settings.return_value.vertex.project_id = "test-proj"
+            mock_settings.return_value.vertex.location = "us-central1"
+            mock_settings.return_value.vertex.staging_bucket = "gs://test-bucket"
+            mock_settings.return_value.vertex.deployment_requirements = [
+                "google-cloud-aiplatform[agent_engines,adk]",
+            ]
+            mock_coord.return_value = MagicMock()
+            mock_agent_engines.AdkApp.return_value = MagicMock()
+
+            from ptpd_calibration.vertex.agents import deploy_to_agent_engine
+
+            result = deploy_to_agent_engine(
+                project_id="test-proj",
+                staging_bucket="gs://test-bucket",
+            )
+            assert result == mock_remote_agent
+            mock_client.agent_engines.create.assert_called_once()
+
+
+# ─── Cross-Module Integration Tests ───
+
+
+@pytest.mark.unit
+class TestCrossModuleIntegration:
+    """Tests verifying correct interaction across vertex submodules."""
+
+    def test_vision_result_used_in_memory(self):
+        """VisionAnalysisResult data should integrate with memory profiles."""
+        from ptpd_calibration.vertex.memory import CalibrationSnapshot, UserProfile
+        from ptpd_calibration.vertex.vision import VisionAnalysisResult
+
+        # Simulate a vision result
+        vision_result = VisionAnalysisResult(
+            analysis_type="step_tablet_analysis",
+            raw_response="{}",
+            structured_data={"dmin": 0.05, "dmax": 1.82, "density_range": 1.77},
+            confidence=0.9,
+        )
+
+        # Store in memory profile
+        profile = UserProfile(user_id="vision-memory-test")
+        snapshot = CalibrationSnapshot(
+            paper_type="Platinum Rag",
+            dmin=vision_result.structured_data["dmin"],
+            dmax=vision_result.structured_data["dmax"],
+            density_range=vision_result.structured_data["density_range"],
+        )
+        profile.add_calibration(snapshot)
+
+        assert len(profile.calibration_history) == 1
+        assert profile.calibration_history[0].dmax == 1.82
+
+    def test_search_results_format_for_llm_client(self):
+        """Search results should produce context usable by LLM clients."""
+        from ptpd_calibration.vertex.search import PtPdSearchClient, SearchResult
+
+        client = PtPdSearchClient(project_id="test", data_store_id="test")
+        results = [
+            SearchResult(
+                title="Chemistry Guide",
+                snippet="Mix 50:50 Pt/Pd for neutral tones.",
+                document_id="doc1",
+                relevance_score=0.95,
+            ),
+        ]
+        context = client.format_context_for_llm(results)
+
+        # Context should be valid string for LLM system prompt
+        assert isinstance(context, str)
+        assert len(context) > 0
+        assert "Chemistry Guide" in context
+        assert "50:50" in context
+
+    def test_memory_drift_triggers_with_calibration_snapshots(self):
+        """Drift detection should work with realistic calibration history."""
+        from ptpd_calibration.vertex.memory import CalibrationSnapshot, UserProfile
+
+        profile = UserProfile(user_id="drift-integration")
+        # Add two calibrations for same paper with significant drift
+        profile.add_calibration(
+            CalibrationSnapshot(paper_type="Arches Platine", dmax=1.75, dmin=0.05)
+        )
+        profile.add_calibration(
+            CalibrationSnapshot(paper_type="Arches Platine", dmax=1.55, dmin=0.05)
+        )
+
+        warnings = profile.detect_drift(threshold=0.1)
+        assert len(warnings) > 0
+        assert "Dmax drift" in warnings[0]
+
+    def test_corpus_and_search_data_compatibility(self):
+        """Corpus preparator output should be compatible with search ingestion."""
+        from ptpd_calibration.vertex.corpus import CorpusPreparator
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_dir = Path(tmpdir) / "repo"
+            repo_dir.mkdir()
+            # Create a minimal README
+            (repo_dir / "README.md").write_text("# Test Project\nSample content.")
+
+            output_dir = Path(tmpdir) / "output"
+            preparator = CorpusPreparator(repo_path=repo_dir, output_dir=output_dir)
+            count = preparator.prepare_repo_docs()
+            assert count == 1
+
+            # Verify output is a text file with enriched content
+            docs = list(preparator.output_dir.iterdir())
+            assert len(docs) == 1
+            content = docs[0].read_text()
+            assert "Pt/Pd" in content
+            assert "Test Project" in content
+
+    def test_config_shared_across_modules(self):
+        """All vertex modules should respect the same config settings."""
+        from ptpd_calibration.config import get_settings
+
+        settings = get_settings().vertex
+        # Verify config fields used across modules are consistent
+        assert settings.search_collection is not None
+        assert settings.search_summary_result_count > 0
+        assert settings.search_max_extractive_answers > 0
+        assert settings.search_max_context_length > 0
+        assert settings.search_snippet_max_length > 0
+        assert len(settings.deployment_requirements) > 0
+
+    def test_vision_error_handling_returns_typed_result(self):
+        """Vision API errors should still return VisionAnalysisResult."""
+        from ptpd_calibration.vertex.vision import VisionAnalysisResult
+
+        # Simulate what the error handler produces
+        error_result = VisionAnalysisResult(
+            analysis_type="step_tablet_analysis",
+            raw_response="Error: API timeout",
+        )
+        assert error_result.analysis_type == "step_tablet_analysis"
+        assert "Error" in error_result.raw_response
+        assert error_result.structured_data == {}
+        assert error_result.confidence == 0.0

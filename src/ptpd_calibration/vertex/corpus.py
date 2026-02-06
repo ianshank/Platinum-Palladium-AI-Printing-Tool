@@ -42,6 +42,11 @@ class CorpusPreparator:
         settings = get_settings().vertex
         self.output_dir = Path(output_dir or settings.corpus_local_staging) / "documents"
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        logger.debug(
+            "CorpusPreparator initialized: repo_path=%s, output_dir=%s",
+            self.repo_path,
+            self.output_dir,
+        )
 
     def prepare_all(self) -> int:
         """Prepare all corpus documents.

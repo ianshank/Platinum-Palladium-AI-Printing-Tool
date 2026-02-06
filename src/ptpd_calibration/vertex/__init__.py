@@ -14,6 +14,7 @@ try:
     from ptpd_calibration.vertex.agents import (
         create_adk_agents,
         create_darkroom_coordinator,
+        deploy_to_agent_engine,
     )
     from ptpd_calibration.vertex.corpus import (
         CorpusPreparator,
@@ -30,6 +31,7 @@ try:
     )
     from ptpd_calibration.vertex.vision import (
         GeminiVisionAnalyzer,
+        VisionAnalysisResult,
         analyze_step_tablet,
         diagnose_print_problem,
         evaluate_print_quality,
@@ -46,12 +48,14 @@ __all__ = [
     "prepare_and_upload_corpus",
     # Vision (Layer 2)
     "GeminiVisionAnalyzer",
+    "VisionAnalysisResult",
     "analyze_step_tablet",
     "evaluate_print_quality",
     "diagnose_print_problem",
     # Agents (Layer 3)
     "create_adk_agents",
     "create_darkroom_coordinator",
+    "deploy_to_agent_engine",
     # Memory (Layer 4)
     "CalibrationSnapshot",
     "MemoryBankClient",

@@ -219,6 +219,7 @@ class MemoryBankClient:
         self.storage_path = Path(storage_path or settings.data_dir / "memory")
         self.storage_path.mkdir(parents=True, exist_ok=True)
         self._cache: dict[str, UserProfile] = {}
+        logger.debug("MemoryBankClient initialized: storage_path=%s", self.storage_path)
 
     def _profile_path(self, user_id: str) -> Path:
         """Get the file path for a user profile.
@@ -248,8 +249,17 @@ class MemoryBankClient:
         path = self._profile_path(user_id)
         if path.exists():
             logger.debug("Loading profile from disk: %s", path)
-            data = json.loads(path.read_text(encoding="utf-8"))
-            profile = UserProfile(**data)
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                profile = UserProfile(**data)
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning(
+                    "Corrupted profile for user %s at %s: %s. Creating fresh profile.",
+                    user_id,
+                    path,
+                    exc,
+                )
+                profile = UserProfile(user_id=user_id)
         else:
             logger.debug("Creating new profile for user %s", user_id)
             profile = UserProfile(user_id=user_id)

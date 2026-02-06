@@ -80,6 +80,12 @@ class GeminiVisionAnalyzer:
         self.location = location or settings.location
         self.model = model or settings.vision_model
         self._client = None
+        logger.debug(
+            "GeminiVisionAnalyzer initialized: project=%s, location=%s, model=%s",
+            self.project_id,
+            self.location,
+            self.model,
+        )
 
     def _get_client(self) -> Any:
         """Lazy-initialize the Gemini client."""
@@ -146,18 +152,25 @@ Return as structured JSON with keys:
 - "issues": list of str
 - "recommendations": list of str"""
 
-        response = client.models.generate_content(
-            model=self.model,
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_bytes(data=image_data, mime_type=mime_type),
-                        types.Part.from_text(prompt),
-                    ],
-                )
-            ],
-        )
+        try:
+            response = client.models.generate_content(
+                model=self.model,
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_bytes(data=image_data, mime_type=mime_type),
+                            types.Part.from_text(prompt),
+                        ],
+                    )
+                ],
+            )
+        except Exception as exc:
+            logger.exception("Gemini Vision step tablet analysis failed: %s", exc)
+            return VisionAnalysisResult(
+                analysis_type="step_tablet_analysis",
+                raw_response=f"Error: {exc}",
+            )
 
         return _parse_vision_response(response.text or "", "step_tablet_analysis")
 
@@ -205,18 +218,25 @@ Return as JSON with keys:
 - "improvements": list of str
 - "next_steps": list of str"""
 
-        response = client.models.generate_content(
-            model=self.model,
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_bytes(data=image_data, mime_type=mime_type),
-                        types.Part.from_text(prompt),
-                    ],
-                )
-            ],
-        )
+        try:
+            response = client.models.generate_content(
+                model=self.model,
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_bytes(data=image_data, mime_type=mime_type),
+                            types.Part.from_text(prompt),
+                        ],
+                    )
+                ],
+            )
+        except Exception as exc:
+            logger.exception("Gemini Vision print quality evaluation failed: %s", exc)
+            return VisionAnalysisResult(
+                analysis_type="print_quality_evaluation",
+                raw_response=f"Error: {exc}",
+            )
 
         return _parse_vision_response(response.text or "", "print_quality_evaluation")
 
@@ -269,18 +289,25 @@ Return as JSON with keys:
 - "prevention": list of str
 - "alternative_diagnoses": list of {{"diagnosis": str, "confidence": float}}"""
 
-        response = client.models.generate_content(
-            model=self.model,
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_bytes(data=image_data, mime_type=mime_type),
-                        types.Part.from_text(prompt),
-                    ],
-                )
-            ],
-        )
+        try:
+            response = client.models.generate_content(
+                model=self.model,
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_bytes(data=image_data, mime_type=mime_type),
+                            types.Part.from_text(prompt),
+                        ],
+                    )
+                ],
+            )
+        except Exception as exc:
+            logger.exception("Gemini Vision print problem diagnosis failed: %s", exc)
+            return VisionAnalysisResult(
+                analysis_type="print_problem_diagnosis",
+                raw_response=f"Error: {exc}",
+            )
 
         return _parse_vision_response(response.text or "", "print_problem_diagnosis")
 
@@ -326,19 +353,26 @@ Return as JSON with keys:
 - "overall_assessment": str
 - "next_recommendations": list of str"""
 
-        response = client.models.generate_content(
-            model=self.model,
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_bytes(data=before_data, mime_type=before_mime),
-                        types.Part.from_bytes(data=after_data, mime_type=after_mime),
-                        types.Part.from_text(prompt),
-                    ],
-                )
-            ],
-        )
+        try:
+            response = client.models.generate_content(
+                model=self.model,
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_bytes(data=before_data, mime_type=before_mime),
+                            types.Part.from_bytes(data=after_data, mime_type=after_mime),
+                            types.Part.from_text(prompt),
+                        ],
+                    )
+                ],
+            )
+        except Exception as exc:
+            logger.exception("Gemini Vision print comparison failed: %s", exc)
+            return VisionAnalysisResult(
+                analysis_type="print_comparison",
+                raw_response=f"Error: {exc}",
+            )
 
         return _parse_vision_response(response.text or "", "print_comparison")
 
@@ -381,18 +415,25 @@ Return as JSON with keys:
 - "characteristics": {{"texture": str, "weight": str, "fiber": str, "sizing": str}}
 - "printing_recommendations": {{"coating_method": str, "coating_volume_ml": float, "humidity_sensitivity": str, "dmax_potential": str}}"""
 
-        response = client.models.generate_content(
-            model=self.model,
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_bytes(data=image_data, mime_type=mime_type),
-                        types.Part.from_text(prompt),
-                    ],
-                )
-            ],
-        )
+        try:
+            response = client.models.generate_content(
+                model=self.model,
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_bytes(data=image_data, mime_type=mime_type),
+                            types.Part.from_text(prompt),
+                        ],
+                    )
+                ],
+            )
+        except Exception as exc:
+            logger.exception("Gemini Vision paper classification failed: %s", exc)
+            return VisionAnalysisResult(
+                analysis_type="paper_classification",
+                raw_response=f"Error: {exc}",
+            )
 
         return _parse_vision_response(response.text or "", "paper_classification")
 

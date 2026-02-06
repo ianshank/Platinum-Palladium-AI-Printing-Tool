@@ -252,7 +252,7 @@ def calculate_chemistry_recipe(
 
         logger.debug("Recipe calculated: %.2f mL total", recipe["total_ml"])
         return json.dumps(recipe, indent=2)
-    except (ValueError, IndexError, KeyError, TypeError, AttributeError) as e:
+    except (ValueError, IndexError, KeyError, TypeError, AttributeError, ZeroDivisionError) as e:
         logger.exception("Chemistry recipe calculation failed: %s", e)
         return json.dumps({"status": "error", "error": str(e)})
 

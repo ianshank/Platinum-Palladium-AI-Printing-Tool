@@ -69,6 +69,12 @@ class PtPdSearchClient:
         self.data_store_id = data_store_id or settings.search_data_store_id
         self.serving_config = serving_config or settings.search_serving_config
         self._client = None
+        logger.debug(
+            "PtPdSearchClient initialized: project=%s, location=%s, data_store=%s",
+            self.project_id,
+            self.location,
+            self.data_store_id,
+        )
 
     def _get_client(self) -> Any:
         """Lazy-initialize the Discovery Engine client."""
@@ -132,7 +138,11 @@ class PtPdSearchClient:
         if filter_expr:
             request.filter = filter_expr
 
-        response = client.search(request=request)
+        try:
+            response = client.search(request=request)
+        except Exception as exc:
+            logger.exception("Vertex AI Search request failed: %s", exc)
+            return []
 
         results = []
         for result in response.results:
@@ -197,7 +207,11 @@ class PtPdSearchClient:
             content_search_spec=content_search_spec,
         )
 
-        response = client.search(request=request)
+        try:
+            response = client.search(request=request)
+        except Exception as exc:
+            logger.exception("Vertex AI Search with summary request failed: %s", exc)
+            return "", []
 
         # Extract summary
         summary = ""
