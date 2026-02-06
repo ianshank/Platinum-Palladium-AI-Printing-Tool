@@ -310,6 +310,6 @@ class MemoryBankClient:
         if drift_warnings:
             parts.append("Calibration drift warnings:")
             for warning in drift_warnings:
-                parts.append(f"  ⚠ {warning}")
+                parts.append(f"  WARNING: {warning}")
 
         return "\n\n".join(parts)

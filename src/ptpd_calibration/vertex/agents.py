@@ -100,15 +100,15 @@ def analyze_step_tablet_scan(
         }
         logger.debug("Step tablet analysis complete: %d steps detected", response["num_steps"])
         return json.dumps(response, indent=2)
-    except ImportError:
-        logger.warning("Detection modules not available for step tablet analysis")
+    except ImportError as e:
+        logger.warning("Detection modules not available for step tablet analysis: %s", e)
         return json.dumps(
             {
                 "status": "error",
                 "error": "Detection modules not available. Ensure opencv-python is installed.",
             }
         )
-    except Exception as e:
+    except (FileNotFoundError, ValueError, OSError) as e:
         logger.exception("Step tablet analysis failed: %s", e)
         return json.dumps({"status": "error", "error": str(e)})
 
@@ -153,7 +153,7 @@ def generate_linearization_curve(
         }
         logger.debug("Curve generated: %d points", response["num_points"])
         return json.dumps(response, indent=2)
-    except Exception as e:
+    except (ImportError, json.JSONDecodeError, ValueError, KeyError, TypeError) as e:
         logger.exception("Curve generation failed: %s", e)
         return json.dumps({"status": "error", "error": str(e)})
 
@@ -252,7 +252,7 @@ def calculate_chemistry_recipe(
 
         logger.debug("Recipe calculated: %.2f mL total", recipe["total_ml"])
         return json.dumps(recipe, indent=2)
-    except Exception as e:
+    except (ValueError, IndexError, KeyError, TypeError, AttributeError) as e:
         logger.exception("Chemistry recipe calculation failed: %s", e)
         return json.dumps({"status": "error", "error": str(e)})
 

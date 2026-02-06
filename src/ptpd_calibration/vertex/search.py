@@ -179,7 +179,7 @@ class PtPdSearchClient:
                 summary_result_count=min(max_results, 5),
                 include_citations=True,
                 model_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec.ModelSpec(
-                    version="gemini-2.5-flash",
+                    version=settings.search_summary_model,
                 ),
             ),
             extractive_content_spec=discoveryengine.SearchRequest.ContentSearchSpec.ExtractiveContentSpec(
@@ -291,7 +291,8 @@ def _extract_document_data(doc: Any) -> dict[str, Any]:
             try:
                 text = raw.decode("utf-8")
                 data["snippet"] = text[:2000]
-            except (UnicodeDecodeError, AttributeError):
+            except (UnicodeDecodeError, AttributeError) as exc:
+                logger.debug("Could not decode raw content as UTF-8: %s", exc)
                 data["snippet"] = str(raw)[:2000]
 
     if not data.get("title"):

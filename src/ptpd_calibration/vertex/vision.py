@@ -394,6 +394,20 @@ Return as JSON with keys:
 # Module-level convenience functions for ADK tool integration
 
 
+def _format_result(result: VisionAnalysisResult) -> str:
+    """Format a VisionAnalysisResult as a JSON string for ADK tool output.
+
+    Args:
+        result: The analysis result to format.
+
+    Returns:
+        JSON string of structured data, or raw response if parsing failed.
+    """
+    if result.structured_data:
+        return json.dumps(result.structured_data, indent=2)
+    return result.raw_response
+
+
 def analyze_step_tablet(
     image_path: str,
     tablet_type: str = "Stouffer 21-step",
@@ -409,11 +423,7 @@ def analyze_step_tablet(
     """
     analyzer = GeminiVisionAnalyzer()
     result = analyzer.analyze_step_tablet(image_path, tablet_type)
-    return (
-        json.dumps(result.structured_data, indent=2)
-        if result.structured_data
-        else result.raw_response
-    )
+    return _format_result(result)
 
 
 def evaluate_print_quality(
@@ -433,11 +443,7 @@ def evaluate_print_quality(
     """
     analyzer = GeminiVisionAnalyzer()
     result = analyzer.evaluate_print_quality(image_path, paper_type, chemistry)
-    return (
-        json.dumps(result.structured_data, indent=2)
-        if result.structured_data
-        else result.raw_response
-    )
+    return _format_result(result)
 
 
 def diagnose_print_problem(
@@ -455,11 +461,7 @@ def diagnose_print_problem(
     """
     analyzer = GeminiVisionAnalyzer()
     result = analyzer.diagnose_print_problem(image_path, problem_description)
-    return (
-        json.dumps(result.structured_data, indent=2)
-        if result.structured_data
-        else result.raw_response
-    )
+    return _format_result(result)
 
 
 # Internal helpers
@@ -538,8 +540,13 @@ def _parse_vision_response(
                 recommendations.extend(structured_data[key])
                 break
 
-    except (json.JSONDecodeError, ValueError, KeyError):
-        logger.debug("Could not parse vision response as JSON for %s", analysis_type)
+    except (json.JSONDecodeError, ValueError, KeyError) as exc:
+        logger.debug(
+            "Could not parse vision response as JSON for %s: %s (response=%r)",
+            analysis_type,
+            exc,
+            response_text[:200],
+        )
 
     return VisionAnalysisResult(
         analysis_type=analysis_type,

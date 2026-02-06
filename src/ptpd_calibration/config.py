@@ -1123,12 +1123,8 @@ class VertexAISettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PTPD_VERTEX_")
 
     # Google Cloud project configuration
-    project_id: str | None = Field(
-        default=None, description="Google Cloud project ID"
-    )
-    location: str = Field(
-        default="us-central1", description="Google Cloud region"
-    )
+    project_id: str | None = Field(default=None, description="Google Cloud project ID")
+    location: str = Field(default="us-central1", description="Google Cloud region")
     staging_bucket: str | None = Field(
         default=None, description="GCS bucket for staging (e.g., gs://ptpd-vertex-staging)"
     )
@@ -1143,7 +1139,9 @@ class VertexAISettings(BaseSettings):
         description="Search serving configuration name",
     )
     search_max_results: int = Field(
-        default=10, ge=1, le=50,
+        default=10,
+        ge=1,
+        le=50,
         description="Maximum search results to return",
     )
 
@@ -1153,7 +1151,9 @@ class VertexAISettings(BaseSettings):
         description="Gemini model for vision tasks",
     )
     vision_max_output_tokens: int = Field(
-        default=4096, ge=256, le=16384,
+        default=4096,
+        ge=256,
+        le=16384,
         description="Max output tokens for vision responses",
     )
 
@@ -1179,6 +1179,12 @@ class VertexAISettings(BaseSettings):
     memory_scope: str = Field(
         default="user",
         description="Memory scope: 'user' for per-user, 'session' for per-session",
+    )
+
+    # Search summary model
+    search_summary_model: str = Field(
+        default="gemini-2.5-flash",
+        description="Model version for search summary generation",
     )
 
     # Corpus preparation

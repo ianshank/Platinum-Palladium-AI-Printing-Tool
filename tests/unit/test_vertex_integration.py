@@ -96,6 +96,14 @@ class TestVertexAIConfig:
         assert hasattr(settings, "memory_scope")
         assert hasattr(settings, "corpus_bucket")
         assert hasattr(settings, "corpus_local_staging")
+        assert hasattr(settings, "search_summary_model")
+
+    def test_vertex_settings_search_summary_model_default(self):
+        """VertexAISettings should have search_summary_model with default."""
+        from ptpd_calibration.config import VertexAISettings
+
+        settings = VertexAISettings()
+        assert settings.search_summary_model == "gemini-2.5-flash"
 
 
 # ─── LLM Client Tests ───
@@ -211,14 +219,13 @@ class TestVertexAIClient:
                 },
             ),
             patch("ptpd_calibration.llm.client._convert_messages_to_gemini", return_value=[]),
+            patch.object(client, "complete") as mock_complete,
         ):
-            # Patch the lazy imports inside the method
-            with patch.object(client, "complete") as mock_complete:
-                mock_complete.return_value = "Test response"
-                result = await client.complete(
-                    messages=[{"role": "user", "content": "Hello"}],
-                )
-                assert result == "Test response"
+            mock_complete.return_value = "Test response"
+            result = await client.complete(
+                messages=[{"role": "user", "content": "Hello"}],
+            )
+            assert result == "Test response"
 
     def test_create_client_unsupported_provider(self):
         """create_client should raise ValueError for unsupported provider."""
@@ -655,12 +662,14 @@ class TestCorpusPreparation:
             preparator = CorpusPreparator(repo_path=".", output_dir=str(tmpdir))
 
             # Mock the import to fail
-            with patch.dict(
-                "sys.modules", {"google.cloud.storage": None, "google.cloud": MagicMock()}
+            with (
+                patch.dict(
+                    "sys.modules", {"google.cloud.storage": None, "google.cloud": MagicMock()}
+                ),
+                patch("builtins.__import__", side_effect=ImportError("no storage")),
+                pytest.raises(ImportError),
             ):
-                with patch("builtins.__import__", side_effect=ImportError("no storage")):
-                    with pytest.raises(ImportError):
-                        preparator.upload_to_gcs(bucket_name="test-bucket")
+                preparator.upload_to_gcs(bucket_name="test-bucket")
 
     def test_upload_to_gcs_no_bucket(self):
         """upload_to_gcs should raise ValueError when no bucket specified."""
@@ -670,14 +679,16 @@ class TestCorpusPreparation:
             preparator = CorpusPreparator(repo_path=".", output_dir=str(tmpdir))
 
             mock_storage = MagicMock()
-            with patch.dict(
-                "sys.modules", {"google.cloud.storage": mock_storage, "google.cloud": MagicMock()}
+            with (
+                patch.dict(
+                    "sys.modules",
+                    {"google.cloud.storage": mock_storage, "google.cloud": MagicMock()},
+                ),
+                patch("ptpd_calibration.vertex.corpus.get_settings") as mock_settings,
+                pytest.raises(ValueError, match="GCS bucket name required"),
             ):
-                # Patch get_settings to return no corpus_bucket
-                with patch("ptpd_calibration.vertex.corpus.get_settings") as mock_settings:
-                    mock_settings.return_value.vertex.corpus_bucket = None
-                    with pytest.raises(ValueError, match="GCS bucket name required"):
-                        preparator.upload_to_gcs(bucket_name=None)
+                mock_settings.return_value.vertex.corpus_bucket = None
+                preparator.upload_to_gcs(bucket_name=None)
 
     def test_upload_to_gcs_strips_gs_prefix(self):
         """upload_to_gcs should strip gs:// prefix from bucket name."""
@@ -757,12 +768,14 @@ class TestVisionHelpers:
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             f.write(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
             f.flush()
+            path = f.name
 
-            data, mime = _load_image(f.name)
+        try:
+            data, mime = _load_image(path)
             assert mime == "image/png"
             assert len(data) > 0
-
-        os.unlink(f.name)
+        finally:
+            os.unlink(path)
 
     def test_load_image_jpeg(self):
         """_load_image should handle JPEG files."""
@@ -771,11 +784,13 @@ class TestVisionHelpers:
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
             f.write(b"\xff\xd8\xff" + b"\x00" * 100)
             f.flush()
+            path = f.name
 
-            data, mime = _load_image(f.name)
+        try:
+            data, mime = _load_image(path)
             assert mime == "image/jpeg"
-
-        os.unlink(f.name)
+        finally:
+            os.unlink(path)
 
     def test_load_image_tiff(self):
         """_load_image should handle TIFF files."""
@@ -784,11 +799,13 @@ class TestVisionHelpers:
         with tempfile.NamedTemporaryFile(suffix=".tiff", delete=False) as f:
             f.write(b"II\x2a\x00" + b"\x00" * 100)
             f.flush()
+            path = f.name
 
-            data, mime = _load_image(f.name)
+        try:
+            data, mime = _load_image(path)
             assert mime == "image/tiff"
-
-        os.unlink(f.name)
+        finally:
+            os.unlink(path)
 
     def test_load_image_webp(self):
         """_load_image should handle WebP files."""
@@ -797,11 +814,13 @@ class TestVisionHelpers:
         with tempfile.NamedTemporaryFile(suffix=".webp", delete=False) as f:
             f.write(b"RIFF\x00\x00\x00\x00WEBP" + b"\x00" * 100)
             f.flush()
+            path = f.name
 
-            data, mime = _load_image(f.name)
+        try:
+            data, mime = _load_image(path)
             assert mime == "image/webp"
-
-        os.unlink(f.name)
+        finally:
+            os.unlink(path)
 
     def test_load_image_bmp(self):
         """_load_image should handle BMP files."""
@@ -810,11 +829,13 @@ class TestVisionHelpers:
         with tempfile.NamedTemporaryFile(suffix=".bmp", delete=False) as f:
             f.write(b"BM" + b"\x00" * 100)
             f.flush()
+            path = f.name
 
-            data, mime = _load_image(f.name)
+        try:
+            data, mime = _load_image(path)
             assert mime == "image/bmp"
-
-        os.unlink(f.name)
+        finally:
+            os.unlink(path)
 
     def test_load_image_tif_alias(self):
         """_load_image should handle .tif extension."""
@@ -823,11 +844,13 @@ class TestVisionHelpers:
         with tempfile.NamedTemporaryFile(suffix=".tif", delete=False) as f:
             f.write(b"MM\x00\x2a" + b"\x00" * 100)
             f.flush()
+            path = f.name
 
-            data, mime = _load_image(f.name)
+        try:
+            data, mime = _load_image(path)
             assert mime == "image/tiff"
-
-        os.unlink(f.name)
+        finally:
+            os.unlink(path)
 
     def test_load_image_not_found(self):
         """_load_image should raise FileNotFoundError for missing files."""
@@ -843,11 +866,13 @@ class TestVisionHelpers:
         with tempfile.NamedTemporaryFile(suffix=".xyz", delete=False) as f:
             f.write(b"data")
             f.flush()
+            path = f.name
 
+        try:
             with pytest.raises(ValueError, match="Unsupported image format"):
-                _load_image(f.name)
-
-        os.unlink(f.name)
+                _load_image(path)
+        finally:
+            os.unlink(path)
 
     def test_parse_vision_response_json(self):
         """_parse_vision_response should parse valid JSON."""
@@ -918,6 +943,30 @@ class TestVisionHelpers:
         result = _parse_vision_response("", "test")
         assert result.raw_response == ""
         assert result.structured_data == {}
+
+    def test_format_result_with_structured_data(self):
+        """_format_result should return JSON when structured data exists."""
+        from ptpd_calibration.vertex.vision import VisionAnalysisResult, _format_result
+
+        result = VisionAnalysisResult(
+            analysis_type="test",
+            raw_response="raw text",
+            structured_data={"key": "value"},
+        )
+        formatted = _format_result(result)
+        parsed = json.loads(formatted)
+        assert parsed["key"] == "value"
+
+    def test_format_result_without_structured_data(self):
+        """_format_result should return raw response when no structured data."""
+        from ptpd_calibration.vertex.vision import VisionAnalysisResult, _format_result
+
+        result = VisionAnalysisResult(
+            analysis_type="test",
+            raw_response="raw text fallback",
+            structured_data={},
+        )
+        assert _format_result(result) == "raw text fallback"
 
     def test_supported_image_types_constant(self):
         """SUPPORTED_IMAGE_TYPES should contain all expected formats."""
@@ -999,21 +1048,25 @@ class TestGeminiVisionAnalyzer:
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             f.write(b"\x89PNG" + b"\x00" * 100)
             f.flush()
+            path = f.name
 
-            # Mock the genai types import
+        try:
             mock_types = MagicMock()
-            with patch.dict(
-                "sys.modules", {"google.genai": MagicMock(), "google.genai.types": mock_types}
-            ):
-                with patch(
+            with (
+                patch.dict(
+                    "sys.modules", {"google.genai": MagicMock(), "google.genai.types": mock_types}
+                ),
+                patch(
                     "ptpd_calibration.vertex.vision.GeminiVisionAnalyzer._get_client",
                     return_value=analyzer._client,
-                ):
-                    result = analyzer.analyze_step_tablet(f.name)
+                ),
+            ):
+                result = analyzer.analyze_step_tablet(path)
 
-        os.unlink(f.name)
-        assert result.analysis_type == "step_tablet_analysis"
-        assert result.structured_data.get("dmax") == 1.75
+            assert result.analysis_type == "step_tablet_analysis"
+            assert result.structured_data.get("dmax") == 1.75
+        finally:
+            os.unlink(path)
 
     def test_evaluate_print_quality(self):
         """evaluate_print_quality should return quality scores."""
@@ -1032,21 +1085,24 @@ class TestGeminiVisionAnalyzer:
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
             f.write(b"\xff\xd8\xff" + b"\x00" * 100)
             f.flush()
+            path = f.name
 
+        try:
             mock_types = MagicMock()
-            with patch.dict(
-                "sys.modules", {"google.genai": MagicMock(), "google.genai.types": mock_types}
-            ):
-                with patch(
+            with (
+                patch.dict(
+                    "sys.modules", {"google.genai": MagicMock(), "google.genai.types": mock_types}
+                ),
+                patch(
                     "ptpd_calibration.vertex.vision.GeminiVisionAnalyzer._get_client",
                     return_value=analyzer._client,
-                ):
-                    result = analyzer.evaluate_print_quality(
-                        f.name, "Arches Platine", "50:50 Pt/Pd"
-                    )
+                ),
+            ):
+                result = analyzer.evaluate_print_quality(path, "Arches Platine", "50:50 Pt/Pd")
 
-        os.unlink(f.name)
-        assert result.analysis_type == "print_quality_evaluation"
+            assert result.analysis_type == "print_quality_evaluation"
+        finally:
+            os.unlink(path)
 
     def test_diagnose_print_problem(self):
         """diagnose_print_problem should return diagnosis."""
@@ -1065,20 +1121,25 @@ class TestGeminiVisionAnalyzer:
         with tempfile.NamedTemporaryFile(suffix=".tiff", delete=False) as f:
             f.write(b"II\x2a\x00" + b"\x00" * 100)
             f.flush()
+            path = f.name
 
+        try:
             mock_types = MagicMock()
-            with patch.dict(
-                "sys.modules", {"google.genai": MagicMock(), "google.genai.types": mock_types}
-            ):
-                with patch(
+            with (
+                patch.dict(
+                    "sys.modules", {"google.genai": MagicMock(), "google.genai.types": mock_types}
+                ),
+                patch(
                     "ptpd_calibration.vertex.vision.GeminiVisionAnalyzer._get_client",
                     return_value=analyzer._client,
-                ):
-                    result = analyzer.diagnose_print_problem(f.name, "Weak shadows")
+                ),
+            ):
+                result = analyzer.diagnose_print_problem(path, "Weak shadows")
 
-        os.unlink(f.name)
-        assert result.analysis_type == "print_problem_diagnosis"
-        assert result.confidence == 0.85
+            assert result.analysis_type == "print_problem_diagnosis"
+            assert result.confidence == 0.85
+        finally:
+            os.unlink(path)
 
     def test_compare_prints(self):
         """compare_prints should return comparison analysis."""
@@ -1098,23 +1159,30 @@ class TestGeminiVisionAnalyzer:
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f1:
             f1.write(b"\x89PNG" + b"\x00" * 100)
             f1.flush()
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f2:
-                f2.write(b"\x89PNG" + b"\x00" * 100)
-                f2.flush()
+            path1 = f1.name
 
-                mock_types = MagicMock()
-                with patch.dict(
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f2:
+            f2.write(b"\x89PNG" + b"\x00" * 100)
+            f2.flush()
+            path2 = f2.name
+
+        try:
+            mock_types = MagicMock()
+            with (
+                patch.dict(
                     "sys.modules", {"google.genai": MagicMock(), "google.genai.types": mock_types}
-                ):
-                    with patch(
-                        "ptpd_calibration.vertex.vision.GeminiVisionAnalyzer._get_client",
-                        return_value=analyzer._client,
-                    ):
-                        result = analyzer.compare_prints(f1.name, f2.name, "Adjusted curve")
+                ),
+                patch(
+                    "ptpd_calibration.vertex.vision.GeminiVisionAnalyzer._get_client",
+                    return_value=analyzer._client,
+                ),
+            ):
+                result = analyzer.compare_prints(path1, path2, "Adjusted curve")
 
-        os.unlink(f1.name)
-        os.unlink(f2.name)
-        assert result.analysis_type == "print_comparison"
+            assert result.analysis_type == "print_comparison"
+        finally:
+            os.unlink(path1)
+            os.unlink(path2)
 
     def test_classify_paper(self):
         """classify_paper should return paper classification."""
@@ -1132,20 +1200,25 @@ class TestGeminiVisionAnalyzer:
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
             f.write(b"\xff\xd8\xff" + b"\x00" * 100)
             f.flush()
+            path = f.name
 
+        try:
             mock_types = MagicMock()
-            with patch.dict(
-                "sys.modules", {"google.genai": MagicMock(), "google.genai.types": mock_types}
-            ):
-                with patch(
+            with (
+                patch.dict(
+                    "sys.modules", {"google.genai": MagicMock(), "google.genai.types": mock_types}
+                ),
+                patch(
                     "ptpd_calibration.vertex.vision.GeminiVisionAnalyzer._get_client",
                     return_value=analyzer._client,
-                ):
-                    result = analyzer.classify_paper(f.name)
+                ),
+            ):
+                result = analyzer.classify_paper(path)
 
-        os.unlink(f.name)
-        assert result.analysis_type == "paper_classification"
-        assert result.confidence == 0.75
+            assert result.analysis_type == "paper_classification"
+            assert result.confidence == 0.75
+        finally:
+            os.unlink(path)
 
     def test_get_client_import_error(self):
         """_get_client should raise ImportError when google-genai missing."""
@@ -1153,10 +1226,12 @@ class TestGeminiVisionAnalyzer:
 
         analyzer = GeminiVisionAnalyzer(project_id="test")
 
-        with patch.dict("sys.modules", {"google": None, "google.genai": None}):
-            with patch("builtins.__import__", side_effect=ImportError("no genai")):
-                with pytest.raises(ImportError, match="google-genai required"):
-                    analyzer._get_client()
+        with (
+            patch.dict("sys.modules", {"google": None, "google.genai": None}),
+            patch("builtins.__import__", side_effect=ImportError("no genai")),
+            pytest.raises(ImportError, match="google-genai required"),
+        ):
+            analyzer._get_client()
 
 
 # ─── ADK Agent Tool Wrapper Tests ───
@@ -1358,12 +1433,15 @@ class TestADKAgentCreation:
         """create_adk_agents should raise ImportError when ADK not installed."""
         from ptpd_calibration.vertex.agents import create_adk_agents
 
-        with patch.dict(
-            "sys.modules", {"google.adk": None, "google.adk.agents": None, "google.adk.tools": None}
+        with (
+            patch.dict(
+                "sys.modules",
+                {"google.adk": None, "google.adk.agents": None, "google.adk.tools": None},
+            ),
+            patch("builtins.__import__", side_effect=ImportError("no adk")),
+            pytest.raises(ImportError, match="google-cloud-aiplatform"),
         ):
-            with patch("builtins.__import__", side_effect=ImportError("no adk")):
-                with pytest.raises(ImportError, match="google-cloud-aiplatform"):
-                    create_adk_agents()
+            create_adk_agents()
 
     def test_create_adk_agents_mocked(self):
         """create_adk_agents should create agent dict with mocked ADK."""
@@ -1416,10 +1494,12 @@ class TestADKAgentCreation:
         """deploy_to_agent_engine should raise ImportError when packages missing."""
         from ptpd_calibration.vertex.agents import deploy_to_agent_engine
 
-        with patch.dict("sys.modules", {"vertexai": None, "vertexai.agent_engines": None}):
-            with patch("builtins.__import__", side_effect=ImportError("no vertexai")):
-                with pytest.raises(ImportError, match="google-cloud-aiplatform"):
-                    deploy_to_agent_engine()
+        with (
+            patch.dict("sys.modules", {"vertexai": None, "vertexai.agent_engines": None}),
+            patch("builtins.__import__", side_effect=ImportError("no vertexai")),
+            pytest.raises(ImportError, match="google-cloud-aiplatform"),
+        ):
+            deploy_to_agent_engine()
 
     def test_deploy_to_agent_engine_no_project(self):
         """deploy_to_agent_engine should raise ValueError without project ID."""
@@ -1563,12 +1643,15 @@ class TestSearchClient:
 
         client = PtPdSearchClient(project_id="test", data_store_id="test")
 
-        with patch.dict(
-            "sys.modules", {"google.cloud.discoveryengine_v1": None, "google.cloud": MagicMock()}
+        with (
+            patch.dict(
+                "sys.modules",
+                {"google.cloud.discoveryengine_v1": None, "google.cloud": MagicMock()},
+            ),
+            patch("builtins.__import__", side_effect=ImportError("no discoveryengine")),
+            pytest.raises(ImportError, match="google-cloud-discoveryengine"),
         ):
-            with patch("builtins.__import__", side_effect=ImportError("no discoveryengine")):
-                with pytest.raises(ImportError, match="google-cloud-discoveryengine"):
-                    client._get_client()
+            client._get_client()
 
     def test_search_mocked(self):
         """search should call Discovery Engine API and return results."""
@@ -1879,6 +1962,7 @@ class TestVertexModuleInit:
             "diagnose_print_problem",
             "create_adk_agents",
             "create_darkroom_coordinator",
+            "CalibrationSnapshot",
             "MemoryBankClient",
             "UserProfile",
         ]

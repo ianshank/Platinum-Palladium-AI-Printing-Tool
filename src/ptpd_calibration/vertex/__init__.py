@@ -20,6 +20,7 @@ try:
         prepare_and_upload_corpus,
     )
     from ptpd_calibration.vertex.memory import (
+        CalibrationSnapshot,
         MemoryBankClient,
         UserProfile,
     )
@@ -52,6 +53,7 @@ __all__ = [
     "create_adk_agents",
     "create_darkroom_coordinator",
     # Memory (Layer 4)
+    "CalibrationSnapshot",
     "MemoryBankClient",
     "UserProfile",
 ]
