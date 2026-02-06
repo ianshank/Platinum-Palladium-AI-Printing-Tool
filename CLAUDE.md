@@ -329,6 +329,61 @@ PYTHONPATH=src python -c "from ptpd_calibration import CurveGenerator"
 
 The `app.py` includes a patch for Gradio 4.44 JSON schema issues. If you encounter client-side errors, ensure the patch is being applied.
 
+## AlchemistZero: AlphaZero-Based Optimization
+
+The `alphazero` module implements reinforcement learning optimization for printing parameters using AlphaZero-style self-play.
+
+### Architecture Decisions
+
+- **2025-01-10**: Switched from ResNet (2D CNN) to 3-Layer Dense Network (1D MLP) for parameter vector inputs
+- **2025-01-10**: Defined State Vector as `[metal_ratio, contrast_active, contrast_amount, exposure_time, humidity, temperature] + densities[21]`
+- **2025-01-10**: Created discrete action space with 16 actions for parameter adjustments
+
+### Hyperparameters
+
+- **Input Vector Size**: 27 (6 parameters + 21 density steps)
+- **Action Space Size**: 16 discrete actions
+- **Network Architecture**: [256, 256, 128] hidden layers with residual connections
+- **MCTS Playouts**: 100 per move (configurable)
+
+### Module Structure
+
+```
+src/ptpd_calibration/alphazero/
+├── bridge/printing_env.py    # Simulator wrapper (PrintingSimulator, PrintState)
+├── game/platinum_game.py     # AlphaZero Game interface (PlatinumGame)
+├── nn/policy_value_net.py    # 1D MLP neural network (PolicyValueNet)
+├── mcts/alpha_mcts.py        # Monte Carlo Tree Search (AlphaMCTS)
+├── export/acv.py             # Photoshop .acv curve export
+├── config.py                 # Configuration (AlphaZeroConfig)
+└── train.py                  # Training loop (AlphaZeroTrainer)
+```
+
+### Quick Start
+
+```bash
+# Run smoke test
+PYTHONPATH=src python -m ptpd_calibration.alphazero.train --smoke-test
+
+# Train with custom parameters
+PYTHONPATH=src python -m ptpd_calibration.alphazero.train --simulations 100 --episodes 50
+
+# Verify components
+PYTHONPATH=src python -c "from ptpd_calibration.alphazero.bridge.printing_env import check_simulator; check_simulator()"
+PYTHONPATH=src python -c "from ptpd_calibration.alphazero.game.platinum_game import check_game; check_game()"
+```
+
+### Action Mapping
+
+| Action | Description |
+|--------|-------------|
+| 0-3 | Metal ratio adjustments (±5%, ±15%) |
+| 4-6 | Contrast adjustments (±0.5, toggle) |
+| 7-10 | Exposure adjustments (±5s, ±20s) |
+| 11-12 | Humidity adjustments (±5%) |
+| 13 | Finish calibration |
+| 14 | No operation |
+
 ## Resources
 
 - [GitHub Repository](https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool)
