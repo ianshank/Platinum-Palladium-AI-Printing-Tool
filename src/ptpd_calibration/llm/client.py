@@ -2,10 +2,14 @@
 LLM client implementations for different providers.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
+from typing import Any
 
 from ptpd_calibration.config import LLMProvider, LLMSettings, get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class LLMClient(ABC):
@@ -224,16 +228,21 @@ class VertexAIClient(LLMClient):
                 "google-genai package required. Install with: pip install ptpd-calibration[vertex]"
             ) from err
 
+        logger.debug(
+            "VertexAI complete: model=%s, project=%s, msgs=%d",
+            self.settings.vertex_model,
+            self.settings.vertex_project,
+            len(messages),
+        )
+
         client = genai.Client(
             vertexai=True,
             project=self.settings.vertex_project,
             location=self.settings.vertex_location,
         )
 
-        # Convert messages to Gemini format
         contents = _convert_messages_to_gemini(messages, types)
 
-        # Build generation config
         gen_config = types.GenerateContentConfig(
             max_output_tokens=max_tokens or self.settings.max_tokens,
             temperature=temperature if temperature is not None else self.settings.temperature,
@@ -289,7 +298,7 @@ class VertexAIClient(LLMClient):
                 yield chunk.text
 
 
-def _convert_messages_to_gemini(messages: list[dict], types: object) -> list:
+def _convert_messages_to_gemini(messages: list[dict], types: Any) -> list:  # type: ignore[type-arg]
     """Convert OpenAI-style messages to Gemini Content format.
 
     Args:

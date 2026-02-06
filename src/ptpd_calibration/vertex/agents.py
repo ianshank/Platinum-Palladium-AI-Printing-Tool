@@ -20,9 +20,37 @@ Usage:
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from ptpd_calibration.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+# UV exposure base times by source type (seconds)
+UV_BASE_TIMES: dict[str, int] = {
+    "LED 365nm": 180,
+    "Metal Halide": 420,
+    "Mercury Vapor": 360,
+    "Sunlight": 600,
+}
+
+# Default base time for unknown UV sources (seconds)
+UV_DEFAULT_BASE_TIME: int = 300
+
+# Contrast agent recommendations by goal level
+CONTRAST_AGENTS: dict[str, str] = {
+    "low": "None — rely on negative density range for contrast",
+    "normal": "2 drops 3% H2O2 per coating",
+    "high": "3-4 drops 3% H2O2 or use Solution B (with 0.3% chlorate)",
+    "very high": "Use Solution B (0.6% chlorate) or add potassium dichromate (caution: toxic)",
+}
+
+# Default DR normalisation target
+DR_NORMALISATION_TARGET: float = 1.5
+
+# Test strip bracket factors
+TEST_STRIP_FACTORS: list[float] = [0.6, 0.8, 1.0, 1.2, 1.5]
 
 
 # ─── Tool Wrappers (bridge to existing ptpd_calibration code) ───
@@ -31,7 +59,6 @@ from ptpd_calibration.config import get_settings
 def analyze_step_tablet_scan(
     image_path: str,
     tablet_type: str = "Stouffer 21-step",
-    auto_detect_orientation: bool = True,
 ) -> str:
     """Analyze a scanned step tablet to extract density readings.
 
@@ -41,11 +68,11 @@ def analyze_step_tablet_scan(
     Args:
         image_path: Path to the uploaded step tablet scan image.
         tablet_type: "Stouffer 21-step", "Stouffer 31-step", or "Stouffer 41-step".
-        auto_detect_orientation: Whether to auto-detect tablet orientation.
 
     Returns:
         JSON string with density readings per step and quality metrics.
     """
+    logger.info("Analyzing step tablet scan: %s (type=%s)", image_path, tablet_type)
     try:
         from ptpd_calibration.detection.detector import StepTabletDetector
         from ptpd_calibration.detection.extractor import DensityExtractor
@@ -53,27 +80,28 @@ def analyze_step_tablet_scan(
         detector = StepTabletDetector()
         extractor = DensityExtractor()
 
-        # Detect step regions
         detection = detector.detect(image_path)
-
-        # Extract densities
         result = extractor.extract(detection)
 
-        return json.dumps(
-            {
-                "status": "success",
-                "tablet_type": tablet_type,
-                "num_steps": len(result.patches) if hasattr(result, "patches") else 0,
-                "densities": [p.density for p in result.patches if p.density is not None]
+        response = {
+            "status": "success",
+            "tablet_type": tablet_type,
+            "num_steps": len(result.patches) if hasattr(result, "patches") else 0,
+            "densities": (
+                [p.density for p in result.patches if p.density is not None]
                 if hasattr(result, "patches")
-                else [],
-                "dmin": result.paper_base_density if hasattr(result, "paper_base_density") else None,
-                "quality_score": result.overall_quality if hasattr(result, "overall_quality") else None,
-                "warnings": result.warnings if hasattr(result, "warnings") else [],
-            },
-            indent=2,
-        )
+                else []
+            ),
+            "dmin": result.paper_base_density if hasattr(result, "paper_base_density") else None,
+            "quality_score": (
+                result.overall_quality if hasattr(result, "overall_quality") else None
+            ),
+            "warnings": result.warnings if hasattr(result, "warnings") else [],
+        }
+        logger.debug("Step tablet analysis complete: %d steps detected", response["num_steps"])
+        return json.dumps(response, indent=2)
     except ImportError:
+        logger.warning("Detection modules not available for step tablet analysis")
         return json.dumps(
             {
                 "status": "error",
@@ -81,13 +109,13 @@ def analyze_step_tablet_scan(
             }
         )
     except Exception as e:
+        logger.exception("Step tablet analysis failed: %s", e)
         return json.dumps({"status": "error", "error": str(e)})
 
 
 def generate_linearization_curve(
     density_readings: str,
     curve_type: str = "linear",
-    target_dmax: float = 1.6,
     name: str = "calibration_curve",
 ) -> str:
     """Generate a linearization curve from density readings.
@@ -95,36 +123,38 @@ def generate_linearization_curve(
     Args:
         density_readings: JSON string of density values from step tablet analysis.
         curve_type: "linear", "paper_white", or "aesthetic".
-        target_dmax: Target maximum density (typically 1.4-1.8).
         name: Name for the generated curve.
 
     Returns:
         JSON string with curve points and export-ready data.
     """
+    logger.info("Generating linearization curve: type=%s, name=%s", curve_type, name)
     try:
         from ptpd_calibration.core.types import CurveType
         from ptpd_calibration.curves.generator import CurveGenerator
 
-        readings = json.loads(density_readings) if isinstance(density_readings, str) else density_readings
+        readings = (
+            json.loads(density_readings) if isinstance(density_readings, str) else density_readings
+        )
         densities = readings if isinstance(readings, list) else readings.get("densities", [])
 
         generator = CurveGenerator()
         ct = CurveType(curve_type)
         curve = generator.generate(densities, curve_type=ct, name=name)
 
-        return json.dumps(
-            {
-                "status": "success",
-                "curve_id": str(curve.id),
-                "name": curve.name,
-                "curve_type": curve.curve_type.value,
-                "num_points": len(curve.input_values),
-                "input_range": [min(curve.input_values), max(curve.input_values)],
-                "output_range": [min(curve.output_values), max(curve.output_values)],
-            },
-            indent=2,
-        )
+        response = {
+            "status": "success",
+            "curve_id": str(curve.id),
+            "name": curve.name,
+            "curve_type": curve.curve_type.value,
+            "num_points": len(curve.input_values),
+            "input_range": [min(curve.input_values), max(curve.input_values)],
+            "output_range": [min(curve.output_values), max(curve.output_values)],
+        }
+        logger.debug("Curve generated: %d points", response["num_points"])
+        return json.dumps(response, indent=2)
     except Exception as e:
+        logger.exception("Curve generation failed: %s", e)
         return json.dumps({"status": "error", "error": str(e)})
 
 
@@ -147,6 +177,12 @@ def calculate_chemistry_recipe(
     Returns:
         JSON recipe with drop counts, mL volumes, and mixing instructions.
     """
+    logger.info(
+        "Calculating chemistry recipe: size=%s, ratio=%s, method=%s",
+        print_size_inches,
+        pt_pd_ratio,
+        method,
+    )
     try:
         settings = get_settings().chemistry
 
@@ -214,8 +250,10 @@ def calculate_chemistry_recipe(
             ),
         }
 
+        logger.debug("Recipe calculated: %.2f mL total", recipe["total_ml"])
         return json.dumps(recipe, indent=2)
     except Exception as e:
+        logger.exception("Chemistry recipe calculation failed: %s", e)
         return json.dumps({"status": "error", "error": str(e)})
 
 
@@ -236,45 +274,39 @@ def calculate_uv_exposure(
     Returns:
         JSON with recommended exposure time and test strip suggestions.
     """
-    # Base times by source type (seconds)
-    base_times = {
-        "LED 365nm": 180,
-        "Metal Halide": 420,
-        "Mercury Vapor": 360,
-        "Sunlight": 600,
-    }
+    logger.info(
+        "Calculating UV exposure: source=%s, DR=%.2f, paper=%s",
+        uv_source,
+        negative_dr,
+        paper_type,
+    )
 
-    base = base_times.get(uv_source, 300)
-    dr_factor = negative_dr / 1.5  # Normalize around 1.5 DR
+    base = UV_BASE_TIMES.get(uv_source, UV_DEFAULT_BASE_TIME)
+    dr_factor = negative_dr / DR_NORMALISATION_TARGET
 
     recommended = round(base * dr_factor)
 
     # If previous time provided, suggest refinement bracket
-    if previous_time_seconds > 0:
-        bracket_center = previous_time_seconds
-    else:
-        bracket_center = recommended
+    bracket_center = previous_time_seconds if previous_time_seconds > 0 else recommended
 
-    return json.dumps(
-        {
-            "status": "success",
-            "uv_source": uv_source,
-            "negative_dr": negative_dr,
-            "paper_type": paper_type,
-            "recommended_seconds": recommended,
-            "recommended_formatted": f"{recommended // 60}:{recommended % 60:02d}",
-            "test_strip_times": [
-                {"seconds": round(bracket_center * f), "label": f"{f:.0%}"}
-                for f in [0.6, 0.8, 1.0, 1.2, 1.5]
-            ],
-            "notes": (
-                f"Based on {uv_source} with DR {negative_dr} on {paper_type}. "
-                "Adjust based on test strip results. "
-                "Start with the recommended time and bracket if needed."
-            ),
-        },
-        indent=2,
-    )
+    response = {
+        "status": "success",
+        "uv_source": uv_source,
+        "negative_dr": negative_dr,
+        "paper_type": paper_type,
+        "recommended_seconds": recommended,
+        "recommended_formatted": f"{recommended // 60}:{recommended % 60:02d}",
+        "test_strip_times": [
+            {"seconds": round(bracket_center * f), "label": f"{f:.0%}"} for f in TEST_STRIP_FACTORS
+        ],
+        "notes": (
+            f"Based on {uv_source} with DR {negative_dr} on {paper_type}. "
+            "Adjust based on test strip results. "
+            "Start with the recommended time and bracket if needed."
+        ),
+    }
+    logger.debug("Exposure calculated: %d seconds recommended", recommended)
+    return json.dumps(response, indent=2)
 
 
 def _get_contrast_agent(contrast_goal: str) -> str:
@@ -286,13 +318,7 @@ def _get_contrast_agent(contrast_goal: str) -> str:
     Returns:
         Description of contrast agent to use.
     """
-    agents = {
-        "low": "None — rely on negative density range for contrast",
-        "normal": "2 drops 3% H2O2 per coating",
-        "high": "3-4 drops 3% H2O2 or use Solution B (with 0.3% chlorate)",
-        "very high": "Use Solution B (0.6% chlorate) or add potassium dichromate (caution: toxic)",
-    }
-    return agents.get(contrast_goal, agents["normal"])
+    return CONTRAST_AGENTS.get(contrast_goal, CONTRAST_AGENTS["normal"])
 
 
 # ─── ADK Agent Definitions ───
@@ -310,6 +336,7 @@ def create_adk_agents() -> dict[str, Any]:
     Raises:
         ImportError: If google-adk is not installed.
     """
+    logger.info("Creating ADK agent components")
     try:
         from google.adk.agents import LlmAgent
         from google.adk.tools import VertexAiSearchTool
@@ -437,6 +464,11 @@ Always prioritize safety when discussing chemistry.""",
         sub_agents=[calibration_agent, chemistry_agent, print_coach],
     )
 
+    logger.info(
+        "ADK agents created: coordinator=%s, specialists=%s",
+        coordinator.name,
+        [calibration_agent.name, chemistry_agent.name, print_coach.name],
+    )
     return {
         "calibration_agent": calibration_agent,
         "chemistry_agent": chemistry_agent,
@@ -479,6 +511,7 @@ def deploy_to_agent_engine(
     Raises:
         ImportError: If required packages are not installed.
     """
+    logger.info("Deploying Darkroom Coordinator to Agent Engine")
     try:
         import vertexai
         from vertexai.agent_engines import AdkApp
@@ -497,6 +530,13 @@ def deploy_to_agent_engine(
         raise ValueError("Google Cloud project ID required. Set PTPD_VERTEX_PROJECT_ID.")
     if not staging_bucket:
         raise ValueError("Staging bucket required. Set PTPD_VERTEX_STAGING_BUCKET.")
+
+    logger.debug(
+        "Agent Engine config: project=%s, location=%s, bucket=%s",
+        project_id,
+        location,
+        staging_bucket,
+    )
 
     client = vertexai.Client(project=project_id, location=location)
 
@@ -518,4 +558,5 @@ def deploy_to_agent_engine(
         },
     )
 
+    logger.info("Agent Engine deployment complete: %s", remote_agent)
     return remote_agent

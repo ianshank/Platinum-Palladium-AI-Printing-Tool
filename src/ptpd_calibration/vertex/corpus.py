@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
 
 from ptpd_calibration.config import get_settings
 
@@ -197,8 +196,7 @@ class CorpusPreparator:
             from google.cloud import storage
         except ImportError as err:
             raise ImportError(
-                "google-cloud-storage required. "
-                "Install with: pip install ptpd-calibration[vertex]"
+                "google-cloud-storage required. Install with: pip install ptpd-calibration[vertex]"
             ) from err
 
         settings = get_settings().vertex

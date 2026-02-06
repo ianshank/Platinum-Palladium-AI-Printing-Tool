@@ -289,10 +289,7 @@ class MemoryBankClient:
         Returns:
             List of user IDs with stored profiles.
         """
-        return [
-            p.stem for p in self.storage_path.iterdir()
-            if p.is_file() and p.suffix == ".json"
-        ]
+        return [p.stem for p in self.storage_path.iterdir() if p.is_file() and p.suffix == ".json"]
 
     def get_context_for_session(self, user_id: str) -> str:
         """Get formatted context for injecting into an AI session.

@@ -15,11 +15,13 @@ Usage:
 
 from __future__ import annotations
 
-import json
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
 from ptpd_calibration.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -114,6 +116,8 @@ class PtPdSearchClient:
         settings = get_settings().vertex
         max_results = max_results or settings.search_max_results
 
+        logger.info("Searching Pt/Pd knowledge base: query=%r, max_results=%d", query, max_results)
+
         client = self._get_client()
 
         request = discoveryengine.SearchRequest(
@@ -142,6 +146,7 @@ class PtPdSearchClient:
                 )
             )
 
+        logger.debug("Search returned %d results", len(results))
         return results
 
     def search_with_summary(
@@ -164,6 +169,8 @@ class PtPdSearchClient:
 
         settings = get_settings().vertex
         max_results = max_results or settings.search_max_results
+
+        logger.info("Search with summary: query=%r, max_results=%d", query, max_results)
 
         client = self._get_client()
 
@@ -229,10 +236,7 @@ class PtPdSearchClient:
         current_length = 0
 
         for i, result in enumerate(results, 1):
-            entry = (
-                f"[Source {i}: {result.title}]\n"
-                f"{result.snippet}\n"
-            )
+            entry = f"[Source {i}: {result.title}]\n{result.snippet}\n"
             if current_length + len(entry) > max_context_length:
                 break
             context_parts.append(entry)

@@ -20,11 +20,25 @@ Usage:
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from ptpd_calibration.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+# Supported image MIME types for vision analysis
+SUPPORTED_IMAGE_TYPES: dict[str, str] = {
+    ".tiff": "image/tiff",
+    ".tif": "image/tiff",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".bmp": "image/bmp",
+}
 
 
 @dataclass
@@ -100,6 +114,7 @@ class GeminiVisionAnalyzer:
         """
         from google.genai import types
 
+        logger.info("Analyzing step tablet: %s (type=%s)", image_path, tablet_type)
         client = self._get_client()
         image_data, mime_type = _load_image(image_path)
 
@@ -158,6 +173,7 @@ Return as structured JSON with keys:
         """
         from google.genai import types
 
+        logger.info("Evaluating print quality: %s (paper=%s)", image_path, paper_type)
         client = self._get_client()
         image_data, mime_type = _load_image(image_path)
 
@@ -214,6 +230,7 @@ Return as JSON with keys:
         """
         from google.genai import types
 
+        logger.info("Diagnosing print problem: %s", image_path)
         client = self._get_client()
         image_data, mime_type = _load_image(image_path)
 
@@ -279,12 +296,13 @@ Return as JSON with keys:
         """
         from google.genai import types
 
+        logger.info("Comparing prints: %s vs %s", image_path_before, image_path_after)
         client = self._get_client()
         before_data, before_mime = _load_image(image_path_before)
         after_data, after_mime = _load_image(image_path_after)
 
         prompt = f"""Compare these two platinum/palladium prints (before and after calibration adjustment).
-Context: {context or 'No additional context provided.'}
+Context: {context or "No additional context provided."}
 
 The first image is BEFORE and the second is AFTER.
 
@@ -332,6 +350,7 @@ Return as JSON with keys:
         """
         from google.genai import types
 
+        logger.info("Classifying paper: %s", image_path)
         client = self._get_client()
         image_data, mime_type = _load_image(image_path)
 
@@ -374,6 +393,7 @@ Return as JSON with keys:
 
 # Module-level convenience functions for ADK tool integration
 
+
 def analyze_step_tablet(
     image_path: str,
     tablet_type: str = "Stouffer 21-step",
@@ -389,7 +409,11 @@ def analyze_step_tablet(
     """
     analyzer = GeminiVisionAnalyzer()
     result = analyzer.analyze_step_tablet(image_path, tablet_type)
-    return json.dumps(result.structured_data, indent=2) if result.structured_data else result.raw_response
+    return (
+        json.dumps(result.structured_data, indent=2)
+        if result.structured_data
+        else result.raw_response
+    )
 
 
 def evaluate_print_quality(
@@ -409,7 +433,11 @@ def evaluate_print_quality(
     """
     analyzer = GeminiVisionAnalyzer()
     result = analyzer.evaluate_print_quality(image_path, paper_type, chemistry)
-    return json.dumps(result.structured_data, indent=2) if result.structured_data else result.raw_response
+    return (
+        json.dumps(result.structured_data, indent=2)
+        if result.structured_data
+        else result.raw_response
+    )
 
 
 def diagnose_print_problem(
@@ -427,10 +455,15 @@ def diagnose_print_problem(
     """
     analyzer = GeminiVisionAnalyzer()
     result = analyzer.diagnose_print_problem(image_path, problem_description)
-    return json.dumps(result.structured_data, indent=2) if result.structured_data else result.raw_response
+    return (
+        json.dumps(result.structured_data, indent=2)
+        if result.structured_data
+        else result.raw_response
+    )
 
 
 # Internal helpers
+
 
 def _load_image(image_path: str) -> tuple[bytes, str]:
     """Load image data and determine MIME type.
@@ -449,24 +482,15 @@ def _load_image(image_path: str) -> tuple[bytes, str]:
     if not path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
 
-    mime_map = {
-        ".tiff": "image/tiff",
-        ".tif": "image/tiff",
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp",
-        ".bmp": "image/bmp",
-    }
-
     suffix = path.suffix.lower()
-    mime_type = mime_map.get(suffix)
+    mime_type = SUPPORTED_IMAGE_TYPES.get(suffix)
     if not mime_type:
         raise ValueError(
             f"Unsupported image format: {suffix}. "
-            f"Supported formats: {', '.join(mime_map.keys())}"
+            f"Supported formats: {', '.join(SUPPORTED_IMAGE_TYPES.keys())}"
         )
 
+    logger.debug("Loading image: %s (%s)", image_path, mime_type)
     return path.read_bytes(), mime_type
 
 
@@ -515,8 +539,7 @@ def _parse_vision_response(
                 break
 
     except (json.JSONDecodeError, ValueError, KeyError):
-        # If JSON parsing fails, keep raw response
-        pass
+        logger.debug("Could not parse vision response as JSON for %s", analysis_type)
 
     return VisionAnalysisResult(
         analysis_type=analysis_type,
