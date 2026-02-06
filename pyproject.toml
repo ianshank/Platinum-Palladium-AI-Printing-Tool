@@ -57,6 +57,12 @@ llm = [
     "openai>=1.0.0",
     "httpx>=0.27.0",
 ]
+vertex = [
+    "google-cloud-aiplatform[agent_engines,adk]>=1.74.0",
+    "google-genai>=1.0.0",
+    "google-cloud-storage>=2.14.0",
+    "google-cloud-discoveryengine>=0.12.0",
+]
 api = [
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
@@ -67,7 +73,7 @@ ui = [
     "huggingface_hub>=0.25,<1.0",
 ]
 all = [
-    "ptpd-calibration[ml,deep,llm,api,ui]",
+    "ptpd-calibration[ml,deep,llm,vertex,api,ui]",
 ]
 dev = [
     "pytest>=8.0.0",

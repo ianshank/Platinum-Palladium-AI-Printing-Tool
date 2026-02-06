@@ -1,0 +1,50 @@
+# UV Exposure Reference for Pt/Pd Printing
+## Category: Domain Knowledge - Exposure
+## Application: Pt/Pd alternative photographic printing
+
+## UV Light Sources
+
+### LED UV Units (Modern Standard)
+- Wavelength: 365nm optimal (360-400nm range)
+- Cone Editions LED units: Custom high-output 8mm 365nm strips
+- Advantages: Consistent output, no warm-up, long life, cool operation
+- Exposure times: Typically 2-8 minutes depending on negative density
+- Ian Leake exposure controllers: Precision timing
+
+### Metal Halide / Mercury Vapor
+- NuArc, Olec, Violux units
+- Broad UV spectrum
+- Exposure times: 5-10 minutes typical
+- Require warm-up period (5-10 min)
+- Output degrades with bulb age
+
+### Sunlight
+- Free and abundant UV source
+- Highly variable — clouds, time of day, season, latitude
+- Exposure times: 5-30 minutes
+- Useful for testing, not reliable for production
+
+## Exposure Factors
+
+### Step Tablet Testing Protocol
+1. Make test strip with Stouffer 21 or 31 step tablet
+2. Start with manufacturer's recommended time
+3. Evaluate minimum exposure for paper white (Dmin)
+4. Evaluate maximum exposure for darkest step (Dmax)
+5. Optimal = shortest exposure that achieves full Dmax
+6. Over-exposure flattens highlights without improving shadows
+
+### Negative Density Range (DR)
+
+| Process             | Target DR | Silver Equiv    |
+|---------------------|-----------|-----------------|
+| Pure Platinum       | ~1.4      | Grade 0-1 paper |
+| 50/50 Pt/Pd         | ~1.4-1.5  | Grade 0-1 paper |
+| Pure Palladium      | ~1.6      | Grade 0 paper   |
+| With contrast agent | ~1.0-1.2  | Grade 2-3 paper |
+
+### Environmental Factors
+- **Humidity**: 40-60% RH optimal for DOP; 55-70% for Malde-Ware POP
+- **Temperature**: 68-75°F (20-24°C) ideal
+- **Paper moisture**: Pre-humidify in humid chamber 5-15 min before exposure
+- **Coating dryness**: Must be completely dry before exposure
