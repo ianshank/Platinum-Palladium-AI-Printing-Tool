@@ -61,14 +61,33 @@ class VertexClient:
         machine_type: str = "n1-standard-4",
         replica_count: int = 1
     ) -> Any:
-        """
-        Submit a Custom Job to Vertex AI.
-        (Placeholder for future expansion)
+        """Submit a Custom Container Training Job to Vertex AI.
+
+        Args:
+            display_name: Human-readable name for the training job.
+            container_uri: URI of the training container image in
+                Artifact Registry or Container Registry.
+            args: Command-line arguments passed to the container entrypoint.
+                If ``None``, no additional arguments are passed.
+            machine_type: The machine type to use for each worker replica
+                (for example, ``"n1-standard-4"``).
+            replica_count: Number of worker replicas to launch for the job.
+
+        Returns:
+            The created and submitted CustomContainerTrainingJob instance.
         """
         self.initialize()
-        job = aiplatform.CustomContainerTrainingJob(
-            display_name=display_name,
-            container_uri=container_uri,
-        )
-        # Note: minimal implementation for ensuring connectivity
+        try:
+            job = aiplatform.CustomContainerTrainingJob(
+                display_name=display_name,
+                container_uri=container_uri,
+            )
+            job.run(
+                args=args or [],
+                machine_type=machine_type,
+                replica_count=replica_count,
+            )
+        except Exception as exc:
+            logger.exception("Failed to submit custom job to Vertex AI: %s", exc)
+            raise
         return job

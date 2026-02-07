@@ -53,8 +53,8 @@ const storeMiddleware: StoreMiddleware = (
               activeTab: state.ui.activeTab,
               sidebarOpen: state.ui.sidebarOpen,
               theme: state.ui.theme,
+              // Do not persist runtime flags; ensure processing is reset on load
               isProcessing: false,
-              isInitialized: true,
             },
           }),
         }

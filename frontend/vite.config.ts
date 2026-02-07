@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => {
       host: true,
       proxy: {
         '/api': {
-          target: env.VITE_API_URL || 'http://localhost:8000',
+          target: env['VITE_API_URL'] || 'http://localhost:8000',
           changeOrigin: true,
           secure: false,
         },
@@ -66,7 +66,7 @@ export default defineConfig(({ mode }) => {
     },
 
     define: {
-      __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
+      __APP_VERSION__: JSON.stringify(process.env['npm_package_version']),
       __DEV__: mode === 'development',
     },
 

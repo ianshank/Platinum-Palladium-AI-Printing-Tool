@@ -73,11 +73,20 @@ class TestVertexClient:
     def test_submit_custom_job(self, mock_aiplatform: MagicMock, gcp_config: GCPConfig) -> None:
         from ptpd_calibration.gcp.vertex import VertexClient
 
+        mock_job = MagicMock()
+        mock_aiplatform.CustomContainerTrainingJob.return_value = mock_job
+
         client = VertexClient(gcp_config)
-        client.submit_custom_job(display_name="test-job", container_uri="gcr.io/test/image:latest")
+        result = client.submit_custom_job(display_name="test-job", container_uri="gcr.io/test/image:latest")
 
         mock_aiplatform.init.assert_called_once()
         mock_aiplatform.CustomContainerTrainingJob.assert_called_once_with(
             display_name="test-job",
             container_uri="gcr.io/test/image:latest",
         )
+        mock_job.run.assert_called_once_with(
+            args=[],
+            machine_type="n1-standard-4",
+            replica_count=1,
+        )
+        assert result is mock_job

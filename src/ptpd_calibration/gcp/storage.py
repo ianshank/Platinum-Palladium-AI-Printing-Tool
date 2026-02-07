@@ -38,13 +38,13 @@ class LocalBackend:
         self.root_dir = Path(root_dir)
         self.root_dir.mkdir(parents=True, exist_ok=True)
 
-    def _get_path(self, path: str) -> Path:
-        full_path = self.root_dir / path.lstrip("/")
-        full_path.parent.mkdir(parents=True, exist_ok=True)
-        return full_path
+    def _resolve_path(self, path: str) -> Path:
+        """Resolve a storage path to an absolute local path (pure — no side effects)."""
+        return self.root_dir / path.lstrip("/")
 
     def save(self, path: str, data: str | bytes, content_type: str = "text/plain") -> None:
-        target = self._get_path(path)
+        target = self._resolve_path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
         mode = "wb" if isinstance(data, bytes) else "w"
         encoding = None if isinstance(data, bytes) else "utf-8"
 
@@ -53,13 +53,13 @@ class LocalBackend:
         logger.info(f"Saved local file: {target}")
 
     def load(self, path: str) -> bytes:
-        target = self._get_path(path)
+        target = self._resolve_path(path)
         if not target.exists():
             raise FileNotFoundError(f"File not found: {target}")
         return target.read_bytes()
 
     def exists(self, path: str) -> bool:
-        return self._get_path(path).exists()
+        return self._resolve_path(path).exists()
 
 class GCSBackend:
     """Storage backend for Google Cloud Storage."""
