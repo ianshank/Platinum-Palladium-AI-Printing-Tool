@@ -9,8 +9,8 @@ interface LogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
-  context?: Record<string, unknown> | undefined;
-  source?: string | undefined;
+  context?: Record<string, unknown>;
+  source?: string;
 }
 
 interface LoggerOptions {
