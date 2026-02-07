@@ -6,31 +6,10 @@ import { useStore } from '@/stores';
 import { logger } from '@/lib/logger';
 import { Toaster } from '@/components/ui/Toaster';
 
-// Lazy load pages for code splitting
-// import { lazy, Suspense } from 'react';
-// const Dashboard = lazy(() => import('@/pages/Dashboard'));
+import { DashboardPage } from '@/pages/DashboardPage';
 
-// Placeholder pages until components are migrated
-const DashboardPage: FC = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold">Dashboard</h1>
-    <p className="text-muted-foreground mt-2">Overview and metrics</p>
-  </div>
-);
-
-const CalibrationPage: FC = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold">Calibration Wizard</h1>
-    <p className="text-muted-foreground mt-2">Step-by-step calibration workflow</p>
-  </div>
-);
-
-const CurvesPage: FC = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold">Curve Editor</h1>
-    <p className="text-muted-foreground mt-2">View and edit calibration curves</p>
-  </div>
-);
+import { CalibrationPage } from '@/pages/CalibrationPage';
+import { CurvesPage } from '@/pages/CurvesPage';
 
 const ChemistryPage: FC = () => (
   <div className="p-6">
