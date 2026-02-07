@@ -4,7 +4,7 @@
  * Covers page-level rendering and routing integration.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DashboardPage } from './DashboardPage';

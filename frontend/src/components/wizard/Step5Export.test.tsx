@@ -1,23 +1,26 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, render } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ThemeProvider } from 'styled-components';
 import { Step5Export } from './Step5Export';
 
 const theme = {
-    spacing: { 1: '0.25rem', 2: '0.5rem', 4: '1rem', 6: '1.5rem', 8: '2rem' },
+    spacing: { 0: '0', 1: '0.25rem', 2: '0.5rem', 3: '0.75rem', 4: '1rem', 5: '1.25rem', 6: '1.5rem', 8: '2rem', 10: '2.5rem', 12: '3rem', 16: '4rem', 20: '5rem', 24: '6rem', 32: '8rem', 40: '10rem', 48: '12rem', 56: '14rem', 64: '16rem' },
     typography: {
-        fontSize: { sm: '0.875rem', base: '1rem', xl: '1.25rem' },
-        fontWeight: { medium: 500, semibold: 600 },
+        fontFamily: { sans: 'Inter, sans-serif', mono: 'monospace' },
+        fontSize: { xs: '0.75rem', sm: '0.875rem', base: '1rem', lg: '1.125rem', xl: '1.25rem', '2xl': '1.5rem' },
+        fontWeight: { regular: 400, medium: 500, semibold: 600, bold: 700 },
     },
     colors: {
-        text: { primary: '#111', secondary: '#666', inverse: '#fff' },
-        background: { secondary: '#f9fafb', tertiary: '#f3f4f6', hover: '#e5e7eb' },
-        border: { default: '#e5e7eb' },
-        accent: { primary: '#3b82f6', primaryHover: '#2563eb' },
-        semantic: { success: '#10b981' },
+        text: { primary: '#111', secondary: '#666', inverse: '#fff', error: '#ef4444' },
+        background: { primary: '#fff', secondary: '#f9fafb', tertiary: '#f3f4f6', hover: '#e5e7eb' },
+        border: { default: '#e5e7eb', focus: '#3b82f6' },
+        accent: { primary: '#3b82f6', primaryHover: '#2563eb', secondary: '#6366f1' },
+        semantic: { success: '#10b981', warning: '#f59e0b', error: '#ef4444', info: '#3b82f6' },
     },
-    radii: { md: '0.375rem', lg: '0.5rem', full: '9999px' },
-    transitions: { fast: '0.15s' },
+    radii: { sm: '0.25rem', md: '0.375rem', lg: '0.5rem', full: '9999px' },
+    shadows: { sm: '0 1px 2px rgba(0,0,0,0.05)', md: '0 4px 6px rgba(0,0,0,0.1)', lg: '0 10px 15px rgba(0,0,0,0.1)' },
+    transitions: { fast: '0.15s', normal: '0.3s', slow: '0.5s' },
+    breakpoints: { tablet: '768px', desktop: '1024px', wide: '1280px' },
 };
 
 const mockResetCalibration = vi.fn();

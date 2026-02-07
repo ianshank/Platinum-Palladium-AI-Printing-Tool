@@ -8,14 +8,14 @@
  * - Override precedence (runtime > env > default)
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    clearAllFlags,
+    clearFlag,
+    FeatureFlag,
+    getAllFlags,
     isEnabled,
     setFlag,
-    clearFlag,
-    clearAllFlags,
-    getAllFlags,
-    FeatureFlag,
 } from './featureFlags';
 
 // Mock getBoolEnv via config index

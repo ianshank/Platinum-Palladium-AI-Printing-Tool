@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useKeyboardShortcuts, type ShortcutConfig } from './useKeyboardShortcuts';
+import { type ShortcutConfig, useKeyboardShortcuts } from './useKeyboardShortcuts';
 
 describe('useKeyboardShortcuts', () => {
     let addEventSpy: ReturnType<typeof vi.spyOn>;

@@ -8,10 +8,10 @@ import { devtools, persist, subscribeWithSelector } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 import { createUISlice, type UISlice } from './slices/uiSlice';
-import { createCalibrationSlice, type CalibrationSlice } from './slices/calibrationSlice';
+import { type CalibrationSlice, createCalibrationSlice } from './slices/calibrationSlice';
 import { createCurveSlice, type CurveSlice } from './slices/curveSlice';
-import { createChemistrySlice, type ChemistrySlice } from './slices/chemistrySlice';
-import { createChatSlice, type ChatSlice } from './slices/chatSlice';
+import { type ChemistrySlice, createChemistrySlice } from './slices/chemistrySlice';
+import { type ChatSlice, createChatSlice } from './slices/chatSlice';
 import { createSessionSlice, type SessionSlice } from './slices/sessionSlice';
 import { createImageSlice, type ImageSlice } from './slices/imageSlice';
 import { config } from '@/config';
@@ -31,11 +31,9 @@ export type StoreState = {
 
 /**
  * Store middleware configuration
+ * NOTE: Zustand's deeply nested middleware generics (immer→persist→subscribeWithSelector→devtools)
+ * require a type-level escape hatch. Using `@ts-expect-error` is preferred over `as any`.
  */
-/**
- * Store middleware configuration
- */
-// Explicitly type the middleware to avoid complex inference issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type StoreMiddleware = (f: any) => any;
 
@@ -45,10 +43,11 @@ const storeMiddleware: StoreMiddleware = (
   devtools(
     subscribeWithSelector(
       persist(
-        immer(f) as any,
+        // @ts-expect-error — Zustand middleware composition has incompatible generic inference
+        immer(f),
         {
           name: 'ptpd-store',
-          partialize: (state: any) => ({
+          partialize: (state: StoreState) => ({
             // Only persist UI preferences
             ui: {
               activeTab: state.ui.activeTab,

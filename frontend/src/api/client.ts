@@ -7,22 +7,21 @@ import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig, ty
 import { config } from '@/config';
 import { logger } from '@/lib/logger';
 import type {
+  AnalysisResponse,
+  CalibrationCreateResponse,
+  CalibrationListResponse,
+  CalibrationRecord,
+  ChatResponse,
   CurveData,
+  CurveEnhanceResponse,
   CurveGenerationResponse,
-  ScanUploadResponse,
   CurveModificationRequest,
   CurveModificationResponse,
-  CurveSmoothRequest,
   CurveSmoothingResponse,
-  CurveEnhanceResponse,
+  CurveSmoothRequest,
   EnforceMonotonicityResponse,
-  CalibrationRecord,
-  CalibrationListResponse,
-  CalibrationCreateResponse,
-  ChatResponse,
-  StatisticsResponse,
-  AnalysisResponse,
-  ApiSuccessResponse
+  ScanUploadResponse,
+  StatisticsResponse
 } from '@/types/models';
 
 /**

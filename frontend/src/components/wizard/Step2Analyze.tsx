@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import styled, { useTheme } from 'styled-components';
 import {
-    LineChart,
+    CartesianGrid,
     Line,
+    LineChart,
+    ResponsiveContainer,
+    Tooltip,
     XAxis,
     YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
 } from 'recharts';
 import { useStore } from '@/stores';
 import { assessScanQuality } from '@/api/hooks/useScan';

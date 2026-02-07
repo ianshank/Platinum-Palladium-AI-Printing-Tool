@@ -11,8 +11,8 @@
  * - Accessibility
  */
 
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from './Dashboard';
 
@@ -480,7 +480,7 @@ describe('Dashboard', () => {
             });
 
             // Check that sections have aria-labels
-            const sections = screen.getAllByRole('region') as HTMLElement[];
+            const sections = screen.getAllByRole('region');
             const sectionLabels = sections.map((s) => s.getAttribute('aria-label'));
             expect(sectionLabels).toContain('Statistics');
             expect(sectionLabels).toContain('Recent calibrations');

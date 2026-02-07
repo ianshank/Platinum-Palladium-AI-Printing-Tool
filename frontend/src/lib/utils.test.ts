@@ -1,24 +1,21 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    clamp,
     cn,
+    createEventEmitter,
     debounce,
-    throttle,
+    deepClone,
+    downloadFile,
+    formatDate,
     formatNumber,
     formatPercent,
-    formatDate,
-    clamp,
+    generateId,
+    isEmpty,
     lerp,
     mapRange,
-    generateId,
-    deepClone,
-    isEmpty,
-    sleep,
     retry,
-    downloadFile,
-    readFileAsText,
-    readFileAsDataURL,
-    copyToClipboard,
-    createEventEmitter,
+    sleep,
+    throttle,
 } from './utils';
 
 describe('utils', () => {

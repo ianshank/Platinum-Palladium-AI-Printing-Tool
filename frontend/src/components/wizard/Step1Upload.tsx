@@ -104,7 +104,7 @@ const TabletDetails = styled.span`
 
 const ErrorMessage = styled.div`
   color: ${({ theme }) => theme.colors.semantic.error};
-  background-color: ${({ theme }) => `rgba(239, 68, 68, 0.1)`};
+  background-color: rgba(239, 68, 68, 0.1);
   padding: ${({ theme }) => theme.spacing[4]};
   border-radius: ${({ theme }) => theme.radii.md};
   margin-top: ${({ theme }) => theme.spacing[4]};

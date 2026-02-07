@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import { type FC } from 'react';
 import { CurveEditor } from '@/components/curves/CurveEditor';
 
 export const CurvesPage: FC = () => {

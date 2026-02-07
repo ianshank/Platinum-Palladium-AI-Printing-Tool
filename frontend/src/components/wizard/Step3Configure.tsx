@@ -1,4 +1,4 @@
-import React from 'react';
+
 import styled, { useTheme } from 'styled-components';
 import { useStore } from '@/stores';
 import { tabletConfig } from '@/config/tablet.config';
@@ -33,20 +33,7 @@ const Label = styled.label`
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
-const Select = styled.select`
-  padding: ${({ theme }) => theme.spacing[3]};
-  background-color: ${({ theme }) => theme.colors.background.tertiary};
-  border: 1px solid ${({ theme }) => theme.colors.border.default};
-  border-radius: ${({ theme }) => theme.radii.md};
-  color: ${({ theme }) => theme.colors.text.primary};
-  font-size: ${({ theme }) => theme.typography.fontSize.base};
-  cursor: pointer;
-  outline: none;
 
-  &:focus {
-    border-color: ${({ theme }) => theme.colors.accent.primary};
-  }
-`;
 
 const Input = styled.input`
   padding: ${({ theme }) => theme.spacing[3]};

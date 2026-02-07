@@ -6,11 +6,11 @@
  * No hardcoded values — poll interval and limits come from config.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/api/client';
 import { logger } from '@/lib/logger';
 import { config } from '@/config';
-import type { StatisticsResponse, CalibrationSummary } from '@/types/models';
+import type { CalibrationSummary, StatisticsResponse } from '@/types/models';
 
 /** Shape of the dashboard data bundle */
 export interface DashboardData {

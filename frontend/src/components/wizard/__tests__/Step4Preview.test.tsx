@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '@/test-utils';
 import { useStore } from '@/stores';
 import { Step4Preview } from '../Step4Preview';
@@ -107,6 +107,7 @@ describe('Step4Preview', () => {
                 current: {
                     id: 'curve-1',
                     name: 'Generated Curve',
+                    type: 'linear',
                     measurements: [],
                     points: [{ x: 0, y: 0 }, { x: 100, y: 100 }],
                     createdAt: '',
@@ -135,6 +136,7 @@ describe('Step4Preview', () => {
                 current: {
                     id: 'curve-1',
                     name: 'Generated Curve',
+                    type: 'linear',
                     measurements: [],
                     points: [{ x: 0, y: 0 }],
                     createdAt: '',

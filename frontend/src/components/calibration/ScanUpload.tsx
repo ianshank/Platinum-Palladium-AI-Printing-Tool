@@ -1,8 +1,9 @@
-import React, { useCallback, useState } from 'react';
-import { useDropzone, FileRejection } from 'react-dropzone';
+import type React from 'react';
+import { useCallback, useState } from 'react';
+import { type FileRejection, useDropzone } from 'react-dropzone';
 import { api } from '@/api/client';
 import { Button } from '@/components/ui/Button';
-import { UploadCloud, File as FileIcon, X, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, File as FileIcon, UploadCloud, X } from 'lucide-react';
 
 interface ScanUploadProps {
     onUploadComplete?: (extractionId: string) => void;
@@ -26,7 +27,7 @@ export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps
         }
 
         if (acceptedFiles.length > 0) {
-            setFile(acceptedFiles[0]);
+            setFile(acceptedFiles[0] ?? null);
         }
     }, []);
 
@@ -85,7 +86,7 @@ export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps
           ${isUploading ? 'pointer-events-none opacity-50' : ''}
         `}
             >
-                <input {...getInputProps({ 'data-testid': 'scan-upload-input' } as any)} />
+                <input {...getInputProps()} data-testid="scan-upload-input" />
 
                 {/* State: Initial / Drag Assert */}
                 {!file && !success && (

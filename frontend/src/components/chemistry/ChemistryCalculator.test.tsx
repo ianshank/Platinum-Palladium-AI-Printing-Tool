@@ -9,8 +9,8 @@
  * - Store integration
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ChemistryCalculator } from './ChemistryCalculator';
 
 // Mock the logger
@@ -298,10 +298,9 @@ describe('ChemistryCalculator', () => {
 
     describe('Recipe without contrast agent', () => {
         it('hides contrast section when no contrast agent', () => {
-            mockChemistryState.recipe = {
-                ...createMockRecipe(),
-                contrastAgent: undefined,
-            };
+            const noContrastRecipe = createMockRecipe();
+            (noContrastRecipe as any).contrastAgent = undefined;
+            mockChemistryState.recipe = noContrastRecipe;
             render(<ChemistryCalculator />);
             expect(screen.queryByTestId('recipe-contrast')).not.toBeInTheDocument();
         });

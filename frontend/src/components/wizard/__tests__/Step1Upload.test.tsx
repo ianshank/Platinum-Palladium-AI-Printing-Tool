@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
-import { renderWithProviders, createMockFile } from '@/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { createMockFile, renderWithProviders } from '@/test-utils';
 import { Step1Upload } from '../Step1Upload';
 
 // Mock the API hook

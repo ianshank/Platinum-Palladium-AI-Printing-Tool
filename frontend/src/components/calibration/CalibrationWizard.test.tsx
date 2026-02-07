@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
-import { userEvent, renderWithProviders } from '@/test-utils';
+import { renderWithProviders, userEvent } from '@/test-utils';
 import { CalibrationWizard } from './CalibrationWizard';
 import { api } from '@/api/client';
 

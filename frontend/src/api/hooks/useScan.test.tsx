@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { useUploadScan, assessScanQuality } from './useScan';
+import { describe, expect, it, vi } from 'vitest';
+import { assessScanQuality, useUploadScan } from './useScan';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -36,7 +36,7 @@ describe('useScan hooks', () => {
     describe('useUploadScan', () => {
         it('calls api.scan.upload on mutate', async () => {
             const mockResponse = { id: 'scan-1', measurements: [0.1, 0.2], preview: '/preview.png' };
-            vi.mocked(api.scan.upload).mockResolvedValue(mockResponse);
+            vi.mocked(api.scan.upload).mockResolvedValue(mockResponse as any);
 
             const { result } = renderHook(() => useUploadScan(), {
                 wrapper: createWrapper(),
@@ -68,12 +68,11 @@ describe('useScan hooks', () => {
 
     describe('assessScanQuality', () => {
         it('returns quality assessment', () => {
-            const file = new File(['data'], 'scan.png', { type: 'image/png' });
-            const result = assessScanQuality(file);
+            const result = assessScanQuality({ densities: [0.1, 0.2], dmax: 2.0, dmin: 0.05, range: 1.95, num_patches: 21 });
 
-            expect(result.quality).toBe('good');
-            expect(result.score).toBe(95);
-            expect(result.overall).toBe('Good');
+            expect(result.quality).toBe('excellent');
+            expect(result.score).toBe(100);
+            expect(result.overall).toBe('excellent');
             expect(result.issues).toEqual([]);
         });
     });

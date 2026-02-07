@@ -11,8 +11,8 @@
  * - Accessibility
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { AIAssistant } from './AIAssistant';
 
 // Mock logger

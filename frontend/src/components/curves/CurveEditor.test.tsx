@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
-import { userEvent, renderWithProviders } from '@/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { screen } from '@testing-library/react';
+import { renderWithProviders, userEvent } from '@/test-utils';
 import { CurveEditor } from './CurveEditor';
 import { api } from '@/api/client';
-import { CurveData } from '@/types/models';
+import { type CurveData } from '@/types/models';
 
 // Mock API
 vi.mock('@/api/client', () => ({

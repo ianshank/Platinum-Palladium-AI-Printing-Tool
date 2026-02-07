@@ -1,5 +1,5 @@
 import { type FC, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { Layout } from '@/components/Layout';
 import { useStore } from '@/stores';

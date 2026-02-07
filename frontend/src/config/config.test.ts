@@ -7,7 +7,7 @@
  * - Config structure validation
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { config, isDev, isProd, isTest } from './index';
 import type { AppConfig } from './index';
 

@@ -59,7 +59,8 @@ interface TestProviderProps {
  */
 export function TestProvider({
   children,
-  store = createTestStore(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  store: _store = createTestStore(),
   queryClient = createTestQueryClient(),
 }: TestProviderProps): ReactElement {
   return (

@@ -1,21 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
     CartesianGrid,
-    Tooltip,
+    Line,
+    LineChart,
+    ReferenceLine,
     ResponsiveContainer,
-    ReferenceLine
+    Tooltip,
+    XAxis,
+    YAxis
 } from 'recharts';
-import { CurveData, CurveModificationResponse } from '@/types/models';
+import { type CurveData } from '@/types/models';
 import { api } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Save, RefreshCw, ChevronRight } from 'lucide-react';
+import { RefreshCw, Save } from 'lucide-react';
 import * as SliderPrimitive from '@radix-ui/react-slider';
-import * as SelectPrimitive from '@radix-ui/react-select';
+
 import { cn } from '@/lib/utils';
 
 // --- UI Components (Inline for speed, move to ui/ later) ---
@@ -209,7 +209,7 @@ export function CurveEditor({ initialCurve, onSave, className }: CurveEditorProp
                         min={-100}
                         max={100}
                         step={1}
-                        onValueChange={(vals) => setAmount(vals[0])}
+                        onValueChange={(vals) => setAmount(vals[0] ?? 0)}
                     />
                 </div>
 

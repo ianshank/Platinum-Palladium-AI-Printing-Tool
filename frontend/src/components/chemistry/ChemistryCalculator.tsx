@@ -21,9 +21,9 @@ import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 import { useStore } from '@/stores';
 import {
-    STANDARD_PAPER_SIZES,
-    type PaperSize,
     type ChemistryRecipe,
+    type PaperSize,
+    STANDARD_PAPER_SIZES,
 } from '@/stores/slices/chemistrySlice';
 
 export interface ChemistryCalculatorProps {

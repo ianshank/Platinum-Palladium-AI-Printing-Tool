@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen } from '@testing-library/react';
 import { renderWithProviders } from '@/test-utils';
 import { useStore } from '@/stores';
 import { Step2Analyze } from '../Step2Analyze';

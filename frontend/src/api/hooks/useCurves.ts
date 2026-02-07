@@ -5,7 +5,7 @@ export function useGenerateCurve() {
     return useMutation({
         mutationFn: (data: { measurements: number[]; curve_type?: string; name?: string }) =>
             // Map curve_type to type to match client API
-            api.curves.generate({ ...data, type: data.curve_type }),
+            api.curves.generate({ measurements: data.measurements, ...(data.curve_type ? { type: data.curve_type } : {}), ...(data.name ? { name: data.name } : {}) }),
     });
 }
 

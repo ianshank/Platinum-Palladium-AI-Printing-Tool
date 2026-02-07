@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import { type FC } from 'react';
 import { CalibrationWizard } from '@/components/calibration/CalibrationWizard';
 
 export const CalibrationPage: FC = () => {

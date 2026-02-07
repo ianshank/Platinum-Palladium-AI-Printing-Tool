@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import styled, { useTheme } from 'styled-components';
 import {
-    LineChart,
+    CartesianGrid,
     Line,
+    LineChart,
+    ReferenceLine,
+    ResponsiveContainer,
+    Tooltip,
     XAxis,
     YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    ReferenceLine,
 } from 'recharts';
 import { useStore } from '@/stores';
 import { useGenerateCurve } from '@/api/hooks/useCurves';
@@ -57,7 +57,7 @@ const MetricValue = styled.span`
 
 const ErrorMessage = styled.div`
   color: ${({ theme }) => theme.colors.semantic.error};
-  background-color: ${({ theme }) => `rgba(239, 68, 68, 0.1)`};
+  background-color: rgba(239, 68, 68, 0.1);
   padding: ${({ theme }) => theme.spacing[4]};
   border-radius: ${({ theme }) => theme.radii.md};
   text-align: center;

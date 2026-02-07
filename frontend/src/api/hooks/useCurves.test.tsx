@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useGenerateCurve, useGetCurve, useExportCurve } from './useCurves';
+import { useExportCurve, useGenerateCurve, useGetCurve } from './useCurves';
 
 // Mock the API client
 vi.mock('../client', () => ({
@@ -42,7 +42,7 @@ describe('useCurves hooks', () => {
     describe('useGenerateCurve', () => {
         it('calls api.curves.generate on mutate', async () => {
             const mockResponse = { id: 'curve-1', data: 'generated' };
-            vi.mocked(api.curves.generate).mockResolvedValue(mockResponse);
+            vi.mocked(api.curves.generate).mockResolvedValue(mockResponse as any);
 
             const { result } = renderHook(() => useGenerateCurve(), {
                 wrapper: createWrapper(),
@@ -58,7 +58,6 @@ describe('useCurves hooks', () => {
 
             expect(api.curves.generate).toHaveBeenCalledWith({
                 measurements: [0.1, 0.2, 0.3],
-                curve_type: 'linear',
                 type: 'linear',
                 name: 'Test',
             });
@@ -82,7 +81,7 @@ describe('useCurves hooks', () => {
     describe('useGetCurve', () => {
         it('fetches curve data by id', async () => {
             const mockCurve = { id: 'curve-1', name: 'Test', points: [] };
-            vi.mocked(api.curves.get).mockResolvedValue(mockCurve);
+            vi.mocked(api.curves.get).mockResolvedValue(mockCurve as any);
 
             const { result } = renderHook(() => useGetCurve('curve-1'), {
                 wrapper: createWrapper(),

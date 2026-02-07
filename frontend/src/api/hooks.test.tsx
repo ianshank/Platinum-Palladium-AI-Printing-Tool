@@ -11,7 +11,7 @@
  * - useGenerateCurve mutation with processing state
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ReactNode } from 'react';
@@ -114,19 +114,19 @@ vi.mock('@/stores', () => ({
 
 // Import AFTER mocks
 import {
-    useHealthCheck,
-    useSendMessage,
-    useStatistics,
-    useCalibrations,
-    useCalibration,
-    useCreateCalibration,
-    useGenerateCurve,
-    useCurve,
-    useModifyCurve,
-    useSmoothCurve,
-    useExportCurve,
-    useUploadScan,
     queryKeys,
+    useCalibration,
+    useCalibrations,
+    useCreateCalibration,
+    useCurve,
+    useExportCurve,
+    useGenerateCurve,
+    useHealthCheck,
+    useModifyCurve,
+    useSendMessage,
+    useSmoothCurve,
+    useStatistics,
+    useUploadScan,
 } from './hooks';
 
 // --- Helper: QueryClient wrapper ---

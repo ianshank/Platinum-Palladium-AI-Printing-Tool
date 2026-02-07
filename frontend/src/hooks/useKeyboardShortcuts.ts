@@ -3,7 +3,7 @@
  * Provides keyboard navigation matching legacy Gradio app (Ctrl+1-5 for tabs)
  */
 
-import { useEffect, useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/stores';
 import { logger } from '@/lib/logger';

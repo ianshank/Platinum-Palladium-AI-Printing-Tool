@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import styled, { useTheme } from 'styled-components';
 import { useStore } from '@/stores';
 import { useExportCurve } from '@/api/hooks/useCurves';

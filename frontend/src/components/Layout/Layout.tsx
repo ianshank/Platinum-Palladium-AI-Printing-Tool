@@ -1,14 +1,14 @@
 import { type FC, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  SlidersHorizontal,
-  LineChart,
   FlaskConical,
-  MessageSquare,
   History,
-  Settings,
+  LayoutDashboard,
+  LineChart,
   Menu,
+  MessageSquare,
+  Settings,
+  SlidersHorizontal,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';

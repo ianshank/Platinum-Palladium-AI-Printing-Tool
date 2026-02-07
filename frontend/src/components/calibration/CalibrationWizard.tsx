@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/Input';
 import { ScanUpload } from './ScanUpload';
 import { CurveEditor } from '@/components/curves/CurveEditor';
 import { api } from '@/api/client';
-import { CalibrationRecord, CurveGenerationResponse, ScanUploadResponse } from '@/types/models';
-import { CheckCircle2, Printer, Scan, Activity, BarChart } from 'lucide-react';
+import { type CalibrationRecord, ChemistryType, type CurveGenerationResponse, CurveType, type ScanUploadResponse } from '@/types/models';
+import type { CurveData } from '@/types/models';
+import { Activity, BarChart, CheckCircle2, Printer, Scan } from 'lucide-react';
 import { cn } from '@/lib/utils';
 // import { useToast } from '@/components/ui/use-toast'; // Assuming it exists
 
@@ -23,10 +24,10 @@ export function CalibrationWizard() {
     const [currentStep, setCurrentStep] = useState(0);
     const [data, setData] = useState<Partial<CalibrationRecord>>({
         paper_type: '',
-        chemistry_type: 'pure_platinum' as any,
+        chemistry_type: ChemistryType.PURE_PLATINUM,
         exposure_time: 0,
     });
-    const [scanResult, setScanResult] = useState<ScanUploadResponse | null>(null);
+    const [scanResult, _setScanResult] = useState<ScanUploadResponse | null>(null);
     const [curveResult, setCurveResult] = useState<CurveGenerationResponse | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
 
@@ -170,8 +171,8 @@ export function CalibrationWizard() {
                                     input_values: curveResult.input_values,
                                     output_values: curveResult.output_values,
                                     created_at: new Date().toISOString(),
-                                    curve_type: 'linearization'
-                                } as any}
+                                    curve_type: CurveType.LINEAR,
+                                } satisfies CurveData}
                             />
                         )}
                         <div className="flex justify-start">

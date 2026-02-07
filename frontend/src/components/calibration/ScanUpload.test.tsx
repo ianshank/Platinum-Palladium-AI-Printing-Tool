@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@/test-utils';
-import { renderWithProviders, createMockImageFile } from '@/test-utils';
+import { createMockImageFile, renderWithProviders } from '@/test-utils';
 import { ScanUpload } from './ScanUpload';
 import { api } from '@/api/client';
 
@@ -39,7 +39,7 @@ describe('ScanUpload', () => {
         };
 
         // Mock upload implementation to simulate progress
-        vi.spyOn(api.scan, 'upload').mockImplementation(async (file, type, onProgress) => {
+        vi.spyOn(api.scan, 'upload').mockImplementation(async (_file, _type, onProgress) => {
             onProgress?.(100);
             return mockResponse as any;
         });

@@ -2,8 +2,8 @@
  * SessionLog Component Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { SessionLog } from './SessionLog';
 
 vi.mock('@/lib/logger', () => ({
