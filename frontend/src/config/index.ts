@@ -146,3 +146,6 @@ export const isTest = config.app.environment === 'test';
 
 // Type export for use in other files
 export type { AppConfig, LogLevel };
+
+// Export env helpers for reuse by featureFlags and other modules
+export { getEnv, getBoolEnv, getNumEnv };
