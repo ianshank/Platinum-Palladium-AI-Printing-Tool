@@ -174,3 +174,26 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 exclude = ["tests"]
+
+# Legacy UI modules — will be replaced by React frontend
+[[tool.mypy.overrides]]
+module = [
+    "ptpd_calibration.ui.*",
+    "ptpd_calibration.api.server",
+]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+# Data/education/QA modules — complex dynamic typing, lower priority
+[[tool.mypy.overrides]]
+module = [
+    "ptpd_calibration.data.*",
+    "ptpd_calibration.education.*",
+    "ptpd_calibration.qa.*",
+    "ptpd_calibration.agents.*",
+    "ptpd_calibration.llm.*",
+]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+warn_return_any = false
+
