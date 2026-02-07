@@ -79,8 +79,17 @@ def get_gcp_config() -> GCPConfig:
     Raises:
         ValidationError: If required environment variables are missing.
     """
+    return GCPConfig()
+
+
+def try_get_gcp_config() -> GCPConfig | None:
+    """Return a GCPConfig if one can be built, or ``None`` otherwise.
+
+    Use this when GCP is optional and the caller can fall back to
+    local-only behaviour.
+    """
     try:
-        return GCPConfig()
+        return get_gcp_config()
     except Exception as e:
-        logger.warning(f"Failed to load GCP Config: {e}. GCP features will be disabled.")
-        raise
+        logger.warning("Failed to load GCP Config: %s. GCP features will be disabled.", e)
+        return None
