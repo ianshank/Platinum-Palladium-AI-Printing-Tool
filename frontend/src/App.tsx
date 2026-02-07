@@ -13,12 +13,7 @@ import { CurvesPage } from '@/pages/CurvesPage';
 
 import { ChemistryPage } from '@/pages/ChemistryPage';
 
-const AIAssistantPage: FC = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold">AI Assistant</h1>
-    <p className="text-muted-foreground mt-2">Chat with the printing assistant</p>
-  </div>
-);
+import { AIAssistantPage } from '@/pages/AIAssistantPage';
 
 const SessionLogPage: FC = () => (
   <div className="p-6">
