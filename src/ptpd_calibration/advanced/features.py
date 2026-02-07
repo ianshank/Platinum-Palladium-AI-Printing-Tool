@@ -9,10 +9,10 @@ Provides sophisticated tools for:
 - Print comparison and quality analysis
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, cast
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -175,8 +175,8 @@ class AlternativeProcessSimulator:
 
     def simulate_cyanotype(
         self,
-        image: Union[Image.Image, np.ndarray],
-        params: Optional[AlternativeProcessParams] = None,
+        image: Image.Image | np.ndarray,
+        params: AlternativeProcessParams | None = None,
     ) -> Image.Image:
         """Simulate cyanotype (iron-based blue) print.
 
@@ -206,8 +206,8 @@ class AlternativeProcessSimulator:
 
     def simulate_vandyke(
         self,
-        image: Union[Image.Image, np.ndarray],
-        params: Optional[AlternativeProcessParams] = None,
+        image: Image.Image | np.ndarray,
+        params: AlternativeProcessParams | None = None,
     ) -> Image.Image:
         """Simulate Van Dyke brown print.
 
@@ -237,8 +237,8 @@ class AlternativeProcessSimulator:
 
     def simulate_kallitype(
         self,
-        image: Union[Image.Image, np.ndarray],
-        params: Optional[AlternativeProcessParams] = None,
+        image: Image.Image | np.ndarray,
+        params: AlternativeProcessParams | None = None,
     ) -> Image.Image:
         """Simulate Kallitype print.
 
@@ -268,9 +268,9 @@ class AlternativeProcessSimulator:
 
     def simulate_gum_bichromate(
         self,
-        image: Union[Image.Image, np.ndarray],
+        image: Image.Image | np.ndarray,
         pigment_color: tuple[int, int, int] = (100, 70, 50),
-        params: Optional[AlternativeProcessParams] = None,
+        params: AlternativeProcessParams | None = None,
     ) -> Image.Image:
         """Simulate gum bichromate print with custom pigment.
 
@@ -291,7 +291,7 @@ class AlternativeProcessSimulator:
                 gamma=0.95,
                 contrast=0.9,
                 shadow_color=pigment_color,
-                midtone_color=tuple(int(c * 1.8) for c in pigment_color),
+                midtone_color=cast(tuple[int, int, int], tuple(int(c * 1.8) for c in pigment_color)),
                 highlight_color=(245, 240, 232),
                 dmax=1.4,
                 dmin=0.08,
@@ -302,8 +302,8 @@ class AlternativeProcessSimulator:
 
     def simulate_salt_print(
         self,
-        image: Union[Image.Image, np.ndarray],
-        params: Optional[AlternativeProcessParams] = None,
+        image: Image.Image | np.ndarray,
+        params: AlternativeProcessParams | None = None,
     ) -> Image.Image:
         """Simulate salt print (oldest photographic process).
 
@@ -333,7 +333,7 @@ class AlternativeProcessSimulator:
 
     def _apply_process_simulation(
         self,
-        image: Union[Image.Image, np.ndarray],
+        image: Image.Image | np.ndarray,
         params: AlternativeProcessParams,
         process_name: str,
     ) -> Image.Image:
@@ -357,10 +357,7 @@ class AlternativeProcessSimulator:
             pil_img = image
 
         # Convert to grayscale for processing
-        if pil_img.mode != 'L':
-            gray = pil_img.convert('L')
-        else:
-            gray = pil_img
+        gray = pil_img.convert('L') if pil_img.mode != 'L' else pil_img
 
         # Convert to normalized array
         arr = np.array(gray, dtype=np.float32) / 255.0
@@ -444,9 +441,9 @@ class NegativeBlender:
 
     def blend_negatives(
         self,
-        negatives: list[Union[Image.Image, np.ndarray]],
-        masks: Optional[list[Union[Image.Image, np.ndarray]]] = None,
-        blend_modes: Optional[list[BlendMode]] = None,
+        negatives: list[Image.Image | np.ndarray],
+        masks: list[Image.Image | np.ndarray] | None = None,
+        blend_modes: list[BlendMode] | None = None,
     ) -> Image.Image:
         """Blend multiple negatives with optional masks and blend modes.
 
@@ -522,7 +519,7 @@ class NegativeBlender:
 
     def create_contrast_mask(
         self,
-        image: Union[Image.Image, np.ndarray],
+        image: Image.Image | np.ndarray,
         threshold: float = 0.5,
     ) -> Image.Image:
         """Create a contrast reduction mask.
@@ -568,7 +565,7 @@ class NegativeBlender:
 
     def create_highlight_mask(
         self,
-        image: Union[Image.Image, np.ndarray],
+        image: Image.Image | np.ndarray,
         threshold: float = 0.7,
     ) -> Image.Image:
         """Create a highlight mask for burning highlights.
@@ -601,7 +598,7 @@ class NegativeBlender:
 
     def create_shadow_mask(
         self,
-        image: Union[Image.Image, np.ndarray],
+        image: Image.Image | np.ndarray,
         threshold: float = 0.3,
     ) -> Image.Image:
         """Create a shadow mask for dodging shadows.
@@ -634,9 +631,9 @@ class NegativeBlender:
 
     def apply_dodge_burn(
         self,
-        image: Union[Image.Image, np.ndarray],
-        dodge_mask: Optional[Union[Image.Image, np.ndarray]] = None,
-        burn_mask: Optional[Union[Image.Image, np.ndarray]] = None,
+        image: Image.Image | np.ndarray,
+        dodge_mask: Image.Image | np.ndarray | None = None,
+        burn_mask: Image.Image | np.ndarray | None = None,
         dodge_amount: float = 0.3,
         burn_amount: float = 0.3,
     ) -> Image.Image:
@@ -688,7 +685,7 @@ class NegativeBlender:
 
             # Burning: move toward 0 (black)
             burn_effect = result * (1 - burn_amount)
-            result = result * (1 - burn_arr) + burn_effect * burn_arr
+            result = cast(np.ndarray, result * (1 - burn_arr) + burn_effect * burn_arr)
 
         # Convert back to image
         result = np.clip(result * 255, 0, 255).astype(np.uint8)
@@ -696,8 +693,8 @@ class NegativeBlender:
 
     def create_multi_layer_mask(
         self,
-        layers: list[Union[Image.Image, np.ndarray]],
-        blend_modes: Optional[list[str]] = None,
+        layers: list[Image.Image | np.ndarray],
+        blend_modes: list[str] | None = None,
     ) -> Image.Image:
         """Create complex multi-layer mask by combining multiple masks.
 
@@ -775,19 +772,19 @@ class NegativeBlender:
             result = np.zeros_like(base)
             result[mask] = 2 * base[mask] * blend[mask]
             result[~mask] = 1 - 2 * (1 - base[~mask]) * (1 - blend[~mask])
-            return result
+            return cast(np.ndarray, result)
         elif mode == BlendMode.SOFT_LIGHT:
-            return (1 - 2 * blend) * base**2 + 2 * blend * base
+            return cast(np.ndarray, (1 - 2 * blend) * base**2 + 2 * blend * base)
         elif mode == BlendMode.HARD_LIGHT:
             mask = blend < 0.5
             result = np.zeros_like(base)
             result[mask] = 2 * base[mask] * blend[mask]
             result[~mask] = 1 - 2 * (1 - base[~mask]) * (1 - blend[~mask])
-            return result
+            return cast(np.ndarray, result)
         elif mode == BlendMode.LINEAR_DODGE:
-            return np.clip(base + blend, 0, 1)
+            return cast(np.ndarray, np.clip(base + blend, 0, 1))
         elif mode == BlendMode.LINEAR_BURN:
-            return np.clip(base + blend - 1, 0, 1)
+            return cast(np.ndarray, np.clip(base + blend - 1, 0, 1))
         else:
             return blend
 
@@ -799,7 +796,7 @@ class QRMetadataGenerator:
     labels suitable for attachment to finished prints.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the QR metadata generator."""
         if not HAS_QRCODE:
             raise ImportError(
@@ -850,7 +847,7 @@ class QRMetadataGenerator:
 
         return qr_img
 
-    def encode_recipe(self, recipe: Union[PrintMetadata, dict]) -> str:
+    def encode_recipe(self, recipe: PrintMetadata | dict) -> str:
         """Encode recipe/metadata into string format.
 
         Args:
@@ -885,7 +882,7 @@ class QRMetadataGenerator:
 
         return "|".join(parts)
 
-    def decode_qr(self, qr_image: Union[Image.Image, str, Path]) -> dict:
+    def decode_qr(self, qr_image: Image.Image | str | Path) -> dict:
         """Decode QR code back to metadata.
 
         Args:
@@ -1018,17 +1015,17 @@ class StyleTransfer:
     and historic periods to contemporary images.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the style transfer system."""
         self.styles = self.load_historic_styles()
 
-    def load_historic_styles(self) -> dict[str, StyleParameters]:
+    def load_historic_styles(self) -> dict[HistoricStyle | str, StyleParameters]:
         """Load database of historic Pt/Pd print styles.
 
         Returns:
             Dictionary of style name to parameters
         """
-        styles = {
+        styles: dict[HistoricStyle | str, StyleParameters] = {
             HistoricStyle.PICTORIALIST_1890S: StyleParameters(
                 name="1890s Pictorialist",
                 description="Soft-focus pictorialist style with gentle tones",
@@ -1119,7 +1116,7 @@ class StyleTransfer:
 
     def analyze_style(
         self,
-        reference_image: Union[Image.Image, np.ndarray],
+        reference_image: Image.Image | np.ndarray,
     ) -> StyleParameters:
         """Extract style characteristics from reference image.
 
@@ -1134,10 +1131,7 @@ class StyleTransfer:
         """
         # Convert to grayscale array
         if isinstance(reference_image, Image.Image):
-            if reference_image.mode != 'L':
-                gray = reference_image.convert('L')
-            else:
-                gray = reference_image
+            gray = reference_image.convert('L') if reference_image.mode != 'L' else reference_image
             arr = np.array(gray, dtype=np.float32) / 255.0
         else:
             arr = reference_image.astype(np.float32)
@@ -1190,8 +1184,8 @@ class StyleTransfer:
             contrast=float(contrast),
             toe_contrast=1.0,
             shoulder_contrast=1.0,
-            shadow_tone=shadow_color,
-            highlight_tone=highlight_color,
+            shadow_tone=(int(shadow_color[0]), int(shadow_color[1]), int(shadow_color[2])),
+            highlight_tone=(int(highlight_color[0]), int(highlight_color[1]), int(highlight_color[2])),
             dmax=float(2.0 - shadow_val * 0.5),
             dmin=float(0.05 + highlight_val * 0.1),
             paper_warmth=0.5,
@@ -1200,8 +1194,8 @@ class StyleTransfer:
 
     def apply_style(
         self,
-        image: Union[Image.Image, np.ndarray],
-        style_name: Union[HistoricStyle, str],
+        image: Image.Image | np.ndarray,
+        style_name: HistoricStyle | str,
     ) -> Image.Image:
         """Apply named historic style to image.
 
@@ -1266,7 +1260,7 @@ class StyleTransfer:
 
     def _apply_style_params(
         self,
-        image: Union[Image.Image, np.ndarray],
+        image: Image.Image | np.ndarray,
         params: StyleParameters,
     ) -> Image.Image:
         """Apply style parameters to image.
@@ -1287,10 +1281,7 @@ class StyleTransfer:
         else:
             pil_img = image
 
-        if pil_img.mode != 'L':
-            gray = pil_img.convert('L')
-        else:
-            gray = pil_img
+        gray = pil_img.convert('L') if pil_img.mode != 'L' else pil_img
 
         # Convert to array
         arr = np.array(gray, dtype=np.float32) / 255.0
@@ -1352,14 +1343,14 @@ class PrintComparison:
     by comparing digital files with scanned prints.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the print comparison system."""
         pass
 
     def compare_before_after(
         self,
-        original: Union[Image.Image, np.ndarray],
-        print_scan: Union[Image.Image, np.ndarray],
+        original: Image.Image | np.ndarray,
+        print_scan: Image.Image | np.ndarray,
     ) -> dict:
         """Compare original digital file with scanned print.
 
@@ -1418,8 +1409,8 @@ class PrintComparison:
 
     def generate_difference_map(
         self,
-        image1: Union[Image.Image, np.ndarray],
-        image2: Union[Image.Image, np.ndarray],
+        image1: Image.Image | np.ndarray,
+        image2: Image.Image | np.ndarray,
         colorize: bool = True,
     ) -> Image.Image:
         """Generate visual difference map between two images.
@@ -1482,8 +1473,8 @@ class PrintComparison:
 
     def calculate_similarity_score(
         self,
-        image1: Union[Image.Image, np.ndarray],
-        image2: Union[Image.Image, np.ndarray],
+        image1: Image.Image | np.ndarray,
+        image2: Image.Image | np.ndarray,
         method: str = 'ssim',
     ) -> float:
         """Calculate numerical similarity score between images.
@@ -1538,8 +1529,8 @@ class PrintComparison:
 
     def generate_comparison_report(
         self,
-        images: dict[str, Union[Image.Image, np.ndarray]],
-        reference_key: Optional[str] = None,
+        images: dict[str, Image.Image | np.ndarray],
+        reference_key: str | None = None,
     ) -> dict:
         """Generate comprehensive comparison report for multiple images.
 
@@ -1561,7 +1552,7 @@ class PrintComparison:
             raise ValueError(f"Reference key {reference_key} not in images")
 
         reference = images[reference_key]
-        ref_arr = self._to_gray_array(reference)
+        self._to_gray_array(reference)
 
         # Compare all images to reference
         comparisons = {}
@@ -1601,7 +1592,7 @@ class PrintComparison:
 
     def _to_gray_array(
         self,
-        image: Union[Image.Image, np.ndarray],
+        image: Image.Image | np.ndarray,
     ) -> np.ndarray:
         """Convert image to grayscale float array.
 
@@ -1612,10 +1603,7 @@ class PrintComparison:
             Normalized grayscale array (0-1)
         """
         if isinstance(image, Image.Image):
-            if image.mode != 'L':
-                gray = image.convert('L')
-            else:
-                gray = image
+            gray = image.convert('L') if image.mode != 'L' else image
             arr = np.array(gray, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)

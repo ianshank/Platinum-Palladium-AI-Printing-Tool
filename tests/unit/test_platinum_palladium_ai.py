@@ -5,39 +5,37 @@ Tests the AI-powered analysis, prediction, and optimization tools
 for platinum-palladium printing workflow.
 """
 
+from unittest.mock import Mock
+
 import numpy as np
 import pytest
-from pathlib import Path
 from PIL import Image
-from unittest.mock import Mock, patch
 
 from ptpd_calibration.ai.platinum_palladium_ai import (
-    PlatinumPalladiumAI,
-    TonePreference,
+    ChemistryRecommendation,
     ContrastLevel,
+    DigitalNegativeResult,
+    ExposurePrediction,
+    PlatinumPalladiumAI,
     PrinterProfile,
+    PrintQualityAnalysis,
     ProblemArea,
     TonalityAnalysisResult,
-    ExposurePrediction,
-    ChemistryRecommendation,
-    DigitalNegativeResult,
-    PrintQualityAnalysis,
+    TonePreference,
     WorkflowOptimization,
+)
+from ptpd_calibration.core.models import (
+    CalibrationRecord,
+    CurveData,
 )
 from ptpd_calibration.core.types import (
     ChemistryType,
     ContrastAgent,
-    DeveloperType,
     CurveType,
+    DeveloperType,
 )
-from ptpd_calibration.core.models import (
-    CurveData,
-    CalibrationRecord,
-)
-from ptpd_calibration.imaging.processor import ImageFormat
 from ptpd_calibration.exposure.calculator import LightSource
-from ptpd_calibration.config import get_settings
-
+from ptpd_calibration.imaging.processor import ImageFormat
 
 # ============================================================================
 # Fixtures - Test Images
@@ -1052,7 +1050,7 @@ class TestOptimizeWorkflow:
             # Should have recommendations for specific papers
             assert len(result.recommended_paper_settings) > 0
             # Each paper should have recommended exposure
-            for paper, settings in result.recommended_paper_settings.items():
+            for _paper, settings in result.recommended_paper_settings.items():
                 assert "recommended_exposure" in settings
                 assert settings["recommended_exposure"] > 0
 

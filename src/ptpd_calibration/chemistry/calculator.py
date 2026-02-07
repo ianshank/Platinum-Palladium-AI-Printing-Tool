@@ -15,7 +15,6 @@ Rule: Drops of metals (C) should equal drops of ferric oxalate (A + B)
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 from ptpd_calibration.config import ChemistrySettings, get_settings
 
@@ -96,7 +95,7 @@ class ChemistryRecipe:
     contrast_boost: float  # 0.0-1.0, ratio of FO#2 to total FO
 
     # Cost estimate (if enabled)
-    estimated_cost_usd: Optional[float] = None
+    estimated_cost_usd: float | None = None
 
     # Notes and recommendations
     notes: list[str] = field(default_factory=list)
@@ -206,7 +205,7 @@ class ChemistryCalculator:
     - Na2 adds contrast (typically ~25% of metal drops)
     """
 
-    def __init__(self, settings: Optional[ChemistrySettings] = None):
+    def __init__(self, settings: ChemistrySettings | None = None):
         """Initialize calculator with optional custom settings.
 
         Args:
@@ -222,8 +221,8 @@ class ChemistryCalculator:
         paper_absorbency: PaperAbsorbency = PaperAbsorbency.MEDIUM,
         coating_method: CoatingMethod = CoatingMethod.BRUSH,
         contrast_boost: float = 0.0,
-        na2_ratio: Optional[float] = None,
-        margin_inches: Optional[float] = None,
+        na2_ratio: float | None = None,
+        margin_inches: float | None = None,
         include_cost: bool = True,
     ) -> ChemistryRecipe:
         """Calculate chemistry recipe for a given print size.

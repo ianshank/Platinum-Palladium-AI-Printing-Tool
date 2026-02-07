@@ -5,10 +5,10 @@ Common papers for platinum/palladium printing with recommended settings.
 """
 
 from ptpd_calibration.papers.profiles import (
-    PaperProfile,
-    PaperDatabase,
-    PaperCharacteristics,
     CoatingBehavior,
+    PaperCharacteristics,
+    PaperDatabase,
+    PaperProfile,
 )
 
 __all__ = [

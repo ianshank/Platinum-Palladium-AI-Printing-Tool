@@ -7,11 +7,12 @@ All settings can be overridden via environment variables with PTPD_ prefix.
 
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
+from dotenv import load_dotenv
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from dotenv import load_dotenv
+
+from ptpd_calibration.gcp.config import GCPConfig
 
 load_dotenv()
 
@@ -142,7 +143,7 @@ class MLSettings(BaseSettings):
 
     # Persistence
     auto_save_model: bool = Field(default=True)
-    model_cache_dir: Optional[Path] = Field(default=None)
+    model_cache_dir: Path | None = Field(default=None)
 
 
 class LLMSettings(BaseSettings):
@@ -157,21 +158,21 @@ class LLMSettings(BaseSettings):
 
     # Provider configuration
     provider: LLMProvider = Field(default=LLMProvider.ANTHROPIC)
-    api_key: Optional[str] = Field(
+    api_key: str | None = Field(
         default=None,
         description="Primary API key (used if provider-specific key not set)"
     )
-    anthropic_api_key: Optional[str] = Field(
+    anthropic_api_key: str | None = Field(
         default=None,
         description="Anthropic API key for Claude models"
     )
-    openai_api_key: Optional[str] = Field(
+    openai_api_key: str | None = Field(
         default=None,
         description="OpenAI API key for GPT models"
     )
 
     # Runtime API key (can be set via UI, takes precedence)
-    runtime_api_key: Optional[str] = Field(
+    runtime_api_key: str | None = Field(
         default=None,
         description="Runtime API key set via UI (takes precedence over env vars)"
     )
@@ -189,7 +190,7 @@ class LLMSettings(BaseSettings):
     max_retries: int = Field(default=3, ge=0, le=10)
     retry_delay_seconds: float = Field(default=1.0, ge=0.1, le=30.0)
 
-    def get_active_api_key(self) -> Optional[str]:
+    def get_active_api_key(self) -> str | None:
         """Get the active API key with runtime key taking precedence."""
         if self.runtime_api_key:
             return self.runtime_api_key
@@ -212,7 +213,7 @@ class AgentSettings(BaseSettings):
 
     # Memory
     enable_memory: bool = Field(default=True)
-    memory_file: Optional[Path] = Field(default=None)
+    memory_file: Path | None = Field(default=None)
     max_memory_items: int = Field(default=1000, ge=100, le=10000)
     working_memory_size: int = Field(default=10, ge=3, le=50)
 
@@ -242,7 +243,7 @@ class APISettings(BaseSettings):
 
     # File uploads
     max_upload_size_mb: int = Field(default=50, ge=1, le=500)
-    upload_dir: Optional[Path] = Field(default=None)
+    upload_dir: Path | None = Field(default=None)
 
     # Rate limiting
     rate_limit_per_minute: int = Field(default=60, ge=1, le=1000)
@@ -389,7 +390,7 @@ class WorkflowSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PTPD_WORKFLOW_")
 
     # Database settings
-    recipe_db_path: Optional[Path] = Field(
+    recipe_db_path: Path | None = Field(
         default=None, description="Path to recipe database (defaults to data_dir/recipes.db)"
     )
     auto_backup: bool = Field(default=True, description="Automatically backup recipe database")
@@ -527,7 +528,7 @@ class RecipeSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PTPD_RECIPE_")
 
     # Database settings
-    database_path: Optional[Path] = Field(
+    database_path: Path | None = Field(
         default=None,
         description="Path to recipe database (defaults to data_dir/recipes.db)"
     )
@@ -586,7 +587,7 @@ class IntegrationSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PTPD_INTEGRATION_")
 
     # Weather API settings
-    weather_api_key: Optional[str] = Field(
+    weather_api_key: str | None = Field(
         default=None,
         description="OpenWeatherMap API key for environmental data"
     )
@@ -606,11 +607,11 @@ class IntegrationSettings(BaseSettings):
     )
 
     # Spectrophotometer settings
-    spectrophotometer_port: Optional[str] = Field(
+    spectrophotometer_port: str | None = Field(
         default=None,
         description="Serial port for spectrophotometer (e.g., /dev/ttyUSB0 or COM3)"
     )
-    spectro_device_id: Optional[str] = Field(
+    spectro_device_id: str | None = Field(
         default=None,
         description="Spectrophotometer device identifier"
     )
@@ -630,7 +631,7 @@ class IntegrationSettings(BaseSettings):
     )
 
     # Printer settings
-    default_printer_name: Optional[str] = Field(
+    default_printer_name: str | None = Field(
         default=None,
         description="Default printer for digital negatives"
     )
@@ -661,7 +662,7 @@ class IntegrationSettings(BaseSettings):
         ],
         description="System ICC profile search paths"
     )
-    custom_profile_dir: Optional[Path] = Field(
+    custom_profile_dir: Path | None = Field(
         default=None,
         description="Custom directory for ICC profiles"
     )
@@ -669,7 +670,7 @@ class IntegrationSettings(BaseSettings):
         default="perceptual",
         description="Default ICC rendering intent (perceptual, relative, saturation, absolute)"
     )
-    default_icc_profile: Optional[str] = Field(
+    default_icc_profile: str | None = Field(
         default=None,
         description="Default ICC profile name"
     )
@@ -687,11 +688,11 @@ class EducationSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PTPD_EDUCATION_")
 
     # Tutorial paths
-    tutorials_path: Optional[Path] = Field(
+    tutorials_path: Path | None = Field(
         default=None,
         description="Path to tutorials directory (defaults to data_dir/tutorials)"
     )
-    glossary_path: Optional[Path] = Field(
+    glossary_path: Path | None = Field(
         default=None,
         description="Path to glossary file (defaults to data_dir/glossary.json)"
     )
@@ -709,7 +710,7 @@ class EducationSettings(BaseSettings):
 
     # Progress tracking
     track_progress: bool = Field(default=True, description="Track tutorial progress")
-    progress_file: Optional[Path] = Field(
+    progress_file: Path | None = Field(
         default=None,
         description="Path to progress tracking file"
     )
@@ -725,7 +726,7 @@ class PerformanceSettings(BaseSettings):
         default=False,
         description="Enable performance profiling"
     )
-    profiling_output_dir: Optional[Path] = Field(
+    profiling_output_dir: Path | None = Field(
         default=None,
         description="Directory for profiling output"
     )
@@ -759,7 +760,7 @@ class PerformanceSettings(BaseSettings):
         le=365,
         description="Days to retain performance metrics"
     )
-    metrics_export_path: Optional[Path] = Field(
+    metrics_export_path: Path | None = Field(
         default=None,
         description="Path to export metrics"
     )
@@ -776,11 +777,11 @@ class DataManagementSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PTPD_DATA_")
 
     # Database settings
-    database_path: Optional[Path] = Field(
+    database_path: Path | None = Field(
         default=None,
         description="Path to main database (defaults to data_dir/ptpd.db)"
     )
-    database_backup_path: Optional[Path] = Field(
+    database_backup_path: Path | None = Field(
         default=None,
         description="Path to database backups directory"
     )
@@ -807,8 +808,8 @@ class DataManagementSettings(BaseSettings):
         default="s3",
         description="Cloud provider (s3, gcs, azure, dropbox)"
     )
-    cloud_bucket_name: Optional[str] = Field(default=None)
-    cloud_api_key: Optional[str] = Field(default=None)
+    cloud_bucket_name: str | None = Field(default=None)
+    cloud_api_key: str | None = Field(default=None)
     cloud_sync_interval_minutes: int = Field(default=60, ge=5, le=1440)
 
     # Data retention
@@ -822,7 +823,7 @@ class DataManagementSettings(BaseSettings):
 
     # Export settings
     default_export_format: str = Field(default="json")
-    export_path: Optional[Path] = Field(default=None)
+    export_path: Path | None = Field(default=None)
 
 
 class CalculationsSettings(BaseSettings):
@@ -907,8 +908,8 @@ class Settings(BaseSettings):
 
     # Data directories
     data_dir: Path = Field(default=Path.home() / ".ptpd")
-    calibrations_dir: Optional[Path] = Field(default=None)
-    exports_dir: Optional[Path] = Field(default=None)
+    calibrations_dir: Path | None = Field(default=None)
+    exports_dir: Path | None = Field(default=None)
 
     # Subsettings
     detection: DetectionSettings = Field(default_factory=DetectionSettings)
@@ -934,10 +935,11 @@ class Settings(BaseSettings):
     performance: PerformanceSettings = Field(default_factory=PerformanceSettings)
     data_management: DataManagementSettings = Field(default_factory=DataManagementSettings)
     calculations: CalculationsSettings = Field(default_factory=CalculationsSettings)
+    gcp: GCPConfig = Field(default_factory=GCPConfig)
 
     @field_validator("calibrations_dir", "exports_dir", mode="before")
     @classmethod
-    def resolve_paths(cls, v: Optional[Path], info) -> Optional[Path]:
+    def resolve_paths(cls, v: Path | None, info) -> Path | None:
         """Resolve paths relative to data_dir if not absolute."""
         if v is None:
             return None
@@ -961,7 +963,7 @@ class Settings(BaseSettings):
 
 
 # Global settings instance - lazy loaded
-_settings: Optional[Settings] = None
+_settings: Settings | None = None
 
 
 def get_settings() -> Settings:
@@ -972,7 +974,7 @@ def get_settings() -> Settings:
     return _settings
 
 
-def configure(settings: Optional[Settings] = None, **kwargs) -> Settings:
+def configure(settings: Settings | None = None, **kwargs) -> Settings:
     """
     Configure the global settings.
 

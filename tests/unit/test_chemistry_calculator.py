@@ -5,13 +5,14 @@ Tests coating chemistry calculations based on Bostick-Sullivan formulas.
 """
 
 import pytest
+
 from ptpd_calibration.chemistry import (
+    METAL_MIX_RATIOS,
     ChemistryCalculator,
     ChemistryRecipe,
-    PaperAbsorbency,
     CoatingMethod,
     MetalMix,
-    METAL_MIX_RATIOS,
+    PaperAbsorbency,
 )
 from ptpd_calibration.config import ChemistrySettings
 

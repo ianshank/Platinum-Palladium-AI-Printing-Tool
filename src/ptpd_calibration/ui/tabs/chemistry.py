@@ -1,19 +1,19 @@
 import gradio as gr
+
 from ptpd_calibration.chemistry import (
     ChemistryCalculator,
-    PaperAbsorbency,
     CoatingMethod,
-    MetalMix,
-    METAL_MIX_RATIOS,
+    PaperAbsorbency,
 )
 
-def build_chemistry_tab():
+
+def build_chemistry_tab() -> None:
     """Build the Chemistry Calculator tab."""
     with gr.TabItem("🧪 Chemistry Calculator"):
         gr.Markdown(
             """
             ### Coating Solution Calculator
-            
+
             Calculate platinum/palladium coating solution amounts based on your print dimensions.
             """
         )
@@ -22,7 +22,7 @@ def build_chemistry_tab():
             # Left Column: Inputs
             with gr.Column(scale=1):
                 gr.Markdown("### Paper Size")
-                
+
                 with gr.Row():
                     btn_4x5 = gr.Button("4×5", size="sm")
                     btn_5x7 = gr.Button("5×7", size="sm")
@@ -30,18 +30,18 @@ def build_chemistry_tab():
                 with gr.Row():
                     btn_11x14 = gr.Button("11×14", size="sm")
                     btn_16x20 = gr.Button("16×20", size="sm")
-                    btn_custom = gr.Button("Custom", size="sm")
-                
+                    gr.Button("Custom", size="sm")
+
                 with gr.Row():
                     width = gr.Number(label="Width (inches)", value=8)
                     height = gr.Number(label="Height (inches)", value=10)
-                
+
                 gr.Markdown("### Metal Ratio")
                 ratio_slider = gr.Slider(
                     minimum=0, maximum=100, value=50,
                     label="← More Palladium | More Platinum →"
                 )
-                
+
                 # Visual indicator
                 ratio_viz = gr.HTML("""
                     <div style="display:flex; height:20px; border-radius:4px; overflow:hidden; margin-bottom: 5px;">
@@ -67,22 +67,22 @@ def build_chemistry_tab():
                 )
                 contrast = gr.Slider(0, 100, 0, label="Contrast Boost (FO#2) %")
                 na2 = gr.Slider(0, 50, 25, label="Na2 % (of metal)")
-                
+
                 calculate_btn = gr.Button("Calculate Recipe", variant="primary")
 
             # Right Column: Results
             with gr.Column(scale=1):
                 gr.Markdown("### Recipe")
-                
+
                 # Visual dropper representation
-                recipe_html = gr.HTML(label="Visual Recipe")  
-                
+                recipe_html = gr.HTML(label="Visual Recipe")
+
                 # Detailed text
                 recipe_text = gr.Textbox(label="Details", lines=10, interactive=False)
-                
+
                 # Hidden JSON for data
                 recipe_json = gr.JSON(visible=False)
-                
+
                 with gr.Row():
                     copy_btn = gr.Button("📋 Copy Recipe")
                     log_btn = gr.Button("📝 Log to Session")
@@ -94,8 +94,8 @@ def build_chemistry_tab():
         btn_11x14.click(lambda: (11, 14), outputs=[width, height])
         btn_16x20.click(lambda: (16, 20), outputs=[width, height])
         # Custom button just focuses inputs, essentially no-op here or could clear them
-        
-        def update_viz(value):
+
+        def update_viz(value: float) -> str:
             # Update HTML gradient based on slider
             pd_pct = 100 - value
             pt_pct = value
@@ -107,10 +107,10 @@ def build_chemistry_tab():
                 <span>{pt_pct}% Pt</span>
             </div>
             """
-        
+
         ratio_slider.change(update_viz, inputs=[ratio_slider], outputs=[ratio_viz])
 
-        def calculate(w, h, pt_ratio, absorbency, method, cont, na2_val):
+        def calculate(w: float, h: float, pt_ratio: float, absorbency: str, method: str, cont: float, na2_val: float) -> tuple[str, str, dict]:
             try:
                 calculator = ChemistryCalculator()
                 # pt_ratio is 0-100, convert to 0.0-1.0
@@ -123,18 +123,18 @@ def build_chemistry_tab():
                     contrast_boost=cont / 100.0,
                     na2_ratio=na2_val / 100.0,
                 )
-                
+
                 # Generate visual HTML
                 # Simple representation: Drops as circles
                 # Total drops
                 total_drops = recipe.total_drops
-                
+
                 html = f"""
                 <div style="padding: 10px; background: var(--ptpd-card); border-radius: 8px;">
                     <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">{total_drops} Total Drops</div>
                     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                 """
-                
+
                 # Helper to add drops
                 def add_drops(name, count, color):
                     return f"""
@@ -144,7 +144,7 @@ def build_chemistry_tab():
                         <div style="font-size: 12px; opacity: 0.8;">{name}</div>
                     </div>
                     """
-                
+
                 if recipe.ferric_oxalate_1 > 0:
                     html += add_drops("FO#1", recipe.ferric_oxalate_1, "#fbbf24") # Amber
                 if recipe.ferric_oxalate_2 > 0:
@@ -155,7 +155,7 @@ def build_chemistry_tab():
                     html += add_drops("Pd", recipe.palladium, "#d4a574") # Gold/Bronze
                 if recipe.na2 > 0:
                     html += add_drops("Na2", recipe.na2, "#ef4444") # Red
-                    
+
                 html += "</div></div>"
 
                 return html, recipe.format_recipe(), recipe.to_dict()
@@ -167,10 +167,10 @@ def build_chemistry_tab():
             inputs=[width, height, ratio_slider, paper_absorbency, coating_method, contrast, na2],
             outputs=[recipe_html, recipe_text, recipe_json]
         )
-        
+
         # Copy button (simulated with Javascript)
         copy_btn.click(None, [recipe_text], None, js="(text) => navigator.clipboard.writeText(text)")
-        
+
         # Log to session (placeholder)
         log_btn.click(lambda x: gr.Info("Recipe logged to session!"), inputs=[recipe_json], outputs=[])
 

@@ -5,7 +5,6 @@ Provides analysis of calibration curves and measurement quality.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 
@@ -43,7 +42,7 @@ class CurveAnalyzer:
     @staticmethod
     def analyze_linearity(
         measured_densities: list[float],
-        target_densities: Optional[list[float]] = None,
+        target_densities: list[float] | None = None,
     ) -> LinearityAnalysis:
         """
         Analyze linearity of measured densities.
@@ -147,7 +146,7 @@ class CurveAnalyzer:
         # Find significant differences (> 5%)
         threshold = 0.05
         significant = []
-        for i, (xi, di) in enumerate(zip(x, deltas)):
+        for _i, (xi, di) in enumerate(zip(x, deltas, strict=False)):
             if di > threshold:
                 if xi < 0.2:
                     region = "highlights"
@@ -169,7 +168,7 @@ class CurveAnalyzer:
     @staticmethod
     def suggest_adjustments(
         measured_densities: list[float],
-        target_densities: Optional[list[float]] = None,
+        target_densities: list[float] | None = None,
     ) -> list[str]:
         """
         Generate suggestions for process adjustments.

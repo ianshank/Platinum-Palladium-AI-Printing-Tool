@@ -21,17 +21,12 @@ References:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Tuple, Union
-from pathlib import Path
 
 import numpy as np
 from PIL import Image
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from scipy.ndimage import gaussian_filter
-from scipy.interpolate import PchipInterpolator
-
-from ptpd_calibration.config import get_settings
 
 
 class BlendMode(str, Enum):
@@ -266,7 +261,7 @@ class TonalCurveAdjuster:
     printing processes, including their different contrast and tonal behaviors.
     """
 
-    def __init__(self, settings: Optional[SplitGradeSettings] = None):
+    def __init__(self, settings: SplitGradeSettings | None = None):
         """Initialize the tonal curve adjuster.
 
         Args:
@@ -279,7 +274,7 @@ class TonalCurveAdjuster:
         self,
         grade: float,
         num_points: int = 256,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Generate contrast curve for a given grade level.
 
         Grade scale:
@@ -536,7 +531,7 @@ class SplitGradeSimulator:
     - Calculating exposure times
     """
 
-    def __init__(self, settings: Optional[SplitGradeSettings] = None):
+    def __init__(self, settings: SplitGradeSettings | None = None):
         """Initialize the split-grade simulator.
 
         Args:
@@ -547,7 +542,7 @@ class SplitGradeSimulator:
 
     def analyze_image(
         self,
-        image: Union[np.ndarray, Image.Image],
+        image: np.ndarray | Image.Image,
     ) -> TonalAnalysis:
         """Analyze image to determine optimal split-grade parameters.
 
@@ -662,8 +657,8 @@ class SplitGradeSimulator:
 
     def create_shadow_mask(
         self,
-        image: Union[np.ndarray, Image.Image],
-        threshold: Optional[float] = None,
+        image: np.ndarray | Image.Image,
+        threshold: float | None = None,
     ) -> np.ndarray:
         """Create mask selecting shadow regions of the image.
 
@@ -691,8 +686,8 @@ class SplitGradeSimulator:
 
     def create_highlight_mask(
         self,
-        image: Union[np.ndarray, Image.Image],
-        threshold: Optional[float] = None,
+        image: np.ndarray | Image.Image,
+        threshold: float | None = None,
     ) -> np.ndarray:
         """Create mask selecting highlight regions of the image.
 
@@ -720,8 +715,8 @@ class SplitGradeSimulator:
 
     def simulate_split_grade(
         self,
-        image: Union[np.ndarray, Image.Image],
-        settings: Optional[SplitGradeSettings] = None,
+        image: np.ndarray | Image.Image,
+        settings: SplitGradeSettings | None = None,
     ) -> np.ndarray:
         """Apply split-grade simulation to an image.
 
@@ -783,9 +778,9 @@ class SplitGradeSimulator:
         self,
         shadow_image: np.ndarray,
         highlight_image: np.ndarray,
-        settings: Optional[SplitGradeSettings] = None,
-        shadow_mask: Optional[np.ndarray] = None,
-        highlight_mask: Optional[np.ndarray] = None,
+        settings: SplitGradeSettings | None = None,
+        shadow_mask: np.ndarray | None = None,
+        highlight_mask: np.ndarray | None = None,
     ) -> np.ndarray:
         """Blend shadow and highlight exposures using specified blend mode.
 
@@ -845,10 +840,10 @@ class SplitGradeSimulator:
 
     def preview_result(
         self,
-        image: Union[np.ndarray, Image.Image],
-        settings: Optional[SplitGradeSettings] = None,
+        image: np.ndarray | Image.Image,
+        settings: SplitGradeSettings | None = None,
         include_masks: bool = False,
-    ) -> dict[str, Union[np.ndarray, Image.Image]]:
+    ) -> dict[str, np.ndarray | Image.Image]:
         """Generate preview comparison showing original and processed results.
 
         Args:
@@ -884,7 +879,7 @@ class SplitGradeSimulator:
     def calculate_exposure_times(
         self,
         base_time: float,
-        settings: Optional[SplitGradeSettings] = None,
+        settings: SplitGradeSettings | None = None,
     ) -> ExposureCalculation:
         """Calculate separate exposure times for shadow and highlight grades.
 
@@ -940,7 +935,7 @@ class SplitGradeSimulator:
 
     def _prepare_image(
         self,
-        image: Union[np.ndarray, Image.Image],
+        image: np.ndarray | Image.Image,
     ) -> np.ndarray:
         """Convert image to normalized numpy array.
 
@@ -1012,7 +1007,7 @@ class SplitGradeSimulator:
         contrast: float,
         is_low_key: bool,
         is_high_key: bool,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Recommend shadow and highlight grades based on image analysis.
 
         Args:
@@ -1058,7 +1053,7 @@ class SplitGradeSimulator:
         p75: float,
         shadow_pct: float,
         highlight_pct: float,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Recommend shadow and highlight thresholds.
 
         Args:

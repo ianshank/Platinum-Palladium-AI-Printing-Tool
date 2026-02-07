@@ -32,21 +32,30 @@ export type StoreState = {
 /**
  * Store middleware configuration
  */
-const storeMiddleware = (
-  create: Parameters<typeof devtools>[0]
+/**
+ * Store middleware configuration
+ */
+// Explicitly type the middleware to avoid complex inference issues
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type StoreMiddleware = (f: any) => any;
+
+const storeMiddleware: StoreMiddleware = (
+  f
 ) =>
   devtools(
     subscribeWithSelector(
       persist(
-        immer(create),
+        immer(f) as any,
         {
           name: 'ptpd-store',
-          partialize: (state) => ({
+          partialize: (state: any) => ({
             // Only persist UI preferences
             ui: {
               activeTab: state.ui.activeTab,
               sidebarOpen: state.ui.sidebarOpen,
               theme: state.ui.theme,
+              isProcessing: false,
+              isInitialized: true,
             },
           }),
         }
@@ -62,7 +71,7 @@ const storeMiddleware = (
  * Main application store
  */
 export const useStore = create<StoreState>()(
-  storeMiddleware((set, get, store) => ({
+  storeMiddleware((set: any, get: any, store: any) => ({
     ui: createUISlice(set, get, store),
     calibration: createCalibrationSlice(set, get, store),
     curve: createCurveSlice(set, get, store),

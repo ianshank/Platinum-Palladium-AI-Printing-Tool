@@ -7,11 +7,11 @@ Tests UV exposure time calculations for alternative printing.
 import pytest
 
 from ptpd_calibration.exposure.calculator import (
-    LightSource,
-    ExposureSettings,
-    ExposureResult,
-    ExposureCalculator,
     LIGHT_SOURCE_SPEEDS,
+    ExposureCalculator,
+    ExposureResult,
+    ExposureSettings,
+    LightSource,
 )
 
 

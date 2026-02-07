@@ -4,8 +4,8 @@ import pytest
 
 from ptpd_calibration.exposure import (
     ExposureCalculator,
-    ExposureSettings,
     ExposureResult,
+    ExposureSettings,
     LightSource,
 )
 

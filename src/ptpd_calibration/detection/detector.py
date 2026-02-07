@@ -6,7 +6,6 @@ Uses classical computer vision techniques for reliable patch detection.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 from PIL import Image
@@ -34,7 +33,7 @@ class StepTabletDetector:
     to find step tablets and segment individual patches.
     """
 
-    def __init__(self, settings: Optional[DetectionSettings] = None):
+    def __init__(self, settings: DetectionSettings | None = None):
         """
         Initialize the detector.
 
@@ -45,8 +44,8 @@ class StepTabletDetector:
 
     def detect(
         self,
-        image: Union[np.ndarray, Image.Image, Path, str],
-        num_patches: Optional[int] = None,
+        image: np.ndarray | Image.Image | Path | str,
+        num_patches: int | None = None,
     ) -> DetectionResult:
         """
         Detect step tablet in image.
@@ -63,10 +62,7 @@ class StepTabletDetector:
         height, width = img_array.shape[:2]
 
         # Convert to grayscale if needed
-        if len(img_array.shape) == 3:
-            gray = self._to_grayscale(img_array)
-        else:
-            gray = img_array
+        gray = self._to_grayscale(img_array) if len(img_array.shape) == 3 else img_array
 
         warnings: list[str] = []
 
@@ -104,7 +100,7 @@ class StepTabletDetector:
             warnings=warnings,
         )
 
-    def _load_image(self, image: Union[np.ndarray, Image.Image, Path, str]) -> np.ndarray:
+    def _load_image(self, image: np.ndarray | Image.Image | Path | str) -> np.ndarray:
         """Load image from various sources."""
         if isinstance(image, np.ndarray):
             return image
@@ -329,7 +325,7 @@ class StepTabletDetector:
         gray: np.ndarray,
         bounds: tuple[int, int, int, int],
         orientation: str,
-        num_patches: Optional[int] = None,
+        num_patches: int | None = None,
     ) -> list[tuple[int, int, int, int]]:
         """Segment patches within tablet region."""
         x, y, w, h = bounds

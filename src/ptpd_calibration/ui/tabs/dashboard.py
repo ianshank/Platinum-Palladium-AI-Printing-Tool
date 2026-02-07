@@ -1,12 +1,15 @@
-import gradio as gr
 from datetime import datetime, timedelta
 from pathlib import Path
-from ptpd_calibration.session import SessionLogger, PrintResult
 
-def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogger):
+import gradio as gr
+
+from ptpd_calibration.session import PrintResult, SessionLogger
+
+
+def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogger) -> None:
     """
     Build the Dashboard tab.
-    
+
     Args:
         onboarding_state: Gradio state for onboarding.
         session_logger: SessionLogger instance for retrieving stats.
@@ -15,7 +18,7 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
         gr.Markdown("## Platinum/Palladium Calibration Studio")
         gr.Markdown("Orchestrate calibration, chemistry, and AI workflows from a single hub.")
 
-        def compute_dashboard_metrics():
+        def compute_dashboard_metrics() -> tuple:
             now = datetime.now()
             week_ago = now - timedelta(days=7)
             summary_rows = []
@@ -127,7 +130,7 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
 
         # Auto-refresh dashboard on load
         dashboard_timer = gr.Timer(value=10) # Refresh every 10 seconds or on load
-        
+
         dashboard_timer.tick(
             compute_dashboard_metrics,
             outputs=[
@@ -142,15 +145,15 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
         # Wire up Quick Action buttons (need to know tab IDs to switch tabs)
         # For now we just return the code. In main app we can link them using Javascript or Tab selection if Gradio supports it (it does via selected=Index)
         # But easier is to use js to click the tab button.
-        
+
         # Helper to generate JS click
-        def jump_js(tab_index):
+        def jump_js(tab_index: int) -> str:
             return f"() => {{ document.querySelectorAll('.main-tabs button')[{tab_index}].click(); }}"
 
         # Assuming tab indices: 0=Dashboard, 1=Calibration, 2=Image Prep, 3=Darkroom, 4=AI
         # And subtabs... this is tricky. Gradio doesn't easily support deep linking to subtabs.
         # We'll just link to main tabs for now.
-        
+
         btn_scan.click(None, None, None, js=jump_js(1)) # Calibration
         btn_chem.click(None, None, None, js=jump_js(3)) # Darkroom
         btn_expo.click(None, None, None, js=jump_js(3)) # Darkroom

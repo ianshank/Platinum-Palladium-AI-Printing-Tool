@@ -9,7 +9,6 @@ Tests:
 - EnvironmentalCompensation: altitude, season, drying time adjustments
 """
 
-from datetime import datetime
 
 import pytest
 
@@ -20,7 +19,6 @@ from ptpd_calibration.calculations.enhanced import (
     EnvironmentalCompensation,
     UVExposureCalculator,
 )
-
 
 # ============================================================================
 # UVExposureCalculator Tests
@@ -580,7 +578,7 @@ class TestCostCalculator:
         """Test session cost aggregation."""
         # Create multiple print costs
         prints = []
-        for i in range(3):
+        for _i in range(3):
             chemistry = {
                 "ferric_oxalate_ml": 2.0,
                 "platinum_ml": 1.0,

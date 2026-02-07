@@ -3,7 +3,6 @@ High-level step tablet reader combining detection and extraction.
 """
 
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 from PIL import Image
@@ -14,7 +13,6 @@ from ptpd_calibration.core.types import MeasurementUnit
 from ptpd_calibration.detection.detector import StepTabletDetector
 from ptpd_calibration.detection.extractor import DensityExtractor
 from ptpd_calibration.detection.scanner import ScannerCalibration
-
 
 # Step tablet specifications
 TABLET_SPECS: dict[TabletType, dict] = {
@@ -52,7 +50,7 @@ class StepTabletReader:
     def __init__(
         self,
         tablet_type: TabletType = TabletType.STOUFFER_21,
-        scanner_profile: Optional[ScannerCalibration] = None,
+        scanner_profile: ScannerCalibration | None = None,
     ):
         """
         Initialize the reader.
@@ -71,8 +69,8 @@ class StepTabletReader:
 
     def read(
         self,
-        image: Union[np.ndarray, Image.Image, Path, str],
-        reference_white: Optional[tuple[float, float, float]] = None,
+        image: np.ndarray | Image.Image | Path | str,
+        reference_white: tuple[float, float, float] | None = None,
     ) -> StepTabletResult:
         """
         Read a step tablet scan.
@@ -106,11 +104,11 @@ class StepTabletReader:
             measurements=measurements,
         )
 
-    def read_from_path(self, path: Union[Path, str]) -> StepTabletResult:
+    def read_from_path(self, path: Path | str) -> StepTabletResult:
         """Convenience method to read from file path."""
         return self.read(Path(path))
 
-    def _load_image(self, image: Union[np.ndarray, Image.Image, Path, str]) -> np.ndarray:
+    def _load_image(self, image: np.ndarray | Image.Image | Path | str) -> np.ndarray:
         """Load image from various sources."""
         if isinstance(image, np.ndarray):
             return image

@@ -8,9 +8,9 @@ import pytest
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.curves.ai_enhance import (
     CurveAIEnhancer,
+    CurveIssue,
     EnhancementGoal,
     EnhancementResult,
-    CurveIssue,
     enhance_curve,
 )
 

@@ -26,11 +26,9 @@ from ptpd_calibration.data.cloud_sync import (
 from ptpd_calibration.data.database import PrintDatabase, PrintRecord
 from ptpd_calibration.data.export_import import DataExporter, DataImporter
 from ptpd_calibration.data.version_control import (
-    MergeConflict,
     VersionController,
     VersionedItem,
 )
-
 
 # ============================================================================
 # PrintDatabase Tests
@@ -430,7 +428,7 @@ class TestDataExport:
         assert output_path.exists()
 
         # Verify JSON structure
-        with open(output_path, "r") as f:
+        with open(output_path) as f:
             data = json.load(f)
 
         assert "metadata" in data
@@ -453,7 +451,7 @@ class TestDataExport:
         # Verify YAML can be loaded
         import yaml
 
-        with open(output_path, "r") as f:
+        with open(output_path) as f:
             data = yaml.safe_load(f)
 
         assert "metadata" in data
@@ -495,7 +493,7 @@ class TestDataExport:
         # Verify CSV has header and data
         import csv
 
-        with open(output_path, "r") as f:
+        with open(output_path) as f:
             reader = csv.DictReader(f)
             rows = list(reader)
 

@@ -14,14 +14,12 @@ from PIL import Image
 
 from ptpd_calibration.imaging.split_grade import (
     BlendMode,
-    MetalType,
+    ExposureCalculation,
     SplitGradeSettings,
-    TonalCurveAdjuster,
     SplitGradeSimulator,
     TonalAnalysis,
-    ExposureCalculation,
+    TonalCurveAdjuster,
 )
-
 
 # ==============================================================================
 # Test Fixtures - Synthetic Test Images

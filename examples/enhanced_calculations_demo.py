@@ -13,11 +13,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from ptpd_calibration.calculations import (
-    UVExposureCalculator,
     CoatingVolumeCalculator,
     CostCalculator,
     DilutionCalculator,
     EnvironmentalCompensation,
+    UVExposureCalculator,
 )
 
 
@@ -90,7 +90,7 @@ def demo_coating_volume():
     print(f"\nCalculated volume: {result.total_ml:.2f} ml ({result.total_drops:.0f} drops)")
     print(f"Recommended volume: {result.recommended_ml:.1f} ml ({result.recommended_drops:.0f} drops)")
 
-    print(f"\nBreakdown:")
+    print("\nBreakdown:")
     print(f"  Base volume:     {result.base_volume_ml:.2f} ml")
     print(f"  After method:    {result.adjusted_volume_ml:.2f} ml ({result.method_efficiency_factor:.2f}x)")
     print(f"  Waste allowance: {result.waste_volume_ml:.2f} ml ({result.waste_factor:.2f}x)")
@@ -178,12 +178,12 @@ def demo_session_cost():
 
     session = calc.calculate_session_cost(prints)
 
-    print(f"\nSession summary:")
+    print("\nSession summary:")
     print(f"  Number of prints: {session.num_prints}")
     print(f"  Total cost: ${session.total_session_cost_usd:.2f}")
     print(f"  Average per print: ${session.average_cost_per_print:.2f}")
 
-    print(f"\nCost breakdown:")
+    print("\nCost breakdown:")
     print(f"  Chemistry:  ${session.total_chemistry_cost:.2f} ({session.total_chemistry_cost / session.total_session_cost_usd * 100:.1f}%)")
     print(f"  Paper:      ${session.total_paper_cost:.2f} ({session.total_paper_cost / session.total_session_cost_usd * 100:.1f}%)")
     print(f"  Processing: ${session.total_other_costs:.2f} ({session.total_other_costs / session.total_session_cost_usd * 100:.1f}%)")
@@ -248,7 +248,7 @@ def demo_dilution():
     print(f"\nDiluting {result.concentrate_strength:.1f}% to {result.target_strength:.1f}%")
     print(f"Total volume: {result.total_ml:.0f} ml")
     print(f"Dilution ratio: {result.dilution_ratio}")
-    print(f"\nMix:")
+    print("\nMix:")
     print(f"  Concentrate: {result.concentrate_ml:.1f} ml")
     print(f"  Water:       {result.water_ml:.1f} ml")
 
@@ -270,7 +270,7 @@ def demo_dilution():
             print(f"  Citric acid: {result.concentrate_ml:.1f}g")
             print(f"  Water:       {result.water_ml:.0f} ml")
         else:
-            print(f"  Distilled water rinse")
+            print("  Distilled water rinse")
 
         for note in result.notes:
             print(f"  • {note}")
@@ -354,7 +354,7 @@ def demo_environmental():
     print(f"\nTemperature: {conditions.temperature_f_ideal:.0f}°F (range: {conditions.temperature_f_min:.0f}-{conditions.temperature_f_max:.0f}°F)")
     print(f"Humidity: {conditions.humidity_percent_ideal:.0f}% RH (range: {conditions.humidity_percent_min:.0f}-{conditions.humidity_percent_max:.0f}%)")
     print(f"Max altitude: {conditions.altitude_feet_max:.0f} ft")
-    print(f"\nTiming:")
+    print("\nTiming:")
     print(f"  Coating to exposure: {conditions.coating_to_exposure_hours_min:.2f}-{conditions.coating_to_exposure_hours_max:.0f} hours")
     print(f"  Development: {conditions.development_minutes_min:.0f}-{conditions.development_minutes_max:.0f} minutes")
 
@@ -376,7 +376,7 @@ def demo_environmental():
     print(f"\nEstimated drying time: {result.drying_minutes:.1f} minutes ({result.drying_hours:.2f} hours)")
     print(f"Range: {result.estimated_range_minutes[0]:.1f} - {result.estimated_range_minutes[1]:.1f} minutes")
 
-    print(f"\nFactors:")
+    print("\nFactors:")
     print(f"  Humidity:    {result.humidity_factor:.3f}x")
     print(f"  Temperature: {result.temperature_factor:.3f}x")
     print(f"  Paper:       {result.paper_absorbency_factor:.3f}x")

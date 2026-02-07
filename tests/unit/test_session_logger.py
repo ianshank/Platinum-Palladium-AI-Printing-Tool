@@ -1,18 +1,13 @@
-"""
-Tests for session logger module.
-
-Tests print session logging, record management, and statistics.
-"""
-
 from datetime import datetime, timedelta
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
 
 from ptpd_calibration.session.logger import (
-    PrintResult,
     ChemistryUsed,
     PrintRecord,
+    PrintResult,
     PrintSession,
     SessionLogger,
 )
@@ -438,7 +433,7 @@ class TestSessionLogger:
     def test_search_records_limit(self, logger):
         """Should respect search limit."""
         session = PrintSession(name="Search Limit")
-        for i in range(10):
+        for _i in range(10):
             session.add_record(PrintRecord(paper_type="Test Paper"))
         logger.save_session(session)
 

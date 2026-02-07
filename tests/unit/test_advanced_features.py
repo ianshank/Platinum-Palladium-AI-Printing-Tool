@@ -5,17 +5,15 @@ Tests alternative process simulation, negative blending, QR metadata generation,
 style transfer, and print comparison functionality.
 """
 
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 
 import numpy as np
 import pytest
 from PIL import Image
 
 from ptpd_calibration.advanced.features import (
-    AlternativeProcessSimulator,
+    HAS_QRCODE,
     AlternativeProcessParams,
+    AlternativeProcessSimulator,
     BlendMode,
     HistoricStyle,
     NegativeBlender,
@@ -24,7 +22,6 @@ from ptpd_calibration.advanced.features import (
     QRMetadataGenerator,
     StyleParameters,
     StyleTransfer,
-    HAS_QRCODE,
 )
 
 

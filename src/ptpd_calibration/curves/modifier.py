@@ -6,7 +6,6 @@ Provides tools for adjusting, smoothing, blending, and transforming curves.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Union
 
 import numpy as np
 from scipy.interpolate import PchipInterpolator, interp1d

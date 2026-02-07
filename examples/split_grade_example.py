@@ -11,13 +11,12 @@ This example demonstrates the complete split-grade workflow:
 """
 
 import numpy as np
-from PIL import Image
 
 from ptpd_calibration.imaging.split_grade import (
-    SplitGradeSimulator,
-    SplitGradeSettings,
-    TonalCurveAdjuster,
     BlendMode,
+    SplitGradeSettings,
+    SplitGradeSimulator,
+    TonalCurveAdjuster,
 )
 
 
@@ -41,17 +40,17 @@ def example_basic_usage():
     print("\n1. Analyzing image...")
     analysis = simulator.analyze_image(test_image)
 
-    print(f"\nTonal Analysis Results:")
+    print("\nTonal Analysis Results:")
     print(f"  Mean Luminance: {analysis.mean_luminance:.3f}")
     print(f"  Median Luminance: {analysis.median_luminance:.3f}")
     print(f"  Standard Deviation: {analysis.std_luminance:.3f}")
     print(f"  Tonal Range: {analysis.tonal_range:.3f}")
     print(f"  Contrast Score: {analysis.contrast_score:.3f}")
-    print(f"\nTonal Distribution:")
+    print("\nTonal Distribution:")
     print(f"  Shadows: {analysis.shadow_percentage * 100:.1f}%")
     print(f"  Midtones: {analysis.midtone_percentage * 100:.1f}%")
     print(f"  Highlights: {analysis.highlight_percentage * 100:.1f}%")
-    print(f"\nRecommendations:")
+    print("\nRecommendations:")
     print(f"  Shadow Grade: {analysis.recommended_shadow_grade:.1f}")
     print(f"  Highlight Grade: {analysis.recommended_highlight_grade:.1f}")
     print(f"  Shadow Threshold: {analysis.recommended_shadow_threshold:.2f}")
@@ -176,14 +175,14 @@ def example_mask_generation():
 
     # Create shadow mask
     shadow_mask = simulator.create_shadow_mask(test_image, threshold=0.4)
-    print(f"Shadow Mask:")
+    print("Shadow Mask:")
     print(f"  Shape: {shadow_mask.shape}")
     print(f"  Mean: {shadow_mask.mean():.3f}")
     print(f"  Coverage: {(shadow_mask > 0.5).sum() / shadow_mask.size * 100:.1f}%")
 
     # Create highlight mask
     highlight_mask = simulator.create_highlight_mask(test_image, threshold=0.7)
-    print(f"\nHighlight Mask:")
+    print("\nHighlight Mask:")
     print(f"  Shape: {highlight_mask.shape}")
     print(f"  Mean: {highlight_mask.mean():.3f}")
     print(f"  Coverage: {(highlight_mask > 0.5).sum() / highlight_mask.size * 100:.1f}%")

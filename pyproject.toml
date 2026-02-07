@@ -59,12 +59,17 @@ api = [
     "uvicorn[standard]>=0.27.0",
     "python-multipart>=0.0.9",
 ]
+gcp = [
+    "google-cloud-storage>=2.14.0",
+    "google-cloud-aiplatform>=1.38.0",
+    "google-auth>=2.27.0",
+]
 ui = [
     "gradio>=4.0.0",
     "huggingface_hub>=0.25,<1.0",
 ]
 all = [
-    "ptpd-calibration[ml,llm,api,ui]",
+    "ptpd-calibration[ml,llm,api,ui,gcp]",
 ]
 dev = [
     "pytest>=8.0.0",

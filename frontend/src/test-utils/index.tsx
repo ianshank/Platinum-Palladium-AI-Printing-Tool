@@ -6,6 +6,8 @@ import { type ReactElement, type ReactNode } from 'react';
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from 'styled-components';
+import { theme } from '@/styles/theme';
 import { createStore, type StoreState } from '@/stores';
 
 // Re-export everything from testing-library
@@ -62,9 +64,11 @@ export function TestProvider({
 }: TestProviderProps): ReactElement {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        {children}
-      </BrowserRouter>
+      <ThemeProvider theme={theme}>
+        <BrowserRouter>
+          {children}
+        </BrowserRouter>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

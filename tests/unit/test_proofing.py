@@ -9,11 +9,11 @@ import pytest
 from PIL import Image
 
 from ptpd_calibration.proofing.simulation import (
-    PaperSimulation,
-    ProofSettings,
-    ProofResult,
-    SoftProofer,
     PAPER_PRESETS,
+    PaperSimulation,
+    ProofResult,
+    ProofSettings,
+    SoftProofer,
 )
 
 

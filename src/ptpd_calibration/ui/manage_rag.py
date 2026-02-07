@@ -10,9 +10,9 @@ Usage:
   python scripts/manage_rag.py status
 """
 
+import logging
 import sys
 from pathlib import Path
-import logging
 
 try:
     import typer

@@ -5,7 +5,6 @@ Generates linearization and correction curves from step tablet measurements.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 from scipy.interpolate import PchipInterpolator, interp1d
@@ -90,7 +89,7 @@ class CurveGenerator:
     different printing requirements.
     """
 
-    def __init__(self, settings: Optional[CurveSettings] = None):
+    def __init__(self, settings: CurveSettings | None = None):
         """
         Initialize the curve generator.
 
@@ -103,10 +102,10 @@ class CurveGenerator:
         self,
         measured_densities: list[float],
         curve_type: CurveType = CurveType.LINEAR,
-        target_curve: Optional[TargetCurve] = None,
+        target_curve: TargetCurve | None = None,
         name: str = "Calibration Curve",
-        paper_type: Optional[str] = None,
-        chemistry: Optional[str] = None,
+        paper_type: str | None = None,
+        chemistry: str | None = None,
     ) -> CurveData:
         """
         Generate a calibration curve from measured densities.
@@ -189,10 +188,10 @@ class CurveGenerator:
         self,
         extraction: ExtractionResult,
         curve_type: CurveType = CurveType.LINEAR,
-        target_curve: Optional[TargetCurve] = None,
+        target_curve: TargetCurve | None = None,
         name: str = "Calibration Curve",
-        paper_type: Optional[str] = None,
-        chemistry: Optional[str] = None,
+        paper_type: str | None = None,
+        chemistry: str | None = None,
     ) -> CurveData:
         """
         Generate curve directly from extraction result.
@@ -322,8 +321,8 @@ class CurveGenerator:
 def generate_linearization_curve(
     measured_densities: list[float],
     name: str = "Linearization",
-    paper_type: Optional[str] = None,
-    chemistry: Optional[str] = None,
+    paper_type: str | None = None,
+    chemistry: str | None = None,
 ) -> CurveData:
     """
     Convenience function to generate a linearization curve.

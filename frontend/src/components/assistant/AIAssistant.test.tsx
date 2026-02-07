@@ -25,58 +25,32 @@ vi.mock('@/lib/logger', () => ({
     },
 }));
 
-// Mock API
-vi.mock('@/api/client', () => ({
-    api: {
-        chat: {
-            send: vi.fn().mockResolvedValue({ response: 'Mock AI response' }),
-            recipeHelp: vi.fn(),
-            troubleshoot: vi.fn(),
-        },
-    },
-}));
-
-// Store mock
-const mockChatState = {
+// --- Mock useChat hook ---
+const mockUseChat = {
     messages: [] as Array<{ id: string; role: string; content: string; timestamp: string }>,
-    contexts: [],
-    selectedContextIds: [],
     isLoading: false,
     isStreaming: false,
     streamContent: '',
     error: null as string | null,
-    conversationId: null,
-    addMessage: vi.fn(),
-    updateMessage: vi.fn(),
-    deleteMessage: vi.fn(),
-    clearMessages: vi.fn(),
-    addContext: vi.fn(),
-    removeContext: vi.fn(),
-    toggleContextSelection: vi.fn(),
-    clearContexts: vi.fn(),
-    startStreaming: vi.fn(),
-    appendStreamContent: vi.fn(),
-    finishStreaming: vi.fn(),
-    cancelStreaming: vi.fn(),
-    setLoading: vi.fn(),
-    setError: vi.fn(),
-    startNewConversation: vi.fn(),
-    resetChat: vi.fn(),
+    isBusy: false,
+    sendSuggestion: vi.fn(),
+    clear: vi.fn(),
+    newConversation: vi.fn(),
 };
 
-vi.mock('@/stores', () => ({
-    useStore: (selector: (state: any) => any) =>
-        selector({ chat: mockChatState }),
+vi.mock('@/hooks/useChat', () => ({
+    useChat: () => mockUseChat,
 }));
 
 describe('AIAssistant', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockChatState.messages = [];
-        mockChatState.isLoading = false;
-        mockChatState.isStreaming = false;
-        mockChatState.streamContent = '';
-        mockChatState.error = null;
+        mockUseChat.messages = [];
+        mockUseChat.isLoading = false;
+        mockUseChat.isStreaming = false;
+        mockUseChat.streamContent = '';
+        mockUseChat.error = null;
+        mockUseChat.isBusy = false;
     });
 
     describe('Empty State', () => {
@@ -104,7 +78,7 @@ describe('AIAssistant', () => {
 
     describe('Messages', () => {
         it('renders user messages', () => {
-            mockChatState.messages = [
+            mockUseChat.messages = [
                 {
                     id: 'msg-1',
                     role: 'user',
@@ -119,7 +93,7 @@ describe('AIAssistant', () => {
         });
 
         it('renders assistant messages', () => {
-            mockChatState.messages = [
+            mockUseChat.messages = [
                 {
                     id: 'msg-2',
                     role: 'assistant',
@@ -134,7 +108,7 @@ describe('AIAssistant', () => {
         });
 
         it('hides empty state when messages exist', () => {
-            mockChatState.messages = [
+            mockUseChat.messages = [
                 {
                     id: 'msg-1',
                     role: 'user',
@@ -148,7 +122,7 @@ describe('AIAssistant', () => {
         });
 
         it('renders multiple messages', () => {
-            mockChatState.messages = [
+            mockUseChat.messages = [
                 { id: 'msg-1', role: 'user', content: 'Q1', timestamp: '2026-02-07T10:00:00Z' },
                 { id: 'msg-2', role: 'assistant', content: 'A1', timestamp: '2026-02-07T10:00:01Z' },
                 { id: 'msg-3', role: 'user', content: 'Q2', timestamp: '2026-02-07T10:00:02Z' },
@@ -185,64 +159,119 @@ describe('AIAssistant', () => {
             expect(screen.getByTestId('send-btn')).not.toBeDisabled();
         });
 
-        it('calls addMessage on form submit', () => {
+        it('calls sendSuggestion on form submit', () => {
             render(<AIAssistant />);
             fireEvent.change(screen.getByTestId('chat-input'), {
                 target: { value: 'Test message' },
             });
             fireEvent.submit(screen.getByTestId('chat-form'));
-            expect(mockChatState.addMessage).toHaveBeenCalledWith({
-                role: 'user',
-                content: 'Test message',
-            });
+            expect(mockUseChat.sendSuggestion).toHaveBeenCalledWith('Test message');
         });
 
-        it('disables input while loading', () => {
-            mockChatState.isLoading = true;
+        it('clears input after send', () => {
+            render(<AIAssistant />);
+            const input = screen.getByTestId('chat-input');
+            fireEvent.change(input, { target: { value: 'Test message' } });
+            fireEvent.submit(screen.getByTestId('chat-form'));
+            expect(input).toHaveValue('');
+        });
+
+        it('disables input while busy', () => {
+            mockUseChat.isBusy = true;
             render(<AIAssistant />);
             expect(screen.getByTestId('chat-input')).toBeDisabled();
         });
 
-        it('disables send button while loading', () => {
-            mockChatState.isLoading = true;
+        it('disables send button while busy', () => {
+            mockUseChat.isBusy = true;
             render(<AIAssistant />);
             expect(screen.getByTestId('send-btn')).toBeDisabled();
+        });
+
+        it('sends on Enter key', () => {
+            render(<AIAssistant />);
+            const input = screen.getByTestId('chat-input');
+            fireEvent.change(input, { target: { value: 'Enter test' } });
+            fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
+            expect(mockUseChat.sendSuggestion).toHaveBeenCalledWith('Enter test');
+        });
+
+        it('does not send on Shift+Enter', () => {
+            render(<AIAssistant />);
+            const input = screen.getByTestId('chat-input');
+            fireEvent.change(input, { target: { value: 'Shift test' } });
+            fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+            expect(mockUseChat.sendSuggestion).not.toHaveBeenCalled();
+        });
+
+        it('does not send empty input', () => {
+            render(<AIAssistant />);
+            fireEvent.submit(screen.getByTestId('chat-form'));
+            expect(mockUseChat.sendSuggestion).not.toHaveBeenCalled();
+        });
+
+        it('does not send while busy', () => {
+            mockUseChat.isBusy = true;
+            render(<AIAssistant />);
+            fireEvent.change(screen.getByTestId('chat-input'), {
+                target: { value: 'Busy test' },
+            });
+            fireEvent.submit(screen.getByTestId('chat-form'));
+            expect(mockUseChat.sendSuggestion).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('Suggestions', () => {
+        it('calls sendSuggestion when clicking a suggestion', () => {
+            render(<AIAssistant />);
+            const suggestions = screen.getAllByTestId('suggestion-btn');
+            fireEvent.click(suggestions[0]!);
+            expect(mockUseChat.sendSuggestion).toHaveBeenCalledWith(
+                'What is the ideal Pt/Pd metal ratio for a warm-tone print?'
+            );
         });
     });
 
     describe('Loading & Streaming', () => {
-        it('shows loading indicator when loading without stream content', () => {
-            mockChatState.isLoading = true;
+        it('shows loading indicator when busy without stream content', () => {
+            mockUseChat.isBusy = true;
             render(<AIAssistant />);
             expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
         });
 
         it('shows streaming message with content', () => {
-            mockChatState.isStreaming = true;
-            mockChatState.streamContent = 'Typing...';
+            mockUseChat.isStreaming = true;
+            mockUseChat.streamContent = 'Typing...';
             render(<AIAssistant />);
             expect(screen.getByTestId('streaming-message')).toBeInTheDocument();
             expect(screen.getByText('Typing...')).toBeInTheDocument();
         });
 
         it('does not show loading indicator when stream has content', () => {
-            mockChatState.isStreaming = true;
-            mockChatState.streamContent = 'Typing...';
+            mockUseChat.isStreaming = true;
+            mockUseChat.isBusy = true;
+            mockUseChat.streamContent = 'Typing...';
             render(<AIAssistant />);
             expect(screen.queryByTestId('loading-indicator')).not.toBeInTheDocument();
+        });
+
+        it('hides empty state when busy', () => {
+            mockUseChat.isBusy = true;
+            render(<AIAssistant />);
+            expect(screen.queryByTestId('empty-chat')).not.toBeInTheDocument();
         });
     });
 
     describe('Error State', () => {
         it('shows error message', () => {
-            mockChatState.error = 'Something went wrong';
+            mockUseChat.error = 'Something went wrong';
             render(<AIAssistant />);
             expect(screen.getByTestId('chat-error')).toBeInTheDocument();
             expect(screen.getByText('Something went wrong')).toBeInTheDocument();
         });
 
         it('error has alert role for accessibility', () => {
-            mockChatState.error = 'Error!';
+            mockUseChat.error = 'Error!';
             render(<AIAssistant />);
             expect(screen.getByRole('alert')).toBeInTheDocument();
         });
@@ -255,7 +284,7 @@ describe('AIAssistant', () => {
 
     describe('Actions', () => {
         it('shows clear button when messages exist', () => {
-            mockChatState.messages = [
+            mockUseChat.messages = [
                 { id: 'msg-1', role: 'user', content: 'Hi', timestamp: '2026-02-07T10:00:00Z' },
             ];
             render(<AIAssistant />);
@@ -267,13 +296,13 @@ describe('AIAssistant', () => {
             expect(screen.queryByTestId('clear-chat-btn')).not.toBeInTheDocument();
         });
 
-        it('calls clearMessages on clear click', () => {
-            mockChatState.messages = [
+        it('calls clear on clear click', () => {
+            mockUseChat.messages = [
                 { id: 'msg-1', role: 'user', content: 'Hi', timestamp: '2026-02-07T10:00:00Z' },
             ];
             render(<AIAssistant />);
             fireEvent.click(screen.getByTestId('clear-chat-btn'));
-            expect(mockChatState.clearMessages).toHaveBeenCalledTimes(1);
+            expect(mockUseChat.clear).toHaveBeenCalledTimes(1);
         });
 
         it('shows new conversation button', () => {
@@ -281,10 +310,10 @@ describe('AIAssistant', () => {
             expect(screen.getByTestId('new-conversation-btn')).toBeInTheDocument();
         });
 
-        it('calls startNewConversation on new chat click', () => {
+        it('calls newConversation on new chat click', () => {
             render(<AIAssistant />);
             fireEvent.click(screen.getByTestId('new-conversation-btn'));
-            expect(mockChatState.startNewConversation).toHaveBeenCalledTimes(1);
+            expect(mockUseChat.newConversation).toHaveBeenCalledTimes(1);
         });
     });
 

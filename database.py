@@ -6,7 +6,6 @@ Uses ChromaDB for vector storage and SentenceTransformers for embeddings.
 
 import logging
 from pathlib import Path
-from typing import Optional, List
 
 try:
     import chromadb
@@ -24,7 +23,7 @@ class RAGDatabase:
     Manages the Retrieval-Augmented Generation database.
     """
 
-    def __init__(self, persist_directory: Optional[Path] = None, embedding_model: str = "all-MiniLM-L6-v2"):
+    def __init__(self, persist_directory: Path | None = None, embedding_model: str = "all-MiniLM-L6-v2"):
         """
         Initialize the RAG database.
 
@@ -56,7 +55,7 @@ class RAGDatabase:
         )
         logger.info(f"RAG database initialized at: {self._persist_directory}")
 
-    def add_documents(self, documents: List[str], metadatas: Optional[List[dict]] = None) -> None:
+    def add_documents(self, documents: list[str], metadatas: list[dict] | None = None) -> None:
         """
         Add documents to the RAG database.
 
@@ -79,7 +78,7 @@ class RAGDatabase:
             ids=ids
         )
 
-    def search(self, query: str, n_results: int = 3) -> List[str]:
+    def search(self, query: str, n_results: int = 3) -> list[str]:
         """
         Search for relevant documents in the database.
 
@@ -107,7 +106,7 @@ class RAGDatabase:
 
 
 # Singleton instance
-_rag_db_instance: Optional[RAGDatabase] = None
+_rag_db_instance: RAGDatabase | None = None
 
 def get_rag_db() -> RAGDatabase:
     """Get the singleton RAGDatabase instance."""

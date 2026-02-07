@@ -5,6 +5,19 @@
 
 import { useMutation, useQuery, useQueryClient, type UseMutationOptions, type UseQueryOptions } from '@tanstack/react-query';
 import { api, type AxiosError, type ApiError } from './client';
+import type {
+  ScanUploadResponse,
+  CalibrationListResponse,
+  CalibrationCreateResponse,
+  CalibrationRecord,
+  ChatResponse,
+  StatisticsResponse,
+  CurveGenerationResponse,
+  CurveModificationRequest,
+  CurveModificationResponse,
+  CurveSmoothRequest,
+  CurveSmoothingResponse,
+} from '@/types/models';
 import { useStore } from '@/stores';
 import { logger } from '@/lib/logger';
 
@@ -52,9 +65,9 @@ export function useCurve(
 
 export function useGenerateCurve(
   options?: UseMutationOptions<
-    { id: string; points: { x: number; y: number }[] },
+    CurveGenerationResponse,
     AxiosError<ApiError>,
-    { measurements: unknown[]; type?: string }
+    { measurements: number[]; type?: string; name?: string; curve_type?: string }
   >
 ) {
   const queryClient = useQueryClient();
@@ -62,16 +75,16 @@ export function useGenerateCurve(
   const setProcessing = useStore((state) => state.ui.setProcessing);
 
   return useMutation({
-    mutationFn: (data) => api.curves.generate(data),
+    mutationFn: (data: { measurements: number[]; type?: string; name?: string; curve_type?: string }) => api.curves.generate(data),
     onMutate: () => {
       setProcessing(true);
       logger.info('Generating curve...');
     },
     onSuccess: (data) => {
-      logger.info('Curve generated', { id: data.id, pointCount: data.points.length });
+      logger.info('Curve generated', { id: data.curve_id, pointCount: data.input_values.length });
       addToast({
         title: 'Curve Generated',
-        description: `Created curve with ${data.points.length} points`,
+        description: `Created curve with ${data.input_values.length} points`,
         variant: 'success',
       });
       void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
@@ -93,17 +106,17 @@ export function useGenerateCurve(
 
 export function useModifyCurve(
   options?: UseMutationOptions<
-    { points: { x: number; y: number }[] },
+    CurveModificationResponse,
     AxiosError<ApiError>,
-    { curveId: string; modification: string; value: number }
+    CurveModificationRequest
   >
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data) => api.curves.modify(data),
-    onSuccess: (_, variables) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.curve(variables.curveId) });
+    mutationFn: (data: CurveModificationRequest) => api.curves.modify(data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
     },
     ...options,
   });
@@ -111,17 +124,17 @@ export function useModifyCurve(
 
 export function useSmoothCurve(
   options?: UseMutationOptions<
-    { points: { x: number; y: number }[] },
+    CurveSmoothingResponse,
     AxiosError<ApiError>,
-    { curveId: string; method: string; amount: number }
+    CurveSmoothRequest
   >
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data) => api.curves.smooth(data),
-    onSuccess: (_, variables) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.curve(variables.curveId) });
+    mutationFn: (data: CurveSmoothRequest) => api.curves.smooth(data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
     },
     ...options,
   });
@@ -162,7 +175,7 @@ export function useExportCurve(
 
 export function useUploadScan(
   options?: UseMutationOptions<
-    { id: string; measurements: unknown[]; preview: string },
+    ScanUploadResponse,
     AxiosError<ApiError>,
     File
   >
@@ -173,15 +186,15 @@ export function useUploadScan(
   const setError = useStore((state) => state.image.setError);
 
   return useMutation({
-    mutationFn: (file) => {
+    mutationFn: (file: File) => {
       startUpload(file.name);
-      return api.scan.upload(file, updateUploadProgress);
+      return api.scan.upload(file, 'stouffer_21', updateUploadProgress);
     },
     onSuccess: (data) => {
-      logger.info('Scan uploaded', { id: data.id });
+      logger.info('Scan uploaded', { extraction_id: data.extraction_id });
       addToast({
         title: 'Scan Uploaded',
-        description: `Detected ${(data.measurements as unknown[]).length} measurements`,
+        description: `Detected ${data.num_patches} measurements`,
         variant: 'success',
       });
     },
@@ -202,7 +215,7 @@ export function useUploadScan(
 // ============================================================================
 
 export function useCalibrations(
-  options?: Omit<UseQueryOptions<{ calibrations: unknown[] }, AxiosError<ApiError>>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<CalibrationListResponse, AxiosError<ApiError>>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
     queryKey: queryKeys.calibrations(),
@@ -224,13 +237,13 @@ export function useCalibration(
 }
 
 export function useCreateCalibration(
-  options?: UseMutationOptions<{ id: string }, AxiosError<ApiError>, unknown>
+  options?: UseMutationOptions<CalibrationCreateResponse, AxiosError<ApiError>, Omit<CalibrationRecord, 'id' | 'timestamp'>>
 ) {
   const queryClient = useQueryClient();
   const addToast = useStore((state) => state.ui.addToast);
 
   return useMutation({
-    mutationFn: (data) => api.calibrations.create(data),
+    mutationFn: (data: Omit<CalibrationRecord, 'id' | 'timestamp'>) => api.calibrations.create(data),
     onSuccess: () => {
       addToast({
         title: 'Calibration Saved',
@@ -255,7 +268,7 @@ export function useCreateCalibration(
 
 export function useSendMessage(
   options?: UseMutationOptions<
-    { response: string; context_used: string[] },
+    ChatResponse,
     AxiosError<ApiError>,
     { message: string; context?: string[] }
   >
@@ -276,7 +289,7 @@ export function useSendMessage(
       addMessage({
         role: 'assistant',
         content: data.response,
-        metadata: { context: data.context_used },
+        metadata: { context: data.context_used ?? [] },
       });
     },
     onError: (error) => {
@@ -294,7 +307,7 @@ export function useSendMessage(
 // ============================================================================
 
 export function useStatistics(
-  options?: Omit<UseQueryOptions<{ stats: unknown }, AxiosError<ApiError>>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<StatisticsResponse, AxiosError<ApiError>>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
     queryKey: queryKeys.statistics(),

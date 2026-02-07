@@ -1,21 +1,24 @@
-import gradio as gr
-import numpy as np
-import matplotlib.pyplot as plt
-from pathlib import Path
 import tempfile
+from pathlib import Path
+from typing import Any
 
+import gradio as gr
+import matplotlib.pyplot as plt
+import numpy as np
+
+from ptpd_calibration.analysis import StepWedgeAnalyzer, WedgeAnalysisConfig
 from ptpd_calibration.config import TabletType
-from ptpd_calibration.analysis import WedgeAnalysisConfig, StepWedgeAnalyzer
 from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.curves import save_curve
 
-def build_calibration_wizard_tab():
+
+def build_calibration_wizard_tab() -> None:
     """Build the Calibration Wizard tab."""
     with gr.TabItem("Calibration Wizard"):
         gr.Markdown(
             """
             ### 🧙 Calibration Wizard
-            
+
             Follow the guided five-step wizard to analyze a step tablet, choose a method,
             generate a curve, and export it for your printer driver.
             """
@@ -32,7 +35,7 @@ def build_calibration_wizard_tab():
             "Export curve file",
         ]
 
-        def _wizard_visibility(target_step: int):
+        def _wizard_visibility(target_step: int) -> tuple:
             updates = [gr.update(visible=index + 1 == target_step) for index in range(5)]
             return (
                 target_step,
@@ -141,7 +144,7 @@ def build_calibration_wizard_tab():
             wizard_export_file = gr.File(label="Download")
             wizard_finish = gr.Button("Finish & Restart", variant="secondary")
 
-        def wizard_analyze(image_path, tablet_type, density_range, fix_rev, reject_outliers):
+        def wizard_analyze(image_path: str | None, tablet_type: str, density_range: float, fix_rev: bool, reject_outliers: bool) -> tuple:
             if image_path is None:
                 vis = _wizard_visibility(1)
                 return (
@@ -244,7 +247,7 @@ def build_calibration_wizard_tab():
             ],
         )
 
-        def go_to_step(step):
+        def go_to_step(step: int) -> tuple:
             return _wizard_visibility(step)
 
         wizard_back_to_upload.click(
@@ -273,7 +276,7 @@ def build_calibration_wizard_tab():
             ],
         )
 
-        def wizard_generate(result, name, paper, chemistry, method):
+        def wizard_generate(result: Any, name: str, paper: str, chemistry: str, method: str) -> tuple:
             if result is None:
                 return (
                     None,
@@ -295,7 +298,7 @@ def build_calibration_wizard_tab():
                     curve_type=curve_type,
                 )
                 curve = analysis.curve
-                
+
                 fig, ax = plt.subplots(figsize=(8, 4))
                 ax.plot(curve.input_values, curve.output_values, color="#f59e0b", linewidth=2)
                 ax.plot([0, 1], [0, 1], "--", color="gray", alpha=0.5)
@@ -371,7 +374,7 @@ def build_calibration_wizard_tab():
             ],
         )
 
-        def wizard_export(curve, fmt):
+        def wizard_export(curve: Any, fmt: str) -> str | None:
             if curve is None:
                 return None
             try:

@@ -6,7 +6,6 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 from uuid import UUID, uuid4
 
 
@@ -63,7 +62,7 @@ class AgentMemory:
 
     def __init__(
         self,
-        storage_path: Optional[Path] = None,
+        storage_path: Path | None = None,
         max_items: int = 1000,
         working_memory_size: int = 10,
     ):
@@ -92,7 +91,7 @@ class AgentMemory:
         content: str,
         category: str = "general",
         importance: float = 0.5,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> MemoryItem:
         """
         Store a memory item.
@@ -143,7 +142,7 @@ class AgentMemory:
     def recall(
         self,
         query: str,
-        category: Optional[str] = None,
+        category: str | None = None,
         limit: int = 5,
     ) -> list[MemoryItem]:
         """
@@ -207,7 +206,7 @@ class AgentMemory:
 
         return results
 
-    def get(self, key: str) -> Optional[MemoryItem]:
+    def get(self, key: str) -> MemoryItem | None:
         """Get a specific memory by key."""
         item = self._long_term.get(key)
         if item:

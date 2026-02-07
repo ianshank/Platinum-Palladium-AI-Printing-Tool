@@ -27,12 +27,6 @@ def main():
     print("\n1. BASIC CALIBRATION WORKFLOW")
     print("-" * 40)
 
-    from ptpd_calibration import (
-        StepTabletReader,
-        CurveGenerator,
-        CurveType,
-        save_curve,
-    )
 
     print("""
     # Read your scanned step tablet

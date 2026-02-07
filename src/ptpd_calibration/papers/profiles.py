@@ -4,12 +4,11 @@ Paper profiles database for platinum/palladium printing.
 Contains profiles for common papers with recommended settings and characteristics.
 """
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 from uuid import UUID, uuid4
-import json
 
 
 class CoatingBehavior(str, Enum):
@@ -311,7 +310,7 @@ class PaperDatabase:
     Combines built-in profiles with user-defined custom papers.
     """
 
-    def __init__(self, custom_papers_file: Optional[Path] = None):
+    def __init__(self, custom_papers_file: Path | None = None):
         """Initialize paper database.
 
         Args:
@@ -322,7 +321,7 @@ class PaperDatabase:
         self._custom_papers: dict[str, PaperProfile] = {}
         self._load_custom_papers()
 
-    def get_paper(self, name: str) -> Optional[PaperProfile]:
+    def get_paper(self, name: str) -> PaperProfile | None:
         """Get a paper profile by name.
 
         Args:
@@ -374,7 +373,7 @@ class PaperDatabase:
         """Alias for list_papers."""
         return self.list_papers()
 
-    def get_by_name(self, name: str) -> Optional[PaperProfile]:
+    def get_by_name(self, name: str) -> PaperProfile | None:
         """Alias for get_paper."""
         return self.get_paper(name)
 
@@ -411,10 +410,10 @@ class PaperDatabase:
 
     def search_papers(
         self,
-        surface: Optional[str] = None,
-        absorbency: Optional[str] = None,
-        manufacturer: Optional[str] = None,
-        tags: Optional[list[str]] = None,
+        surface: str | None = None,
+        absorbency: str | None = None,
+        manufacturer: str | None = None,
+        tags: list[str] | None = None,
     ) -> list[PaperProfile]:
         """Search papers by criteria.
 

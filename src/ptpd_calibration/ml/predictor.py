@@ -4,7 +4,6 @@ ML-based curve prediction from calibration parameters.
 
 import pickle
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -23,8 +22,8 @@ class CurvePredictor:
 
     def __init__(
         self,
-        model_type: Optional[str] = None,
-        settings: Optional[MLSettings] = None,
+        model_type: str | None = None,
+        settings: MLSettings | None = None,
     ):
         """
         Initialize the predictor.
@@ -44,7 +43,7 @@ class CurvePredictor:
     def train(
         self,
         database: CalibrationDatabase,
-        validation_split: Optional[float] = None,
+        validation_split: float | None = None,
     ) -> dict:
         """
         Train the predictor on calibration database.
@@ -111,7 +110,7 @@ class CurvePredictor:
         self,
         record: CalibrationRecord,
         return_uncertainty: bool = False,
-    ) -> tuple[list[float], Optional[float]]:
+    ) -> tuple[list[float], float | None]:
         """
         Predict density response for a calibration setup.
 
@@ -269,10 +268,10 @@ class CurvePredictor:
 
     def _build_encoders(self, records: list[CalibrationRecord]) -> None:
         """Build categorical encoders from records."""
-        papers = sorted(set(r.paper_type for r in records))
+        papers = sorted({r.paper_type for r in records})
         self._paper_encoder = {p: i for i, p in enumerate(papers)}
 
-        chemistries = sorted(set(r.chemistry_type.value for r in records))
+        chemistries = sorted({r.chemistry_type.value for r in records})
         self._chemistry_encoder = {c: i for i, c in enumerate(chemistries)}
 
     def _prepare_data(

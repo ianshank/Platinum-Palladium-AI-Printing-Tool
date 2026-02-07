@@ -29,7 +29,6 @@ from ptpd_calibration.education.tutorials import (
     UserProgress,
 )
 
-
 # ============================================================================
 # TutorialManager Tests
 # ============================================================================
@@ -548,7 +547,7 @@ class TestGlossary:
             for related in term.related_terms + term.see_also:
                 # Related terms use underscores, need to convert
                 related_with_spaces = related.replace("_", " ")
-                found = glossary.lookup(related_with_spaces)
+                glossary.lookup(related_with_spaces)
                 # It's okay if some related terms don't exist yet
                 # (they might be added later), but log for awareness
 
@@ -935,7 +934,7 @@ class TestEducationIntegration:
         glossary = Glossary()
 
         # Get a tutorial
-        tutorial = tutorial_manager.get_tutorial("first_print")
+        tutorial_manager.get_tutorial("first_print")
 
         # Check if common terms from tutorial exist in glossary
         common_terms = ["coating", "exposure", "developer", "ferric oxalate"]
@@ -947,13 +946,13 @@ class TestEducationIntegration:
     def test_tips_reference_glossary_terms(self):
         """Test that tips can reference glossary terms."""
         tips_manager = TipsManager()
-        glossary = Glossary()
+        Glossary()
 
         # Check some tips have valid related terms
         for tip in tips_manager.tips[:10]:  # Check first 10
             for related_term in tip.related_terms:
                 # Try to find in glossary (may need to replace underscores)
-                term_to_lookup = related_term.replace("_", " ")
+                related_term.replace("_", " ")
                 # Not all related terms must exist in glossary, but common ones should
 
     def test_tutorial_difficulty_progression(self):
@@ -980,6 +979,6 @@ class TestEducationIntegration:
         # For each step, try to get contextual tips
         for step in tutorial.steps[:3]:  # Check first 3 steps
             context = step.action.value
-            tips = tips_manager.get_contextual_tips(context, limit=3)
+            tips_manager.get_contextual_tips(context, limit=3)
             # Most action types should have some tips
             # (though not strictly required)

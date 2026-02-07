@@ -2,7 +2,7 @@
  * AIAssistant Component
  *
  * Chat interface for the Pt/Pd printing assistant.
- * Reads from and writes to the chat Zustand store slice.
+ * Uses the `useChat` hook for API orchestration and Zustand state management.
  *
  * Features:
  * - Message list with user/assistant bubbles
@@ -16,9 +16,7 @@
 
 import { type FC, useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { logger } from '@/lib/logger';
-import { useStore } from '@/stores';
-import { api } from '@/api/client';
+import { useChat } from '@/hooks/useChat';
 
 export interface AIAssistantProps {
     className?: string;
@@ -49,105 +47,60 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    // --- Store ---
-    const messages = useStore((s) => s.chat.messages);
-    const isLoading = useStore((s) => s.chat.isLoading);
-    const isStreaming = useStore((s) => s.chat.isStreaming);
-    const streamContent = useStore((s) => s.chat.streamContent);
-    const error = useStore((s) => s.chat.error);
-
-    const addMessage = useStore((s) => s.chat.addMessage);
-    const setLoading = useStore((s) => s.chat.setLoading);
-    const setError = useStore((s) => s.chat.setError);
-    const startStreaming = useStore((s) => s.chat.startStreaming);
-    const appendStreamContent = useStore((s) => s.chat.appendStreamContent);
-    const finishStreaming = useStore((s) => s.chat.finishStreaming);
-    const clearMessages = useStore((s) => s.chat.clearMessages);
-    const startNewConversation = useStore((s) => s.chat.startNewConversation);
+    // --- useChat hook (replaces direct api + store wiring) ---
+    const {
+        messages,
+        isStreaming,
+        streamContent,
+        error,
+        isBusy,
+        sendSuggestion,
+        clear,
+        newConversation,
+    } = useChat();
 
     // Auto-scroll
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages.length, streamContent]);
 
-    const sendMessage = useCallback(
-        async (text: string) => {
-            const trimmed = text.trim();
-            if (!trimmed || isLoading || isStreaming) return;
-
-            logger.debug('AIAssistant: Sending message', {
-                length: trimmed.length,
-            });
-
-            // Add user message
-            addMessage({ role: 'user', content: trimmed });
-            setInput('');
-            setError(null);
-            setLoading(true);
-
-            try {
-                startStreaming();
-                const response = await api.chat.send({ message: trimmed });
-
-                if (response?.response) {
-                    appendStreamContent(response.response);
-                }
-
-                finishStreaming();
-                logger.debug('AIAssistant: Response received');
-            } catch (err) {
-                const msg =
-                    err instanceof Error ? err.message : 'Failed to get AI response';
-                logger.error('AIAssistant: Error', { error: msg });
-                setError(msg);
-            } finally {
-                setLoading(false);
-            }
-        },
-        [
-            isLoading,
-            isStreaming,
-            addMessage,
-            setError,
-            setLoading,
-            startStreaming,
-            appendStreamContent,
-            finishStreaming,
-        ]
-    );
+    const handleSend = useCallback(() => {
+        const trimmed = input.trim();
+        if (!trimmed || isBusy) return;
+        sendSuggestion(trimmed);
+        setInput('');
+    }, [input, isBusy, sendSuggestion]);
 
     const handleSubmit = useCallback(
         (e: React.FormEvent) => {
             e.preventDefault();
-            sendMessage(input);
+            handleSend();
         },
-        [input, sendMessage]
+        [handleSend]
     );
 
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                sendMessage(input);
+                handleSend();
             }
         },
-        [input, sendMessage]
+        [handleSend]
     );
 
     const handleSuggestionClick = useCallback(
         (suggestion: string) => {
-            sendMessage(suggestion);
+            sendSuggestion(suggestion);
         },
-        [sendMessage]
+        [sendSuggestion]
     );
 
     const handleNewConversation = useCallback(() => {
-        logger.debug('AIAssistant: New conversation');
-        startNewConversation();
-    }, [startNewConversation]);
+        newConversation();
+    }, [newConversation]);
 
     const hasMessages = messages.length > 0;
-    const isBusy = isLoading || isStreaming;
 
     return (
         <div
@@ -169,7 +122,7 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
                     {hasMessages && (
                         <button
                             type="button"
-                            onClick={clearMessages}
+                            onClick={clear}
                             className="rounded-md border px-3 py-1.5 text-xs hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             data-testid="clear-chat-btn"
                         >

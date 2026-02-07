@@ -8,10 +8,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from io import BytesIO
 from pathlib import Path
-from typing import Optional, Union
 
-import numpy as np
 import matplotlib
+import numpy as np
+
 matplotlib.use('Agg')
 
 from ptpd_calibration.core.models import CurveData
@@ -81,7 +81,7 @@ class CurveComparisonResult:
     average_difference: float
     rms_difference: float
     correlation: float
-    difference_curve: Optional[tuple[list[float], list[float]]] = None
+    difference_curve: tuple[list[float], list[float]] | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -131,8 +131,8 @@ class VisualizationConfig:
     # Axis settings
     x_label: str = "Input"
     y_label: str = "Output"
-    x_limits: Optional[tuple[float, float]] = None
-    y_limits: Optional[tuple[float, float]] = None
+    x_limits: tuple[float, float] | None = None
+    y_limits: tuple[float, float] | None = None
 
     def get_color_palette(self, num_colors: int) -> list[str]:
         """Get color palette based on scheme."""
@@ -206,7 +206,7 @@ class CurveVisualizer:
     and generating statistics displays.
     """
 
-    def __init__(self, config: Optional[VisualizationConfig] = None):
+    def __init__(self, config: VisualizationConfig | None = None):
         """
         Initialize the visualizer.
 
@@ -367,10 +367,10 @@ class CurveVisualizer:
     def plot_single_curve(
         self,
         curve: CurveData,
-        title: Optional[str] = None,
+        title: str | None = None,
         style: PlotStyle = PlotStyle.LINE,
-        color: Optional[str] = None,
-        show_stats: Optional[bool] = None,
+        color: str | None = None,
+        show_stats: bool | None = None,
     ):
         """
         Plot a single curve.
@@ -426,8 +426,8 @@ class CurveVisualizer:
         curves: list[CurveData],
         title: str = "Curve Comparison",
         style: PlotStyle = PlotStyle.LINE,
-        colors: Optional[list[str]] = None,
-        show_difference: Optional[bool] = None,
+        colors: list[str] | None = None,
+        show_difference: bool | None = None,
         reference_idx: int = 0,
     ):
         """
@@ -575,7 +575,7 @@ class CurveVisualizer:
         self,
         curve: CurveData,
         bins: int = 50,
-        title: Optional[str] = None,
+        title: str | None = None,
     ):
         """
         Plot histogram of curve output values.
@@ -611,7 +611,7 @@ class CurveVisualizer:
     def plot_slope_analysis(
         self,
         curve: CurveData,
-        title: Optional[str] = None,
+        title: str | None = None,
     ):
         """
         Plot curve with slope analysis.
@@ -728,7 +728,7 @@ class CurveVisualizer:
             fontsize=self.config.tick_fontsize,
             verticalalignment="top",
             fontfamily="monospace",
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+            bbox={'boxstyle': "round", 'facecolor': "white", 'alpha': 0.8},
         )
 
     def _render_stats_table(
@@ -767,8 +767,8 @@ class CurveVisualizer:
     def save_figure(
         self,
         fig,
-        path: Union[str, Path],
-        format: Optional[str] = None,
+        path: str | Path,
+        format: str | None = None,
     ) -> Path:
         """
         Save figure to file.

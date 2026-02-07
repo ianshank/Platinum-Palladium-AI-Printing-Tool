@@ -9,8 +9,8 @@ interface LogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
-  context?: Record<string, unknown>;
-  source?: string;
+  context?: Record<string, unknown> | undefined;
+  source?: string | undefined;
 }
 
 interface LoggerOptions {
@@ -254,7 +254,7 @@ class ChildLogger {
   constructor(
     private parent: Logger,
     private source: string
-  ) {}
+  ) { }
 
   debug(message: string, context?: Record<string, unknown>): void {
     this.parent.debug(`[${this.source}] ${message}`, context);

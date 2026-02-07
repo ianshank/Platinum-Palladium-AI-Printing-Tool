@@ -5,14 +5,12 @@ Provides tools for loading, applying, creating, and managing ICC color profiles
 for accurate color reproduction in platinum/palladium printing workflow.
 """
 
+import io
+import logging
+import platform
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-import logging
-import struct
-import platform
-import io
 
 import numpy as np
 from PIL import Image, ImageCms
@@ -62,11 +60,11 @@ class ProfileInfo:
     color_space: ColorSpace
     profile_class: ProfileClass
     size_bytes: int
-    creation_date: Optional[str] = None
-    manufacturer: Optional[str] = None
-    model: Optional[str] = None
+    creation_date: str | None = None
+    manufacturer: str | None = None
+    model: str | None = None
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
             "path": str(self.path),
@@ -86,9 +84,9 @@ class ProfileValidation(BaseModel):
 
     is_valid: bool
     profile_path: Path
-    errors: List[str] = Field(default_factory=list)
-    warnings: List[str] = Field(default_factory=list)
-    info: Optional[ProfileInfo] = None
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    info: ProfileInfo | None = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -119,7 +117,7 @@ class ICCProfileManager:
         ]
     }
 
-    def __init__(self, custom_profile_dir: Optional[Path] = None):
+    def __init__(self, custom_profile_dir: Path | None = None):
         """
         Initialize ICC profile manager.
 
@@ -127,7 +125,7 @@ class ICCProfileManager:
             custom_profile_dir: Additional directory to search for profiles
         """
         self.custom_profile_dir = Path(custom_profile_dir) if custom_profile_dir else None
-        self._profile_cache: Dict[str, ImageCms.ImageCmsProfile] = {}
+        self._profile_cache: dict[str, ImageCms.ImageCmsProfile] = {}
 
     def load_profile(self, path: Path) -> ImageCms.ImageCmsProfile:
         """
@@ -227,10 +225,10 @@ class ICCProfileManager:
 
     def create_paper_profile(
         self,
-        measurements: List[Tuple[np.ndarray, np.ndarray]],
+        measurements: list[tuple[np.ndarray, np.ndarray]],
         profile_path: Path,
         paper_name: str = "Custom Paper",
-        white_point: Optional[Tuple[float, float, float]] = None,
+        white_point: tuple[float, float, float] | None = None,
     ) -> Path:
         """
         Create custom ICC profile from measurement data.
@@ -269,7 +267,7 @@ class ICCProfileManager:
             # In production, use Argyll CMS or similar
 
             # Create a basic sRGB profile as template
-            profile = ImageCms.createProfile("sRGB")
+            ImageCms.createProfile("sRGB")
 
             # Save with custom description
             # Note: PIL doesn't provide full ICC profile creation,
@@ -306,9 +304,9 @@ class ICCProfileManager:
 
     def list_installed_profiles(
         self,
-        color_space: Optional[ColorSpace] = None,
-        profile_class: Optional[ProfileClass] = None,
-    ) -> List[ProfileInfo]:
+        color_space: ColorSpace | None = None,
+        profile_class: ProfileClass | None = None,
+    ) -> list[ProfileInfo]:
         """
         List installed ICC profiles on the system.
 
@@ -401,7 +399,7 @@ class ICCProfileManager:
         except Exception as e:
             raise ValueError(f"Failed to read profile info: {e}")
 
-    def _read_profile_class_from_header(self, path: Path) -> Optional[ProfileClass]:
+    def _read_profile_class_from_header(self, path: Path) -> ProfileClass | None:
         """
         Read ICC profile class directly from header.
 
@@ -572,7 +570,7 @@ class ICCProfileManager:
 
         # Try to load with PIL
         try:
-            profile = self.load_profile(profile_path)
+            self.load_profile(profile_path)
             info = self._get_profile_info(profile_path)
 
             # Additional validation
@@ -622,7 +620,7 @@ class ICCProfileManager:
             logger.error(f"Failed to embed profile: {e}")
             return image
 
-    def extract_profile(self, image: Image.Image) -> Optional[ImageCms.ImageCmsProfile]:
+    def extract_profile(self, image: Image.Image) -> ImageCms.ImageCmsProfile | None:
         """
         Extract embedded ICC profile from image.
 

@@ -13,15 +13,10 @@ This module extends the basic exposure and chemistry calculators with:
 - Environmental and seasonal adjustments
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
-from typing import Optional
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from ptpd_calibration.config import ChemistrySettings, get_settings
-
 
 # ============================================================================
 # Pydantic Result Models
@@ -229,10 +224,10 @@ class EnvironmentalAdjustment(BaseModel):
     adjustment_type: str
 
     # Environmental conditions
-    altitude_feet: Optional[float] = None
-    month: Optional[int] = Field(None, ge=1, le=12)
-    humidity_percent: Optional[float] = Field(None, ge=0, le=100)
-    temperature_fahrenheit: Optional[float] = None
+    altitude_feet: float | None = None
+    month: int | None = Field(None, ge=1, le=12)
+    humidity_percent: float | None = Field(None, ge=0, le=100)
+    temperature_fahrenheit: float | None = None
 
     notes: list[str] = Field(default_factory=list)
 
@@ -307,7 +302,7 @@ class UVExposureCalculator:
     - Chemistry-based exposure adjustments
     """
 
-    def __init__(self, settings: Optional[ChemistrySettings] = None):
+    def __init__(self, settings: ChemistrySettings | None = None):
         """Initialize calculator with settings.
 
         Args:
@@ -480,7 +475,7 @@ class CoatingVolumeCalculator:
         "coating_rod": 0.70,  # Most efficient
     }
 
-    def __init__(self, settings: Optional[ChemistrySettings] = None):
+    def __init__(self, settings: ChemistrySettings | None = None):
         """Initialize calculator with settings.
 
         Args:
@@ -619,7 +614,7 @@ class CostCalculator:
     DEVELOPER_ML_PER_SQ_INCH = 0.5
     CLEARING_ML_PER_SQ_INCH = 0.5
 
-    def __init__(self, settings: Optional[ChemistrySettings] = None):
+    def __init__(self, settings: ChemistrySettings | None = None):
         """Initialize calculator with settings.
 
         Args:
@@ -683,7 +678,7 @@ class CostCalculator:
             developer_cost = (paper_area * self.DEVELOPER_ML_PER_SQ_INCH / 1000.0) * self.DEVELOPER_COST_PER_LITER
             clearing_cost = (paper_area * self.CLEARING_ML_PER_SQ_INCH / 1000.0) * self.CLEARING_BATH_COST_PER_LITER
             other_costs = developer_cost + clearing_cost
-            notes.append(f"Processing costs include developer and clearing baths")
+            notes.append("Processing costs include developer and clearing baths")
 
         # Total cost
         total_cost = ferric_cost + platinum_cost + palladium_cost + contrast_cost + paper_cost + other_costs
@@ -906,7 +901,7 @@ class DilutionCalculator:
     Handles various dilution scenarios common in platinum/palladium printing.
     """
 
-    def __init__(self, settings: Optional[ChemistrySettings] = None):
+    def __init__(self, settings: ChemistrySettings | None = None):
         """Initialize calculator with settings.
 
         Args:
@@ -944,7 +939,6 @@ class DilutionCalculator:
 
         # Express as ratio
         # Normalize to smallest whole numbers
-        ratio_parts_concentrate = 1
         ratio_parts_water = round((water_ml / concentrate_ml), 1)
 
         if ratio_parts_water == int(ratio_parts_water):
@@ -1107,7 +1101,7 @@ class EnvironmentalCompensation:
     - Drying time estimates
     """
 
-    def __init__(self, settings: Optional[ChemistrySettings] = None):
+    def __init__(self, settings: ChemistrySettings | None = None):
         """Initialize calculator with settings.
 
         Args:
@@ -1161,6 +1155,9 @@ class EnvironmentalCompensation:
             adjustment_factor=adjustment_factor,
             adjustment_type=f"altitude_{value_type}",
             altitude_feet=altitude,
+            month=None,
+            humidity_percent=None,
+            temperature_fahrenheit=None,
             notes=notes,
         )
 
@@ -1223,6 +1220,9 @@ class EnvironmentalCompensation:
             adjustment_factor=adjustment_factor,
             adjustment_type=f"season_{value_type}",
             month=month,
+            altitude_feet=None,
+            humidity_percent=None,
+            temperature_fahrenheit=None,
             notes=notes,
         )
 

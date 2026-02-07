@@ -5,13 +5,9 @@ Parses QuadTone RIP profile files with full metadata extraction
 and multi-channel curve support.
 """
 
-import re
+import contextlib
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
-from uuid import uuid4
-
-import numpy as np
 
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
@@ -52,7 +48,7 @@ class QuadProfile:
     """
 
     # File info
-    source_path: Optional[Path] = None
+    source_path: Path | None = None
     profile_name: str = "Untitled"
 
     # General settings
@@ -76,7 +72,7 @@ class QuadProfile:
     comments: list[str] = field(default_factory=list)
 
     @property
-    def primary_channel(self) -> Optional[ChannelCurve]:
+    def primary_channel(self) -> ChannelCurve | None:
         """Get the primary (K) channel curve."""
         return self.channels.get("K")
 
@@ -94,7 +90,7 @@ class QuadProfile:
                 active.append(name)
         return active
 
-    def get_channel(self, name: str) -> Optional[ChannelCurve]:
+    def get_channel(self, name: str) -> ChannelCurve | None:
         """Get a specific channel curve."""
         return self.channels.get(name.upper())
 
@@ -144,8 +140,8 @@ class QuadFileParser:
 
     def __init__(self):
         """Initialize the parser."""
-        self._current_section: Optional[str] = None
-        self._profile: Optional[QuadProfile] = None
+        self._current_section: str | None = None
+        self._profile: QuadProfile | None = None
 
     def parse(self, path: Path) -> QuadProfile:
         """
@@ -168,7 +164,7 @@ class QuadFileParser:
         # Try different encodings
         for encoding in ["utf-8", "utf-16", "latin-1", "cp1252"]:
             try:
-                with open(path, "r", encoding=encoding) as f:
+                with open(path, encoding=encoding) as f:
                     candidate = f.read()
             except UnicodeError:
                 continue
@@ -182,7 +178,7 @@ class QuadFileParser:
 
         if content is None:
             # Fallback to replace
-            with open(path, "r", encoding="utf-8", errors="replace") as f:
+            with open(path, encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
         # Parse the content
@@ -215,13 +211,13 @@ class QuadFileParser:
     def _parse_content(self, content: str) -> None:
         """Parse the file content."""
         lines = content.split("\n")
-        
+
         # Check for simple format (starts with ## QuadToneRIP)
         if len(lines) > 0 and lines[0].startswith("## QuadToneRIP"):
             self._parse_simple_format(lines)
             return
 
-        for line_num, line in enumerate(lines, 1):
+        for _line_num, line in enumerate(lines, 1):
             line = line.strip()
 
             # Skip empty lines
@@ -259,12 +255,12 @@ class QuadFileParser:
         """Parse the simple list-based QuadToneRIP format."""
         current_channel = None
         value_index = 0
-        
+
         for line in lines:
             line = line.strip()
             if not line:
                 continue
-                
+
             if line.startswith("#"):
                 # Check for curve header (e.g. "# K Curve")
                 if " Curve" in line:
@@ -274,7 +270,7 @@ class QuadFileParser:
                         # Handle "K Curve", "LC Curve" etc.
                         channel_name = parts[0].upper()
                         current_channel = channel_name
-                        
+
                         if current_channel not in self._profile.channels:
                              self._profile.channels[current_channel] = ChannelCurve(
                                 name=current_channel,
@@ -286,7 +282,7 @@ class QuadFileParser:
                 else:
                     self._profile.comments.append(line[1:].strip())
                 continue
-            
+
             # Parse number
             if current_channel and (line[0].isdigit() or line.startswith('-')):
                 try:
@@ -294,7 +290,7 @@ class QuadFileParser:
                     # QTR simple format uses 16-bit values (0-65535)
                     # We normalize to 8-bit (0-255) for internal storage
                     norm_val = int((val / 65535.0) * 255.0)
-                    
+
                     if value_index < 256:
                         self._profile.channels[current_channel].values[value_index] = max(0, min(255, norm_val))
                         value_index += 1
@@ -328,20 +324,14 @@ class QuadFileParser:
         if key_lower == "profilename":
             self._profile.profile_name = value
         elif key_lower == "resolution":
-            try:
+            with contextlib.suppress(ValueError):
                 self._profile.resolution = int(value)
-            except ValueError:
-                pass
         elif key_lower == "inklimit":
-            try:
+            with contextlib.suppress(ValueError):
                 self._profile.ink_limit = float(value)
-            except ValueError:
-                pass
         elif key_lower == "grayinklimit":
-            try:
+            with contextlib.suppress(ValueError):
                 self._profile.gray_ink_limit = float(value)
-            except ValueError:
-                pass
         elif key_lower == "linearizationtype":
             self._profile.linearization_type = value
         elif key_lower == "blackgeneration":

@@ -5,11 +5,11 @@ import pytest
 from PIL import Image
 
 from ptpd_calibration.zones import (
-    ZoneMapper,
-    ZoneMapping,
+    ZONE_DESCRIPTIONS,
     Zone,
     ZoneAnalysis,
-    ZONE_DESCRIPTIONS,
+    ZoneMapper,
+    ZoneMapping,
 )
 
 

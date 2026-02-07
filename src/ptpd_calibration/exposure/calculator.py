@@ -12,8 +12,6 @@ References:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
-import math
 
 
 class LightSource(str, Enum):
@@ -147,7 +145,7 @@ class ExposureCalculator:
     # Standard density for one stop
     DENSITY_PER_STOP = 0.3
 
-    def __init__(self, settings: Optional[ExposureSettings] = None):
+    def __init__(self, settings: ExposureSettings | None = None):
         """Initialize exposure calculator.
 
         Args:
@@ -158,11 +156,11 @@ class ExposureCalculator:
     def calculate(
         self,
         negative_density: float,
-        distance_inches: Optional[float] = None,
-        light_source: Optional[LightSource] = None,
-        paper_speed: Optional[float] = None,
-        platinum_ratio: Optional[float] = None,
-        humidity_factor: Optional[float] = None,
+        distance_inches: float | None = None,
+        light_source: LightSource | None = None,
+        paper_speed: float | None = None,
+        platinum_ratio: float | None = None,
+        humidity_factor: float | None = None,
     ) -> ExposureResult:
         """Calculate exposure time for given conditions.
 

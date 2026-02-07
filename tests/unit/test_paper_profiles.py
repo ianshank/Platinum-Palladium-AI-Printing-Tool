@@ -7,11 +7,11 @@ Tests paper characteristics, profiles, and database functionality.
 import pytest
 
 from ptpd_calibration.papers.profiles import (
+    BUILTIN_PAPERS,
     CoatingBehavior,
     PaperCharacteristics,
-    PaperProfile,
     PaperDatabase,
-    BUILTIN_PAPERS,
+    PaperProfile,
 )
 
 
@@ -215,7 +215,7 @@ class TestBuiltinProfiles:
 
     def test_builtin_profile_structure(self):
         """Built-in profiles should have proper structure."""
-        for key, profile in BUILTIN_PAPERS.items():
+        for _key, profile in BUILTIN_PAPERS.items():
             assert profile.name
             assert profile.characteristics is not None
             assert profile.characteristics.typical_dmax > 0

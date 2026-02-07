@@ -6,7 +6,6 @@ used in platinum/palladium printing.
 """
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -803,7 +802,7 @@ class Glossary:
 
     def _load_terms(self) -> None:
         """Load glossary data into GlossaryTerm objects."""
-        for key, data in GLOSSARY_DATA.items():
+        for _key, data in GLOSSARY_DATA.items():
             term = GlossaryTerm(**data)
             # Index by lowercase version of term for case-insensitive lookup
             self.terms[term.term.lower()] = term
@@ -811,7 +810,7 @@ class Glossary:
             for synonym in term.synonyms:
                 self.terms[synonym.lower()] = term
 
-    def lookup(self, term: str) -> Optional[GlossaryTerm]:
+    def lookup(self, term: str) -> GlossaryTerm | None:
         """
         Look up a specific term.
 
@@ -915,7 +914,7 @@ class Glossary:
         Returns:
             List of TermCategory values
         """
-        categories = set(term.category for term in self.terms.values())
+        categories = {term.category for term in self.terms.values()}
         return sorted(categories, key=lambda c: c.value)
 
     def export_to_dict(self) -> dict[str, dict]:

@@ -10,7 +10,7 @@ import json
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -25,13 +25,13 @@ class ExportMetadata(BaseModel):
     export_version: str = Field(default="1.0.0")
     format: str = Field(...)
     record_count: int = Field(default=0)
-    notes: Optional[str] = Field(default=None)
+    notes: str | None = Field(default=None)
 
 
 class DataExporter:
     """Export data to various formats."""
 
-    def __init__(self, database: Optional[PrintDatabase] = None) -> None:
+    def __init__(self, database: PrintDatabase | None = None) -> None:
         """
         Initialize the data exporter.
 
@@ -180,7 +180,7 @@ class DataExporter:
                 writer.writerow(row)
 
     def export_prints(
-        self, filters: Optional[dict[str, Any]], format: str, path: Path
+        self, filters: dict[str, Any] | None, format: str, path: Path
     ) -> int:
         """
         Export print records from database.
@@ -312,9 +312,7 @@ class DataExporter:
         """Custom JSON serializer for non-standard types."""
         if isinstance(obj, datetime):
             return obj.isoformat()
-        elif isinstance(obj, UUID):
-            return str(obj)
-        elif isinstance(obj, Path):
+        elif isinstance(obj, (UUID, Path)):
             return str(obj)
         elif hasattr(obj, "model_dump"):
             return obj.model_dump()
@@ -348,7 +346,7 @@ class DataExporter:
 class DataImporter:
     """Import data from various formats."""
 
-    def __init__(self, database: Optional[PrintDatabase] = None) -> None:
+    def __init__(self, database: PrintDatabase | None = None) -> None:
         """
         Initialize the data importer.
 
@@ -367,7 +365,7 @@ class DataImporter:
         Returns:
             Imported data dictionary
         """
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
 
         return data
@@ -392,7 +390,7 @@ class DataImporter:
                 "PyYAML is required for YAML import. Install with: pip install pyyaml"
             )
 
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         return data

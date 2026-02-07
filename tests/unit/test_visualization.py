@@ -8,12 +8,12 @@ import pytest
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.curves.visualization import (
-    CurveVisualizer,
-    CurveStatistics,
-    CurveComparisonResult,
-    VisualizationConfig,
-    PlotStyle,
     ColorScheme,
+    CurveComparisonResult,
+    CurveStatistics,
+    CurveVisualizer,
+    PlotStyle,
+    VisualizationConfig,
 )
 
 

@@ -2,15 +2,16 @@
 Main calibration agent with ReAct-style reasoning.
 """
 
+import contextlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from ptpd_calibration.config import AgentSettings, LLMSettings, get_settings
 from ptpd_calibration.agents.memory import AgentMemory
-from ptpd_calibration.agents.planning import Plan, Planner, PlanStatus
-from ptpd_calibration.agents.tools import ToolRegistry, ToolResult, create_calibration_tools
+from ptpd_calibration.agents.planning import Plan, Planner
+from ptpd_calibration.agents.tools import ToolResult, create_calibration_tools
+from ptpd_calibration.config import AgentSettings, LLMSettings, get_settings
 from ptpd_calibration.llm.client import LLMClient, create_client
 from ptpd_calibration.llm.prompts import SYSTEM_PROMPT
 from ptpd_calibration.ml.database import CalibrationDatabase
@@ -20,10 +21,10 @@ from ptpd_calibration.ml.database import CalibrationDatabase
 class AgentConfig:
     """Configuration for the calibration agent."""
 
-    llm_settings: Optional[LLMSettings] = None
-    agent_settings: Optional[AgentSettings] = None
-    memory_path: Optional[Path] = None
-    database: Optional[CalibrationDatabase] = None
+    llm_settings: LLMSettings | None = None
+    agent_settings: AgentSettings | None = None
+    memory_path: Path | None = None
+    database: CalibrationDatabase | None = None
     predictor: Any = None
 
 
@@ -33,9 +34,9 @@ class ReasoningStep:
 
     step_type: str  # "thought", "action", "observation", "reflection"
     content: str
-    tool_name: Optional[str] = None
-    tool_args: Optional[dict] = None
-    tool_result: Optional[ToolResult] = None
+    tool_name: str | None = None
+    tool_args: dict | None = None
+    tool_result: ToolResult | None = None
 
 
 class CalibrationAgent:
@@ -60,7 +61,7 @@ class CalibrationAgent:
         self.llm_settings = config.llm_settings or get_settings().llm
 
         # Initialize components
-        self.client: Optional[LLMClient] = None
+        self.client: LLMClient | None = None
         self.tools = create_calibration_tools(config.database, config.predictor)
         self.memory = AgentMemory(
             storage_path=config.memory_path,
@@ -70,7 +71,7 @@ class CalibrationAgent:
         self.planner = Planner(max_steps=self.settings.max_plan_steps)
 
         # State
-        self._current_plan: Optional[Plan] = None
+        self._current_plan: Plan | None = None
         self._reasoning_trace: list[ReasoningStep] = []
         self._iteration_count = 0
 
@@ -143,7 +144,7 @@ class CalibrationAgent:
         # Generate final response
         return await self._generate_response(task)
 
-    async def _think_and_act(self) -> tuple[str, Optional[dict]]:
+    async def _think_and_act(self) -> tuple[str, dict | None]:
         """
         Generate thought and decide on action.
 
@@ -192,14 +193,12 @@ ACTION: {{"tool": "analyze_densities", "args": {{"densities": [0.1, 0.3, 0.5, 0.
                         start = action_str.find("{")
                         end = action_str.rfind("}") + 1
                         if start >= 0 and end > start:
-                            try:
+                            with contextlib.suppress(json.JSONDecodeError):
                                 action = json.loads(action_str[start:end])
-                            except json.JSONDecodeError:
-                                pass
 
         return thought, action
 
-    async def _execute_action(self, action: dict) -> Optional[ToolResult]:
+    async def _execute_action(self, action: dict) -> ToolResult | None:
         """Execute a tool action."""
         tool_name = action.get("tool")
         tool_args = action.get("args", {})
@@ -295,7 +294,7 @@ Please provide a clear, helpful final response to the user summarizing the resul
         # Working memory
         working = self.memory.get_working_memory()
         if working:
-            parts.append(f"Working memory:\n" + "\n".join(f"- {w}" for w in working[-5:]))
+            parts.append("Working memory:\n" + "\n".join(f"- {w}" for w in working[-5:]))
 
         # Recent reasoning
         if self._reasoning_trace:
@@ -345,7 +344,7 @@ Please provide a clear, helpful final response to the user summarizing the resul
             for s in self._reasoning_trace
         ]
 
-    def get_plan_status(self) -> Optional[dict]:
+    def get_plan_status(self) -> dict | None:
         """Get current plan status."""
         if not self._current_plan:
             return None
@@ -361,10 +360,10 @@ Please provide a clear, helpful final response to the user summarizing the resul
 
 
 def create_agent(
-    api_key: Optional[str] = None,
-    database: Optional[CalibrationDatabase] = None,
+    api_key: str | None = None,
+    database: CalibrationDatabase | None = None,
     predictor: Any = None,
-    memory_path: Optional[Path] = None,
+    memory_path: Path | None = None,
 ) -> CalibrationAgent:
     """
     Create a calibration agent.

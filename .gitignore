@@ -148,3 +148,14 @@ calibrations.json
 *.quad
 *.ppt
 agent_memory.json
+
+# Debug / temp output
+test_output*.txt
+debug_pydantic.py
+nul
+
+# Models directory
+models/
+
+# Frontend lock file (use pnpm-lock.yaml instead)
+frontend/package-lock.json
