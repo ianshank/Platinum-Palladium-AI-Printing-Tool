@@ -81,8 +81,8 @@ class Logger {
       timestamp: new Date().toISOString(),
       level,
       message,
-      context,
-      source,
+      ...(context !== undefined && { context }),
+      ...(source !== undefined && { source }),
     };
   }
 

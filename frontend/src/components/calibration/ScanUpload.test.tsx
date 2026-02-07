@@ -60,7 +60,10 @@ describe('ScanUpload', () => {
 
         // Should complete successfully
         await waitFor(() => {
-            expect(onUploadComplete).toHaveBeenCalledWith('123-456');
+            expect(onUploadComplete).toHaveBeenCalledWith(expect.objectContaining({
+                success: true,
+                extraction_id: '123-456',
+            }));
             expect(screen.getByText(/upload complete/i)).toBeInTheDocument();
         });
     });
