@@ -14,12 +14,12 @@ def create_app():
     try:
         from fastapi import FastAPI, File, Form, HTTPException, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
-        from fastapi.responses import FileResponse, JSONResponse
+        from fastapi.responses import FileResponse
         from pydantic import BaseModel
     except ImportError:
         raise ImportError(
             "FastAPI is required. Install with: pip install ptpd-calibration[api]"
-        )
+        ) from None
 
     from ptpd_calibration.config import TabletType
     from ptpd_calibration.core.models import CalibrationRecord, CurveData
@@ -146,8 +146,8 @@ def create_app():
         paper_type: str | None = None
         additional_context: str | None = None
 
-    # Curve storage for session (replaced by persistent storage backend)
-    # curve_storage: dict[str, CurveData] = {}
+    # Curve storage for session (in-memory; TODO: replace with persistent backend)
+    curve_storage: dict[str, CurveData] = {}
 
     # Routes
     @app.get("/")
@@ -209,7 +209,7 @@ def create_app():
                 "warnings": result.extraction.warnings,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
         finally:
             # Cleanup
             if file_path.exists():
@@ -241,7 +241,7 @@ def create_app():
                 "output_values": curve.output_values[:10],
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.post("/api/curves/export")
     async def export_curve(
@@ -309,7 +309,7 @@ def create_app():
                 "summary": profile.summary(),
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
         finally:
             # Cleanup
             if file_path.exists():
@@ -345,7 +345,7 @@ def create_app():
                 } if curve_data else None,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.post("/api/curves/modify")
     async def modify_curve(request: CurveModifyRequest):
@@ -400,7 +400,7 @@ def create_app():
                 "output_values": modified.output_values,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.post("/api/curves/smooth")
     async def smooth_curve(request: CurveSmoothRequest):
@@ -437,7 +437,7 @@ def create_app():
                 "output_values": smoothed.output_values,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.post("/api/curves/blend")
     async def blend_curves(request: CurveBlendRequest):
@@ -481,7 +481,7 @@ def create_app():
                 "output_values": blended.output_values,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.post("/api/curves/enhance")
     async def enhance_curve_ai(request: CurveEnhanceRequest):
@@ -531,7 +531,7 @@ def create_app():
                 "output_values": result.enhanced_curve.output_values,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.get("/api/curves/{curve_id}")
     async def get_stored_curve(curve_id: str):
@@ -573,7 +573,7 @@ def create_app():
                 "output_values": modified.output_values,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.get("/api/calibrations")
     async def list_calibrations(
@@ -644,7 +644,7 @@ def create_app():
 
             return {"response": response}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     @app.post("/api/chat/recipe")
     async def suggest_recipe(request: RecipeRequest):
@@ -660,7 +660,7 @@ def create_app():
 
             return {"response": response}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     @app.post("/api/chat/troubleshoot")
     async def troubleshoot(request: TroubleshootRequest):
@@ -673,7 +673,7 @@ def create_app():
 
             return {"response": response}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     @app.get("/api/statistics")
     async def get_statistics():
@@ -690,7 +690,7 @@ def main():
     except ImportError:
         raise ImportError(
             "uvicorn is required. Install with: pip install ptpd-calibration[api]"
-        )
+        ) from None
 
     settings = get_settings()
     app = create_app()

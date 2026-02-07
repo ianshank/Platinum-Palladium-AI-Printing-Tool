@@ -285,7 +285,7 @@ __all__ = [
     "PlatinumPalladiumAI",
     "TonalityAnalysisResult",
     "ExposurePrediction",
-    "ChemistrySuggestion",
+    "ChemistryRecommendation",
     "DigitalNegativeResult",
     "PrintQualityAnalysis",
     "WorkflowOptimization",

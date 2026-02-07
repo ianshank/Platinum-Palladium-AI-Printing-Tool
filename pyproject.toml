@@ -127,7 +127,27 @@ ignore = [
     "E501",   # line too long (handled by formatter)
     "B008",   # do not perform function calls in argument defaults
     "C901",   # too complex
+    "ARG002", # unused method argument — interface-mandated params
+    "ARG004", # unused static method argument — interface-mandated params
+    "SIM102", # collapsible-if — readability preference
+    "SIM105", # use contextlib.suppress — readability preference
+    "SIM117", # nested with — readability preference
+    "B007",   # unused loop control variable — intentional iteration
+    "E701",   # multiple statements on one line — compact dict patterns
+    "E741",   # ambiguous variable name — short names in math contexts
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "ARG001",  # unused function argument — pytest fixtures
+    "ARG004",  # unused static method argument — test helpers
+    "ARG005",  # unused lambda argument — test callbacks
+    "B017",    # assert-raises-exception — intentional in tests
+    "E402",    # module-import-not-at-top — env setup before imports
+]
+"src/**/api/server.py" = ["E402"]  # conditional FastAPI imports
+"src/**/__init__.py" = ["E402"]     # lazy conditional imports
+"src/**/ui/**" = ["E402", "ARG001", "ARG004", "ARG005"]  # Gradio UI patterns
 
 [tool.ruff.lint.isort]
 known-first-party = ["ptpd_calibration"]

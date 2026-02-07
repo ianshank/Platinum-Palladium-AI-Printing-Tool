@@ -73,7 +73,7 @@ def create_gradio_app(share: bool = False):
     except ImportError:
         raise ImportError(
             "Gradio is required for UI. Install with: pip install ptpd-calibration[ui]"
-        )
+        ) from None
 
     from ptpd_calibration.analysis import (
         StepWedgeAnalyzer,

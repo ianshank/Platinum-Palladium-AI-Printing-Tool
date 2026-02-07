@@ -18,14 +18,13 @@ os.environ["PTPD_FORCE_LOCAL_STORAGE"] = "true"
 _staging_dir = tempfile.mkdtemp(prefix="ptpd_test_")
 os.environ["PTPD_STAGING_DIR"] = _staging_dir
 
-import pytest
-import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+import pytest
+import pytest_asyncio
 
 from ptpd_calibration.api.server import create_app
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -204,7 +203,6 @@ class TestCurveEndpoints:
     @pytest.mark.asyncio
     async def test_export_curve_csv(self, client: httpx.AsyncClient):
         """POST /api/curves/export returns a downloadable file."""
-        densities_str = ",".join(str(d) for d in SAMPLE_DENSITIES)
         resp = await client.post("/api/curves/export", data={
             "densities": SAMPLE_DENSITIES,
             "name": "export_test",

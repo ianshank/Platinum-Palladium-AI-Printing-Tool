@@ -653,7 +653,7 @@ class CostCalculator:
             height = float(dimensions[1])
             paper_area = width * height
         except (ValueError, IndexError):
-            raise ValueError(f"Invalid paper size format: {paper_size}. Use format like '8x10' or '11x14'")
+            raise ValueError(f"Invalid paper size format: {paper_size}. Use format like '8x10' or '11x14'") from None
 
         # Chemistry costs
         ferric_cost = chemistry.get('ferric_oxalate_ml', 0) * self.settings.ferric_oxalate_cost_per_ml

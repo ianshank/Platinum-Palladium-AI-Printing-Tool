@@ -19,7 +19,6 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 try:
     import qrcode
-    from qrcode.image.pil import PilImage
     HAS_QRCODE = True
 except ImportError:
     HAS_QRCODE = False
@@ -897,7 +896,7 @@ class QRMetadataGenerator:
             raise ImportError(
                 "pyzbar library is required for QR decoding. "
                 "Install with: pip install pyzbar"
-            )
+            ) from None
 
         # Load image if path
         if isinstance(qr_image, (str, Path)):

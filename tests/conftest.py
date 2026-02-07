@@ -1,6 +1,7 @@
 import os
+
 import pytest
-from unittest.mock import MagicMock
+
 
 @pytest.fixture(autouse=True)
 def mock_env_vars():
@@ -9,7 +10,7 @@ def mock_env_vars():
     os.environ["PTPD_GCS_BUCKET"] = "test-bucket"
     os.environ["PTPD_GCP_REGION"] = "us-central1"
     yield
-    # Cleanup is handled by os.environ changes being process-local, 
+    # Cleanup is handled by os.environ changes being process-local,
     # but good practice to clear if we wanted strict isolation.
     # For now, let's just leave them as they don't hurt.
 

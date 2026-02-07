@@ -195,7 +195,7 @@ class ImageProcessor:
                 rgb = img.convert("RGB")
                 processed = self._apply_lut_rgb(rgb, lut)
             except Exception:
-                raise ValueError(f"Unsupported image mode: {img.mode}")
+                raise ValueError(f"Unsupported image mode: {img.mode}") from None
 
         notes = list(result.processing_notes)
         notes.append(f"Applied curve: {curve.name}")
@@ -443,7 +443,7 @@ class ImageProcessor:
                 inverted_arr = 255 - arr
                 inverted = Image.fromarray(inverted_arr.astype(np.uint8), mode="RGB")
             except Exception:
-                raise ValueError(f"Cannot invert image mode: {img.mode}")
+                raise ValueError(f"Cannot invert image mode: {img.mode}") from None
 
         notes = list(result.processing_notes)
         notes.append("Image inverted (negative created)")

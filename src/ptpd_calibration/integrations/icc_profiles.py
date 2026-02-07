@@ -164,7 +164,7 @@ class ICCProfileManager:
             return profile
 
         except Exception as e:
-            raise ValueError(f"Failed to load profile {path}: {e}")
+            raise ValueError(f"Failed to load profile {path}: {e}") from e
 
     def apply_profile(
         self,
@@ -392,7 +392,7 @@ class ICCProfileManager:
             )
 
         except Exception as e:
-            raise ValueError(f"Failed to read profile info: {e}")
+            raise ValueError(f"Failed to read profile info: {e}") from e
 
     def _read_profile_class_from_header(self, path: Path) -> ProfileClass | None:
         """

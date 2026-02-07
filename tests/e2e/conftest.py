@@ -66,6 +66,7 @@ def pytest_collection_modifyitems(config, items):
 
 from pathlib import Path
 
+
 @pytest.fixture
 def real_quad_path():
     """Path to the real-world .quad fixture file."""

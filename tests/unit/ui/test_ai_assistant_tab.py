@@ -1,4 +1,3 @@
-from pathlib import Path
 from unittest.mock import patch
 
 from ptpd_calibration.ui.tabs.ai_assistant import build_ai_assistant_tab

@@ -65,7 +65,7 @@ class AnthropicClient(LLMClient):
         except ImportError:
             raise ImportError(
                 "anthropic package required. Install with: pip install ptpd-calibration[llm]"
-            )
+            ) from None
 
         client = anthropic.AsyncAnthropic(api_key=self.api_key)
 
@@ -92,7 +92,7 @@ class AnthropicClient(LLMClient):
         except ImportError:
             raise ImportError(
                 "anthropic package required. Install with: pip install ptpd-calibration[llm]"
-            )
+            ) from None
 
         client = anthropic.AsyncAnthropic(api_key=self.api_key)
 
@@ -138,7 +138,7 @@ class OpenAIClient(LLMClient):
         except ImportError:
             raise ImportError(
                 "openai package required. Install with: pip install ptpd-calibration[llm]"
-            )
+            ) from None
 
         client = AsyncOpenAI(api_key=self.api_key)
 
@@ -170,7 +170,7 @@ class OpenAIClient(LLMClient):
         except ImportError:
             raise ImportError(
                 "openai package required. Install with: pip install ptpd-calibration[llm]"
-            )
+            ) from None
 
         client = AsyncOpenAI(api_key=self.api_key)
 

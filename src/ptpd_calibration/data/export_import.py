@@ -79,7 +79,7 @@ class DataExporter:
         except ImportError:
             raise ImportError(
                 "PyYAML is required for YAML export. Install with: pip install pyyaml"
-            )
+            ) from None
 
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -388,7 +388,7 @@ class DataImporter:
         except ImportError:
             raise ImportError(
                 "PyYAML is required for YAML import. Install with: pip install pyyaml"
-            )
+            ) from None
 
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
