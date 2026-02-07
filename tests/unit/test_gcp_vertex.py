@@ -66,7 +66,7 @@ class TestVertexClient:
         client.get_model("projects/p/locations/l/models/m")
 
         mock_aiplatform.init.assert_called_once()
-        mock_aiplatform.Model.assert_called_once_with(model_name="projects/p/locations/l/models/m", version=None)
+        mock_aiplatform.Model.assert_called_once_with(model_name="projects/p/locations/l/models/m")
 
     @patch("ptpd_calibration.gcp.vertex.VERTEX_AVAILABLE", True)
     @patch("ptpd_calibration.gcp.vertex.aiplatform")

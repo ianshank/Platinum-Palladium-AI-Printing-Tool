@@ -141,12 +141,13 @@ class Plan:
         """Generate a plan summary."""
         total = len(self.steps)
         completed = sum(1 for s in self.steps if s.status == PlanStatus.COMPLETED)
-        sum(1 for s in self.steps if s.status == PlanStatus.FAILED)
+        failed = sum(1 for s in self.steps if s.status == PlanStatus.FAILED)
 
         return (
             f"Plan: {self.goal}\n"
             f"Progress: {completed}/{total} steps ({self.progress:.0%})\n"
             f"Status: {self.status.value}\n"
+            f"Failed: {failed}\n"
             f"Adaptations: {self.adapted_count}"
         )
 

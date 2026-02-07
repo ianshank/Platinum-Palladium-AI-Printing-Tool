@@ -5,6 +5,7 @@ import { ScanUpload } from './ScanUpload';
 import { CurveEditor } from '@/components/curves/CurveEditor';
 import { api } from '@/api/client';
 import { type CalibrationRecord, ChemistryType, type CurveGenerationResponse, CurveType, type ScanUploadResponse } from '@/types/models';
+import { logger } from '@/lib/logger';
 import type { CurveData } from '@/types/models';
 import { Activity, BarChart, CheckCircle2, Printer, Scan } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -27,7 +28,7 @@ export function CalibrationWizard() {
         chemistry_type: ChemistryType.PURE_PLATINUM,
         exposure_time: 0,
     });
-    const [scanResult, _setScanResult] = useState<ScanUploadResponse | null>(null);
+    const [scanResult, setScanResult] = useState<ScanUploadResponse | null>(null);
     const [curveResult, setCurveResult] = useState<CurveGenerationResponse | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
 
@@ -39,30 +40,22 @@ export function CalibrationWizard() {
         setCurrentStep((prev) => Math.max(prev - 1, 0));
     };
 
-    const handleScanComplete = async (extractionId: string) => {
-        // We have extractionId, we might need to fetch the details if ScanUpload doesn't return them fully
-        // But for now let's assume we can proceed.
-        // Actually ScanUpload returns extractionId via callback. 
-        // We should probably fetch the extraction details to show in Analyze step.
-        // For now, we'll just mock or assume successful scan triggers next.
-        setData(prev => ({ ...prev, extraction_id: extractionId }));
+    const handleScanComplete = (response: ScanUploadResponse) => {
+        setScanResult(response);
+        setData(prev => ({ ...prev, extraction_id: response.extraction_id }));
         handleNext();
     };
 
     const handleGenerateValues = async () => {
+        if (!scanResult?.densities?.length) {
+            logger.warn('Cannot generate curve: no density measurements available');
+            return;
+        }
+
         setIsGenerating(true);
         try {
             const response = await api.curves.generate({
-                measurements: scanResult?.densities || [], // This assumes we have densities. 
-                // If ScanUpload only gave ID, we might need to fetch the extraction first.
-                // Let's assume for this wizard we rely on the ID and maybe the backend handles it?
-                // Wait, models.ts CurveGenerationRequest takes measurements: number[].
-                // So we MUST have densities.
-                // ScanUpload component uses api.scan.upload which returns ScanUploadResponse containing densities!
-                // But ScanUpload callback onUploadComplete only gives extractionId string.
-                // I should update ScanUpload to return the full response or I need to fetch it.
-                // OR I can just cast the response in ScanUpload if I update it.
-                // For now, I'll simulate needing densities.
+                measurements: scanResult.densities,
                 type: 'linearization',
                 name: `${data.paper_type} ${data.chemistry_type}`,
             });
@@ -72,7 +65,7 @@ export function CalibrationWizard() {
                 handleNext();
             }
         } catch (e) {
-            console.error(e);
+            logger.error('Curve generation failed', e instanceof Error ? { error: e.message } : undefined);
         } finally {
             setIsGenerating(false);
         }

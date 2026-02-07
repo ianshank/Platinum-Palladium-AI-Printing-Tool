@@ -4,9 +4,10 @@ import { type FileRejection, useDropzone } from 'react-dropzone';
 import { api } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import { AlertCircle, CheckCircle2, File as FileIcon, UploadCloud, X } from 'lucide-react';
+import type { ScanUploadResponse } from '@/types/models';
 
 interface ScanUploadProps {
-    onUploadComplete?: (extractionId: string) => void;
+    onUploadComplete?: (response: ScanUploadResponse) => void;
     className?: string;
 }
 
@@ -53,7 +54,7 @@ export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps
             if (response.success) {
                 setSuccess(true);
                 if (onUploadComplete) {
-                    onUploadComplete(response.extraction_id);
+                    onUploadComplete(response);
                 }
             } else {
                 setError('Upload failed but no error message returned.');

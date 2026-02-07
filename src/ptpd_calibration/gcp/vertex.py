@@ -37,19 +37,21 @@ class VertexClient:
         self._initialized = True
         logger.info(f"Initialized Vertex AI for project {self.config.project_id} in {self.config.region}")
 
-    def get_model(self, model_name: str, version: str | None = None) -> Any:
+    def get_model(self, model_name: str) -> Any:
         """
-        Retrieve a model from the registry.
+        Retrieve a model from the Vertex AI Model Registry.
 
         Args:
-            model_name: The name of the model in Vertex AI Registry.
-            version: Optional version identifier.
+            model_name: Fully-qualified model resource name or display name.
+                        For versioned models, use the resource name that
+                        includes the version (e.g.
+                        ``projects/.../models/{id}@{version}``).
 
         Returns:
             The Vertex AI Model resource.
         """
         self.initialize()
-        return aiplatform.Model(model_name=model_name, version=version)
+        return aiplatform.Model(model_name=model_name)
 
     def submit_custom_job(
         self,

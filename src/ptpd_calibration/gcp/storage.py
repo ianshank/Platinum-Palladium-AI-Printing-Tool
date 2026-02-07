@@ -74,12 +74,7 @@ class GCSBackend:
 
     def save(self, path: str, data: str | bytes, content_type: str = "text/plain") -> None:
         blob = self.bucket.blob(path.lstrip("/"))
-
-        if isinstance(data, str):
-            blob.upload_from_string(data, content_type=content_type)
-        else:
-            blob.upload_from_string(data, content_type=content_type)
-
+        blob.upload_from_string(data, content_type=content_type)
         logger.info(f"Uploaded to gs://{self.bucket_name}/{path}")
 
     def load(self, path: str) -> bytes:

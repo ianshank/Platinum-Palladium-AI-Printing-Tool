@@ -31,6 +31,9 @@ OUTPUT_QUAD_FILE = Path(__file__).parent / "Platinum_Palladium_V6-CC-Arches_Plat
 SOURCE_PAPER = "revere platinum"
 TARGET_PAPER = "arches platine"
 
+# Number of values per channel in a .quad profile
+CURVE_POINTS = 256
+
 
 def analyze_paper_differences(source: str, target: str) -> dict:
     """
@@ -146,10 +149,8 @@ def apply_transfer_adjustments(
             shadow_mask = values < (original_max * 0.2)
             values[shadow_mask] *= (1.0 + adjustments["shadow_adjust"])
 
-        # Ensure monotonicity
-        for i in range(1, len(values)):
-            if values[i] < values[i-1]:
-                values[i] = values[i-1]
+        # Ensure monotonicity (vectorised)
+        values = np.maximum.accumulate(values)
 
         # Clamp to valid range
         values = np.clip(values, 0, 65535).astype(int)
@@ -257,8 +258,8 @@ def export_quad_file(
             for value in channels[channel_name]:
                 lines.append(str(value))
         else:
-            # Empty channel - output zeros
-            for _ in range(256):
+            # Empty channel — output zeros
+            for _ in range(CURVE_POINTS):
                 lines.append("0")
 
     # Write the file

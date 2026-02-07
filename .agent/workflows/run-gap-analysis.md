@@ -9,7 +9,7 @@ Audits the codebase against the gap checklist in `CLAUDE.md` and `.claude/agents
 ## Steps
 
 1. **Read Gap Checklist**
-   Parse all `- [ ]` items from `CLAUDE.md` lines 396–422 (Gap Analysis Checklist section).
+   Parse all `- [ ]` items from the **Gap Analysis Checklist** section in `CLAUDE.md`.
 
 2. **Scan Implementation**
    For each gap category, search the codebase for matching implementations:
@@ -21,7 +21,7 @@ Audits the codebase against the gap checklist in `CLAUDE.md` and `.claude/agents
 3. **Generate Gap Report**
    Output structured report per the template in `gap-remediation-agent.md`:
 
-   ```
+   ```text
    ## Gap Analysis Report — {DATE}
    ### Summary
    - Total Gaps: X

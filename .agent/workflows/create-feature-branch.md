@@ -41,8 +41,8 @@ Manages the full git lifecycle for a feature using GitKraken MCP tools.
 
 7. **Create Pull Request**
    Use `mcp_GitKraken_pull_request_create` with:
-   - `repository_organization`: `ianshank` (from workspace config)
-   - `repository_name`: `Platinum-Palladium-AI-Printing-Tool`
+   - `repository_organization`: `{REPOSITORY_ORGANIZATION}` (from workspace config)
+   - `repository_name`: `{REPOSITORY_NAME}`
    - `source_branch`: `{BRANCH_PREFIX}{FEATURE_NAME}`
    - `target_branch`: `main`
    - `provider`: `github`

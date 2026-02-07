@@ -265,11 +265,6 @@ class ICCProfileManager:
 
             # Simplified approach: create a basic profile
             # In production, use Argyll CMS or similar
-
-            # Create a basic sRGB profile as template
-            ImageCms.createProfile("sRGB")
-
-            # Save with custom description
             # Note: PIL doesn't provide full ICC profile creation,
             # so this is a placeholder for the concept
 
