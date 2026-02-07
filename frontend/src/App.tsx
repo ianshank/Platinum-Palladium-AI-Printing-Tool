@@ -15,19 +15,8 @@ import { ChemistryPage } from '@/pages/ChemistryPage';
 
 import { AIAssistantPage } from '@/pages/AIAssistantPage';
 
-const SessionLogPage: FC = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold">Session Log</h1>
-    <p className="text-muted-foreground mt-2">Print history and statistics</p>
-  </div>
-);
-
-const SettingsPage: FC = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold">Settings</h1>
-    <p className="text-muted-foreground mt-2">Application configuration</p>
-  </div>
-);
+import { SessionLogPage } from '@/pages/SessionLogPage';
+import { SettingsPage } from '@/pages/SettingsPage';
 
 /**
  * Main application component
