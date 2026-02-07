@@ -11,12 +11,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { CalibrationPage } from '@/pages/CalibrationPage';
 import { CurvesPage } from '@/pages/CurvesPage';
 
-const ChemistryPage: FC = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold">Chemistry Calculator</h1>
-    <p className="text-muted-foreground mt-2">Coating recipe calculations</p>
-  </div>
-);
+import { ChemistryPage } from '@/pages/ChemistryPage';
 
 const AIAssistantPage: FC = () => (
   <div className="p-6">
