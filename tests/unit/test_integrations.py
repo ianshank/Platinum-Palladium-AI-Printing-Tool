@@ -56,65 +56,60 @@ All tests use mocked external dependencies and simulated hardware
 to ensure tests can run without physical devices or API keys.
 """
 
-import pytest
+import json
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
-import tempfile
-import json
-import io
+from unittest.mock import AsyncMock, Mock, patch
 
-import numpy as np
-from PIL import Image, ImageCms
 import httpx
+import numpy as np
+import pytest
+from PIL import Image, ImageCms
 
-# Spectrophotometer imports
-from ptpd_calibration.integrations.spectrophotometer import (
-    XRiteIntegration,
-    MeasurementMode,
-    ApertureSize,
-    ExportFormat,
-    LABValue,
-    SpectralData,
-    PatchMeasurement,
-    CalibrationResult,
-)
-
-# Weather imports
-from ptpd_calibration.integrations.weather import (
-    OpenWeatherMapProvider,
-    CurrentConditions,
-    ForecastPeriod,
-    WeatherCondition,
-    PaperType,
-    DryingTimeEstimate,
-    CoatingRecommendation,
+# ICC profile imports
+from ptpd_calibration.integrations.icc_profiles import (
+    ColorSpace,
+    ICCProfileManager,
+    ProfileInfo,
+    RenderingIntent,
 )
 
 # Printer driver imports
 from ptpd_calibration.integrations.printer_drivers import (
-    EpsonDriver,
     CanonDriver,
-    PrinterBrand,
-    PrintQuality,
-    MediaType,
     ColorMode,
+    EpsonDriver,
     InkLevel,
-    PrintSettings,
+    MediaType,
     NozzleCheckResult,
+    PrinterBrand,
     PrintJob,
+    PrintQuality,
+    PrintSettings,
 )
 
-# ICC profile imports
-from ptpd_calibration.integrations.icc_profiles import (
-    ICCProfileManager,
-    ColorSpace,
-    RenderingIntent,
-    ProfileClass,
-    ProfileInfo,
-    ProfileValidation,
+# Spectrophotometer imports
+from ptpd_calibration.integrations.spectrophotometer import (
+    ApertureSize,
+    ExportFormat,
+    LABValue,
+    MeasurementMode,
+    PatchMeasurement,
+    SpectralData,
+    XRiteIntegration,
 )
 
+# Weather imports
+from ptpd_calibration.integrations.weather import (
+    CoatingRecommendation,
+    CurrentConditions,
+    DryingTimeEstimate,
+    ForecastPeriod,
+    OpenWeatherMapProvider,
+    PaperType,
+    WeatherCondition,
+)
 
 # ============================================================================
 # Spectrophotometer Tests
@@ -1148,7 +1143,7 @@ class TestICCProfileManager:
         image = Image.new('RGB', (100, 100), color=(128, 128, 128))
 
         # Create profiles
-        source_profile = ImageCms.createProfile("sRGB")
+        ImageCms.createProfile("sRGB")
         target_profile = ImageCms.createProfile("sRGB")
 
         result = manager.apply_profile(
@@ -1512,7 +1507,7 @@ class TestIntegrationWorkflows:
         assert isinstance(image_with_profile, Image.Image)
 
         # Try to extract profile (may return None if embed failed)
-        extracted = manager.extract_profile(image_with_profile)
+        manager.extract_profile(image_with_profile)
         # Note: extract may return None if the implementation couldn't embed
 
         # Apply profile (should work regardless)

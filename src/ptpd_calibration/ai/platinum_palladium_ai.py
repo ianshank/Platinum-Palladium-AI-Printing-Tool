@@ -5,48 +5,43 @@ This module provides AI-powered analysis, prediction, and optimization tools
 specifically designed for the platinum-palladium printing workflow.
 """
 
-from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union, Tuple, Dict, List, Any
-from uuid import UUID, uuid4
-from datetime import datetime
+from typing import Any
 
 import numpy as np
 from PIL import Image
 from pydantic import BaseModel, Field, field_validator
 
+from ptpd_calibration.chemistry.calculator import (
+    ChemistryCalculator,
+    CoatingMethod,
+    PaperAbsorbency,
+)
 from ptpd_calibration.config import get_settings
+from ptpd_calibration.core.models import (
+    CalibrationRecord,
+    CurveData,
+)
 from ptpd_calibration.core.types import (
     ChemistryType,
     ContrastAgent,
-    DeveloperType,
     CurveType,
-)
-from ptpd_calibration.core.models import (
-    CurveData,
-    CalibrationRecord,
-    PaperProfile,
-)
-from ptpd_calibration.imaging.histogram import HistogramAnalyzer, HistogramStats
-from ptpd_calibration.imaging.processor import (
-    ImageProcessor,
-    ProcessingResult,
-    ImageFormat,
-    ColorMode,
-    ExportSettings,
+    DeveloperType,
 )
 from ptpd_calibration.exposure.calculator import (
     ExposureCalculator,
     ExposureSettings,
     LightSource,
 )
-from ptpd_calibration.chemistry.calculator import (
-    ChemistryCalculator,
-    PaperAbsorbency,
-    CoatingMethod,
+from ptpd_calibration.imaging.histogram import HistogramAnalyzer
+from ptpd_calibration.imaging.processor import (
+    ColorMode,
+    ExportSettings,
+    ImageFormat,
+    ImageProcessor,
+    ProcessingResult,
 )
-
 
 # ============================================================================
 # Enums and Constants
@@ -101,15 +96,15 @@ class TonalityAnalysisResult(BaseModel):
     """Result of image tonality analysis."""
 
     # Histogram statistics
-    histogram_stats: Dict[str, Any] = Field(
+    histogram_stats: dict[str, Any] = Field(
         ..., description="Complete histogram statistics"
     )
 
     # Zone analysis (Ansel Adams zones 0-10)
-    zone_distribution: Dict[int, float] = Field(
+    zone_distribution: dict[int, float] = Field(
         ..., description="Percentage of pixels in each zone"
     )
-    dominant_zones: List[int] = Field(
+    dominant_zones: list[int] = Field(
         ..., description="Zones with highest pixel concentration"
     )
 
@@ -133,10 +128,10 @@ class TonalityAnalysisResult(BaseModel):
     )
 
     # Suggestions
-    suggestions: List[str] = Field(
+    suggestions: list[str] = Field(
         default_factory=list, description="Recommendations for optimal printing"
     )
-    warnings: List[str] = Field(
+    warnings: list[str] = Field(
         default_factory=list, description="Potential issues to address"
     )
 
@@ -166,18 +161,18 @@ class ExposurePrediction(BaseModel):
     negative_density: float = Field(..., description="Negative density range")
     paper_speed_factor: float = Field(default=1.0, description="Paper speed factor")
     humidity_factor: float = Field(default=1.0, description="Humidity adjustment")
-    temperature_celsius: Optional[float] = Field(
+    temperature_celsius: float | None = Field(
         default=None, description="Temperature in Celsius"
     )
 
     # Breakdown
     base_exposure: float = Field(..., description="Base exposure time")
-    adjustments_applied: Dict[str, float] = Field(
+    adjustments_applied: dict[str, float] = Field(
         default_factory=dict, description="Adjustment factors applied"
     )
 
     # Recommendations
-    recommendations: List[str] = Field(
+    recommendations: list[str] = Field(
         default_factory=list, description="Exposure recommendations"
     )
 
@@ -230,10 +225,10 @@ class ChemistryRecommendation(BaseModel):
     )
 
     # Rationale
-    rationale: List[str] = Field(
+    rationale: list[str] = Field(
         default_factory=list, description="Explanation of recommendations"
     )
-    notes: List[str] = Field(
+    notes: list[str] = Field(
         default_factory=list, description="Additional notes"
     )
 
@@ -244,23 +239,23 @@ class DigitalNegativeResult(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     # Processing info
-    processing_result: Optional[Any] = Field(
+    processing_result: Any | None = Field(
         default=None, description="ProcessingResult object"
     )
-    output_path: Optional[Path] = Field(default=None, description="Saved file path")
+    output_path: Path | None = Field(default=None, description="Saved file path")
 
     # Metadata
-    original_size: Tuple[int, int] = Field(..., description="Original image size")
-    output_size: Tuple[int, int] = Field(..., description="Output image size")
+    original_size: tuple[int, int] = Field(..., description="Original image size")
+    output_size: tuple[int, int] = Field(..., description="Output image size")
     output_format: str = Field(..., description="Output format")
-    output_dpi: Optional[int] = Field(default=None, description="Output DPI")
+    output_dpi: int | None = Field(default=None, description="Output DPI")
 
     # Curve applied
-    curve_name: Optional[str] = Field(default=None, description="Applied curve name")
-    curve_type: Optional[CurveType] = Field(default=None, description="Curve type")
+    curve_name: str | None = Field(default=None, description="Applied curve name")
+    curve_type: CurveType | None = Field(default=None, description="Curve type")
 
     # Processing steps
-    steps_applied: List[str] = Field(
+    steps_applied: list[str] = Field(
         default_factory=list, description="Processing steps applied"
     )
 
@@ -299,16 +294,16 @@ class PrintQualityAnalysis(BaseModel):
     )
 
     # Problem areas
-    problem_areas: List[Tuple[ProblemArea, str, float]] = Field(
+    problem_areas: list[tuple[ProblemArea, str, float]] = Field(
         default_factory=list,
         description="List of (area, description, severity) tuples"
     )
 
     # Zone-by-zone analysis
-    zone_differences: Dict[int, float] = Field(
+    zone_differences: dict[int, float] = Field(
         default_factory=dict, description="Difference by zone (0-10)"
     )
-    worst_zones: List[int] = Field(
+    worst_zones: list[int] = Field(
         default_factory=list, description="Zones with largest differences"
     )
 
@@ -319,12 +314,12 @@ class PrintQualityAnalysis(BaseModel):
     suggested_contrast_correction: str = Field(
         default="none", description="Suggested contrast correction"
     )
-    suggested_curve_adjustments: Dict[str, float] = Field(
+    suggested_curve_adjustments: dict[str, float] = Field(
         default_factory=dict, description="Suggested curve adjustments"
     )
 
     # Detailed recommendations
-    corrections: List[str] = Field(
+    corrections: list[str] = Field(
         default_factory=list, description="Specific correction recommendations"
     )
 
@@ -340,29 +335,29 @@ class WorkflowOptimization(BaseModel):
     )
 
     # Patterns identified
-    optimal_parameters: Dict[str, Any] = Field(
+    optimal_parameters: dict[str, Any] = Field(
         default_factory=dict, description="Identified optimal parameters"
     )
-    parameter_trends: Dict[str, str] = Field(
+    parameter_trends: dict[str, str] = Field(
         default_factory=dict, description="Trends in successful prints"
     )
 
     # Predictive insights
-    recommended_base_exposure: Optional[float] = Field(
+    recommended_base_exposure: float | None = Field(
         default=None, description="Recommended base exposure time"
     )
-    recommended_metal_ratio: Optional[float] = Field(
+    recommended_metal_ratio: float | None = Field(
         default=None, description="Recommended Pt/Pd ratio"
     )
-    recommended_paper_settings: Dict[str, Any] = Field(
+    recommended_paper_settings: dict[str, Any] = Field(
         default_factory=dict, description="Paper-specific settings"
     )
 
     # Efficiency improvements
-    efficiency_suggestions: List[str] = Field(
+    efficiency_suggestions: list[str] = Field(
         default_factory=list, description="Suggestions to improve efficiency"
     )
-    common_mistakes: List[str] = Field(
+    common_mistakes: list[str] = Field(
         default_factory=list, description="Common mistakes to avoid"
     )
 
@@ -372,7 +367,7 @@ class WorkflowOptimization(BaseModel):
     )
 
     # Detailed insights
-    insights: List[str] = Field(
+    insights: list[str] = Field(
         default_factory=list, description="Detailed insights from analysis"
     )
 
@@ -401,7 +396,7 @@ class PlatinumPalladiumAI:
     All parameters are configurable via settings, with no hardcoded values.
     """
 
-    def __init__(self, settings: Optional[Any] = None):
+    def __init__(self, settings: Any | None = None):
         """
         Initialize the Platinum/Palladium AI system.
 
@@ -417,8 +412,8 @@ class PlatinumPalladiumAI:
         self.chemistry_calculator = ChemistryCalculator()
 
         # Cache for ML models (lazy loaded)
-        self._exposure_model: Optional[Any] = None
-        self._quality_model: Optional[Any] = None
+        self._exposure_model: Any | None = None
+        self._quality_model: Any | None = None
 
     # ========================================================================
     # 1. Image Tonality Analysis
@@ -426,9 +421,9 @@ class PlatinumPalladiumAI:
 
     def analyze_image_tonality(
         self,
-        image: Union[str, Path, Image.Image, np.ndarray],
-        target_paper: Optional[str] = None,
-        target_process: Optional[ChemistryType] = None,
+        image: str | Path | Image.Image | np.ndarray,
+        target_paper: str | None = None,
+        target_process: ChemistryType | None = None,
     ) -> TonalityAnalysisResult:
         """
         Analyze image for optimal Pt/Pd conversion.
@@ -580,12 +575,12 @@ class PlatinumPalladiumAI:
     def predict_exposure_time(
         self,
         negative_density: float,
-        paper_type: Optional[str] = None,
-        light_source: Optional[LightSource] = None,
-        humidity: Optional[float] = None,
-        temperature: Optional[float] = None,
-        platinum_ratio: Optional[float] = None,
-        distance_inches: Optional[float] = None,
+        paper_type: str | None = None,
+        light_source: LightSource | None = None,
+        humidity: float | None = None,
+        temperature: float | None = None,
+        platinum_ratio: float | None = None,
+        distance_inches: float | None = None,
     ) -> ExposurePrediction:
         """
         AI-based exposure time prediction with confidence intervals.
@@ -657,9 +652,9 @@ class PlatinumPalladiumAI:
 
         # Calculate bounds using error propagation
         # Density affects exposure exponentially (2^(Δd/0.3))
-        density_factor_low = 2 ** ((negative_density - density_uncertainty -
+        2 ** ((negative_density - density_uncertainty -
                                    exposure_settings.base_negative_density) / 0.3)
-        density_factor_high = 2 ** ((negative_density + density_uncertainty -
+        2 ** ((negative_density + density_uncertainty -
                                     exposure_settings.base_negative_density) / 0.3)
 
         lower_bound = result.exposure_seconds * (1 - paper_uncertainty - env_uncertainty)
@@ -715,8 +710,8 @@ class PlatinumPalladiumAI:
         self,
         desired_tone: TonePreference,
         contrast_level: ContrastLevel,
-        paper_type: Optional[str] = None,
-        print_size_inches: Optional[Tuple[float, float]] = None,
+        paper_type: str | None = None,
+        print_size_inches: tuple[float, float] | None = None,
     ) -> ChemistryRecommendation:
         """
         Recommend ferric oxalate and metal ratios for desired tone and contrast.
@@ -887,10 +882,10 @@ class PlatinumPalladiumAI:
 
     def generate_digital_negative(
         self,
-        image: Union[str, Path, Image.Image, np.ndarray],
-        printer_profile: Optional[PrinterProfile] = None,
-        curve: Optional[CurveData] = None,
-        output_path: Optional[Union[str, Path]] = None,
+        image: str | Path | Image.Image | np.ndarray,
+        printer_profile: PrinterProfile | None = None,
+        curve: CurveData | None = None,
+        output_path: str | Path | None = None,
         output_format: ImageFormat = ImageFormat.TIFF_16BIT,
         target_dpi: int = 2880,
         invert: bool = True,
@@ -996,8 +991,8 @@ class PlatinumPalladiumAI:
 
     def analyze_print_quality(
         self,
-        scan_image: Union[str, Path, Image.Image, np.ndarray],
-        reference_image: Union[str, Path, Image.Image, np.ndarray],
+        scan_image: str | Path | Image.Image | np.ndarray,
+        reference_image: str | Path | Image.Image | np.ndarray,
         zone_weight: float = 1.0,
     ) -> PrintQualityAnalysis:
         """
@@ -1065,7 +1060,7 @@ class PlatinumPalladiumAI:
         )[:3]
 
         # Identify problem areas
-        problem_areas: List[Tuple[ProblemArea, str, float]] = []
+        problem_areas: list[tuple[ProblemArea, str, float]] = []
 
         # Check highlights
         if zone_differences[9] > 0.1 or zone_differences[10] > 0.1:
@@ -1208,7 +1203,7 @@ class PlatinumPalladiumAI:
 
     def optimize_workflow(
         self,
-        print_history: List[CalibrationRecord],
+        print_history: list[CalibrationRecord],
         success_threshold: float = 0.8,
     ) -> WorkflowOptimization:
         """
@@ -1278,6 +1273,7 @@ class PlatinumPalladiumAI:
 
             # Analyze most successful paper
             if paper_groups:
+                paper_groups: dict[str, list[CalibrationRecord]] = paper_groups
                 best_paper = max(paper_groups.keys(), key=lambda k: len(paper_groups[k]))
                 trends["most_successful_paper"] = best_paper
                 insights.append(

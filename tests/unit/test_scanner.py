@@ -9,9 +9,9 @@ import pytest
 from PIL import Image
 
 from ptpd_calibration.detection.scanner import (
+    ChannelCurve,
     ScannerCalibration,
     ScannerProfile,
-    ChannelCurve,
 )
 
 

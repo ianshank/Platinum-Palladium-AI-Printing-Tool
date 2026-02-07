@@ -7,7 +7,6 @@ automatic enhancements for calibration curves.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 import numpy as np
 
@@ -71,7 +70,7 @@ class CurveAIEnhancer:
         curve: CurveData,
         goal: EnhancementGoal = EnhancementGoal.LINEARIZATION,
         auto_apply: bool = True,
-        target_densities: Optional[list[float]] = None,
+        target_densities: list[float] | None = None,
     ) -> EnhancementResult:
         """
         Analyze a curve and optionally apply enhancements.
@@ -174,7 +173,7 @@ class CurveAIEnhancer:
         self,
         curve: CurveData,
         goal: EnhancementGoal,
-        user_requirements: Optional[str] = None,
+        user_requirements: str | None = None,
     ) -> str:
         """
         Generate a prompt for LLM-based enhancement suggestions.
@@ -224,7 +223,7 @@ Please respond in a structured format that can be parsed."""
         self,
         curve: CurveData,
         goal: EnhancementGoal,
-        user_requirements: Optional[str] = None,
+        user_requirements: str | None = None,
     ) -> EnhancementResult:
         """
         Enhance curve using LLM suggestions.
@@ -294,14 +293,14 @@ Please respond in a structured format that can be parsed."""
         except ImportError:
             # Fall back to rule-based enhancement
             return await self.analyze_and_enhance(curve, goal, auto_apply=True)
-        except Exception as e:
+        except Exception:
             # Fall back on error
             return await self.analyze_and_enhance(curve, goal, auto_apply=True)
 
     def _analyze_curve(
         self,
         curve: CurveData,
-        target_densities: Optional[list[float]],
+        target_densities: list[float] | None,
     ) -> dict:
         """Perform detailed curve analysis."""
         outputs = np.array(curve.output_values)
@@ -424,15 +423,14 @@ Please respond in a structured format that can be parsed."""
                     suggested_fix="Open up shadow values",
                 ))
 
-        elif goal == EnhancementGoal.SMOOTH_GRADATION:
-            if roughness > 0.005:
-                issues.append(CurveIssue(
-                    issue_type="rough_gradation",
-                    severity="medium",
-                    location="overall",
-                    description="Gradation is not smooth enough",
-                    suggested_fix="Apply heavy smoothing",
-                ))
+        elif goal == EnhancementGoal.SMOOTH_GRADATION and roughness > 0.005:
+            issues.append(CurveIssue(
+                issue_type="rough_gradation",
+                severity="medium",
+                location="overall",
+                description="Gradation is not smooth enough",
+                suggested_fix="Apply heavy smoothing",
+            ))
 
         return issues
 
@@ -534,7 +532,7 @@ Please respond in a structured format that can be parsed."""
         # Simple keyword-based parsing
         response_lower = response.lower()
 
-        for key in adjustments.keys():
+        for key in adjustments:
             # Look for patterns like "brightness: 0.1" or "brightness = -0.2"
             import re
             patterns = [
@@ -569,7 +567,7 @@ async def enhance_curve(
     curve: CurveData,
     goal: str = "linearization",
     use_llm: bool = False,
-    user_requirements: Optional[str] = None,
+    user_requirements: str | None = None,
 ) -> EnhancementResult:
     """
     Convenience function to enhance a curve.

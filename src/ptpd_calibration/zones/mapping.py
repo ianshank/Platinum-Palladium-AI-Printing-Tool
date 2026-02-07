@@ -21,7 +21,6 @@ Each zone represents 1 stop (0.3 density units).
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Optional
 
 import numpy as np
 from PIL import Image
@@ -180,7 +179,7 @@ class ZoneMapper:
     Ansel Adams' Zone System methodology.
     """
 
-    def __init__(self, mapping: Optional[ZoneMapping] = None):
+    def __init__(self, mapping: ZoneMapping | None = None):
         """Initialize zone mapper.
 
         Args:
@@ -191,8 +190,8 @@ class ZoneMapper:
     def analyze_image(
         self,
         image: Image.Image,
-        placed_shadow: Optional[int] = None,
-        placed_highlight: Optional[int] = None,
+        placed_shadow: int | None = None,
+        placed_highlight: int | None = None,
     ) -> ZoneAnalysis:
         """Analyze an image using the Zone System.
 
@@ -205,10 +204,7 @@ class ZoneMapper:
             ZoneAnalysis with distribution and recommendations
         """
         # Convert to grayscale
-        if image.mode != "L":
-            gray = image.convert("L")
-        else:
-            gray = image
+        gray = image.convert("L") if image.mode != "L" else image
 
         # Get pixel values
         arr = np.array(gray)
@@ -330,10 +326,7 @@ class ZoneMapper:
             Image with zones visualized
         """
         # Convert to grayscale
-        if image.mode != "L":
-            gray = image.convert("L")
-        else:
-            gray = image.copy()
+        gray = image.convert("L") if image.mode != "L" else image.copy()
 
         if posterize:
             # Posterize to 11 levels

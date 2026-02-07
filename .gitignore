@@ -137,14 +137,36 @@ cython_debug/
 *.swo
 *~
 
-# Project specific
+# ── Project-specific ─────────────────────────────────────────
+# Images (scans, test targets)
 *.tiff
 *.tif
 *.png
 *.jpg
 *.jpeg
+
+# Calibration data
 calibrations.json
 *.pkl
 *.quad
 *.ppt
 agent_memory.json
+
+# Debug / temp output
+test_output*.txt
+stderr.log
+nul
+
+# Gradio artifacts
+flagged/
+
+# HuggingFace artifacts
+hf_check/
+hf_space_page.html
+
+# Models / checkpoints (large binaries)
+models/
+checkpoints/
+
+# Frontend lock file (use pnpm-lock.yaml instead)
+frontend/package-lock.json

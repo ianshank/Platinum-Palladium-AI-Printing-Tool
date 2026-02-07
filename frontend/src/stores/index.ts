@@ -8,10 +8,10 @@ import { devtools, persist, subscribeWithSelector } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 import { createUISlice, type UISlice } from './slices/uiSlice';
-import { createCalibrationSlice, type CalibrationSlice } from './slices/calibrationSlice';
+import { type CalibrationSlice, createCalibrationSlice } from './slices/calibrationSlice';
 import { createCurveSlice, type CurveSlice } from './slices/curveSlice';
-import { createChemistrySlice, type ChemistrySlice } from './slices/chemistrySlice';
-import { createChatSlice, type ChatSlice } from './slices/chatSlice';
+import { type ChemistrySlice, createChemistrySlice } from './slices/chemistrySlice';
+import { type ChatSlice, createChatSlice } from './slices/chatSlice';
 import { createSessionSlice, type SessionSlice } from './slices/sessionSlice';
 import { createImageSlice, type ImageSlice } from './slices/imageSlice';
 import { config } from '@/config';
@@ -31,22 +31,30 @@ export type StoreState = {
 
 /**
  * Store middleware configuration
+ * NOTE: Zustand's deeply nested middleware generics (immer→persist→subscribeWithSelector→devtools)
+ * require a type-level escape hatch. Using `@ts-expect-error` is preferred over `as any`.
  */
-const storeMiddleware = (
-  create: Parameters<typeof devtools>[0]
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type StoreMiddleware = (f: any) => any;
+
+const storeMiddleware: StoreMiddleware = (
+  f
 ) =>
   devtools(
     subscribeWithSelector(
       persist(
-        immer(create),
+        // @ts-expect-error — Zustand middleware composition has incompatible generic inference
+        immer(f),
         {
           name: 'ptpd-store',
-          partialize: (state) => ({
+          partialize: (state: StoreState) => ({
             // Only persist UI preferences
             ui: {
               activeTab: state.ui.activeTab,
               sidebarOpen: state.ui.sidebarOpen,
               theme: state.ui.theme,
+              // Do not persist runtime flags; ensure processing is reset on load
+              isProcessing: false,
             },
           }),
         }
@@ -62,7 +70,7 @@ const storeMiddleware = (
  * Main application store
  */
 export const useStore = create<StoreState>()(
-  storeMiddleware((set, get, store) => ({
+  storeMiddleware((set: any, get: any, store: any) => ({
     ui: createUISlice(set, get, store),
     calibration: createCalibrationSlice(set, get, store),
     curve: createCurveSlice(set, get, store),

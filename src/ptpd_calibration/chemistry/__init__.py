@@ -5,12 +5,12 @@ Provides tools for calculating coating solution amounts based on print dimension
 """
 
 from ptpd_calibration.chemistry.calculator import (
+    METAL_MIX_RATIOS,
     ChemistryCalculator,
     ChemistryRecipe,
-    PaperAbsorbency,
     CoatingMethod,
     MetalMix,
-    METAL_MIX_RATIOS,
+    PaperAbsorbency,
 )
 
 __all__ = [

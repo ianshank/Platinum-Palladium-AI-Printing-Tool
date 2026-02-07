@@ -5,8 +5,6 @@ These tests simulate complete user workflows without requiring browser automatio
 They test the full integration of modules as a user would experience them.
 """
 
-import tempfile
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -45,9 +43,9 @@ class TestCalibrationJourney:
         """
         Complete workflow: Scan → Analyze → Generate Curve → Export
         """
-        from ptpd_calibration.detection import StepTabletReader
-        from ptpd_calibration.curves import CurveGenerator, save_curve
         from ptpd_calibration.analysis import StepWedgeAnalyzer
+        from ptpd_calibration.curves import CurveGenerator, save_curve
+        from ptpd_calibration.detection import StepTabletReader
 
         # Step 1: Save the sample image
         image_path = tmp_path / "step_tablet.png"
@@ -101,12 +99,12 @@ class TestCalibrationJourney:
 
         # Step 1: Load the real-world quad file
         profile = load_quad_file(real_quad_path)
-        
+
         # Step 2: Validate basic metadata
         assert profile is not None
         # The file has "Platinum-Palladium" in comments
         assert any("Platinum-Palladium" in c for c in profile.comments)
-        
+
         # Step 3: Check Channels
         # The file has K, C, M, Y, LC, LM, LK, LLK, V, MK headers
         # Check for active channels. Based on file content, K seems active.
@@ -114,7 +112,7 @@ class TestCalibrationJourney:
         k_curve = profile.channels["K"]
         assert len(k_curve.values) == 256
         assert k_curve.values[-1] > 0  # Should have some density
-        
+
         # Step 4: Check specific metadata if parsed (e.g. ink load)
         # The parser might extract these if implemented, otherwise check comments
         assert len(profile.comments) > 0
@@ -143,12 +141,12 @@ class TestDigitalNegativeJourney:
         """
         Workflow: Load Image → Preview → Apply Curve → Export Negative
         """
-        from ptpd_calibration.imaging import (
-            ImageProcessor,
-            ImageFormat,
-            ExportSettings,
-        )
         from ptpd_calibration.curves import load_quad_file
+        from ptpd_calibration.imaging import (
+            ExportSettings,
+            ImageFormat,
+            ImageProcessor,
+        )
 
         # Step 1: Save sample image
         image_path = tmp_path / "sample.png"
@@ -220,7 +218,7 @@ class TestChemistryJourney:
         assert "drops" in formatted.lower()
 
         # Step 4: Try different presets
-        for size_name, (w, h) in ChemistryCalculator.get_standard_sizes().items():
+        for _size_name, (w, h) in ChemistryCalculator.get_standard_sizes().items():
             result = calculator.calculate(width_inches=w, height_inches=h)
             assert result.platinum_drops + result.palladium_drops > 0
 
@@ -282,9 +280,9 @@ class TestZoneSystemJourney:
         Workflow: Upload Image → Analyze Zones → Get Recommendations
         """
         from ptpd_calibration.zones import (
+            Zone,
             ZoneMapper,
             ZoneMapping,
-            Zone,
         )
 
         # Step 1: Set up paper characteristics
@@ -319,12 +317,12 @@ class TestSoftProofingJourney:
         """
         Workflow: Select Paper → Adjust Settings → Generate Proof
         """
-        from ptpd_calibration.proofing import (
-            SoftProofer,
-            ProofSettings,
-            PaperSimulation,
-        )
         from ptpd_calibration.curves import load_quad_file
+        from ptpd_calibration.proofing import (
+            PaperSimulation,
+            ProofSettings,
+            SoftProofer,
+        )
 
         # Step 1: Try different paper presets
         for paper in [
@@ -340,8 +338,8 @@ class TestSoftProofingJourney:
             assert result.image.mode == "RGB"
 
         # Step 2: Custom settings with Real Curve
-        # Load real curve to get some characteristics if possible, 
-        # but SoftProofer mainly uses density/color. 
+        # Load real curve to get some characteristics if possible,
+        # but SoftProofer mainly uses density/color.
         # We'll just ensure we can read it and potentially use it in a more advanced test.
         profile = load_quad_file(real_quad_path)
         assert profile is not None
@@ -450,7 +448,6 @@ class TestPaperProfilesJourney:
         """
         from ptpd_calibration.papers import (
             PaperDatabase,
-            PaperProfile,
         )
 
         # Step 1: Create database
@@ -479,8 +476,8 @@ class TestPrintSessionJourney:
         Workflow: Start Session → Log Prints → Review History → Get Stats
         """
         from ptpd_calibration.session import (
-            SessionLogger,
             PrintRecord,
+            SessionLogger,
         )
         from ptpd_calibration.session.logger import ChemistryUsed, PrintResult
 
@@ -488,7 +485,7 @@ class TestPrintSessionJourney:
         logger = SessionLogger(storage_dir=tmp_path / "sessions")
 
         # Step 2: Start a session
-        session = logger.start_session("Test Session")
+        logger.start_session("Test Session")
 
         # Step 3: Log some prints
         for i in range(3):
@@ -531,11 +528,11 @@ class TestIntegratedWorkflow:
         Complete workflow: Analyze → Calculate Chemistry → Calculate Exposure →
         Generate Negative → Preview Proof
         """
-        from ptpd_calibration.imaging import ImageProcessor, HistogramAnalyzer
         from ptpd_calibration.chemistry import ChemistryCalculator
         from ptpd_calibration.exposure import ExposureCalculator, ExposureSettings
+        from ptpd_calibration.imaging import HistogramAnalyzer, ImageProcessor
+        from ptpd_calibration.proofing import ProofSettings, SoftProofer
         from ptpd_calibration.zones import ZoneMapper
-        from ptpd_calibration.proofing import SoftProofer, ProofSettings
 
         # Step 1: Analyze image histogram
         hist_analyzer = HistogramAnalyzer()

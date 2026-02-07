@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { createStore } from '@/stores';
 import type { CurveData, CurvePoint } from './curveSlice';
 

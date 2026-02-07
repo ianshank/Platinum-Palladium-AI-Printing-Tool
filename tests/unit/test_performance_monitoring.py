@@ -13,17 +13,14 @@ Tests cover:
 """
 
 import concurrent.futures
-import csv
 import json
 import tempfile
 import threading
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
-import numpy as np
-import psutil
 import pytest
 
 from ptpd_calibration.monitoring.performance import (
@@ -38,7 +35,6 @@ from ptpd_calibration.monitoring.performance import (
     ResourceMonitor,
     ResourceUsage,
 )
-
 
 # ============================================================================
 # PerformanceMonitor Tests
@@ -98,9 +94,8 @@ class TestPerformanceMonitor:
         """Test timer context manager handles exceptions."""
         monitor = PerformanceMonitor()
 
-        with pytest.raises(ValueError):
-            with monitor.timer("error_test"):
-                raise ValueError("Test error")
+        with pytest.raises(ValueError), monitor.timer("error_test"):
+            raise ValueError("Test error")
 
         # Timer should still record the metric
         metrics = monitor.get_metrics("error_test")
@@ -138,7 +133,7 @@ class TestPerformanceMonitor:
         monitor = PerformanceMonitor()
 
         # Record metrics at different times
-        start = datetime.now()
+        datetime.now()
         monitor.record_metric("test", 1, "count")
 
         time.sleep(0.1)
@@ -146,7 +141,7 @@ class TestPerformanceMonitor:
         monitor.record_metric("test", 2, "count")
 
         time.sleep(0.1)
-        end = datetime.now()
+        datetime.now()
         monitor.record_metric("test", 3, "count")
 
         # Get all metrics
@@ -429,7 +424,7 @@ class TestImageProcessingProfiler:
             profiler.profile_operation(failing_func)
 
         # Should still record metrics
-        metrics = profiler.monitor.get_metrics("failing_func_wall_time")
+        profiler.monitor.get_metrics("failing_func_wall_time")
         # The metric might not be recorded if error happens before recording
         # Just ensure no crash occurred
 
@@ -509,15 +504,15 @@ class TestImageProcessingProfiler:
         profiler = ImageProcessingProfiler()
 
         # Create a slow operation with high variance
-        for i in range(10):
+        for _i in range(10):
             # Most operations are fast
             profiler.monitor.record_metric("fast_op_wall_time", 0.01, "seconds")
-        for i in range(2):
+        for _i in range(2):
             # Some operations are very slow
             profiler.monitor.record_metric("fast_op_wall_time", 0.5, "seconds")
 
         # Create a consistent fast operation
-        for i in range(10):
+        for _i in range(10):
             profiler.monitor.record_metric("consistent_op_wall_time", 0.01, "seconds")
 
         bottlenecks = profiler.identify_bottlenecks(["fast_op", "consistent_op"])
@@ -593,9 +588,8 @@ class TestAPIPerformanceTracker:
         """Test track context manager with error."""
         tracker = APIPerformanceTracker()
 
-        with pytest.raises(ValueError):
-            with tracker.track("/api/fail", "POST"):
-                raise ValueError("Test error")
+        with pytest.raises(ValueError), tracker.track("/api/fail", "POST"):
+            raise ValueError("Test error")
 
         assert len(tracker._requests) == 1
         req = tracker._requests[0]
@@ -644,7 +638,7 @@ class TestAPIPerformanceTracker:
         """Test endpoint stats with time range filter."""
         tracker = APIPerformanceTracker()
 
-        start = datetime.now()
+        datetime.now()
         tracker.track_request("/api/test", 0.1, 200, "GET")
 
         time.sleep(0.1)
@@ -652,7 +646,7 @@ class TestAPIPerformanceTracker:
         tracker.track_request("/api/test", 0.1, 200, "GET")
 
         time.sleep(0.1)
-        end = datetime.now()
+        datetime.now()
 
         # Get only middle request
         stats = tracker.get_endpoint_stats(
@@ -694,7 +688,7 @@ class TestAPIPerformanceTracker:
         tracker = APIPerformanceTracker()
 
         # Track various requests
-        for i in range(10):
+        for _i in range(10):
             tracker.track_request("/api/fast", 0.05, 200, "GET")
             tracker.track_request("/api/slow", 0.5, 200, "GET")
 
@@ -1478,7 +1472,7 @@ class TestIntegration:
         """Test complete monitoring workflow."""
         # Setup components
         monitor = PerformanceMonitor()
-        profiler = ImageProcessingProfiler(monitor=monitor)
+        ImageProcessingProfiler(monitor=monitor)
         api_tracker = APIPerformanceTracker()
         cache = CacheManager()
         resource_monitor = ResourceMonitor()

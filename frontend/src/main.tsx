@@ -1,7 +1,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { ThemeProvider } from 'styled-components';
+import { theme } from './styles/theme';
+
 
 import { App } from './App';
 import { config } from './config';
@@ -41,8 +43,9 @@ const root = createRoot(rootElement);
 root.render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
-      {config.features.devtools && <ReactQueryDevtools initialIsOpen={false} />}
+      <ThemeProvider theme={theme}>
+        <App />
+      </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>
 );

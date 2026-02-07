@@ -11,8 +11,6 @@ Tests coverage:
 """
 
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import pytest
@@ -36,7 +34,6 @@ from ptpd_calibration.qa.quality_assurance import (
     UVLightMeterIntegration,
     UVReading,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -1542,7 +1539,7 @@ class TestQualityAssuranceIntegration:
     ):
         """Test complete QA workflow from measurement to report."""
         # Setup all components
-        validator = NegativeDensityValidator(qa_settings)
+        NegativeDensityValidator(qa_settings)
         chemistry = ChemistryFreshnessTracker(qa_settings)
         humidity = PaperHumidityChecker(qa_settings)
         uv = UVLightMeterIntegration(qa_settings)

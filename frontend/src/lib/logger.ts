@@ -254,7 +254,7 @@ class ChildLogger {
   constructor(
     private parent: Logger,
     private source: string
-  ) {}
+  ) { }
 
   debug(message: string, context?: Record<string, unknown>): void {
     this.parent.debug(`[${this.source}] ${message}`, context);

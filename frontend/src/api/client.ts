@@ -6,6 +6,23 @@
 import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import { config } from '@/config';
 import { logger } from '@/lib/logger';
+import type {
+  AnalysisResponse,
+  CalibrationCreateResponse,
+  CalibrationListResponse,
+  CalibrationRecord,
+  ChatResponse,
+  CurveData,
+  CurveEnhanceResponse,
+  CurveGenerationResponse,
+  CurveModificationRequest,
+  CurveModificationResponse,
+  CurveSmoothingResponse,
+  CurveSmoothRequest,
+  EnforceMonotonicityResponse,
+  ScanUploadResponse,
+  StatisticsResponse
+} from '@/types/models';
 
 /**
  * API Error response structure
@@ -110,31 +127,45 @@ export const api = {
 
   // Curves
   curves: {
-    generate: (data: { measurements: unknown[]; type?: string }) =>
-      apiRequest<{ id: string; points: { x: number; y: number }[] }>({
+    generate: (data: { measurements: number[]; type?: string; name?: string; paper_type?: string; chemistry?: string }) =>
+      apiRequest<CurveGenerationResponse>({
         method: 'POST',
         url: '/api/curves/generate',
         data,
       }),
 
     get: (id: string) =>
-      apiRequest<{ id: string; points: { x: number; y: number }[]; metadata: unknown }>({
+      apiRequest<CurveData>({
         method: 'GET',
         url: `/api/curves/${id}`,
       }),
 
-    modify: (data: { curveId: string; modification: string; value: number }) =>
-      apiRequest<{ points: { x: number; y: number }[] }>({
+    modify: (data: CurveModificationRequest) =>
+      apiRequest<CurveModificationResponse>({
         method: 'POST',
         url: '/api/curves/modify',
         data,
       }),
 
-    smooth: (data: { curveId: string; method: string; amount: number }) =>
-      apiRequest<{ points: { x: number; y: number }[] }>({
+    smooth: (data: CurveSmoothRequest) =>
+      apiRequest<CurveSmoothingResponse>({
         method: 'POST',
         url: '/api/curves/smooth',
         data,
+      }),
+
+    enhance: (data: { name: string; input_values: number[]; output_values: number[]; goal: string; additional_context?: string; paper_type?: string }) =>
+      apiRequest<CurveEnhanceResponse>({
+        method: 'POST',
+        url: '/api/curves/enhance',
+        data,
+      }),
+
+    enforceMonotonicity: (curveId: string, direction: string = 'increasing') =>
+      apiRequest<EnforceMonotonicityResponse>({
+        method: 'POST',
+        url: `/api/curves/${curveId}/enforce-monotonicity`,
+        params: { direction }
       }),
 
     export: (data: { curveId: string; format: string }) =>
@@ -148,11 +179,12 @@ export const api = {
 
   // Scan / Step Tablet
   scan: {
-    upload: (file: File, onProgress?: (progress: number) => void) => {
+    upload: (file: File, tabletType: string = 'stouffer_21', onProgress?: (progress: number) => void) => {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('tablet_type', tabletType);
 
-      return apiRequest<{ id: string; measurements: unknown[]; preview: string }>({
+      return apiRequest<ScanUploadResponse>({
         method: 'POST',
         url: '/api/scan/upload',
         data: formData,
@@ -168,21 +200,22 @@ export const api = {
 
   // Calibrations
   calibrations: {
-    list: () =>
-      apiRequest<{ calibrations: unknown[] }>({
+    list: (paperType?: string, limit: number = 50) =>
+      apiRequest<CalibrationListResponse>({
         method: 'GET',
         url: '/api/calibrations',
+        params: { paper_type: paperType, limit }
       }),
 
-    create: (data: unknown) =>
-      apiRequest<{ id: string }>({
+    create: (data: Omit<CalibrationRecord, 'id' | 'timestamp'>) =>
+      apiRequest<CalibrationCreateResponse>({
         method: 'POST',
         url: '/api/calibrations',
         data,
       }),
 
     get: (id: string) =>
-      apiRequest<unknown>({
+      apiRequest<CalibrationRecord>({
         method: 'GET',
         url: `/api/calibrations/${id}`,
       }),
@@ -190,22 +223,22 @@ export const api = {
 
   // Chat
   chat: {
-    send: (data: { message: string; context?: string[] }) =>
-      apiRequest<{ response: string; context_used: string[] }>({
+    send: (data: { message: string; include_history?: boolean }) =>
+      apiRequest<ChatResponse>({
         method: 'POST',
         url: '/api/chat',
         data,
       }),
 
-    recipe: (data: { query: string }) =>
-      apiRequest<{ suggestions: unknown[] }>({
+    recipe: (data: { paper_type: string; characteristics: string[] }) =>
+      apiRequest<ChatResponse>({
         method: 'POST',
         url: '/api/chat/recipe',
         data,
       }),
 
     troubleshoot: (data: { problem: string }) =>
-      apiRequest<{ suggestions: unknown[] }>({
+      apiRequest<ChatResponse>({
         method: 'POST',
         url: '/api/chat/troubleshoot',
         data,
@@ -215,7 +248,7 @@ export const api = {
   // Statistics
   statistics: {
     get: () =>
-      apiRequest<{ stats: unknown }>({
+      apiRequest<StatisticsResponse>({
         method: 'GET',
         url: '/api/statistics',
       }),
@@ -223,8 +256,8 @@ export const api = {
 
   // Analyze
   analyze: {
-    densities: (data: { measurements: unknown[] }) =>
-      apiRequest<{ analysis: unknown }>({
+    densities: (data: { measurements: number[] }) =>
+      apiRequest<AnalysisResponse>({
         method: 'POST',
         url: '/api/analyze',
         data,

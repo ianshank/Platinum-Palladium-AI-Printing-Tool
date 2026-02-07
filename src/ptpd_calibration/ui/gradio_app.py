@@ -5,50 +5,50 @@ Provides comprehensive curve display, step wedge analysis, and calibration tools
 """
 
 from pathlib import Path
-from typing import Optional
-from datetime import datetime, timedelta
 
 import numpy as np
 
+from ptpd_calibration.ui.tabs.ai_assistant import build_ai_assistant_tab as build_ai_new
+from ptpd_calibration.ui.tabs.calibration_wizard import (
+    build_calibration_wizard_tab as build_wizard_new,
+)
+from ptpd_calibration.ui.tabs.chemistry import build_chemistry_tab as build_chemistry_new
+
 # Import new modular tabs
 from ptpd_calibration.ui.tabs.dashboard import build_dashboard_tab as build_dashboard_new
-from ptpd_calibration.ui.tabs.calibration_wizard import build_calibration_wizard_tab as build_wizard_new
-from ptpd_calibration.ui.tabs.chemistry import build_chemistry_tab as build_chemistry_new
 from ptpd_calibration.ui.tabs.session_log import build_session_log_tab as build_session_log_new
-from ptpd_calibration.ui.tabs.ai_assistant import build_ai_assistant_tab as build_ai_new
-
 
 
 def _patch_gradio_client_utils():
     """
     Monkey-patch gradio_client.utils to handle additionalProperties: true.
-    
+
     This fixes a bug where Pydantic models with Dict[str, Any] fields
     generate JSON schemas with additionalProperties: true (a boolean),
     but gradio_client expects it to be a dict.
     """
     try:
         import gradio_client.utils as client_utils
-        
+
         original_get_type = client_utils.get_type
-        
+
         def patched_get_type(schema):
             # Handle case where schema is a boolean (additionalProperties: true)
             if isinstance(schema, bool):
                 return "Any"
             return original_get_type(schema)
-        
+
         client_utils.get_type = patched_get_type
-        
+
         # Also patch _json_schema_to_python_type to handle boolean schemas
         original_json_schema_to_python_type = client_utils._json_schema_to_python_type
-        
+
         def patched_json_schema_to_python_type(schema, defs):
             # Handle case where schema is a boolean
             if isinstance(schema, bool):
                 return "Any"
             return original_json_schema_to_python_type(schema, defs)
-        
+
         client_utils._json_schema_to_python_type = patched_json_schema_to_python_type
     except Exception:
         pass  # Silently ignore if patching fails
@@ -75,49 +75,36 @@ def create_gradio_app(share: bool = False):
             "Gradio is required for UI. Install with: pip install ptpd-calibration[ui]"
         )
 
-    from ptpd_calibration.config import TabletType, get_settings
-    from ptpd_calibration.core.types import CurveType
-    from ptpd_calibration.core.models import CurveData
-    from ptpd_calibration.curves import (
-        CurveAnalyzer,
-        CurveGenerator,
-        load_quad_file,
-        load_quad_string,
-        CurveModifier,
-        SmoothingMethod,
-        CurveAIEnhancer,
-        EnhancementGoal,
-        save_curve,
-        CurveVisualizer,
-        VisualizationConfig,
-        PlotStyle,
-        ColorScheme,
-    )
-    from ptpd_calibration.detection import StepTabletReader
     from ptpd_calibration.analysis import (
         StepWedgeAnalyzer,
         WedgeAnalysisConfig,
-        QualityGrade,
     )
-    from ptpd_calibration.chemistry import (
-        ChemistryCalculator,
-        ChemistryRecipe,
-        PaperAbsorbency,
-        CoatingMethod,
-        MetalMix,
-        METAL_MIX_RATIOS,
+    from ptpd_calibration.config import TabletType, get_settings
+    from ptpd_calibration.core.models import CurveData
+    from ptpd_calibration.core.types import CurveType
+    from ptpd_calibration.curves import (
+        ColorScheme,
+        CurveAIEnhancer,
+        CurveGenerator,
+        CurveModifier,
+        CurveVisualizer,
+        EnhancementGoal,
+        PlotStyle,
+        SmoothingMethod,
+        VisualizationConfig,
+        load_quad_file,
+        load_quad_string,
+        save_curve,
     )
+    from ptpd_calibration.detection import StepTabletReader
     from ptpd_calibration.imaging import (
-        ImageProcessor,
-        ImageFormat,
         ExportSettings,
+        ImageFormat,
+        ImageProcessor,
     )
     from ptpd_calibration.imaging.processor import ColorMode
     from ptpd_calibration.session import (
         SessionLogger,
-        PrintRecord,
-        ChemistryUsed,
-        PrintResult,
     )
 
     # Get settings for configuration-driven defaults
@@ -238,7 +225,7 @@ def create_gradio_app(share: bool = False):
 
     session_logger = SessionLogger()
 
-    
+
     def build_curve_display_tab():
         # ========================================
         # TAB 1: Curve Display
@@ -353,17 +340,12 @@ def create_gradio_app(share: bool = False):
                                     curve = profile.to_curve_data(active[0])
                                     curves.append(curve)
                                     names.append(f"{profile.profile_name} ({active[0]})")
-                        elif suffix == ".json":
+                        elif suffix == ".json" or suffix == ".csv":
                             from ptpd_calibration.curves.export import load_curve
                             curve = load_curve(file_path)
                             curves.append(curve)
                             names.append(curve.name)
-                        elif suffix == ".csv":
-                            from ptpd_calibration.curves.export import load_curve
-                            curve = load_curve(file_path)
-                            curves.append(curve)
-                            names.append(curve.name)
-                    except Exception as e:
+                    except Exception:
                         continue
 
                 # Update display
@@ -734,7 +716,7 @@ def create_gradio_app(share: bool = False):
 
                     return curve, fig, gr.update(visible=True)
 
-                except Exception as e:
+                except Exception:
                     return None, None, gr.update()
 
             def export_generated_curve(curve, format_type):
@@ -1504,7 +1486,7 @@ def create_gradio_app(share: bool = False):
                     save_curve(curve, temp_path, format=format_type)
 
                     return str(temp_path)
-                except Exception as e:
+                except Exception:
                     import traceback
                     traceback.print_exc()
                     return None
@@ -1804,10 +1786,7 @@ def create_gradio_app(share: bool = False):
                     if suffix in [".quad", ".txt"]:
                         profile = load_quad_file(file_path)
                         curve = profile.to_curve_data("K")
-                    elif suffix == ".json":
-                        from ptpd_calibration.curves.export import load_curve
-                        curve = load_curve(file_path)
-                    elif suffix == ".csv":
+                    elif suffix == ".json" or suffix == ".csv":
                         from ptpd_calibration.curves.export import load_curve
                         curve = load_curve(file_path)
                     else:
@@ -2009,10 +1988,7 @@ def create_gradio_app(share: bool = False):
                     if suffix in [".quad", ".txt"]:
                         profile = load_quad_file(file_path)
                         curve = profile.to_curve_data("K")
-                    elif suffix == ".json":
-                        from ptpd_calibration.curves.export import load_curve
-                        curve = load_curve(file_path)
-                    elif suffix == ".csv":
+                    elif suffix == ".json" or suffix == ".csv":
                         from ptpd_calibration.curves.export import load_curve
                         curve = load_curve(file_path)
                     else:
@@ -2097,7 +2073,7 @@ def create_gradio_app(share: bool = False):
                     processor.export(result, temp_path, settings)
 
                     return str(temp_path)
-                except Exception as e:
+                except Exception:
                     return None
 
             # Connect handlers
@@ -2234,7 +2210,7 @@ def create_gradio_app(share: bool = False):
 
                 # Filter out None values and create valid points
                 points = []
-                for inp, out in zip(inputs, outputs):
+                for inp, out in zip(inputs, outputs, strict=False):
                     if inp is not None and out is not None:
                         points.append((float(inp), float(out)))
 
@@ -2333,7 +2309,7 @@ def create_gradio_app(share: bool = False):
                     outputs = list(point_values[9:18])
 
                     points = []
-                    for inp, out in zip(inputs, outputs):
+                    for inp, out in zip(inputs, outputs, strict=False):
                         if inp is not None and out is not None:
                             points.append((float(inp), float(out)))
 
@@ -2523,7 +2499,7 @@ def create_gradio_app(share: bool = False):
                         return "No API key provided", gr.update()
 
                     # Update the global settings
-                    from ptpd_calibration.config import get_settings, LLMProvider
+                    from ptpd_calibration.config import LLMProvider, get_settings
                     current_settings = get_settings()
                     current_settings.llm.runtime_api_key = api_key.strip()
                     current_settings.llm.provider = LLMProvider(provider)
@@ -2582,7 +2558,6 @@ def create_gradio_app(share: bool = False):
                 """
             )
 
-            from ptpd_calibration.batch import BatchProcessor, BatchSettings
 
             batch_curve_state = gr.State(None)
 
@@ -2662,8 +2637,8 @@ def create_gradio_app(share: bool = False):
                     return "No files to process", {}, None
 
                 try:
-                    import tempfile
                     import os
+                    import tempfile
                     processor = ImageProcessor()
                     color_mode = ColorMode.GRAYSCALE if grayscale else ColorMode.PRESERVE
 
@@ -2671,7 +2646,7 @@ def create_gradio_app(share: bool = False):
                     output_files = []
                     temp_dir = tempfile.mkdtemp()
 
-                    for i, file in enumerate(files):
+                    for _i, file in enumerate(files):
                         try:
                             result = processor.create_digital_negative(
                                 file.name,
@@ -2998,10 +2973,10 @@ def create_gradio_app(share: bool = False):
             )
 
             from ptpd_calibration.zones import (
+                ZONE_DESCRIPTIONS,
+                Zone,
                 ZoneMapper,
                 ZoneMapping,
-                Zone,
-                ZONE_DESCRIPTIONS,
             )
 
             with gr.Row():
@@ -3136,10 +3111,10 @@ def create_gradio_app(share: bool = False):
             )
 
             from ptpd_calibration.proofing import (
-                SoftProofer,
-                ProofSettings,
-                PaperSimulation,
                 PAPER_PRESETS,
+                PaperSimulation,
+                ProofSettings,
+                SoftProofer,
             )
 
             with gr.Row():
@@ -3371,7 +3346,11 @@ def create_gradio_app(share: bool = False):
                 if not name:
                     return {"error": "Paper name required"}
                 try:
-                    from ptpd_calibration.papers.profiles import PaperCharacteristics, SizingType, TextureType
+                    from ptpd_calibration.papers.profiles import (
+                        PaperCharacteristics,
+                        SizingType,
+                        TextureType,
+                    )
                     profile = PaperProfile(
                         name=name,
                         manufacturer=mfr or "Custom",
@@ -3583,7 +3562,7 @@ def create_gradio_app(share: bool = False):
                 """
             )
 
-            from ptpd_calibration.detection.scanner import ScannerCalibration, ScannerProfile
+            from ptpd_calibration.detection.scanner import ScannerCalibration
 
             with gr.Row():
                 with gr.Column(scale=1):
@@ -3776,8 +3755,9 @@ def create_gradio_app(share: bool = False):
                     return None, "No file selected", None
 
                 try:
-                    import matplotlib.pyplot as plt
                     from pathlib import Path
+
+                    import matplotlib.pyplot as plt
 
                     cal = ScannerCalibration.load(Path(file.name))
                     profile = cal.profile
@@ -3817,7 +3797,7 @@ def create_gradio_app(share: bool = False):
                 try:
                     corrected = cal.apply_correction(image)
                     return corrected
-                except Exception as e:
+                except Exception:
                     return None
 
             def save_profile(cal):
@@ -3951,7 +3931,7 @@ def create_gradio_app(share: bool = False):
             }
         )
         gr.HTML(
-            f"<script>document.documentElement.setAttribute('data-ptpd-theme','darkroom');</script>",
+            "<script>document.documentElement.setAttribute('data-ptpd-theme','darkroom');</script>",
             visible=False,
         )
         gr.HTML(f"<script>{keyboard_js}</script>", visible=False)
@@ -3985,41 +3965,37 @@ def create_gradio_app(share: bool = False):
             build_dashboard_new(onboarding_state, session_logger)
 
             # 2. Calibration
-            with gr.TabItem("📊 Calibration"):
-                with gr.Tabs(elem_id="calibration-tabs"):
-                    build_wizard_new()
-                    build_step_tablet_reader_tab()
-                    build_step_wedge_tab()
-                    build_curve_display_tab()
-                    build_generate_curve_tab()
-                    build_curve_editor_tab()
-                    build_auto_linearization_tab()
+            with gr.TabItem("📊 Calibration"), gr.Tabs(elem_id="calibration-tabs"):
+                build_wizard_new()
+                build_step_tablet_reader_tab()
+                build_step_wedge_tab()
+                build_curve_display_tab()
+                build_generate_curve_tab()
+                build_curve_editor_tab()
+                build_auto_linearization_tab()
 
             # 3. Image Prep
-            with gr.TabItem("🎨 Image Prep"):
-                with gr.Tabs(elem_id="image-tabs"):
-                    build_image_preview_tab()
-                    build_digital_negative_tab()
-                    build_interactive_editor_tab()
-                    build_batch_processing_tab()
-                    build_histogram_tab()
-                    build_zone_system_tab()
-                    build_soft_proofing_tab()
+            with gr.TabItem("🎨 Image Prep"), gr.Tabs(elem_id="image-tabs"):
+                build_image_preview_tab()
+                build_digital_negative_tab()
+                build_interactive_editor_tab()
+                build_batch_processing_tab()
+                build_histogram_tab()
+                build_zone_system_tab()
+                build_soft_proofing_tab()
 
             # 4. Darkroom
-            with gr.TabItem("🧪 Darkroom"):
-                with gr.Tabs(elem_id="darkroom-tabs"):
-                    build_chemistry_new()
-                    build_exposure_tab()
-                    build_paper_profiles_tab()
-                    build_session_log_new(session_logger)
-                    build_settings_tab()
+            with gr.TabItem("🧪 Darkroom"), gr.Tabs(elem_id="darkroom-tabs"):
+                build_chemistry_new()
+                build_exposure_tab()
+                build_paper_profiles_tab()
+                build_session_log_new(session_logger)
+                build_settings_tab()
 
             # 5. AI Tools
-            with gr.TabItem("🤖 AI Tools"):
-                with gr.Tabs(elem_id="ai-tabs"):
-                    build_ai_new()
-                    build_quick_tools_tab()
+            with gr.TabItem("🤖 AI Tools"), gr.Tabs(elem_id="ai-tabs"):
+                build_ai_new()
+                build_quick_tools_tab()
 
             build_about_tab(tab_label="ℹ️ About")
 

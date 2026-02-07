@@ -5,8 +5,6 @@ Tests curve application, inversion, and export functionality.
 """
 
 import io
-import tempfile
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -14,9 +12,9 @@ from PIL import Image
 
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.imaging import (
-    ImageProcessor,
-    ImageFormat,
     ExportSettings,
+    ImageFormat,
+    ImageProcessor,
     ProcessingResult,
 )
 from ptpd_calibration.imaging.processor import ColorMode

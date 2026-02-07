@@ -2,9 +2,8 @@
 LLM client implementations for different providers.
 """
 
-import asyncio
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
 
 from ptpd_calibration.config import LLMProvider, LLMSettings, get_settings
 
@@ -16,20 +15,20 @@ class LLMClient(ABC):
     async def complete(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> str:
         """Generate a completion."""
         pass
 
     @abstractmethod
-    async def stream(
+    def stream(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]:
         """Stream a completion."""
         pass
@@ -38,7 +37,7 @@ class LLMClient(ABC):
 class AnthropicClient(LLMClient):
     """Client for Anthropic Claude API."""
 
-    def __init__(self, settings: Optional[LLMSettings] = None):
+    def __init__(self, settings: LLMSettings | None = None):
         """
         Initialize Anthropic client.
 
@@ -56,9 +55,9 @@ class AnthropicClient(LLMClient):
     async def complete(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> str:
         """Generate completion using Anthropic API."""
         try:
@@ -83,9 +82,9 @@ class AnthropicClient(LLMClient):
     async def stream(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]:
         """Stream completion using Anthropic API."""
         try:
@@ -111,7 +110,7 @@ class AnthropicClient(LLMClient):
 class OpenAIClient(LLMClient):
     """Client for OpenAI API."""
 
-    def __init__(self, settings: Optional[LLMSettings] = None):
+    def __init__(self, settings: LLMSettings | None = None):
         """
         Initialize OpenAI client.
 
@@ -129,9 +128,9 @@ class OpenAIClient(LLMClient):
     async def complete(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> str:
         """Generate completion using OpenAI API."""
         try:
@@ -152,7 +151,7 @@ class OpenAIClient(LLMClient):
         response = await client.chat.completions.create(
             model=self.settings.openai_model,
             max_tokens=max_tokens or self.settings.max_tokens,
-            messages=all_messages,
+            messages=all_messages,  # type: ignore[arg-type]
             temperature=temperature if temperature is not None else self.settings.temperature,
         )
 
@@ -161,9 +160,9 @@ class OpenAIClient(LLMClient):
     async def stream(
         self,
         messages: list[dict],
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        system: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]:
         """Stream completion using OpenAI API."""
         try:
@@ -184,17 +183,17 @@ class OpenAIClient(LLMClient):
         stream = await client.chat.completions.create(
             model=self.settings.openai_model,
             max_tokens=max_tokens or self.settings.max_tokens,
-            messages=all_messages,
+            messages=all_messages,  # type: ignore[arg-type]
             temperature=temperature if temperature is not None else self.settings.temperature,
             stream=True,
         )
 
-        async for chunk in stream:
+        async for chunk in stream:  # type: ignore[union-attr]
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
 
-def create_client(settings: Optional[LLMSettings] = None) -> LLMClient:
+def create_client(settings: LLMSettings | None = None) -> LLMClient:
     """
     Create an LLM client based on settings.
 

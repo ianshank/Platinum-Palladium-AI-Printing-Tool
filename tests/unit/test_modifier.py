@@ -7,14 +7,14 @@ import pytest
 
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.curves.modifier import (
+    AdjustmentType,
+    BlendMode,
+    CurveAdjustment,
     CurveModifier,
     SmoothingMethod,
-    BlendMode,
-    AdjustmentType,
-    CurveAdjustment,
     adjust_curve,
-    smooth_curve,
     blend_curves,
+    smooth_curve,
 )
 
 

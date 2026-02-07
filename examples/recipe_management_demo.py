@@ -7,20 +7,18 @@ for platinum/palladium printing.
 
 import sys
 from pathlib import Path
-from uuid import uuid4
 
 # Add src to path for direct execution
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
 from ptpd_calibration.workflow import (
     PrintRecipe,
     RecipeDatabase,
     RecipeFormat,
     RecipeManager,
     WorkflowAutomation,
-    WorkflowStep,
 )
-from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
 
 
 def demo_basic_recipe_creation():
@@ -351,7 +349,7 @@ def demo_quality_tracking(manager):
     recipe.update_quality(rating=5.0, dmin=0.07, dmax=1.72)
     print(f"  Print 3: Rating 5.0 → Current rating: {recipe.quality_rating:.2f}")
 
-    print(f"\n✓ Final statistics:")
+    print("\n✓ Final statistics:")
     print(f"  Average quality: {recipe.quality_rating:.2f}/5.0")
     print(f"  Successful prints: {recipe.successful_prints}")
     print(f"  Dmin achieved: {recipe.dmin_achieved}")
@@ -367,7 +365,7 @@ def main():
     try:
         # Basic operations
         manager, recipe = demo_basic_recipe_creation()
-        cloned = demo_recipe_cloning(manager, recipe)
+        demo_recipe_cloning(manager, recipe)
 
         # Search and discovery
         demo_recipe_search(manager)

@@ -5,11 +5,10 @@ Applies calibration curves to images, creates inverted negatives,
 and exports in various formats while preserving resolution.
 """
 
+import io
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
-import io
 
 import numpy as np
 from PIL import Image
@@ -51,8 +50,8 @@ class ExportSettings:
     jpeg_quality: int = 95  # 0-100
     preserve_metadata: bool = True
     preserve_resolution: bool = True
-    target_dpi: Optional[int] = None  # Override DPI if set
-    compression: Optional[str] = None  # Format-specific compression
+    target_dpi: int | None = None  # Override DPI if set
+    compression: str | None = None  # Format-specific compression
 
 
 @dataclass
@@ -62,8 +61,8 @@ class ProcessingResult:
     image: Image.Image
     original_size: tuple[int, int]
     original_mode: str
-    original_format: Optional[str]
-    original_dpi: Optional[tuple[int, int]]
+    original_format: str | None
+    original_dpi: tuple[int, int] | None
     curve_applied: bool
     inverted: bool
     processing_notes: list[str] = field(default_factory=list)
@@ -99,7 +98,7 @@ class ImageProcessor:
 
     def load_image(
         self,
-        source: Union[str, Path, Image.Image, np.ndarray, bytes],
+        source: str | Path | Image.Image | np.ndarray | bytes,
     ) -> ProcessingResult:
         """Load an image from various sources.
 
@@ -166,9 +165,8 @@ class ImageProcessor:
         if color_mode == ColorMode.GRAYSCALE:
             if img.mode not in ("L", "LA"):
                 img = img.convert("L")
-        elif color_mode == ColorMode.RGB:
-            if img.mode not in ("RGB", "RGBA"):
-                img = img.convert("RGB")
+        elif color_mode == ColorMode.RGB and img.mode not in ("RGB", "RGBA"):
+            img = img.convert("RGB")
 
         # Create lookup table from curve
         lut = self._create_lut(curve)
@@ -300,7 +298,7 @@ class ImageProcessor:
     def _validate_channel_dimensions(
         self,
         arr: np.ndarray,
-        expected_channels: Optional[int] = None,
+        expected_channels: int | None = None,
     ) -> None:
         """Validate that all channels have consistent dimensions.
 
@@ -463,8 +461,8 @@ class ImageProcessor:
 
     def create_digital_negative(
         self,
-        source: Union[str, Path, Image.Image, np.ndarray, bytes],
-        curve: Optional[CurveData] = None,
+        source: str | Path | Image.Image | np.ndarray | bytes,
+        curve: CurveData | None = None,
         invert: bool = True,
         color_mode: ColorMode = ColorMode.GRAYSCALE,
     ) -> ProcessingResult:
@@ -484,18 +482,17 @@ class ImageProcessor:
         result = self.load_image(source)
 
         # Convert to appropriate color mode
-        if color_mode == ColorMode.GRAYSCALE:
-            if result.image.mode not in ("L", "LA"):
-                result = ProcessingResult(
-                    image=result.image.convert("L"),
-                    original_size=result.original_size,
-                    original_mode=result.original_mode,
-                    original_format=result.original_format,
-                    original_dpi=result.original_dpi,
-                    curve_applied=result.curve_applied,
-                    inverted=result.inverted,
-                    processing_notes=result.processing_notes + ["Converted to grayscale"],
-                )
+        if color_mode == ColorMode.GRAYSCALE and result.image.mode not in ("L", "LA"):
+            result = ProcessingResult(
+                image=result.image.convert("L"),
+                original_size=result.original_size,
+                original_mode=result.original_mode,
+                original_format=result.original_format,
+                original_dpi=result.original_dpi,
+                curve_applied=result.curve_applied,
+                inverted=result.inverted,
+                processing_notes=result.processing_notes + ["Converted to grayscale"],
+            )
 
         # Apply curve if provided
         if curve is not None:
@@ -509,10 +506,10 @@ class ImageProcessor:
 
     def preview_curve_effect(
         self,
-        source: Union[str, Path, Image.Image, np.ndarray, bytes],
+        source: str | Path | Image.Image | np.ndarray | bytes,
         curve: CurveData,
         color_mode: ColorMode = ColorMode.PRESERVE,
-        thumbnail_size: Optional[tuple[int, int]] = None,
+        thumbnail_size: tuple[int, int] | None = None,
     ) -> tuple[Image.Image, Image.Image]:
         """Preview the effect of a curve on an image.
 
@@ -549,8 +546,8 @@ class ImageProcessor:
     def export(
         self,
         result: ProcessingResult,
-        output_path: Union[str, Path],
-        settings: Optional[ExportSettings] = None,
+        output_path: str | Path,
+        settings: ExportSettings | None = None,
     ) -> Path:
         """Export processed image to file.
 
@@ -633,7 +630,7 @@ class ImageProcessor:
     def export_to_bytes(
         self,
         result: ProcessingResult,
-        settings: Optional[ExportSettings] = None,
+        settings: ExportSettings | None = None,
     ) -> tuple[bytes, str]:
         """Export processed image to bytes.
 

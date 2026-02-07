@@ -4,7 +4,6 @@ Active learning for efficient calibration.
 Suggests optimal experiments to maximize learning with minimal prints.
 """
 
-from typing import Optional
 
 import numpy as np
 
@@ -23,8 +22,8 @@ class ActiveLearner:
 
     def __init__(
         self,
-        predictor: Optional[CurvePredictor] = None,
-        settings: Optional[MLSettings] = None,
+        predictor: CurvePredictor | None = None,
+        settings: MLSettings | None = None,
     ):
         """
         Initialize the active learner.
@@ -98,7 +97,7 @@ class ActiveLearner:
             "variation": best_variation,
             "rationale": rationale,
             "score": best_score,
-            "all_scores": list(zip(variations, scores)),
+            "all_scores": list(zip(variations, scores, strict=False)),
         }
 
     def suggest_exposure_bracket(
@@ -184,7 +183,7 @@ class ActiveLearner:
     def evaluate_calibration_quality(
         self,
         record: CalibrationRecord,
-        target_curve: Optional[list[float]] = None,
+        target_curve: list[float] | None = None,
     ) -> dict:
         """
         Evaluate quality of a completed calibration.

@@ -7,11 +7,9 @@ with various target curve options and optimization methods.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Tuple, List
 
 import numpy as np
 from scipy import interpolate
-from scipy.optimize import minimize_scalar
 
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
@@ -58,12 +56,12 @@ class LinearizationResult:
     curve: CurveData
     method_used: LinearizationMethod
     target_response: TargetResponse
-    measured_densities: List[float]
-    target_densities: List[float]
+    measured_densities: list[float]
+    target_densities: list[float]
     residual_error: float  # RMS error from target
     max_deviation: float  # Maximum deviation from target
     iterations_used: int = 1
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -86,7 +84,7 @@ class AutoLinearizer:
     curve needed to achieve a target response (typically linear).
     """
 
-    def __init__(self, config: Optional[LinearizationConfig] = None):
+    def __init__(self, config: LinearizationConfig | None = None):
         """Initialize auto-linearizer.
 
         Args:
@@ -96,10 +94,10 @@ class AutoLinearizer:
 
     def linearize(
         self,
-        measured_densities: List[float],
-        curve_name: Optional[str] = None,
-        target: Optional[TargetResponse] = None,
-        method: Optional[LinearizationMethod] = None,
+        measured_densities: list[float],
+        curve_name: str | None = None,
+        target: TargetResponse | None = None,
+        method: LinearizationMethod | None = None,
     ) -> LinearizationResult:
         """Generate linearization curve from measured densities.
 
@@ -175,7 +173,7 @@ class AutoLinearizer:
     def refine_curve(
         self,
         existing_curve: CurveData,
-        new_measurements: List[float],
+        new_measurements: list[float],
     ) -> LinearizationResult:
         """Refine an existing linearization curve with new measurements.
 
@@ -289,7 +287,7 @@ class AutoLinearizer:
         input_positions: np.ndarray,
         measured: np.ndarray,
         target: np.ndarray,
-    ) -> Tuple[Tuple[np.ndarray, np.ndarray], List[str]]:
+    ) -> tuple[tuple[np.ndarray, np.ndarray], list[str]]:
         """Simple direct inversion method.
 
         Args:
@@ -327,7 +325,7 @@ class AutoLinearizer:
         input_positions: np.ndarray,
         measured: np.ndarray,
         target: np.ndarray,
-    ) -> Tuple[Tuple[np.ndarray, np.ndarray], List[str]]:
+    ) -> tuple[tuple[np.ndarray, np.ndarray], list[str]]:
         """Spline-based linearization.
 
         Args:
@@ -390,7 +388,7 @@ class AutoLinearizer:
         input_positions: np.ndarray,
         measured: np.ndarray,
         target: np.ndarray,
-    ) -> Tuple[Tuple[np.ndarray, np.ndarray], List[str]]:
+    ) -> tuple[tuple[np.ndarray, np.ndarray], list[str]]:
         """Polynomial regression linearization.
 
         Args:
@@ -429,7 +427,7 @@ class AutoLinearizer:
         input_positions: np.ndarray,
         measured: np.ndarray,
         target: np.ndarray,
-    ) -> Tuple[Tuple[np.ndarray, np.ndarray], List[str]]:
+    ) -> tuple[tuple[np.ndarray, np.ndarray], list[str]]:
         """Iterative refinement linearization.
 
         Args:
@@ -448,14 +446,7 @@ class AutoLinearizer:
 
         # Iteratively refine
         for i in range(self.config.iterations):
-            # Apply current curve to see result
-            interp = interpolate.interp1d(
-                curve[0], current_y,
-                kind="cubic", fill_value="extrapolate"
-            )
-
             # Compute error at measurement points
-            # predicted = interp(input_positions)  # Unused
             measured_norm = (measured - measured.min()) / (measured.max() - measured.min() + 1e-10)
             error = target - measured_norm
 
@@ -477,7 +468,7 @@ class AutoLinearizer:
         input_positions: np.ndarray,
         measured: np.ndarray,
         target: np.ndarray,
-    ) -> Tuple[Tuple[np.ndarray, np.ndarray], List[str]]:
+    ) -> tuple[tuple[np.ndarray, np.ndarray], list[str]]:
         """Hybrid method combining spline and iterative refinement.
 
         Args:
@@ -535,11 +526,11 @@ class AutoLinearizer:
 
     def _compute_error(
         self,
-        curve: Tuple[np.ndarray, np.ndarray],
+        curve: tuple[np.ndarray, np.ndarray],
         input_positions: np.ndarray,
         measured: np.ndarray,
         target: np.ndarray,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Compute error metrics for the linearization.
 
         Args:
@@ -572,7 +563,7 @@ class AutoLinearizer:
         return rms_error, max_dev
 
     @staticmethod
-    def get_methods() -> List[Tuple[str, str]]:
+    def get_methods() -> list[tuple[str, str]]:
         """Get list of linearization methods with descriptions.
 
         Returns:
@@ -587,7 +578,7 @@ class AutoLinearizer:
         ]
 
     @staticmethod
-    def get_targets() -> List[Tuple[str, str]]:
+    def get_targets() -> list[tuple[str, str]]:
         """Get list of target responses with descriptions.
 
         Returns:

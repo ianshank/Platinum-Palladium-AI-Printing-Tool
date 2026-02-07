@@ -4,13 +4,11 @@ Transfer learning for new papers and chemistries.
 Enables bootstrapping calibrations from similar known materials.
 """
 
-from typing import Optional
 
 import numpy as np
 
 from ptpd_calibration.core.models import CalibrationRecord
 from ptpd_calibration.ml.database import CalibrationDatabase
-
 
 # Paper characteristic database for similarity matching
 PAPER_CHARACTERISTICS = {
@@ -76,8 +74,8 @@ class TransferLearner:
     def find_similar_papers(
         self,
         paper_type: str,
-        paper_weight: Optional[int] = None,
-        paper_sizing: Optional[str] = None,
+        paper_weight: int | None = None,
+        paper_sizing: str | None = None,
         top_k: int = 5,
     ) -> list[tuple[str, float]]:
         """

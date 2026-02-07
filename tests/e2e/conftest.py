@@ -4,9 +4,6 @@ This conftest supports both functional user journey tests and Playwright browser
 Playwright is optional - if not installed, browser tests will be skipped.
 """
 
-import os
-import subprocess
-import time
 
 import pytest
 
@@ -24,7 +21,7 @@ except ImportError:
 @pytest.fixture(scope="session")
 def app_url():
     """Return the URL of the running app."""
-    return "http://127.0.0.1:7861"
+    return "http://localhost:3000"
 
 
 @pytest.fixture(scope="session")
@@ -39,42 +36,14 @@ def ensure_app_running(app_url):
     # Check if app is already running
     try:
         urllib.request.urlopen(app_url, timeout=5)
-        print("App is already running.")
+        print("App is running.")
         yield
         return
     except Exception:
-        print("App not running. Starting it...")
-
-    # Start the app
-    process = subprocess.Popen(
-        ["python", "-m", "ptpd_calibration.ui.gradio_app"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env={
-            **os.environ,
-            "GRADIO_SERVER_NAME": "127.0.0.1",
-            "GRADIO_SERVER_PORT": "7861",
-        },
-    )
-
-    # Wait for app to start
-    max_retries = 30
-    for i in range(max_retries):
-        try:
-            urllib.request.urlopen(app_url, timeout=5)
-            print("App started successfully.")
-            break
-        except Exception:
-            time.sleep(1)
-            if i == max_retries - 1:
-                process.terminate()
-                raise RuntimeError("Failed to start app.")
-
-    yield
-
-    # Cleanup
-    process.terminate()
-    process.wait(timeout=5)
+        pytest.fail(
+            f"App not running at {app_url}. Please start the frontend (npm run dev) "
+            "and backend (python -m ptpd_calibration.api.server) before running E2E tests."
+        )
 
 
 def pytest_configure(config):
@@ -94,3 +63,10 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "browser" in item.keywords:
                 item.add_marker(skip_browser)
+
+from pathlib import Path
+
+@pytest.fixture
+def real_quad_path():
+    """Path to the real-world .quad fixture file."""
+    return Path(__file__).parent.parent / "fixtures" / "Platinum_Palladium_V6-CC.quad"

@@ -13,6 +13,27 @@ export interface DensityMeasurement {
   deltaE?: number;
 }
 
+/**
+ * Typed metadata for calibration workflow.
+ * Known keys are typed explicitly; additional keys are allowed via index signature.
+ */
+export interface CalibrationMetadata {
+  // Scan analysis metrics
+  dmin?: number;
+  dmax?: number;
+  range?: number;
+  num_patches?: number;
+  originalFileName?: string;
+
+  // Configuration preferences
+  linearizationMode?: string;
+  targetResponse?: string;
+  curveStrategy?: string;
+
+  // Extensible for future keys
+  [key: string]: unknown;
+}
+
 export interface CalibrationData {
   id: string;
   name: string;
@@ -20,9 +41,9 @@ export interface CalibrationData {
   updatedAt: string;
   tabletType: '21-step' | '31-step' | '41-step' | 'custom';
   measurements: DensityMeasurement[];
-  curveId?: string;
-  notes?: string;
-  metadata?: Record<string, unknown>;
+  curveId?: string | undefined;
+  notes?: string | undefined;
+  metadata?: CalibrationMetadata | undefined;
 }
 
 export interface CalibrationSlice {
@@ -51,6 +72,7 @@ export interface CalibrationSlice {
   deleteCalibration: (id: string) => void;
   clearCurrent: () => void;
   resetCalibration: () => void;
+  updateMetadata: (metadata: CalibrationMetadata) => void;
 }
 
 const WIZARD_STEPS = 5; // Total wizard steps
@@ -142,7 +164,7 @@ export const createCalibrationSlice: StateCreator<
         if (index !== -1) {
           state.calibration.current.measurements[index] = {
             ...state.calibration.current.measurements[index],
-            ...measurement,
+            ...measurement as DensityMeasurement,
           };
           state.calibration.current.updatedAt = new Date().toISOString();
         }
@@ -255,6 +277,19 @@ export const createCalibrationSlice: StateCreator<
       state.calibration.isAnalyzing = initialState.isAnalyzing;
       state.calibration.analysisProgress = initialState.analysisProgress;
       state.calibration.error = initialState.error;
+    });
+  },
+
+  updateMetadata: (metadata) => {
+    logger.debug('Calibration: updateMetadata', { metadata });
+    set((state) => {
+      if (state.calibration.current) {
+        state.calibration.current.metadata = {
+          ...state.calibration.current.metadata,
+          ...metadata
+        };
+        state.calibration.current.updatedAt = new Date().toISOString();
+      }
     });
   },
 });

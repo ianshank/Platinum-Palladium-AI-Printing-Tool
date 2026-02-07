@@ -33,6 +33,7 @@ module.exports = {
     'react-refresh',
     '@typescript-eslint',
     'jsx-a11y',
+    'vitest-globals',
   ],
   settings: {
     react: {

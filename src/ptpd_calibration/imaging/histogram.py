@@ -11,7 +11,6 @@ Provides comprehensive histogram analysis including:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Tuple, Union
 from pathlib import Path
 
 import numpy as np
@@ -91,14 +90,14 @@ class HistogramResult:
     stats: HistogramStats
 
     # Original image info
-    image_size: Tuple[int, int]
+    image_size: tuple[int, int]
     image_mode: str
     total_pixels: int
 
     # For RGB images, per-channel histograms
-    red_histogram: Optional[np.ndarray] = None
-    green_histogram: Optional[np.ndarray] = None
-    blue_histogram: Optional[np.ndarray] = None
+    red_histogram: np.ndarray | None = None
+    green_histogram: np.ndarray | None = None
+    blue_histogram: np.ndarray | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary (excluding large arrays)."""
@@ -135,7 +134,7 @@ class HistogramAnalyzer:
 
     def analyze(
         self,
-        image: Union[str, Path, Image.Image, np.ndarray],
+        image: str | Path | Image.Image | np.ndarray,
         include_rgb: bool = True,
     ) -> HistogramResult:
         """Analyze image histogram.
@@ -202,8 +201,8 @@ class HistogramAnalyzer:
 
     def compare_histograms(
         self,
-        image1: Union[str, Path, Image.Image, np.ndarray],
-        image2: Union[str, Path, Image.Image, np.ndarray],
+        image1: str | Path | Image.Image | np.ndarray,
+        image2: str | Path | Image.Image | np.ndarray,
     ) -> dict:
         """Compare histograms of two images.
 
@@ -389,7 +388,6 @@ class HistogramAnalyzer:
             Matplotlib figure
         """
         import matplotlib.pyplot as plt
-        import matplotlib.patches as mpatches
 
         # Create figure
         fig, axes = plt.subplots(2, 1, figsize=(10, 8), height_ratios=[3, 1])
@@ -467,7 +465,7 @@ class HistogramAnalyzer:
         ax2.grid(True, alpha=0.3, axis="y")
 
         # Add percentage labels on bars
-        for bar, pct in zip(bars, zone_pcts):
+        for bar, pct in zip(bars, zone_pcts, strict=False):
             if pct > 1:
                 ax2.text(
                     bar.get_x() + bar.get_width() / 2,

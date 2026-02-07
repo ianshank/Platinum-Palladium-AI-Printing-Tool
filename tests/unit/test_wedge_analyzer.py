@@ -6,17 +6,17 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from ptpd_calibration.config import TabletType
-from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.analysis.wedge_analyzer import (
-    StepWedgeAnalyzer,
-    WedgeAnalysisResult,
-    WedgeAnalysisConfig,
-    QualityAssessment,
-    QualityGrade,
     AnalysisWarning,
     AnalysisWarningLevel,
+    QualityAssessment,
+    QualityGrade,
+    StepWedgeAnalyzer,
+    WedgeAnalysisConfig,
+    WedgeAnalysisResult,
 )
+from ptpd_calibration.config import TabletType
+from ptpd_calibration.core.types import CurveType
 
 
 class TestAnalysisWarning:

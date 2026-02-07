@@ -9,11 +9,10 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
-from ptpd_calibration.config import ExportFormat, get_settings
+from ptpd_calibration.config import get_settings
 from ptpd_calibration.core.models import CurveData
 
 
@@ -41,8 +40,8 @@ class QTRExporter(CurveExporter):
     def __init__(
         self,
         primary_channel: str = "K",
-        ink_limit: Optional[float] = None,
-        resolution: Optional[int] = None,
+        ink_limit: float | None = None,
+        resolution: int | None = None,
     ):
         """
         Initialize QTR exporter.
@@ -73,12 +72,12 @@ class QTRExporter(CurveExporter):
 
     def _export_curve_file(self, curve: CurveData, path: Path) -> None:
         """Export as QTR curve file (single channel).
-        
+
         Uses QuadTone RIP format with 16-bit values.
         """
         lines = [
             f"## QuadToneRIP {self.primary_channel}",
-            f"# QTR Curve File",
+            "# QTR Curve File",
             f"# Generated: {datetime.now().isoformat()}",
             f"# Name: {curve.name}",
             f"# Paper: {curve.paper_type or 'Unknown'}",
@@ -103,7 +102,7 @@ class QTRExporter(CurveExporter):
 
     def _export_quad_profile(self, curve: CurveData, path: Path) -> None:
         """Export as full .quad profile in QuadTone RIP format.
-        
+
         QuadTone RIP format specification:
         - Header: ## QuadToneRIP K,C,M,Y,LC,LM,LK,LLK
         - Comments: lines starting with #
@@ -114,7 +113,7 @@ class QTRExporter(CurveExporter):
         """
         # Standard channel order
         all_channels = ["K", "C", "M", "Y", "LC", "LM", "LK", "LLK"]
-        
+
         lines = [
             f"## QuadToneRIP {','.join(all_channels)}",
             f"# Profile: {curve.name}",
@@ -191,7 +190,7 @@ class PiezographyExporter(CurveExporter):
     def _export_ppt_format(self, curve: CurveData, path: Path) -> None:
         """Export as Piezography Print Tool format."""
         lines = [
-            f"# Piezography Linearization",
+            "# Piezography Linearization",
             f"# Name: {curve.name}",
             f"# Ink Set: {self.ink_set}",
             f"# Paper: {curve.paper_type or 'Unknown'}",
@@ -208,7 +207,7 @@ class PiezographyExporter(CurveExporter):
         x_new = np.linspace(0, 1, 101)
         y_new = np.interp(x_new, curve.input_values, curve.output_values)
 
-        for i, (inp, out) in enumerate(zip(x_new, y_new)):
+        for _i, (inp, out) in enumerate(zip(x_new, y_new, strict=False)):
             pz_input = int(inp * 100)
             pz_output = out * 100
             lines.append(f"{pz_input}={pz_output:.2f}")
@@ -236,7 +235,7 @@ class CSVExporter(CurveExporter):
         with open(path, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["input", "output"])
-            for inp, out in zip(curve.input_values, curve.output_values):
+            for inp, out in zip(curve.input_values, curve.output_values, strict=False):
                 writer.writerow([f"{inp:.6f}", f"{out:.6f}"])
 
     def get_format_name(self) -> str:
@@ -263,7 +262,7 @@ class JSONExporter(CurveExporter):
         return "JSON"
 
 
-def save_curve(curve: CurveData, path: Path, format: Optional[str] = None) -> None:
+def save_curve(curve: CurveData, path: Path, format: str | None = None) -> None:
     """
     Save curve to file in specified format.
 

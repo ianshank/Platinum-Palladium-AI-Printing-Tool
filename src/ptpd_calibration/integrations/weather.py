@@ -5,12 +5,12 @@ Provides weather data to help optimize platinum/palladium printing workflow,
 including humidity and temperature monitoring for coating and drying times.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional
-import logging
+from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field
@@ -64,7 +64,7 @@ class CurrentConditions:
         humidity_ok = 30 <= self.humidity_percent <= 70
         return temp_ok and humidity_ok
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
             "temperature_c": self.temperature_c,
@@ -95,7 +95,7 @@ class ForecastPeriod:
         """Temperature in Fahrenheit."""
         return self.temperature_c * 9/5 + 32
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -115,7 +115,7 @@ class DryingTimeEstimate(BaseModel):
     estimated_hours: float = Field(description="Estimated drying time in hours")
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence in estimate")
     conditions: CurrentConditions = Field(description="Weather conditions used")
-    recommendations: List[str] = Field(default_factory=list, description="Recommendations")
+    recommendations: list[str] = Field(default_factory=list, description="Recommendations")
 
     class Config:
         arbitrary_types_allowed = True
@@ -127,7 +127,7 @@ class CoatingRecommendation(BaseModel):
     best_time: datetime = Field(description="Recommended coating time")
     forecast: ForecastPeriod = Field(description="Forecast for recommended time")
     reason: str = Field(description="Reason for recommendation")
-    alternative_times: List[datetime] = Field(default_factory=list, description="Alternative times")
+    alternative_times: list[datetime] = Field(default_factory=list, description="Alternative times")
 
     class Config:
         arbitrary_types_allowed = True
@@ -140,7 +140,7 @@ class WeatherProvider(ABC):
     Concrete implementations should handle API-specific requests and parsing.
     """
 
-    def __init__(self, api_key: Optional[str] = None, units: str = "metric"):
+    def __init__(self, api_key: str | None = None, units: str = "metric"):
         """
         Initialize weather provider.
 
@@ -150,15 +150,15 @@ class WeatherProvider(ABC):
         """
         self.api_key = api_key
         self.units = units
-        self._cache: Dict[str, tuple[datetime, any]] = {}
+        self._cache: dict[str, tuple[datetime, Any]] = {}
         self._cache_duration = timedelta(minutes=10)
 
     @abstractmethod
     async def get_current_conditions(
         self,
         location: str,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
     ) -> CurrentConditions:
         """
         Get current weather conditions.
@@ -178,9 +178,9 @@ class WeatherProvider(ABC):
         self,
         location: str,
         hours: int = 24,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
-    ) -> List[ForecastPeriod]:
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> list[ForecastPeriod]:
         """
         Get weather forecast.
 
@@ -290,8 +290,8 @@ class WeatherProvider(ABC):
         self,
         location: str,
         forecast_hours: int = 48,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
     ) -> CoatingRecommendation:
         """
         Recommend best time to coat paper based on forecast.
@@ -356,7 +356,7 @@ class WeatherProvider(ABC):
             alternative_times=alternatives
         )
 
-    def _get_from_cache(self, key: str) -> Optional[any]:
+    def _get_from_cache(self, key: str) -> Any | None:
         """Get value from cache if not expired."""
         if key in self._cache:
             timestamp, value = self._cache[key]
@@ -364,7 +364,7 @@ class WeatherProvider(ABC):
                 return value
         return None
 
-    def _set_cache(self, key: str, value: any) -> None:
+    def _set_cache(self, key: str, value: Any) -> None:
         """Set value in cache."""
         self._cache[key] = (datetime.now(), value)
 
@@ -379,7 +379,7 @@ class OpenWeatherMapProvider(WeatherProvider):
 
     BASE_URL = "https://api.openweathermap.org/data/2.5"
 
-    def __init__(self, api_key: Optional[str] = None, units: str = "metric"):
+    def __init__(self, api_key: str | None = None, units: str = "metric"):
         """
         Initialize OpenWeatherMap provider.
 
@@ -393,8 +393,8 @@ class OpenWeatherMapProvider(WeatherProvider):
     async def get_current_conditions(
         self,
         location: str,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
     ) -> CurrentConditions:
         """Get current weather from OpenWeatherMap."""
         if not self.api_key:
@@ -406,10 +406,11 @@ class OpenWeatherMapProvider(WeatherProvider):
         cached = self._get_from_cache(cache_key)
         if cached:
             logger.debug("Returning cached current conditions")
-            return cached
+            from typing import cast
+            return cast(CurrentConditions, cached)
 
         # Build request parameters
-        params = {
+        params: dict[str, Any] = {
             "appid": self.api_key,
             "units": self.units,
         }
@@ -444,9 +445,9 @@ class OpenWeatherMapProvider(WeatherProvider):
         self,
         location: str,
         hours: int = 24,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
-    ) -> List[ForecastPeriod]:
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> list[ForecastPeriod]:
         """Get weather forecast from OpenWeatherMap."""
         if not self.api_key:
             logger.warning("No API key provided, returning simulated data")
@@ -460,7 +461,7 @@ class OpenWeatherMapProvider(WeatherProvider):
             return cached
 
         # Build request parameters
-        params = {
+        params: dict[str, Any] = {
             "appid": self.api_key,
             "units": self.units,
         }
@@ -491,7 +492,7 @@ class OpenWeatherMapProvider(WeatherProvider):
             logger.warning("Falling back to simulated data")
             return self._simulate_forecast(hours)
 
-    def _parse_current_conditions(self, data: Dict) -> CurrentConditions:
+    def _parse_current_conditions(self, data: dict) -> CurrentConditions:
         """Parse OpenWeatherMap current weather response."""
         main = data["main"]
         weather = data["weather"][0]
@@ -520,7 +521,7 @@ class OpenWeatherMapProvider(WeatherProvider):
             timestamp=datetime.fromtimestamp(data["dt"])
         )
 
-    def _parse_forecast(self, data: Dict, hours: int) -> List[ForecastPeriod]:
+    def _parse_forecast(self, data: dict, hours: int) -> list[ForecastPeriod]:
         """Parse OpenWeatherMap forecast response."""
         forecast_list = data["list"]
         periods = []
@@ -575,7 +576,7 @@ class OpenWeatherMapProvider(WeatherProvider):
             timestamp=datetime.now()
         )
 
-    def _simulate_forecast(self, hours: int) -> List[ForecastPeriod]:
+    def _simulate_forecast(self, hours: int) -> list[ForecastPeriod]:
         """Generate simulated forecast for testing."""
         import random
 

@@ -5,12 +5,12 @@ Calibration database for storing and querying historical records.
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 from uuid import UUID
 
 import numpy as np
 
 from ptpd_calibration.core.models import CalibrationRecord
+from ptpd_calibration.gcp.storage import StorageBackend
 
 
 class CalibrationDatabase:
@@ -21,11 +21,13 @@ class CalibrationDatabase:
     for building ML training datasets.
     """
 
-    def __init__(self):
-        """Initialize empty database."""
+    def __init__(self, storage_backend: StorageBackend | None = None, db_path: str = "database.json"):
+        """Initialize database with optional storage backend."""
         self.records: dict[UUID, CalibrationRecord] = {}
         self._paper_index: dict[str, list[UUID]] = {}
         self._chemistry_index: dict[str, list[UUID]] = {}
+        self.storage = storage_backend
+        self.db_path = db_path
 
     def add_record(self, record: CalibrationRecord) -> None:
         """
@@ -46,7 +48,11 @@ class CalibrationDatabase:
             self._chemistry_index[chem_key] = []
         self._chemistry_index[chem_key].append(record.id)
 
-    def get_record(self, record_id: UUID) -> Optional[CalibrationRecord]:
+        # Auto-save if storage is configured
+        if self.storage:
+            self.save()
+
+    def get_record(self, record_id: UUID) -> CalibrationRecord | None:
         """Get a record by ID."""
         return self.records.get(record_id)
 
@@ -150,13 +156,13 @@ class CalibrationDatabase:
 
     def query(
         self,
-        paper_type: Optional[str] = None,
-        chemistry_type: Optional[str] = None,
-        min_exposure: Optional[float] = None,
-        max_exposure: Optional[float] = None,
-        min_metal_ratio: Optional[float] = None,
-        max_metal_ratio: Optional[float] = None,
-        tags: Optional[list[str]] = None,
+        paper_type: str | None = None,
+        chemistry_type: str | None = None,
+        min_exposure: float | None = None,
+        max_exposure: float | None = None,
+        min_metal_ratio: float | None = None,
+        max_metal_ratio: float | None = None,
+        tags: list[str] | None = None,
     ) -> list[CalibrationRecord]:
         """
         Query records with filters.
@@ -232,7 +238,7 @@ class CalibrationDatabase:
             f"{len(stats.get('chemistry_types', []))} chemistry types"
         )
 
-    def save(self, path: Path) -> None:
+    def save(self, path: Path | None = None) -> None:
         """Save database to JSON file."""
         data = {
             "version": "1.0",
@@ -248,9 +254,42 @@ class CalibrationDatabase:
             if record.get("curve_id"):
                 record["curve_id"] = str(record["curve_id"])
 
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w") as f:
-            json.dump(data, f, indent=2, default=str)
+            if record.get("curve_id"):
+                record["curve_id"] = str(record["curve_id"])
+
+        json_str = json.dumps(data, indent=2, default=str)
+
+        if self.storage:
+            self.storage.save(self.db_path, json_str)
+        else:
+            # Fallback to local file if path provided (legacy)
+            if isinstance(path, Path):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with open(path, "w") as f:
+                    f.write(json_str)
+
+    def load_from_storage(self) -> None:
+        """Load database from storage."""
+        if not self.storage:
+            return
+
+        try:
+            data_bytes = self.storage.load(self.db_path)
+            data = json.loads(data_bytes)
+
+            self.records = {}
+            self._paper_index = {}
+            self._chemistry_index = {}
+
+            for record_data in data.get("records", []):
+                try:
+                    record = CalibrationRecord(**record_data)
+                    self.add_record(record)
+                except Exception:
+                    continue
+        except Exception:
+            # If load fails (e.g. file doesn't exist), start empty
+            pass
 
     @classmethod
     def load(cls, path: Path) -> "CalibrationDatabase":

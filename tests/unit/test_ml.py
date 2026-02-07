@@ -2,17 +2,14 @@
 Tests for ML prediction and refinement.
 """
 
-import tempfile
-from pathlib import Path
-from uuid import UUID
 
 import numpy as np
 import pytest
 
 from ptpd_calibration.core.models import CalibrationRecord
 from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
-from ptpd_calibration.ml.database import CalibrationDatabase
 from ptpd_calibration.ml.active_learning import ActiveLearner
+from ptpd_calibration.ml.database import CalibrationDatabase
 
 
 class TestCalibrationDatabase:
@@ -24,7 +21,7 @@ class TestCalibrationDatabase:
         records = []
         papers = ["Arches Platine", "Bergger COT320", "Hahnemühle Platinum Rag"]
 
-        for i, paper in enumerate(papers):
+        for _i, paper in enumerate(papers):
             for j in range(3):
                 record = CalibrationRecord(
                     paper_type=paper,

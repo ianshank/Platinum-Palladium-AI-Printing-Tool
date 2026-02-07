@@ -23,7 +23,6 @@ from ptpd_calibration.advanced import (
     NegativeBlender,
     PrintComparison,
     PrintMetadata,
-    StyleParameters,
     StyleTransfer,
 )
 
@@ -138,7 +137,7 @@ def demo_negative_blending():
     print("✓ Multiply blend created")
 
     # Create masks
-    contrast_mask = blender.create_contrast_mask(neg1, threshold=0.5)
+    blender.create_contrast_mask(neg1, threshold=0.5)
     print("✓ Contrast mask created")
 
     highlight_mask = blender.create_highlight_mask(neg1, threshold=0.7)
@@ -158,7 +157,7 @@ def demo_negative_blending():
     print("✓ Dodge and burn applied")
 
     # Multi-layer mask
-    multi_mask = blender.create_multi_layer_mask(
+    blender.create_multi_layer_mask(
         [highlight_mask, shadow_mask],
         blend_modes=['multiply', 'add']
     )
@@ -233,7 +232,7 @@ def demo_style_transfer():
 
     # List available styles
     print(f"Available historic styles: {len(transfer.styles)}")
-    for style_name in transfer.styles.keys():
+    for style_name in transfer.styles:
         if hasattr(style_name, 'value'):
             print(f"  - {style_name.value}")
 

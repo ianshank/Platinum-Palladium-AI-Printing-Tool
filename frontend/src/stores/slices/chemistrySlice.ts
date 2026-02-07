@@ -192,11 +192,11 @@ export const createChemistrySlice: StateCreator<
       platinumMl: Math.round(platinumMl * 100) / 100,
       palladiumMl: Math.round(palladiumMl * 100) / 100,
       ferricOxalateMl: Math.round(ferricOxalateMl * 100) / 100,
-      contrastAgent,
+      ...(contrastAgent && { contrastAgent }),
       developer: { ...developer },
     };
 
-    logger.info('Chemistry: recipe calculated', recipe);
+    logger.info('Chemistry: recipe calculated', recipe as unknown as Record<string, unknown>);
 
     set((state) => {
       state.chemistry.recipe = recipe;

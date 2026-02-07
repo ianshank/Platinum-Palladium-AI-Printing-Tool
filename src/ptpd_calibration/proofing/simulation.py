@@ -10,10 +10,9 @@ Simulates how prints will look on paper, accounting for:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Tuple
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 
 
 class PaperSimulation(str, Enum):
@@ -67,12 +66,12 @@ class ProofSettings:
     """Settings for soft proofing simulation."""
 
     # Paper characteristics
-    paper_white_rgb: Tuple[int, int, int] = (250, 246, 238)
+    paper_white_rgb: tuple[int, int, int] = (250, 246, 238)
     paper_dmax: float = 1.6
     paper_dmin: float = 0.07
 
     # Tone characteristics
-    shadow_tone_rgb: Tuple[int, int, int] = (25, 22, 20)  # Warm black for Pd
+    shadow_tone_rgb: tuple[int, int, int] = (25, 22, 20)  # Warm black for Pd
     platinum_ratio: float = 0.0  # 0 = all Pd (warm), 1 = all Pt (cool)
 
     # Simulation quality
@@ -111,7 +110,7 @@ class ProofResult:
 
     image: Image.Image
     settings: ProofSettings
-    original_size: Tuple[int, int]
+    original_size: tuple[int, int]
     notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -134,7 +133,7 @@ class SoftProofer:
     how a print will look on actual paper.
     """
 
-    def __init__(self, settings: Optional[ProofSettings] = None):
+    def __init__(self, settings: ProofSettings | None = None):
         """Initialize soft proofer.
 
         Args:
@@ -145,7 +144,7 @@ class SoftProofer:
     def proof(
         self,
         image: Image.Image,
-        settings: Optional[ProofSettings] = None,
+        settings: ProofSettings | None = None,
     ) -> ProofResult:
         """Generate soft proof of an image.
 

@@ -5,14 +5,13 @@ Provides abstract interface and concrete implementations for spectrophotometer d
 Currently includes simulated X-Rite device support for testing and development.
 """
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 import logging
 import time
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
+from pathlib import Path
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -53,7 +52,7 @@ class LABValue:
     a: float  # Green-Red axis
     b: float  # Blue-Yellow axis
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> dict[str, float]:
         """Convert to dictionary."""
         return {"L": self.L, "a": self.a, "b": self.b}
 
@@ -70,10 +69,10 @@ class LABValue:
 class SpectralData:
     """Spectral reflectance/transmittance data."""
 
-    wavelengths: List[float]  # Wavelength values (nm)
-    values: List[float]  # Reflectance/transmittance values (0-1)
+    wavelengths: list[float]  # Wavelength values (nm)
+    values: list[float]  # Reflectance/transmittance values (0-1)
 
-    def to_dict(self) -> Dict[str, List[float]]:
+    def to_dict(self) -> dict[str, list[float]]:
         """Convert to dictionary."""
         return {"wavelengths": self.wavelengths, "values": self.values}
 
@@ -84,8 +83,8 @@ class PatchMeasurement(BaseModel):
     patch_id: str = Field(description="Patch identifier")
     density: float = Field(description="Optical density")
     lab: LABValue = Field(description="L*a*b* color values")
-    rgb: Optional[Tuple[int, int, int]] = Field(default=None, description="RGB values (0-255)")
-    spectral: Optional[SpectralData] = Field(default=None, description="Spectral data")
+    rgb: tuple[int, int, int] | None = Field(default=None, description="RGB values (0-255)")
+    spectral: SpectralData | None = Field(default=None, description="Spectral data")
     timestamp: datetime = Field(default_factory=datetime.now)
 
     class Config:
@@ -96,8 +95,8 @@ class CalibrationResult(BaseModel):
     """Spectrophotometer calibration result."""
 
     success: bool = Field(description="Calibration success status")
-    white_reference: Optional[LABValue] = Field(default=None, description="White reference L*a*b*")
-    black_reference: Optional[LABValue] = Field(default=None, description="Black reference L*a*b*")
+    white_reference: LABValue | None = Field(default=None, description="White reference L*a*b*")
+    black_reference: LABValue | None = Field(default=None, description="Black reference L*a*b*")
     timestamp: datetime = Field(default_factory=datetime.now)
     message: str = Field(default="", description="Status message")
 
@@ -116,7 +115,7 @@ class SpectrophotometerInterface(ABC):
 
     def __init__(
         self,
-        device_id: Optional[str] = None,
+        device_id: str | None = None,
         mode: MeasurementMode = MeasurementMode.REFLECTION,
         aperture: ApertureSize = ApertureSize.MEDIUM,
     ):
@@ -133,7 +132,7 @@ class SpectrophotometerInterface(ABC):
         self.aperture = aperture
         self.is_connected = False
         self.is_calibrated = False
-        self.last_calibration: Optional[CalibrationResult] = None
+        self.last_calibration: CalibrationResult | None = None
 
     @abstractmethod
     def connect(self) -> bool:
@@ -213,7 +212,7 @@ class SpectrophotometerInterface(ABC):
         num_patches: int,
         patch_prefix: str = "patch",
         delay_seconds: float = 1.0,
-    ) -> List[PatchMeasurement]:
+    ) -> list[PatchMeasurement]:
         """
         Read a strip of patches.
 
@@ -230,7 +229,7 @@ class SpectrophotometerInterface(ABC):
     @abstractmethod
     def export_measurements(
         self,
-        measurements: List[PatchMeasurement],
+        measurements: list[PatchMeasurement],
         output_path: Path,
         format: ExportFormat = ExportFormat.CGATS,
     ) -> Path:
@@ -258,7 +257,7 @@ class XRiteIntegration(SpectrophotometerInterface):
 
     def __init__(
         self,
-        device_id: Optional[str] = None,
+        device_id: str | None = None,
         mode: MeasurementMode = MeasurementMode.REFLECTION,
         aperture: ApertureSize = ApertureSize.MEDIUM,
         simulate: bool = True,
@@ -461,7 +460,7 @@ class XRiteIntegration(SpectrophotometerInterface):
             spectral=spectral
         )
 
-    def _lab_to_rgb_approximate(self, lab: LABValue) -> Tuple[int, int, int]:
+    def _lab_to_rgb_approximate(self, lab: LABValue) -> tuple[int, int, int]:
         """Approximate L*a*b* to RGB conversion (simplified)."""
         # This is a very rough approximation for display purposes
         # Real conversion requires proper XYZ intermediate and white point
@@ -481,7 +480,7 @@ class XRiteIntegration(SpectrophotometerInterface):
         num_patches: int,
         patch_prefix: str = "patch",
         delay_seconds: float = 1.0,
-    ) -> List[PatchMeasurement]:
+    ) -> list[PatchMeasurement]:
         """
         Read a strip of patches.
 
@@ -516,7 +515,7 @@ class XRiteIntegration(SpectrophotometerInterface):
 
     def export_measurements(
         self,
-        measurements: List[PatchMeasurement],
+        measurements: list[PatchMeasurement],
         output_path: Path,
         format: ExportFormat = ExportFormat.CGATS,
     ) -> Path:
@@ -543,16 +542,15 @@ class XRiteIntegration(SpectrophotometerInterface):
         else:
             raise ValueError(f"Unsupported export format: {format}")
 
-    def _export_cgats(self, measurements: List[PatchMeasurement], path: Path) -> Path:
+    def _export_cgats(self, measurements: list[PatchMeasurement], path: Path) -> Path:
         """Export to CGATS format."""
-        import csv
 
         with open(path, 'w', newline='') as f:
             # Write CGATS header
             f.write("CGATS.17\n")
             f.write(f"CREATED {datetime.now().isoformat()}\n")
             f.write(f"ORIGINATOR \"{self.device_model}\"\n")
-            f.write(f"NUMBER_OF_FIELDS 7\n")
+            f.write("NUMBER_OF_FIELDS 7\n")
             f.write("BEGIN_DATA_FORMAT\n")
             f.write("SAMPLE_ID DENSITY LAB_L LAB_A LAB_B RGB_R RGB_G RGB_B\n")
             f.write("END_DATA_FORMAT\n")
@@ -569,7 +567,7 @@ class XRiteIntegration(SpectrophotometerInterface):
         logger.info(f"Exported {len(measurements)} measurements to CGATS: {path}")
         return path
 
-    def _export_csv(self, measurements: List[PatchMeasurement], path: Path) -> Path:
+    def _export_csv(self, measurements: list[PatchMeasurement], path: Path) -> Path:
         """Export to CSV format."""
         import csv
 
@@ -593,7 +591,7 @@ class XRiteIntegration(SpectrophotometerInterface):
         logger.info(f"Exported {len(measurements)} measurements to CSV: {path}")
         return path
 
-    def _export_json(self, measurements: List[PatchMeasurement], path: Path) -> Path:
+    def _export_json(self, measurements: list[PatchMeasurement], path: Path) -> Path:
         """Export to JSON format."""
         import json
 

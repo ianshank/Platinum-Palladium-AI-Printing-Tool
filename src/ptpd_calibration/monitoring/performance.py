@@ -10,18 +10,16 @@ import json
 import logging
 import threading
 import time
-import traceback
 from collections import OrderedDict, defaultdict, deque
+from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import psutil
 from pydantic import BaseModel, Field
-
-from ptpd_calibration.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +36,7 @@ class PerformanceMetric(BaseModel):
     value: float = Field(..., description="Metric value")
     unit: str = Field(..., description="Unit of measurement")
     timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}
@@ -55,8 +53,8 @@ class ResourceUsage(BaseModel):
     disk_used_gb: float = Field(..., description="Disk used in GB")
     disk_free_gb: float = Field(..., description="Disk free in GB")
     timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp")
-    gpu_percent: Optional[float] = Field(None, description="GPU usage percentage if available")
-    gpu_memory_mb: Optional[float] = Field(None, description="GPU memory used in MB")
+    gpu_percent: float | None = Field(None, description="GPU usage percentage if available")
+    gpu_memory_mb: float | None = Field(None, description="GPU memory used in MB")
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}
@@ -70,7 +68,7 @@ class APIMetric(BaseModel):
     status_code: int = Field(..., description="HTTP status code")
     timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp")
     method: str = Field(default="GET", description="HTTP method")
-    error: Optional[str] = Field(None, description="Error message if any")
+    error: str | None = Field(None, description="Error message if any")
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}
@@ -116,8 +114,8 @@ class PerformanceMonitor:
         Args:
             max_history: Maximum number of metrics to keep in memory
         """
-        self._timers: Dict[str, float] = {}
-        self._metrics: Dict[str, List[PerformanceMetric]] = defaultdict(list)
+        self._timers: dict[str, float] = {}
+        self._metrics: dict[str, list[PerformanceMetric]] = defaultdict(list)
         self._max_history = max_history
         self._lock = threading.RLock()
         logger.info(f"PerformanceMonitor initialized with max_history={max_history}")
@@ -133,7 +131,7 @@ class PerformanceMonitor:
             self._timers[operation_name] = time.perf_counter()
             logger.debug(f"Started timer for: {operation_name}")
 
-    def stop_timer(self, operation_name: str) -> Optional[float]:
+    def stop_timer(self, operation_name: str) -> float | None:
         """
         Stop timing an operation and record the duration.
 
@@ -185,7 +183,7 @@ class PerformanceMonitor:
         name: str,
         value: float,
         unit: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Record an arbitrary performance metric.
@@ -215,8 +213,8 @@ class PerformanceMonitor:
     def get_metrics(
         self,
         operation_name: str,
-        time_range: Optional[Tuple[datetime, datetime]] = None,
-    ) -> List[PerformanceMetric]:
+        time_range: tuple[datetime, datetime] | None = None,
+    ) -> list[PerformanceMetric]:
         """
         Get metrics for an operation, optionally filtered by time range.
 
@@ -236,7 +234,7 @@ class PerformanceMonitor:
 
             return metrics
 
-    def get_average(self, operation_name: str) -> Optional[float]:
+    def get_average(self, operation_name: str) -> float | None:
         """
         Get average value for an operation.
 
@@ -253,8 +251,8 @@ class PerformanceMonitor:
         return np.mean([m.value for m in metrics])
 
     def get_percentiles(
-        self, operation_name: str, percentiles: List[int] = [50, 90, 95, 99]
-    ) -> Dict[str, float]:
+        self, operation_name: str, percentiles: list[int] = None
+    ) -> dict[str, float]:
         """
         Get percentile values for an operation.
 
@@ -265,6 +263,8 @@ class PerformanceMonitor:
         Returns:
             Dict mapping percentile to value
         """
+        if percentiles is None:
+            percentiles = [50, 90, 95, 99]
         metrics = self.get_metrics(operation_name)
         if not metrics:
             return {}
@@ -277,7 +277,7 @@ class PerformanceMonitor:
 
         return result
 
-    def get_statistics(self, operation_name: str) -> Dict[str, Any]:
+    def get_statistics(self, operation_name: str) -> dict[str, Any]:
         """
         Get comprehensive statistics for an operation.
 
@@ -308,9 +308,9 @@ class PerformanceMonitor:
     def export_metrics(
         self,
         format: str = "json",
-        output_path: Optional[Path] = None,
-        operation_name: Optional[str] = None,
-    ) -> Union[str, None]:
+        output_path: Path | None = None,
+        operation_name: str | None = None,
+    ) -> str | None:
         """
         Export metrics to JSON or CSV format.
 
@@ -389,7 +389,7 @@ class PerformanceMonitor:
             else:
                 raise ValueError(f"Unsupported format: {format}")
 
-    def clear_metrics(self, operation_name: Optional[str] = None) -> None:
+    def clear_metrics(self, operation_name: str | None = None) -> None:
         """
         Clear metrics for an operation or all metrics.
 
@@ -416,7 +416,7 @@ class ImageProcessingProfiler:
     Tracks processing speed, memory usage, and identifies bottlenecks.
     """
 
-    def __init__(self, monitor: Optional[PerformanceMonitor] = None):
+    def __init__(self, monitor: PerformanceMonitor | None = None):
         """
         Initialize image processing profiler.
 
@@ -424,13 +424,13 @@ class ImageProcessingProfiler:
             monitor: Optional PerformanceMonitor instance
         """
         self.monitor = monitor or PerformanceMonitor()
-        self._memory_tracking: Dict[str, float] = {}
+        self._memory_tracking: dict[str, float] = {}
         self._lock = threading.RLock()
         logger.info("ImageProcessingProfiler initialized")
 
     def profile_operation(
         self, func: Callable, *args, **kwargs
-    ) -> Tuple[Any, Dict[str, Any]]:
+    ) -> tuple[Any, dict[str, Any]]:
         """
         Profile any operation and return result with profiling data.
 
@@ -498,8 +498,8 @@ class ImageProcessingProfiler:
         return result, profile_data
 
     def get_processing_speed(
-        self, image_size: Tuple[int, int], operation_name: str
-    ) -> Optional[float]:
+        self, image_size: tuple[int, int], operation_name: str
+    ) -> float | None:
         """
         Get processing speed in pixels per second.
 
@@ -523,8 +523,8 @@ class ImageProcessingProfiler:
         return total_pixels / avg_time
 
     def estimate_batch_time(
-        self, images: List[Tuple[int, int]], operation_name: str
-    ) -> Optional[float]:
+        self, images: list[tuple[int, int]], operation_name: str
+    ) -> float | None:
         """
         Estimate total time to process a batch of images.
 
@@ -563,7 +563,7 @@ class ImageProcessingProfiler:
                 f"{operation}_memory_snapshot", mem_mb, "MB"
             )
 
-    def get_memory_stats(self) -> Dict[str, float]:
+    def get_memory_stats(self) -> dict[str, float]:
         """
         Get current memory statistics.
 
@@ -581,8 +581,8 @@ class ImageProcessingProfiler:
         }
 
     def identify_bottlenecks(
-        self, operations: List[str], threshold_percentile: float = 90
-    ) -> List[Dict[str, Any]]:
+        self, operations: list[str], threshold_percentile: float = 90
+    ) -> list[dict[str, Any]]:
         """
         Identify slow operations that may be bottlenecks.
 
@@ -639,7 +639,7 @@ class APIPerformanceTracker:
         Args:
             max_history: Maximum number of requests to keep
         """
-        self._requests: List[APIMetric] = deque(maxlen=max_history)
+        self._requests: list[APIMetric] = deque(maxlen=max_history)
         self._lock = threading.RLock()
         logger.info(f"APIPerformanceTracker initialized with max_history={max_history}")
 
@@ -649,7 +649,7 @@ class APIPerformanceTracker:
         duration: float,
         status: int,
         method: str = "GET",
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         """
         Track an API request.
@@ -702,8 +702,8 @@ class APIPerformanceTracker:
             self.track_request(endpoint, duration, status, method, error)
 
     def get_endpoint_stats(
-        self, endpoint: str, time_range: Optional[Tuple[datetime, datetime]] = None
-    ) -> Dict[str, Any]:
+        self, endpoint: str, time_range: tuple[datetime, datetime] | None = None
+    ) -> dict[str, Any]:
         """
         Get statistics for a specific endpoint.
 
@@ -741,7 +741,7 @@ class APIPerformanceTracker:
             }
 
     def get_error_rate(
-        self, endpoint: str, time_range: Optional[Tuple[datetime, datetime]] = None
+        self, endpoint: str, time_range: tuple[datetime, datetime] | None = None
     ) -> float:
         """
         Calculate error rate for an endpoint.
@@ -756,7 +756,7 @@ class APIPerformanceTracker:
         stats = self.get_endpoint_stats(endpoint, time_range)
         return stats.get("error_rate", 0.0)
 
-    def get_response_times(self) -> Dict[str, List[float]]:
+    def get_response_times(self) -> dict[str, list[float]]:
         """
         Get response time distribution by endpoint.
 
@@ -769,7 +769,7 @@ class APIPerformanceTracker:
                 response_times[req.endpoint].append(req.duration_ms)
             return dict(response_times)
 
-    def generate_api_report(self) -> Dict[str, Any]:
+    def generate_api_report(self) -> dict[str, Any]:
         """
         Generate comprehensive API performance report.
 
@@ -780,7 +780,7 @@ class APIPerformanceTracker:
             if not self._requests:
                 return {"total_requests": 0}
 
-            endpoints = set(r.endpoint for r in self._requests)
+            endpoints = {r.endpoint for r in self._requests}
             endpoint_stats = {ep: self.get_endpoint_stats(ep) for ep in endpoints}
 
             # Overall stats
@@ -802,8 +802,8 @@ class APIPerformanceTracker:
             }
 
     def _get_slowest_endpoints(
-        self, endpoint_stats: Dict[str, Dict[str, Any]], top_n: int = 5
-    ) -> List[Dict[str, Any]]:
+        self, endpoint_stats: dict[str, dict[str, Any]], top_n: int = 5
+    ) -> list[dict[str, Any]]:
         """Get slowest endpoints by p95 response time."""
         endpoints = [
             {"endpoint": ep, "p95_ms": stats.get("p95_ms", 0)}
@@ -814,8 +814,8 @@ class APIPerformanceTracker:
         return endpoints[:top_n]
 
     def _get_highest_error_endpoints(
-        self, endpoint_stats: Dict[str, Dict[str, Any]], top_n: int = 5
-    ) -> List[Dict[str, Any]]:
+        self, endpoint_stats: dict[str, dict[str, Any]], top_n: int = 5
+    ) -> list[dict[str, Any]]:
         """Get endpoints with highest error rates."""
         endpoints = [
             {"endpoint": ep, "error_rate": stats.get("error_rate", 0)}
@@ -846,7 +846,7 @@ class CacheManager:
             default_ttl: Default TTL in seconds
         """
         self._cache: OrderedDict = OrderedDict()
-        self._expiry: Dict[str, datetime] = {}
+        self._expiry: dict[str, datetime] = {}
         self._max_size = max_size
         self._default_ttl = default_ttl
         self._stats = {
@@ -860,7 +860,7 @@ class CacheManager:
             f"CacheManager initialized: max_size={max_size}, default_ttl={default_ttl}s"
         )
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """
         Get value from cache.
 
@@ -889,7 +889,7 @@ class CacheManager:
             self._stats["hits"] += 1
             return self._cache[key]
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """
         Set value in cache with optional TTL.
 
@@ -1034,7 +1034,7 @@ class ResourceMonitor:
         """
         return psutil.cpu_percent(interval=0.1)
 
-    def get_memory_usage(self) -> Dict[str, float]:
+    def get_memory_usage(self) -> dict[str, float]:
         """
         Get current memory usage.
 
@@ -1049,7 +1049,7 @@ class ResourceMonitor:
             "total_mb": mem.total / 1024 / 1024,
         }
 
-    def get_disk_usage(self, path: str = "/") -> Dict[str, float]:
+    def get_disk_usage(self, path: str = "/") -> dict[str, float]:
         """
         Get disk usage for a path.
 
@@ -1067,7 +1067,7 @@ class ResourceMonitor:
             "total_gb": disk.total / 1024 / 1024 / 1024,
         }
 
-    def get_gpu_usage(self) -> Optional[Dict[str, Any]]:
+    def get_gpu_usage(self) -> dict[str, Any] | None:
         """
         Get GPU usage if available.
 
@@ -1117,7 +1117,7 @@ class ResourceMonitor:
             gpu_memory_mb=gpu["memory_used_mb"] if gpu else None,
         )
 
-    def get_alerts_for_high_usage(self) -> List[Dict[str, Any]]:
+    def get_alerts_for_high_usage(self) -> list[dict[str, Any]]:
         """
         Get alerts for resource usage exceeding thresholds.
 
@@ -1183,8 +1183,8 @@ class PerformanceReport:
     def __init__(
         self,
         monitor: PerformanceMonitor,
-        api_tracker: Optional[APIPerformanceTracker] = None,
-        resource_monitor: Optional[ResourceMonitor] = None,
+        api_tracker: APIPerformanceTracker | None = None,
+        resource_monitor: ResourceMonitor | None = None,
     ):
         """
         Initialize performance report generator.
@@ -1199,7 +1199,7 @@ class PerformanceReport:
         self.resource_monitor = resource_monitor
         logger.info("PerformanceReport initialized")
 
-    def generate_daily_report(self, date: Optional[datetime] = None) -> Dict[str, Any]:
+    def generate_daily_report(self, date: datetime | None = None) -> dict[str, Any]:
         """
         Generate daily performance summary.
 
@@ -1243,7 +1243,7 @@ class PerformanceReport:
 
         return report
 
-    def generate_session_report(self, session_id: str) -> Dict[str, Any]:
+    def generate_session_report(self, session_id: str) -> dict[str, Any]:
         """
         Generate report for a specific session.
 
@@ -1277,8 +1277,8 @@ class PerformanceReport:
         return report
 
     def compare_performance(
-        self, period1: Tuple[datetime, datetime], period2: Tuple[datetime, datetime]
-    ) -> Dict[str, Any]:
+        self, period1: tuple[datetime, datetime], period2: tuple[datetime, datetime]
+    ) -> dict[str, Any]:
         """
         Compare performance between two time periods.
 
@@ -1319,8 +1319,8 @@ class PerformanceReport:
         return comparison
 
     def export_report(
-        self, report: Dict[str, Any], format: str = "json", path: Optional[Path] = None
-    ) -> Union[str, None]:
+        self, report: dict[str, Any], format: str = "json", path: Path | None = None
+    ) -> str | None:
         """
         Export report to file.
 
@@ -1375,11 +1375,11 @@ class PerformanceReport:
 # ============================================================================
 
 # Global instances for easy access
-_global_monitor: Optional[PerformanceMonitor] = None
-_global_profiler: Optional[ImageProcessingProfiler] = None
-_global_api_tracker: Optional[APIPerformanceTracker] = None
-_global_cache: Optional[CacheManager] = None
-_global_resource_monitor: Optional[ResourceMonitor] = None
+_global_monitor: PerformanceMonitor | None = None
+_global_profiler: ImageProcessingProfiler | None = None
+_global_api_tracker: APIPerformanceTracker | None = None
+_global_cache: CacheManager | None = None
+_global_resource_monitor: ResourceMonitor | None = None
 
 
 def get_monitor() -> PerformanceMonitor:

@@ -6,7 +6,6 @@ This file launches the Gradio web UI for platinum/palladium print calibration.
 
 import os
 import sys
-import logging
 
 # Add src directory to Python path for module imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
@@ -21,12 +20,12 @@ os.environ.setdefault("GRADIO_SERVER_PORT", "7860")
 print("Applying Gradio schema patch...")
 try:
     from gradio.blocks import Blocks
-    
+
     _orig_get_config_file = Blocks.get_config_file
 
     def _fixed_get_config_file(self):
         config = _orig_get_config_file(self)
-        
+
         def fix_schema(schema):
             if isinstance(schema, dict):
                 if schema.get("additionalProperties") is True:
@@ -41,7 +40,7 @@ try:
             for comp in config["components"]:
                 if "api_info" in comp:
                     fix_schema(comp["api_info"])
-        
+
         return config
 
     Blocks.get_config_file = _fixed_get_config_file
@@ -60,7 +59,7 @@ if __name__ == "__main__":
     # Allow port override via environment variable
     server_name = os.environ.get("GRADIO_SERVER_NAME", "0.0.0.0")
     server_port = int(os.environ.get("GRADIO_SERVER_PORT", "7860"))
-    
+
     print(f"Launching on {server_name}:{server_port}")
     demo.launch(
         server_name=server_name,

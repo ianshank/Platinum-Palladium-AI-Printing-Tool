@@ -2,29 +2,26 @@
 Integration tests for the complete curve display and step wedge analysis workflow.
 """
 
-import json
 import numpy as np
 import pytest
-from pathlib import Path
 from PIL import Image
 
+from ptpd_calibration.analysis import (
+    QualityGrade,
+    StepWedgeAnalyzer,
+    WedgeAnalysisConfig,
+)
 from ptpd_calibration.config import TabletType, get_settings
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.curves import (
-    CurveGenerator,
+    ColorScheme,
     CurveModifier,
     CurveVisualizer,
-    VisualizationConfig,
-    ColorScheme,
     PlotStyle,
-    save_curve,
+    VisualizationConfig,
     load_curve,
-)
-from ptpd_calibration.analysis import (
-    StepWedgeAnalyzer,
-    WedgeAnalysisConfig,
-    QualityGrade,
+    save_curve,
 )
 
 

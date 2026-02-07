@@ -141,11 +141,13 @@ export const createCurveSlice: StateCreator<
     get().curve.pushUndo();
     set((state) => {
       if (index >= 0 && index < state.curve.points.length) {
+        const currentPoint = state.curve.points[index];
+        if (!currentPoint) return;
         state.curve.points[index] = {
-          ...state.curve.points[index],
+          ...currentPoint,
           ...point,
-          x: point.x !== undefined ? clamp01(point.x) : state.curve.points[index].x,
-          y: point.y !== undefined ? clamp01(point.y) : state.curve.points[index].y,
+          x: point.x !== undefined ? clamp01(point.x) : currentPoint.x,
+          y: point.y !== undefined ? clamp01(point.y) : currentPoint.y,
         };
         state.curve.isModified = true;
         state.curve.redoStack = [];

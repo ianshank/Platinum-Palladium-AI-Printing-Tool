@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
 from uuid import UUID, uuid4
 
 import numpy as np
@@ -46,8 +45,8 @@ class AnalysisWarning:
     level: AnalysisWarningLevel
     code: str
     message: str
-    suggestion: Optional[str] = None
-    affected_patches: Optional[list[int]] = None
+    suggestion: str | None = None
+    affected_patches: list[int] | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -151,33 +150,33 @@ class WedgeAnalysisResult:
     timestamp: datetime = field(default_factory=datetime.now)
 
     # Source information
-    source_path: Optional[Path] = None
+    source_path: Path | None = None
     tablet_type: TabletType = TabletType.STOUFFER_21
 
     # Detection results
-    extraction: Optional[ExtractionResult] = None
+    extraction: ExtractionResult | None = None
     detection_success: bool = False
 
     # Density measurements
     densities: list[float] = field(default_factory=list)
     input_values: list[float] = field(default_factory=list)  # Normalized 0-1
-    dmin: Optional[float] = None
-    dmax: Optional[float] = None
-    density_range: Optional[float] = None
+    dmin: float | None = None
+    dmax: float | None = None
+    density_range: float | None = None
 
     # Original and processed densities
     raw_densities: list[float] = field(default_factory=list)
     corrected_densities: list[float] = field(default_factory=list)
 
     # Quality assessment
-    quality: Optional[QualityAssessment] = None
+    quality: QualityAssessment | None = None
 
     # Generated curve
-    curve: Optional[CurveData] = None
+    curve: CurveData | None = None
     curve_generated: bool = False
 
     # Configuration used
-    config: Optional[WedgeAnalysisConfig] = None
+    config: WedgeAnalysisConfig | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
@@ -200,8 +199,8 @@ class WedgeAnalysisResult:
     def summary(self) -> str:
         """Generate a human-readable summary."""
         lines = [
-            f"Step Wedge Analysis Results",
-            f"=" * 40,
+            "Step Wedge Analysis Results",
+            "=" * 40,
             f"Detection: {'Success' if self.detection_success else 'Failed'}",
             f"Patches: {len(self.densities)}",
         ]
@@ -231,7 +230,7 @@ class StepWedgeAnalyzer:
     and curve generation from step wedge scans.
     """
 
-    def __init__(self, config: Optional[WedgeAnalysisConfig] = None):
+    def __init__(self, config: WedgeAnalysisConfig | None = None):
         """
         Initialize the analyzer.
 
@@ -239,7 +238,7 @@ class StepWedgeAnalyzer:
             config: Analysis configuration. Uses defaults if not provided.
         """
         self.config = config or WedgeAnalysisConfig()
-        self._reader: Optional[StepTabletReader] = None
+        self._reader: StepTabletReader | None = None
 
     def _get_reader(self) -> StepTabletReader:
         """Get or create the step tablet reader."""
@@ -249,12 +248,12 @@ class StepWedgeAnalyzer:
 
     def analyze(
         self,
-        image: Union[np.ndarray, Image.Image, Path, str],
-        curve_name: Optional[str] = None,
-        paper_type: Optional[str] = None,
-        chemistry: Optional[str] = None,
+        image: np.ndarray | Image.Image | Path | str,
+        curve_name: str | None = None,
+        paper_type: str | None = None,
+        chemistry: str | None = None,
         generate_curve: bool = True,
-        curve_type: Optional[CurveType] = None,
+        curve_type: CurveType | None = None,
     ) -> WedgeAnalysisResult:
         """
         Perform complete step wedge analysis.
@@ -598,11 +597,11 @@ class StepWedgeAnalyzer:
     def _generate_curve(
         self,
         result: WedgeAnalysisResult,
-        curve_name: Optional[str] = None,
-        paper_type: Optional[str] = None,
-        chemistry: Optional[str] = None,
+        curve_name: str | None = None,
+        paper_type: str | None = None,
+        chemistry: str | None = None,
         curve_type: CurveType = CurveType.LINEAR,
-    ) -> Optional[CurveData]:
+    ) -> CurveData | None:
         """Generate calibration curve from analysis result."""
         if not result.densities:
             return None
@@ -640,11 +639,11 @@ class StepWedgeAnalyzer:
     def analyze_from_densities(
         self,
         densities: list[float],
-        curve_name: Optional[str] = None,
-        paper_type: Optional[str] = None,
-        chemistry: Optional[str] = None,
+        curve_name: str | None = None,
+        paper_type: str | None = None,
+        chemistry: str | None = None,
         generate_curve: bool = True,
-        curve_type: Optional[CurveType] = None,
+        curve_type: CurveType | None = None,
     ) -> WedgeAnalysisResult:
         """
         Analyze from pre-extracted density values.
