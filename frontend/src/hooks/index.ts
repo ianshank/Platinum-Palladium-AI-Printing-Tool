@@ -9,9 +9,9 @@
  * | Directory       | Purpose                          | Examples                              |
  * |-----------------|----------------------------------|---------------------------------------|
  * | `hooks/`        | Domain logic, UI orchestration   | useChat, useDashboardData             |
- * | `api/hooks/`    | React Query wrappers for API     | useCurves, useScan                    |
+ * | `api/hooks.ts`  | React Query wrappers for API     | useGenerateCurve, useUploadScan       |
  *
- * Domain hooks in `hooks/` may import from `api/hooks/` but not vice versa.
+ * Domain hooks in `hooks/` may import from `api/hooks.ts` but not vice versa.
  */
 
 export {

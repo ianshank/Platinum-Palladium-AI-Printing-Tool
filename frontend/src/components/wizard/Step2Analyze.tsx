@@ -10,7 +10,7 @@ import {
     YAxis,
 } from 'recharts';
 import { useStore } from '@/stores';
-import { assessScanQuality } from '@/api/hooks/useScan';
+import { assessScanQuality } from '@/api/hooks';
 
 const Container = styled.div`
   display: flex;

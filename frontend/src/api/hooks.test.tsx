@@ -114,6 +114,7 @@ vi.mock('@/stores', () => ({
 
 // Import AFTER mocks
 import {
+    assessScanQuality,
     queryKeys,
     useCalibration,
     useCalibrations,
@@ -566,7 +567,7 @@ describe('API Hooks', () => {
             });
 
             const file = new File(['content'], 'scan.tif', { type: 'image/tiff' });
-            result.current.mutate(file);
+            result.current.mutate({ file, tabletType: 'stouffer_21' });
 
             await waitFor(() => {
                 expect(result.current.isSuccess).toBe(true);
@@ -593,7 +594,7 @@ describe('API Hooks', () => {
             });
 
             const file = new File(['x'.repeat(100)], 'huge.tif', { type: 'image/tiff' });
-            result.current.mutate(file);
+            result.current.mutate({ file, tabletType: 'stouffer_21' });
 
             await waitFor(() => {
                 expect(result.current.isError).toBe(true);
@@ -606,6 +607,37 @@ describe('API Hooks', () => {
                     variant: 'error',
                 })
             );
+        });
+    });
+
+    describe('assessScanQuality', () => {
+        it('returns excellent for perfect scan', () => {
+            const result = assessScanQuality({ densities: [0.1, 0.2], dmax: 2.0, dmin: 0.05, range: 1.95, num_patches: 21 });
+            expect(result.quality).toBe('excellent');
+            expect(result.score).toBe(100);
+            expect(result.overall).toBe('excellent');
+            expect(result.issues).toEqual([]);
+        });
+
+        it('penalizes low density range', () => {
+            const result = assessScanQuality({ densities: [0.1], dmax: 0.4, dmin: 0.1, range: 0.3, num_patches: 21 });
+            expect(result.score).toBeLessThan(100);
+            expect(result.issues.some(i => i.message.includes('Low density range'))).toBe(true);
+        });
+
+        it('penalizes low patch count', () => {
+            const result = assessScanQuality({ densities: [0.1], dmax: 2.0, dmin: 0.1, range: 1.9, num_patches: 5 });
+            expect(result.issues.some(i => i.message.includes('patches detected'))).toBe(true);
+        });
+
+        it('penalizes low Dmax', () => {
+            const result = assessScanQuality({ densities: [0.1], dmax: 0.5, dmin: 0.1, range: 1.5, num_patches: 21 });
+            expect(result.issues.some(i => i.message.includes('Low Dmax'))).toBe(true);
+        });
+
+        it('clamps score to 0', () => {
+            const result = assessScanQuality({ densities: [0.1], dmax: 0.3, dmin: 0.1, range: 0.2, num_patches: 3 });
+            expect(result.score).toBeGreaterThanOrEqual(0);
         });
     });
 });

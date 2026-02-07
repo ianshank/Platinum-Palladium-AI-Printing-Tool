@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import styled, { useTheme } from 'styled-components';
 import { useStore } from '@/stores';
-import { useUploadScan } from '@/api/hooks/useScan';
+import { useUploadScan } from '@/api/hooks';
 import { tabletConfig } from '@/config/tablet.config';
 import type { ScanUploadResponse } from '@/types/models';
 

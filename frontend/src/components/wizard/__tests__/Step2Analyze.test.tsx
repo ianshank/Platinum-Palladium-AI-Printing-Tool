@@ -24,7 +24,7 @@ beforeAll(() => {
 });
 
 // Mock the API hook
-vi.mock('@/api/hooks/useScan', () => ({
+vi.mock('@/api/hooks', () => ({
     assessScanQuality: vi.fn(() => ({
         overall: 'good',
         score: 85,

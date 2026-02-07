@@ -47,7 +47,7 @@ vi.mock('@/stores', () => ({
 }));
 
 // Mock useExportCurve
-vi.mock('@/api/hooks/useCurves', () => ({
+vi.mock('@/api/hooks', () => ({
     useExportCurve: () => ({
         mutate: mockExportMutate,
         isPending: false,
