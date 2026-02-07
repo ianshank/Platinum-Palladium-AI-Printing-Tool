@@ -19,7 +19,7 @@ from typing import Any
 
 import numpy as np
 import psutil
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +38,7 @@ class PerformanceMetric(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
 
 
 class ResourceUsage(BaseModel):
@@ -56,8 +55,7 @@ class ResourceUsage(BaseModel):
     gpu_percent: float | None = Field(None, description="GPU usage percentage if available")
     gpu_memory_mb: float | None = Field(None, description="GPU memory used in MB")
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
 
 
 class APIMetric(BaseModel):
@@ -70,8 +68,7 @@ class APIMetric(BaseModel):
     method: str = Field(default="GET", description="HTTP method")
     error: str | None = Field(None, description="Error message if any")
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
 
 
 class CacheStats(BaseModel):

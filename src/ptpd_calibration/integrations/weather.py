@@ -13,7 +13,7 @@ from enum import Enum
 from typing import Any
 
 import httpx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -117,8 +117,7 @@ class DryingTimeEstimate(BaseModel):
     conditions: CurrentConditions = Field(description="Weather conditions used")
     recommendations: list[str] = Field(default_factory=list, description="Recommendations")
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class CoatingRecommendation(BaseModel):
@@ -129,8 +128,7 @@ class CoatingRecommendation(BaseModel):
     reason: str = Field(description="Reason for recommendation")
     alternative_times: list[datetime] = Field(default_factory=list, description="Alternative times")
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class WeatherProvider(ABC):
