@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import styled, { useTheme } from 'styled-components';
 import { useStore } from '@/stores';
-import { useExportCurve } from '@/api/hooks/useCurves';
+import { useExportCurve } from '@/api/hooks';
 import { tabletConfig } from '@/config/tablet.config';
 
 const Container = styled.div`

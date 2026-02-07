@@ -5,7 +5,7 @@ import { Step1Upload } from '../Step1Upload';
 
 // Mock the API hook
 const mockMutate = vi.fn();
-vi.mock('@/api/hooks/useScan', () => ({
+vi.mock('@/api/hooks', () => ({
     useUploadScan: () => ({
         mutate: mockMutate,
         isPending: false,

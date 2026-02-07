@@ -11,7 +11,7 @@ import {
     YAxis,
 } from 'recharts';
 import { useStore } from '@/stores';
-import { useGenerateCurve } from '@/api/hooks/useCurves';
+import { useGenerateCurve } from '@/api/hooks';
 
 const Container = styled.div`
   display: flex;

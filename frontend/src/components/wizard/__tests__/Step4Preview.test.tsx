@@ -25,7 +25,7 @@ beforeAll(() => {
 
 // Mock API hook
 const mockMutate = vi.fn();
-vi.mock('@/api/hooks/useCurves', () => ({
+vi.mock('@/api/hooks', () => ({
     useGenerateCurve: () => ({
         mutate: mockMutate,
         isPending: false,
