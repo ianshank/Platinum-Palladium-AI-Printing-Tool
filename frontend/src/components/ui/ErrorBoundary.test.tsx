@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -6,9 +6,10 @@ import { ErrorBoundary } from './ErrorBoundary';
 const originalConsoleError = console.error;
 beforeEach(() => {
     console.error = vi.fn();
-    return () => {
-        console.error = originalConsoleError;
-    };
+});
+
+afterEach(() => {
+    console.error = originalConsoleError;
 });
 
 // A component that throws on command

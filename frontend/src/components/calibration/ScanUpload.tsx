@@ -9,9 +9,10 @@ import type { ScanUploadResponse } from '@/types/models';
 interface ScanUploadProps {
     onUploadComplete?: (response: ScanUploadResponse) => void;
     className?: string;
+    targetType?: string;
 }
 
-export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps) {
+export function ScanUpload({ onUploadComplete, className = '', targetType = 'stouffer_21' }: ScanUploadProps) {
     const [file, setFile] = useState<File | null>(null);
     const [progress, setProgress] = useState<number>(0);
     const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -38,6 +39,7 @@ export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps
             'image/*': ['.png', '.jpg', '.jpeg', '.tiff', '.tif']
         },
         maxFiles: 1,
+        maxSize: 20 * 1024 * 1024, // 20MB
         disabled: isUploading || success
     });
 
@@ -49,7 +51,7 @@ export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps
         setError(null);
 
         try {
-            const response = await api.scan.upload(file, 'stouffer_21', (p) => setProgress(p));
+            const response = await api.scan.upload(file, targetType, (p) => setProgress(p));
 
             if (response.success) {
                 setSuccess(true);
@@ -126,6 +128,7 @@ export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps
                                 <button
                                     onClick={clearFile}
                                     className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                    aria-label="Remove file"
                                 >
                                     <X className="w-4 h-4 text-gray-500" />
                                 </button>
