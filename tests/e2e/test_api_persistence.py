@@ -98,11 +98,14 @@ def test_scan_upload_persistence(mock_env, temp_storage_dir):
         response = client.post("/api/scan/upload", files=files, data={"tablet_type": "stouffer_21"})
 
     assert response.status_code == 200
+    data = response.json()
+    assert data["original_filename"] == "test_scan.jpg"
 
-    # Verify file existence in storage
-    expected_path = temp_storage_dir / "scans" / "test_scan.jpg"
-    assert expected_path.exists()
-    assert expected_path.read_bytes() == scan_content
+    # Verify file existence in storage (UUID-based name, not client filename)
+    scans_dir = temp_storage_dir / "scans"
+    saved_files = list(scans_dir.glob("*.jpg"))
+    assert len(saved_files) == 1
+    assert saved_files[0].read_bytes() == scan_content
 
 
 def test_database_persistence(mock_env, temp_storage_dir):

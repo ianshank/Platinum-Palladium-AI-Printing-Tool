@@ -176,14 +176,41 @@ def create_app():
             "suggestions": suggestions,
         }
 
+    # Allowlisted scan file extensions (case-insensitive)
+    _ALLOWED_SCAN_EXTENSIONS = frozenset({".tif", ".tiff", ".png", ".jpg", ".jpeg", ".bmp"})
+
     @app.post("/api/scan/upload")
     async def upload_scan(
         file: UploadFile = File(...),
         tablet_type: str = Form("stouffer_21"),
     ):
         """Upload and process a step tablet scan."""
+        import logging
+        from uuid import uuid4
+
+        logger = logging.getLogger(__name__)
+
+        # ── Sanitise client-supplied filename ──────────────────────────
+        original_filename = file.filename or "unknown"
+        # Extract extension safely (only basename, no path separators)
+        safe_basename = Path(original_filename).name  # strips ../ segments
+        suffix = Path(safe_basename).suffix.lower()
+
+        if suffix not in _ALLOWED_SCAN_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type '{suffix}'. "
+                f"Allowed: {', '.join(sorted(_ALLOWED_SCAN_EXTENSIONS))}",
+            )
+
+        # Server-generated unique key — never trust client filename for paths
+        scan_id = uuid4().hex
+        safe_name = f"{scan_id}{suffix}"
+        file_path = upload_dir / safe_name
+
+        logger.debug("Scan upload: original=%s safe=%s", original_filename, safe_name)
+
         # Save uploaded file
-        file_path = upload_dir / file.filename
         with open(file_path, "wb") as f:
             content = await file.read()
             f.write(content)
@@ -193,13 +220,14 @@ def create_app():
             reader = StepTabletReader(tablet_type=TabletType(tablet_type))
             result = reader.read(file_path)
 
-            # Persist raw scan to storage
+            # Persist raw scan to storage with server-generated key
             with open(file_path, "rb") as f:
-                storage_backend.save(f"scans/{file.filename}", f.read())
+                storage_backend.save(f"scans/{safe_name}", f.read())
 
             return {
                 "success": True,
                 "extraction_id": str(result.extraction.id),
+                "original_filename": original_filename,
                 "num_patches": result.extraction.num_patches,
                 "densities": result.extraction.get_densities(),
                 "dmin": result.extraction.dmin,
@@ -211,7 +239,7 @@ def create_app():
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
         finally:
-            # Cleanup
+            # Cleanup temp file
             if file_path.exists():
                 file_path.unlink()
 
