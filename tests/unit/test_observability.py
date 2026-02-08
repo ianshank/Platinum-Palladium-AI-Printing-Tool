@@ -4,14 +4,23 @@ Comprehensive tests for observability modules.
 Tests health checks, circuit breakers, metrics, and workflow persistence.
 """
 
-import asyncio
-import json
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+
+# Circuit breaker tests
+from ptpd_calibration.agents.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerSettings,
+    CircuitOpenError,
+    CircuitState,
+    get_all_circuit_breaker_stats,
+    get_circuit_breaker,
+    reset_all_circuit_breakers,
+)
 
 # Health check tests
 from ptpd_calibration.agents.health import (
@@ -22,20 +31,6 @@ from ptpd_calibration.agents.health import (
     HealthCheckResult,
     HealthCheckSettings,
     HealthStatus,
-    check_agent_health,
-    get_health_checker,
-)
-
-# Circuit breaker tests
-from ptpd_calibration.agents.circuit_breaker import (
-    CircuitBreaker,
-    CircuitBreakerSettings,
-    CircuitBreakerState,
-    CircuitOpenError,
-    CircuitState,
-    get_all_circuit_breaker_stats,
-    get_circuit_breaker,
-    reset_all_circuit_breakers,
 )
 
 # Metrics tests
@@ -43,12 +38,10 @@ from ptpd_calibration.agents.metrics import (
     Counter,
     Gauge,
     Histogram,
-    MetricSample,
     MetricsRegistry,
     MetricsSettings,
     MetricType,
     get_agent_metrics,
-    get_metrics_registry,
     record_request,
     record_token_usage,
     record_tool_call,
@@ -62,9 +55,7 @@ from ptpd_calibration.agents.persistence import (
     WorkflowPersistence,
     WorkflowState,
     create_workflow_checkpoint,
-    get_persistence,
 )
-
 
 # ============================================================================
 # Health Check Tests

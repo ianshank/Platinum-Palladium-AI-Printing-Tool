@@ -76,7 +76,7 @@ def demo_step_tablet_reading():
         reader = StepTabletReader()
         result = reader.read(f.name)
 
-        print(f"Step tablet analysis complete!")
+        print("Step tablet analysis complete!")
         print(f"  - Patches detected: {result.extraction.num_patches}")
         print(f"  - Quality score: {result.extraction.overall_quality:.2%}")
 
@@ -99,8 +99,8 @@ def demo_curve_generation(extraction_result=None):
     """Demonstrate curve generation capabilities."""
     demo_separator("Curve Generation")
 
-    from ptpd_calibration.curves import CurveGenerator
     from ptpd_calibration.core.types import CurveType
+    from ptpd_calibration.curves import CurveGenerator
 
     generator = CurveGenerator()
 
@@ -183,7 +183,7 @@ def demo_quad_import():
     # Path to example data
     data_dir = Path(__file__).parent / "data"
     quad_path = data_dir / "Platinum_Palladium_V6-CC.quad"
-    
+
     # Check if file exists (it should be created by our setup)
     if not quad_path.exists():
         # Try to find it in tests/fixtures as fallback for dev environment
@@ -197,34 +197,34 @@ def demo_quad_import():
     print(f"Loading profile: {quad_path.name}")
     try:
         profile = load_quad_file(quad_path)
-        
-        print(f"\nProfile loaded successfully:")
+
+        print("\nProfile loaded successfully:")
         print(f"  - Name: {profile.profile_name}")
         print(f"  - Channels found: {', '.join(profile.channels.keys())}")
-        
+
         # Show active channels
         active_channels = [name for name, ch in profile.channels.items() if any(v > 0 for v in ch.values)]
         print(f"  - Active channels: {', '.join(active_channels)}")
-        
+
         # Inspect K channel
         if "K" in profile.channels:
             k_curve = profile.channels["K"]
-            print(f"\nK Channel Analysis:")
+            print("\nK Channel Analysis:")
             print(f"  - Points: {len(k_curve.values)}")
             print(f"  - Max output: {max(k_curve.values)} (on 0-255 scale)")
-            
+
             # Show sample points
             print(f"  - First 5 values: {k_curve.values[:5]}")
             print(f"  - Last 5 values: {k_curve.values[-5:]}")
-            
+
         # Show comments/metadata
         if profile.comments:
-            print(f"\nMetadata/Comments:")
+            print("\nMetadata/Comments:")
             for comment in profile.comments[:5]:  # Show first 5 comments
                 print(f"  # {comment}")
             if len(profile.comments) > 5:
                 print(f"  ... and {len(profile.comments) - 5} more comments")
-                
+
     except Exception as e:
         print(f"Error loading quad file: {e}")
         raise
@@ -250,14 +250,14 @@ def demo_chemistry_calculator():
 
     print("Chemistry Recipe for 8x10\" print (50% Pt / 50% Pd):\n")
     print(f"  Coating area: {recipe.coating_area_sq_inches:.1f} sq inches")
-    print(f"\nSolution drops:")
+    print("\nSolution drops:")
     print(f"  - Ferric Oxalate: {recipe.ferric_oxalate_drops:.0f} drops")
     print(f"  - Platinum: {recipe.platinum_drops:.0f} drops")
     print(f"  - Palladium: {recipe.palladium_drops:.0f} drops")
     print(f"  - Na2 (contrast): {recipe.na2_drops:.0f} drops")
     print(f"  - Total: {recipe.total_drops:.0f} drops")
 
-    print(f"\nIn milliliters:")
+    print("\nIn milliliters:")
     print(f"  - Total solution: {recipe.total_ml:.2f} ml")
 
     # Show standard sizes
@@ -306,7 +306,7 @@ def demo_exposure_calculator():
 
     # Show available light sources
     print("\nSupported light sources:")
-    for source_name, multiplier in calculator.get_light_sources()[:5]:
+    for source_name, _multiplier in calculator.get_light_sources()[:5]:
         print(f"  - {source_name}")
 
 
@@ -317,7 +317,7 @@ def demo_zone_system():
     """Demonstrate zone system analysis."""
     demo_separator("Zone System Analysis")
 
-    from ptpd_calibration.zones import ZoneMapper, Zone
+    from ptpd_calibration.zones import Zone, ZoneMapper
 
     # Create test image
     test_image = create_test_image()
@@ -325,9 +325,9 @@ def demo_zone_system():
     mapper = ZoneMapper()
     analysis = mapper.analyze_image(test_image)
 
-    print(f"Zone System Analysis:\n")
+    print("Zone System Analysis:\n")
     print(f"  Development recommendation: {analysis.development_adjustment}")
-    print(f"\nZone distribution:")
+    print("\nZone distribution:")
 
     for zone in Zone:
         count = analysis.zone_histogram.get(zone, 0)
@@ -349,7 +349,7 @@ def demo_histogram_analysis():
     analyzer = HistogramAnalyzer()
     result = analyzer.analyze(test_image)
 
-    print(f"Histogram Analysis:\n")
+    print("Histogram Analysis:\n")
     print(f"  Image size: {result.image_size}")
     print(f"  Mean: {result.stats.mean:.1f}")
     print(f"  Median: {result.stats.median:.1f}")
@@ -371,7 +371,7 @@ def demo_soft_proofing():
     """Demonstrate soft proofing simulation."""
     demo_separator("Soft Proofing")
 
-    from ptpd_calibration.proofing import SoftProofer, ProofSettings, PaperSimulation
+    from ptpd_calibration.proofing import PaperSimulation, ProofSettings, SoftProofer
 
     test_image = create_test_image()
 
@@ -421,8 +421,8 @@ def demo_digital_negative():
     """Demonstrate digital negative creation."""
     demo_separator("Digital Negative Creation")
 
-    from ptpd_calibration.imaging import ImageProcessor
     from ptpd_calibration.core.models import CurveData
+    from ptpd_calibration.imaging import ImageProcessor
 
     test_image = create_test_image()
 
@@ -441,7 +441,7 @@ def demo_digital_negative():
         # Preview curve effect
         original, processed = processor.preview_curve_effect(f.name, curve)
 
-        print(f"Curve preview generated:")
+        print("Curve preview generated:")
         print(f"  - Original: {original.size}")
         print(f"  - Processed: {processed.size}")
 
@@ -452,10 +452,10 @@ def demo_digital_negative():
             invert=True,
         )
 
-        print(f"\nDigital negative created:")
+        print("\nDigital negative created:")
         print(f"  - Size: {result.image.size}")
         print(f"  - Mode: {result.image.mode}")
-        print(f"  - Inverted: Yes")
+        print("  - Inverted: Yes")
 
 
 # =============================================================================
@@ -465,7 +465,7 @@ def demo_session_logging():
     """Demonstrate print session logging."""
     demo_separator("Print Session Logging")
 
-    from ptpd_calibration.session import SessionLogger, PrintRecord
+    from ptpd_calibration.session import PrintRecord, SessionLogger
     from ptpd_calibration.session.logger import ChemistryUsed, PrintResult
 
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -498,7 +498,7 @@ def demo_session_logging():
         stats = current.get_statistics()
 
         print(f"Session: {session.name}")
-        print(f"\nSession statistics:")
+        print("\nSession statistics:")
         print(f"  - Total prints: {stats['total_prints']}")
         print(f"  - Success rate: {stats['success_rate']}")
         print(f"  - Avg exposure: {stats['avg_exposure_minutes']:.1f} min")
@@ -512,8 +512,8 @@ def demo_curve_export():
     """Demonstrate curve export to different formats."""
     demo_separator("Curve Export Formats")
 
-    from ptpd_calibration.curves import save_curve
     from ptpd_calibration.core.models import CurveData
+    from ptpd_calibration.curves import save_curve
 
     curve = CurveData(
         name="Demo Export Curve",
@@ -574,10 +574,10 @@ def run_all_demos():
                 result = demo_func(last_result)
             else:
                 result = demo_func()
-            
+
             if name == "Step Tablet Reading":
                 last_result = result
-                
+
             results[name] = "✓ Success"
         except Exception as e:
             results[name] = f"✗ Error: {e}"

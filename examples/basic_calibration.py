@@ -16,10 +16,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from ptpd_calibration import (
-    StepTabletReader,
-    CurveGenerator,
     CurveAnalyzer,
+    CurveGenerator,
     QTRExporter,
+    StepTabletReader,
     TabletType,
 )
 from ptpd_calibration.core.types import CurveType
@@ -48,7 +48,7 @@ def main():
         # Read the scan
         result = reader.read(scan_path)
 
-        print(f"\nExtraction Results:")
+        print("\nExtraction Results:")
         print(f"  Patches detected: {result.extraction.num_patches}")
         print(f"  Dmin (paper base): {result.extraction.dmin:.3f}")
         print(f"  Dmax: {result.extraction.dmax:.3f}")
@@ -56,7 +56,7 @@ def main():
         print(f"  Quality score: {result.extraction.overall_quality:.1%}")
 
         if result.extraction.warnings:
-            print(f"\nWarnings:")
+            print("\nWarnings:")
             for warning in result.extraction.warnings:
                 print(f"  - {warning}")
 
@@ -70,7 +70,7 @@ def main():
         steps = np.linspace(0, 1, 21)
         densities = list(0.1 + 2.0 * (steps ** 0.85))
 
-        print(f"\nDemo Densities:")
+        print("\nDemo Densities:")
         print(f"  Dmin: {min(densities):.3f}")
         print(f"  Dmax: {max(densities):.3f}")
         print(f"  Range: {max(densities) - min(densities):.3f}")
@@ -122,7 +122,7 @@ def main():
     exporter.export(curve, output_path)
 
     print(f"  Exported to: {output_path}")
-    print(f"  Format: QuadTone RIP")
+    print("  Format: QuadTone RIP")
 
     print("\n" + "=" * 60)
     print("Calibration complete!")

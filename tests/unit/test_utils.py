@@ -4,7 +4,6 @@ Comprehensive unit tests for agents/utils.py module.
 Tests all utility functions for JSON parsing, code extraction, and text manipulation.
 """
 
-import pytest
 
 from ptpd_calibration.agents.utils import (
     extract_classes,
