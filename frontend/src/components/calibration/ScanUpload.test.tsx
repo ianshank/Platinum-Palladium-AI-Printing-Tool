@@ -60,7 +60,7 @@ describe('ScanUpload', () => {
 
         // Should complete successfully
         await waitFor(() => {
-            expect(onUploadComplete).toHaveBeenCalledWith('123-456');
+            expect(onUploadComplete).toHaveBeenCalledWith(mockResponse);
             expect(screen.getByText(/upload complete/i)).toBeInTheDocument();
         });
     });

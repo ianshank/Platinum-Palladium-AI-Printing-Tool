@@ -176,10 +176,12 @@ class BatchProcessor:
             output_name = self._generate_output_name(path)
             output_path = output_dir / output_name
 
-            jobs.append(BatchJob(
-                input_path=path,
-                output_path=output_path,
-            ))
+            jobs.append(
+                BatchJob(
+                    input_path=path,
+                    output_path=output_path,
+                )
+            )
 
         result = BatchResult(
             total_jobs=len(jobs),
@@ -204,8 +206,9 @@ class BatchProcessor:
 
         if progress_callback:
             progress_callback(
-                len(jobs), len(jobs),
-                f"Completed: {result.completed} successful, {result.failed} failed"
+                len(jobs),
+                len(jobs),
+                f"Completed: {result.completed} successful, {result.failed} failed",
             )
 
         return result
@@ -251,8 +254,7 @@ class BatchProcessor:
                 completed_count += 1
                 if progress_callback:
                     progress_callback(
-                        completed_count, len(jobs),
-                        f"Processed: {job.input_path.name}"
+                        completed_count, len(jobs), f"Processed: {job.input_path.name}"
                     )
 
             return job

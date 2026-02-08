@@ -21,7 +21,9 @@ class CalibrationDatabase:
     for building ML training datasets.
     """
 
-    def __init__(self, storage_backend: StorageBackend | None = None, db_path: str = "database.json"):
+    def __init__(
+        self, storage_backend: StorageBackend | None = None, db_path: str = "database.json"
+    ):
         """Initialize database with optional storage backend."""
         self.records: dict[UUID, CalibrationRecord] = {}
         self._paper_index: dict[str, list[UUID]] = {}
@@ -146,9 +148,7 @@ class CalibrationDatabase:
 
         # Exposure time similarity (log scale)
         if record1.exposure_time > 0 and record2.exposure_time > 0:
-            log_ratio = abs(
-                np.log(record1.exposure_time) - np.log(record2.exposure_time)
-            )
+            log_ratio = abs(np.log(record1.exposure_time) - np.log(record2.exposure_time))
             score += 0.15 * max(0, 1 - log_ratio / 2)
         weights += 0.15
 

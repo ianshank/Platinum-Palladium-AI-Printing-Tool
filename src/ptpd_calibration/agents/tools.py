@@ -221,9 +221,7 @@ def create_calibration_tools(
                 name="save_calibration",
                 description="Save a new calibration record",
                 parameters=[
-                    ToolParameter(
-                        name="paper_type", type="string", description="Paper type"
-                    ),
+                    ToolParameter(name="paper_type", type="string", description="Paper type"),
                     ToolParameter(
                         name="exposure_time",
                         type="number",
@@ -258,9 +256,7 @@ def create_calibration_tools(
                 name="predict_response",
                 description="Predict density response for given parameters",
                 parameters=[
-                    ToolParameter(
-                        name="paper_type", type="string", description="Paper type"
-                    ),
+                    ToolParameter(name="paper_type", type="string", description="Paper type"),
                     ToolParameter(
                         name="metal_ratio",
                         type="number",
@@ -396,9 +392,7 @@ def _analyze_densities(densities: list[float]) -> ToolResult:
     )
 
 
-def _compare_calibrations(
-    database: CalibrationDatabase | None, id1: str, id2: str
-) -> ToolResult:
+def _compare_calibrations(database: CalibrationDatabase | None, id1: str, id2: str) -> ToolResult:
     """Compare two calibrations."""
     if not database:
         return ToolResult(success=False, error="Database not available")
@@ -488,9 +482,7 @@ def _save_calibration(
 
     database.add_record(record)
 
-    return ToolResult(
-        success=True, data={"id": str(record.id), "message": "Calibration saved"}
-    )
+    return ToolResult(success=True, data={"id": str(record.id), "message": "Calibration saved"})
 
 
 def _predict_response(

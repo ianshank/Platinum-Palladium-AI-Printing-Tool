@@ -2,7 +2,6 @@
 Tests for ML prediction and refinement.
 """
 
-
 import numpy as np
 import pytest
 

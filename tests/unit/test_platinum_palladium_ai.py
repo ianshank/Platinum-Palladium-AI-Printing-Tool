@@ -168,7 +168,7 @@ def sample_print_history():
         history.append(record)
 
     # Add 3 failed prints (low Dmax)
-    for i in range(3):
+    for _ in range(3):
         record = CalibrationRecord(
             paper_type="Arches Platine",
             paper_weight=310,
@@ -884,8 +884,10 @@ class TestAnalyzePrintQuality:
         # Should detect highlight issues
         problem_types = [p[0] for p in result.problem_areas]
         if len(problem_types) > 0:
-            assert (ProblemArea.HIGHLIGHTS in problem_types or
-                    ProblemArea.OVERALL_DENSITY in problem_types)
+            assert (
+                ProblemArea.HIGHLIGHTS in problem_types
+                or ProblemArea.OVERALL_DENSITY in problem_types
+            )
 
     def test_problem_area_detection_shadows(self, ai, normal_image, low_key_image):
         """Test detection of shadow problems."""
@@ -897,8 +899,9 @@ class TestAnalyzePrintQuality:
         # Should detect shadow or density issues
         problem_types = [p[0] for p in result.problem_areas]
         if len(problem_types) > 0:
-            assert (ProblemArea.SHADOWS in problem_types or
-                    ProblemArea.OVERALL_DENSITY in problem_types)
+            assert (
+                ProblemArea.SHADOWS in problem_types or ProblemArea.OVERALL_DENSITY in problem_types
+            )
 
     def test_zone_differences_calculated(self, ai, normal_image, low_key_image):
         """Test that zone-by-zone differences are calculated."""
@@ -945,7 +948,9 @@ class TestAnalyzePrintQuality:
         # Corrections should be strings
         assert all(isinstance(c, str) for c in result.corrections)
 
-    def test_low_match_triggers_calibration_suggestion(self, ai, high_contrast_image, low_contrast_image):
+    def test_low_match_triggers_calibration_suggestion(
+        self, ai, high_contrast_image, low_contrast_image
+    ):
         """Test that poor match suggests new calibration."""
         result = ai.analyze_print_quality(
             scan_image=low_contrast_image,
@@ -1281,7 +1286,9 @@ class TestIntegrationScenarios:
         assert isinstance(negative, DigitalNegativeResult)
         assert negative.output_path.exists()
 
-    def test_print_evaluation_and_optimization_scenario(self, ai, normal_image, sample_print_history):
+    def test_print_evaluation_and_optimization_scenario(
+        self, ai, normal_image, sample_print_history
+    ):
         """Test print evaluation and workflow optimization scenario."""
         # 1. Analyze print quality
         # Simulate slight density shift in "print"

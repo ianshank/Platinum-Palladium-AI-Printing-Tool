@@ -31,9 +31,7 @@ from src.ptpd_calibration.rag.database import get_rag_db
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = typer.Typer(
-    help="Manage the Platinum/Palladium Printing RAG knowledge base."
-)
+app = typer.Typer(help="Manage the Platinum/Palladium Printing RAG knowledge base.")
 console = Console()
 
 
@@ -49,7 +47,7 @@ def add(
         dir_okay=True,
         readable=True,
         resolve_path=True,
-    )
+    ),
 ):
     """
     Add documents from a file or directory to the RAG database.
@@ -78,7 +76,9 @@ def add(
 
 
 @app.command()
-def search(query: str, n_results: int = typer.Option(3, "--n", "-k", help="Number of results to return.")):
+def search(
+    query: str, n_results: int = typer.Option(3, "--n", "-k", help="Number of results to return.")
+):
     """
     Search the RAG database with a query.
     """
@@ -91,7 +91,7 @@ def search(query: str, n_results: int = typer.Option(3, "--n", "-k", help="Numbe
         return
 
     for i, doc in enumerate(results):
-        console.print(f"\n[bold]Result {i+1}:[/bold]\n---\n{doc}")
+        console.print(f"\n[bold]Result {i + 1}:[/bold]\n---\n{doc}")
 
 
 @app.command()

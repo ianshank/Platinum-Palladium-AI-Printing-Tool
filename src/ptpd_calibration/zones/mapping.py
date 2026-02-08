@@ -29,15 +29,15 @@ from PIL import Image
 class Zone(IntEnum):
     """Ansel Adams Zone System zones (0-10)."""
 
-    ZONE_0 = 0   # Pure black
-    ZONE_I = 1   # Near black
+    ZONE_0 = 0  # Pure black
+    ZONE_I = 1  # Near black
     ZONE_II = 2  # Dark shadows
-    ZONE_III = 3 # Dark shadows with texture
+    ZONE_III = 3  # Dark shadows with texture
     ZONE_IV = 4  # Open shadow
-    ZONE_V = 5   # Middle gray
+    ZONE_V = 5  # Middle gray
     ZONE_VI = 6  # Light skin
-    ZONE_VII = 7 # Very light
-    ZONE_VIII = 8 # Whites with texture
+    ZONE_VII = 7  # Very light
+    ZONE_VIII = 8  # Whites with texture
     ZONE_IX = 9  # Near white
     ZONE_X = 10  # Pure white
 
@@ -253,22 +253,32 @@ class ZoneMapper:
 
         # If shadows are placed
         shadow_zone = Zone(placed_shadow) if placed_shadow is not None else actual_shadow
-        highlight_zone = Zone(placed_highlight) if placed_highlight is not None else actual_highlight
+        highlight_zone = (
+            Zone(placed_highlight) if placed_highlight is not None else actual_highlight
+        )
 
         if placed_shadow is not None:
             exposure_adj = placed_shadow - actual_shadow.value
             if exposure_adj > 0:
-                notes.append(f"Open up {exposure_adj} stop(s) to place shadows on Zone {placed_shadow}")
+                notes.append(
+                    f"Open up {exposure_adj} stop(s) to place shadows on Zone {placed_shadow}"
+                )
             elif exposure_adj < 0:
-                notes.append(f"Close down {-exposure_adj} stop(s) to place shadows on Zone {placed_shadow}")
+                notes.append(
+                    f"Close down {-exposure_adj} stop(s) to place shadows on Zone {placed_shadow}"
+                )
 
         # Development recommendation based on subject contrast
         if zone_range > 8:
             dev_adj = "N-1" if zone_range == 9 else "N-2"
-            notes.append(f"High contrast scene ({zone_range} zones). Recommend {dev_adj} development.")
+            notes.append(
+                f"High contrast scene ({zone_range} zones). Recommend {dev_adj} development."
+            )
         elif zone_range < 6:
             dev_adj = "N+1" if zone_range == 5 else "N+2"
-            notes.append(f"Low contrast scene ({zone_range} zones). Recommend {dev_adj} development.")
+            notes.append(
+                f"Low contrast scene ({zone_range} zones). Recommend {dev_adj} development."
+            )
         else:
             dev_adj = "N"
             notes.append(f"Normal contrast scene ({zone_range} zones). Normal development.")

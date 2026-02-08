@@ -39,7 +39,7 @@ def build_calibration_wizard_tab() -> None:
             updates = [gr.update(visible=index + 1 == target_step) for index in range(5)]
             return (
                 target_step,
-                f"**Step {target_step} of 5:** {step_titles[target_step-1]}",
+                f"**Step {target_step} of 5:** {step_titles[target_step - 1]}",
                 *updates,
             )
 
@@ -144,7 +144,13 @@ def build_calibration_wizard_tab() -> None:
             wizard_export_file = gr.File(label="Download")
             wizard_finish = gr.Button("Finish & Restart", variant="secondary")
 
-        def wizard_analyze(image_path: str | None, tablet_type: str, density_range: float, fix_rev: bool, reject_outliers: bool) -> tuple:
+        def wizard_analyze(
+            image_path: str | None,
+            tablet_type: str,
+            density_range: float,
+            fix_rev: bool,
+            reject_outliers: bool,
+        ) -> tuple:
             if image_path is None:
                 vis = _wizard_visibility(1)
                 return (
@@ -187,8 +193,7 @@ def build_calibration_wizard_tab() -> None:
                 warnings = ""
                 if result.quality and result.quality.warnings:
                     warnings = "\n".join(
-                        f"[{w.level.value.upper()}] {w.message}"
-                        for w in result.quality.warnings
+                        f"[{w.level.value.upper()}] {w.message}" for w in result.quality.warnings
                     )
                 recs = ""
                 if result.quality and result.quality.recommendations:
@@ -276,7 +281,9 @@ def build_calibration_wizard_tab() -> None:
             ],
         )
 
-        def wizard_generate(result: Any, name: str, paper: str, chemistry: str, method: str) -> tuple:
+        def wizard_generate(
+            result: Any, name: str, paper: str, chemistry: str, method: str
+        ) -> tuple:
             if result is None:
                 return (
                     None,
@@ -286,9 +293,7 @@ def build_calibration_wizard_tab() -> None:
                 )
             try:
                 curve_type = CurveType.LINEAR
-                analyzer = StepWedgeAnalyzer(
-                    WedgeAnalysisConfig(default_curve_type=curve_type)
-                )
+                analyzer = StepWedgeAnalyzer(WedgeAnalysisConfig(default_curve_type=curve_type))
                 analysis = analyzer.analyze_from_densities(
                     result.densities,
                     curve_name=name or "Wizard Curve",
@@ -405,4 +410,3 @@ def build_calibration_wizard_tab() -> None:
                 wizard_step_five,
             ],
         )
-

@@ -99,8 +99,7 @@ class DensityAnalysis:
             "highlight_blocked": self.highlight_blocked,
             "shadow_blocked": self.shadow_blocked,
             "zone_distribution": {
-                f"Zone {z}": f"{pct*100:.1f}%"
-                for z, pct in self.zone_distribution.items()
+                f"Zone {z}": f"{pct * 100:.1f}%" for z, pct in self.zone_distribution.items()
             },
             "warnings": self.warnings,
             "suggestions": self.suggestions,
@@ -176,7 +175,11 @@ class HumidityReading:
         return {
             "timestamp": self.timestamp.isoformat(),
             "humidity_percent": round(self.humidity_percent, 1),
-            "temperature_celsius": round(self.temperature_celsius, 1) if self.temperature_celsius else None,
+            "temperature_celsius": (
+                round(self.temperature_celsius, 1)
+                if self.temperature_celsius is not None
+                else None
+            ),
             "paper_type": self.paper_type,
             "notes": self.notes,
         }
@@ -197,8 +200,12 @@ class UVReading:
         return {
             "timestamp": self.timestamp.isoformat(),
             "intensity": round(self.intensity, 2),
-            "wavelength": round(self.wavelength, 1) if self.wavelength else None,
-            "bulb_hours": round(self.bulb_hours, 1) if self.bulb_hours else None,
+            "wavelength": (
+                round(self.wavelength, 1) if self.wavelength is not None else None
+            ),
+            "bulb_hours": (
+                round(self.bulb_hours, 1) if self.bulb_hours is not None else None
+            ),
             "notes": self.notes,
         }
 
@@ -262,7 +269,7 @@ class NegativeDensityValidator:
         """
         # Convert to numpy array if needed
         if isinstance(image, Image.Image):
-            image = np.array(image.convert('L'))
+            image = np.array(image.convert("L"))
         elif len(image.shape) == 3:
             # Convert RGB to grayscale
             image = np.mean(image, axis=2)
@@ -336,7 +343,9 @@ class NegativeDensityValidator:
             return False, f"Highlights blocked at Dmin={analysis.min_density:.3f}"
 
         # Check if we have good highlight detail
-        highlight_zone_percent = analysis.zone_distribution.get(1, 0) + analysis.zone_distribution.get(2, 0)
+        highlight_zone_percent = analysis.zone_distribution.get(
+            1, 0
+        ) + analysis.zone_distribution.get(2, 0)
         if highlight_zone_percent < 0.05:
             return False, "Very little highlight detail present"
 
@@ -358,7 +367,9 @@ class NegativeDensityValidator:
             return False, f"Shadows blocked at Dmax={analysis.max_density:.3f}"
 
         # Check if we have good shadow detail
-        shadow_zone_percent = analysis.zone_distribution.get(8, 0) + analysis.zone_distribution.get(9, 0)
+        shadow_zone_percent = analysis.zone_distribution.get(8, 0) + analysis.zone_distribution.get(
+            9, 0
+        )
         if shadow_zone_percent < 0.05:
             return False, "Very little shadow detail present"
 
@@ -379,7 +390,7 @@ class NegativeDensityValidator:
         """
         # Convert to numpy array if needed
         if isinstance(image, Image.Image):
-            image = np.array(image.convert('L'))
+            image = np.array(image.convert("L"))
         elif len(image.shape) == 3:
             image = np.mean(image, axis=2)
 
@@ -423,7 +434,9 @@ class NegativeDensityValidator:
 
         # Contrast adjustments
         if density_range < 1.5:
-            suggestions.append("Increase negative contrast - consider using Grade 3+ paper or longer development")
+            suggestions.append(
+                "Increase negative contrast - consider using Grade 3+ paper or longer development"
+            )
         elif density_range > 3.0:
             suggestions.append("Reduce negative contrast - may be too contrasty for Pt/Pd process")
 
@@ -431,7 +444,9 @@ class NegativeDensityValidator:
         if highlight_blocked:
             suggestions.append("Reduce exposure or development time to recover highlight detail")
         if shadow_blocked:
-            suggestions.append("Increase exposure to add shadow detail, or use higher platinum ratio for deeper blacks")
+            suggestions.append(
+                "Increase exposure to add shadow detail, or use higher platinum ratio for deeper blacks"
+            )
 
         # Curve adjustments
         if not highlight_blocked and not shadow_blocked and density_range < 2.0:
@@ -589,7 +604,9 @@ class ChemistryFreshnessTracker:
             return None
         return self.solutions[solution_id].expiration_date
 
-    def log_usage(self, solution_id: str, amount_ml: float, timestamp: datetime | None = None) -> bool:
+    def log_usage(
+        self, solution_id: str, amount_ml: float, timestamp: datetime | None = None
+    ) -> bool:
         """
         Log solution usage.
 
@@ -643,43 +660,53 @@ class ChemistryFreshnessTracker:
         for solution in self.solutions.values():
             # Check expiration
             if solution.is_expired:
-                alerts.append({
-                    "solution_id": solution.solution_id,
-                    "type": "expired",
-                    "severity": "critical",
-                    "message": f"{solution.solution_type.value} expired {abs(solution.days_until_expiration)} days ago",
-                })
+                alerts.append(
+                    {
+                        "solution_id": solution.solution_id,
+                        "type": "expired",
+                        "severity": "critical",
+                        "message": f"{solution.solution_type.value} expired {abs(solution.days_until_expiration)} days ago",
+                    }
+                )
             elif solution.days_until_expiration < self.settings.expiration_critical_days:
-                alerts.append({
-                    "solution_id": solution.solution_id,
-                    "type": "expiring_soon",
-                    "severity": "error",
-                    "message": f"{solution.solution_type.value} expires in {solution.days_until_expiration} days",
-                })
+                alerts.append(
+                    {
+                        "solution_id": solution.solution_id,
+                        "type": "expiring_soon",
+                        "severity": "error",
+                        "message": f"{solution.solution_type.value} expires in {solution.days_until_expiration} days",
+                    }
+                )
             elif solution.days_until_expiration < self.settings.expiration_warning_days:
-                alerts.append({
-                    "solution_id": solution.solution_id,
-                    "type": "expiring",
-                    "severity": "warning",
-                    "message": f"{solution.solution_type.value} expires in {solution.days_until_expiration} days",
-                })
+                alerts.append(
+                    {
+                        "solution_id": solution.solution_id,
+                        "type": "expiring",
+                        "severity": "warning",
+                        "message": f"{solution.solution_type.value} expires in {solution.days_until_expiration} days",
+                    }
+                )
 
             # Check volume
             volume_pct = solution.volume_percent_remaining
             if volume_pct < self.settings.critical_volume_percent:
-                alerts.append({
-                    "solution_id": solution.solution_id,
-                    "type": "low_volume",
-                    "severity": "error",
-                    "message": f"{solution.solution_type.value} critically low ({volume_pct:.1f}% remaining)",
-                })
+                alerts.append(
+                    {
+                        "solution_id": solution.solution_id,
+                        "type": "low_volume",
+                        "severity": "error",
+                        "message": f"{solution.solution_type.value} critically low ({volume_pct:.1f}% remaining)",
+                    }
+                )
             elif volume_pct < self.settings.low_volume_warning_percent:
-                alerts.append({
-                    "solution_id": solution.solution_id,
-                    "type": "low_volume",
-                    "severity": "warning",
-                    "message": f"{solution.solution_type.value} running low ({volume_pct:.1f}% remaining)",
-                })
+                alerts.append(
+                    {
+                        "solution_id": solution.solution_id,
+                        "type": "low_volume",
+                        "severity": "warning",
+                        "message": f"{solution.solution_type.value} running low ({volume_pct:.1f}% remaining)",
+                    }
+                )
 
         return alerts
 
@@ -711,7 +738,9 @@ class ChemistryFreshnessTracker:
         # Estimate days remaining
         if daily_usage > 0:
             days_of_supply = solution.current_volume_ml / daily_usage
-            return f"Approximately {days_of_supply:.0f} days of supply remaining at current usage rate"
+            return (
+                f"Approximately {days_of_supply:.0f} days of supply remaining at current usage rate"
+            )
         else:
             return "No recent usage detected"
 
@@ -1071,8 +1100,8 @@ class UVLightMeterIntegration:
 
         # Calculate trend (simple linear regression)
         intensities = [r.intensity for r in recent_readings]
-        initial_avg = np.mean(intensities[:len(intensities)//3])
-        recent_avg = np.mean(intensities[-len(intensities)//3:])
+        initial_avg = np.mean(intensities[: len(intensities) // 3])
+        recent_avg = np.mean(intensities[-len(intensities) // 3 :])
 
         if initial_avg == 0:
             return False, "Invalid baseline intensity"
@@ -1205,7 +1234,9 @@ class QualityReport:
                 checklist["ready_to_print"] = False
                 checklist["errors"].extend([a["message"] for a in critical_alerts])
             elif alerts:
-                checklist["warnings"].extend([a["message"] for a in alerts if a["severity"] != "critical"])
+                checklist["warnings"].extend(
+                    [a["message"] for a in alerts if a["severity"] != "critical"]
+                )
 
         # Paper humidity check
         if humidity_checker is not None:
@@ -1330,6 +1361,7 @@ class QualityReport:
         """
         if format == ReportFormat.JSON:
             import json
+
             content = json.dumps(report_data, indent=2)
 
         elif format == ReportFormat.MARKDOWN:
@@ -1385,12 +1417,14 @@ class QualityReport:
                 lines.append("")
 
         if "quality_score" in data:
-            lines.extend([
-                "## Quality Assessment",
-                "",
-                f"**Score:** {data['quality_score']:.1f}/100 (Grade: {data['grade']})",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## Quality Assessment",
+                    "",
+                    f"**Score:** {data['quality_score']:.1f}/100 (Grade: {data['grade']})",
+                    "",
+                ]
+            )
 
         if "recommendations" in data and data["recommendations"]:
             lines.extend(["## Recommendations", ""])
@@ -1417,13 +1451,13 @@ class QualityReport:
 </head>
 <body>
     <h1>Quality Assurance Report</h1>
-    <p><strong>Generated:</strong> {data.get('timestamp', 'N/A')}</p>
+    <p><strong>Generated:</strong> {data.get("timestamp", "N/A")}</p>
 """
 
         if "quality_score" in data:
             html += f"""
     <h2>Quality Assessment</h2>
-    <p class="score">Score: {data['quality_score']:.1f}/100 (Grade: {data['grade']})</p>
+    <p class="score">Score: {data["quality_score"]:.1f}/100 (Grade: {data["grade"]})</p>
 """
 
         if "recommendations" in data and data["recommendations"]:
@@ -1589,7 +1623,8 @@ class AlertSystem:
         cutoff = datetime.now() - timedelta(days=self.settings.alert_history_days)
 
         old_alerts = [
-            alert_id for alert_id, alert in self.alerts.items()
+            alert_id
+            for alert_id, alert in self.alerts.items()
             if alert.dismissed and alert.dismissed_at and alert.dismissed_at < cutoff
         ]
 

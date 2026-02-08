@@ -14,12 +14,10 @@ def create_app():
     try:
         from fastapi import FastAPI, File, Form, HTTPException, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
-        from fastapi.responses import FileResponse, JSONResponse
+        from fastapi.responses import FileResponse, JSONResponse  # noqa: F401
         from pydantic import BaseModel
     except ImportError:
-        raise ImportError(
-            "FastAPI is required. Install with: pip install ptpd-calibration[api]"
-        )
+        raise ImportError("FastAPI is required. Install with: pip install ptpd-calibration[api]")
 
     from ptpd_calibration.config import TabletType
     from ptpd_calibration.core.models import CalibrationRecord, CurveData
@@ -114,7 +112,9 @@ def create_app():
         input_values: list[float]
         output_values: list[float]
         name: str = "Modified Curve"
-        adjustment_type: str = "brightness"  # brightness, contrast, gamma, levels, highlights, shadows, midtones
+        adjustment_type: str = (
+            "brightness"  # brightness, contrast, gamma, levels, highlights, shadows, midtones
+        )
         amount: float = 0.0
         # Additional parameters for specific adjustments
         pivot: float = 0.5  # For contrast
@@ -176,30 +176,83 @@ def create_app():
             "suggestions": suggestions,
         }
 
+    # Allowlisted scan file extensions (case-insensitive)
+    _ALLOWED_SCAN_EXTENSIONS = frozenset({".tif", ".tiff", ".png", ".jpg", ".jpeg", ".bmp"})
+
     @app.post("/api/scan/upload")
     async def upload_scan(
         file: UploadFile = File(...),
         tablet_type: str = Form("stouffer_21"),
     ):
         """Upload and process a step tablet scan."""
-        # Save uploaded file
-        file_path = upload_dir / file.filename
-        with open(file_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
+        import logging
+        from uuid import uuid4
+
+        logger = logging.getLogger(__name__)
+
+        # ── Sanitise client-supplied filename ──────────────────────────
+        original_filename = file.filename or "unknown"
+        # Extract extension safely (only basename, no path separators)
+        safe_basename = Path(original_filename).name  # strips ../ segments
+        suffix = Path(safe_basename).suffix.lower()
+
+        if suffix not in _ALLOWED_SCAN_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type '{suffix}'. "
+                f"Allowed: {', '.join(sorted(_ALLOWED_SCAN_EXTENSIONS))}",
+            )
+
+        # Server-generated unique key — never trust client filename for paths
+        scan_id = uuid4().hex
+        safe_name = f"{scan_id}{suffix}"
+        file_path = upload_dir / safe_name
+
+        logger.debug("Scan upload: original=%s safe=%s", original_filename, safe_name)
+
+        # ── Stream upload to disk with size enforcement ─────────────
+        max_bytes = settings.api.max_upload_size_mb * 1024 * 1024
+        bytes_written = 0
+        _CHUNK_SIZE = 64 * 1024  # 64 KB chunks
+
+        try:
+            with open(file_path, "wb") as f:
+                while True:
+                    chunk = await file.read(_CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    bytes_written += len(chunk)
+                    if bytes_written > max_bytes:
+                        # Clean up partial file before rejecting
+                        f.close()
+                        if file_path.exists():
+                            file_path.unlink()
+                        raise HTTPException(
+                            status_code=413,
+                            detail=f"Upload exceeds maximum size of "
+                            f"{settings.api.max_upload_size_mb} MB",
+                        )
+                    f.write(chunk)
+        except HTTPException:
+            raise  # Re-raise 413 without catching it below
+        except OSError as exc:
+            if file_path.exists():
+                file_path.unlink()
+            raise HTTPException(status_code=500, detail=f"Failed to save upload: {exc}")
 
         try:
             # Process scan
             reader = StepTabletReader(tablet_type=TabletType(tablet_type))
             result = reader.read(file_path)
 
-            # Persist raw scan to storage
+            # Persist raw scan to storage with server-generated key
             with open(file_path, "rb") as f:
-               storage_backend.save(f"scans/{file.filename}", f.read())
+                storage_backend.save(f"scans/{safe_name}", f.read())
 
             return {
                 "success": True,
                 "extraction_id": str(result.extraction.id),
+                "original_filename": original_filename,
                 "num_patches": result.extraction.num_patches,
                 "densities": result.extraction.get_densities(),
                 "dmin": result.extraction.dmin,
@@ -211,7 +264,7 @@ def create_app():
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
         finally:
-            # Cleanup
+            # Cleanup temp file
             if file_path.exists():
                 file_path.unlink()
 
@@ -305,7 +358,9 @@ def create_app():
                 "curve_data": {
                     "input_values": curve_data.input_values[:20] if curve_data else [],
                     "output_values": curve_data.output_values[:20] if curve_data else [],
-                } if curve_data else None,
+                }
+                if curve_data
+                else None,
                 "summary": profile.summary(),
             }
         except Exception as e:
@@ -342,7 +397,9 @@ def create_app():
                 "curve_data": {
                     "input_values": curve_data.input_values if curve_data else [],
                     "output_values": curve_data.output_values if curve_data else [],
-                } if curve_data else None,
+                }
+                if curve_data
+                else None,
             }
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -556,7 +613,7 @@ def create_app():
         direction: str = "increasing",
     ):
         """Enforce monotonicity on a stored curve."""
-        curve = curve_storage.get(curve_id)
+        curve = get_curve_from_storage(curve_id)
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
 
@@ -688,9 +745,7 @@ def main():
     try:
         import uvicorn
     except ImportError:
-        raise ImportError(
-            "uvicorn is required. Install with: pip install ptpd-calibration[api]"
-        )
+        raise ImportError("uvicorn is required. Install with: pip install ptpd-calibration[api]")
 
     settings = get_settings()
     app = create_app()

@@ -189,7 +189,9 @@ class TestCurveModifier:
         quarter_idx = len(result.output_values) // 4
 
         mid_delta = abs(result.output_values[mid_idx] - linear_curve.output_values[mid_idx])
-        quarter_delta = abs(result.output_values[quarter_idx] - linear_curve.output_values[quarter_idx])
+        quarter_delta = abs(
+            result.output_values[quarter_idx] - linear_curve.output_values[quarter_idx]
+        )
 
         assert mid_delta > quarter_delta
 
@@ -257,7 +259,11 @@ class TestBlending:
             nonlinear_curve.output_values,
         )
 
-        assert min(linear_val, nonlinear_val) <= result.output_values[mid_idx] <= max(linear_val, nonlinear_val)
+        assert (
+            min(linear_val, nonlinear_val)
+            <= result.output_values[mid_idx]
+            <= max(linear_val, nonlinear_val)
+        )
 
     def test_blend_weighted(self, linear_curve, nonlinear_curve):
         """Test weighted blending."""
@@ -269,7 +275,9 @@ class TestBlending:
 
         # Weight 1 should give curve2
         result_1 = modifier.blend(linear_curve, nonlinear_curve, BlendMode.WEIGHTED, weight=1.0)
-        expected = np.interp(result_1.input_values, nonlinear_curve.input_values, nonlinear_curve.output_values)
+        expected = np.interp(
+            result_1.input_values, nonlinear_curve.input_values, nonlinear_curve.output_values
+        )
         assert np.allclose(result_1.output_values, expected, atol=0.01)
 
     def test_blend_multiply(self, linear_curve):

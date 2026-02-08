@@ -4,7 +4,6 @@ Transfer learning for new papers and chemistries.
 Enables bootstrapping calibrations from similar known materials.
 """
 
-
 import numpy as np
 
 from ptpd_calibration.core.models import CalibrationRecord

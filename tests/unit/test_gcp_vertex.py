@@ -1,6 +1,7 @@
 """
 Unit tests for Vertex AI client wrapper.
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -48,7 +49,9 @@ class TestVertexClient:
 
     @patch("ptpd_calibration.gcp.vertex.VERTEX_AVAILABLE", True)
     @patch("ptpd_calibration.gcp.vertex.aiplatform")
-    def test_initialize_is_idempotent(self, mock_aiplatform: MagicMock, gcp_config: GCPConfig) -> None:
+    def test_initialize_is_idempotent(
+        self, mock_aiplatform: MagicMock, gcp_config: GCPConfig
+    ) -> None:
         from ptpd_calibration.gcp.vertex import VertexClient
 
         client = VertexClient(gcp_config)
@@ -59,7 +62,9 @@ class TestVertexClient:
 
     @patch("ptpd_calibration.gcp.vertex.VERTEX_AVAILABLE", True)
     @patch("ptpd_calibration.gcp.vertex.aiplatform")
-    def test_get_model_initializes_first(self, mock_aiplatform: MagicMock, gcp_config: GCPConfig) -> None:
+    def test_get_model_initializes_first(
+        self, mock_aiplatform: MagicMock, gcp_config: GCPConfig
+    ) -> None:
         from ptpd_calibration.gcp.vertex import VertexClient
 
         client = VertexClient(gcp_config)
@@ -77,7 +82,9 @@ class TestVertexClient:
         mock_aiplatform.CustomContainerTrainingJob.return_value = mock_job
 
         client = VertexClient(gcp_config)
-        result = client.submit_custom_job(display_name="test-job", container_uri="gcr.io/test/image:latest")
+        result = client.submit_custom_job(
+            display_name="test-job", container_uri="gcr.io/test/image:latest"
+        )
 
         mock_aiplatform.init.assert_called_once()
         mock_aiplatform.CustomContainerTrainingJob.assert_called_once_with(

@@ -4,7 +4,6 @@ E2E test for Curve Display and File Loading.
 Verifies that curve files (.quad) can be loaded, displayed, and statistics generated.
 """
 
-
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -24,6 +23,7 @@ ProfileName=Test UTF-16
 255=255
 """
 
+
 @pytest.fixture
 def curve_files(tmp_path):
     """Create test curve files."""
@@ -34,6 +34,7 @@ def curve_files(tmp_path):
     utf16_file.write_text(QUAD_UTF16, encoding="utf-16")
 
     return utf8_file, utf16_file
+
 
 @pytest.mark.browser
 @pytest.mark.skip(reason="Playwright selectors pending update for hierarchical navigation")
@@ -113,5 +114,3 @@ def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):
     # Enable statistics
     page.get_by_label("Show Statistics Panel").check()
     expect(page.get_by_text("Gamma:")).to_be_visible()
-
-

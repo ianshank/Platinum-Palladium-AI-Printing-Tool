@@ -12,7 +12,7 @@ from pathlib import Path
 import matplotlib
 import numpy as np
 
-matplotlib.use('Agg')
+matplotlib.use("Agg")
 
 from ptpd_calibration.core.models import CurveData
 
@@ -318,9 +318,7 @@ class CurveVisualizer:
         all_outputs = [ref_outputs]
         for i, curve in enumerate(curves):
             if i != reference_idx:
-                interp_outputs = np.interp(
-                    ref_inputs, curve.input_values, curve.output_values
-                )
+                interp_outputs = np.interp(ref_inputs, curve.input_values, curve.output_values)
                 all_outputs.append(interp_outputs)
 
         # Compute differences from reference
@@ -600,7 +598,9 @@ class CurveVisualizer:
 
         ax.set_xlabel("Output Value", fontsize=self.config.label_fontsize)
         ax.set_ylabel("Frequency", fontsize=self.config.label_fontsize)
-        ax.set_title(title or f"Output Distribution: {curve.name}", fontsize=self.config.title_fontsize)
+        ax.set_title(
+            title or f"Output Distribution: {curve.name}", fontsize=self.config.title_fontsize
+        )
         ax.set_facecolor(self.config.background_color)
         fig.patch.set_facecolor(self.config.background_color)
         ax.grid(True, alpha=self.config.grid_alpha)
@@ -637,7 +637,9 @@ class CurveVisualizer:
         color = self.config.get_color_palette(1)[0]
 
         # Curve plot
-        ax_curve.plot(inputs, outputs, color=color, linewidth=self.config.line_width, label=curve.name)
+        ax_curve.plot(
+            inputs, outputs, color=color, linewidth=self.config.line_width, label=curve.name
+        )
         if self.config.show_reference_line:
             ax_curve.plot([0, 1], [0, 1], "--", color="gray", alpha=0.5, label="Linear")
         self._configure_axis(ax_curve, title or f"Curve: {curve.name}")
@@ -689,7 +691,14 @@ class CurveVisualizer:
             ax.fill_between(inputs, 0, outputs, color=color, alpha=0.5, label=label)
             ax.plot(inputs, outputs, color=color, linewidth=self.config.line_width)
         elif style == PlotStyle.STEP:
-            ax.step(inputs, outputs, where="mid", color=color, linewidth=self.config.line_width, label=label)
+            ax.step(
+                inputs,
+                outputs,
+                where="mid",
+                color=color,
+                linewidth=self.config.line_width,
+                label=label,
+            )
 
     def _configure_axis(self, ax, title: str) -> None:
         """Configure axis with standard settings."""
@@ -728,7 +737,7 @@ class CurveVisualizer:
             fontsize=self.config.tick_fontsize,
             verticalalignment="top",
             fontfamily="monospace",
-            bbox={'boxstyle': "round", 'facecolor': "white", 'alpha': 0.8},
+            bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
         )
 
     def _render_stats_table(
@@ -741,13 +750,27 @@ class CurveVisualizer:
         y_pos = 0.95
         line_height = 0.08
 
-        ax.text(0.5, y_pos, "Statistics", fontsize=self.config.title_fontsize, fontweight="bold", ha="center")
+        ax.text(
+            0.5,
+            y_pos,
+            "Statistics",
+            fontsize=self.config.title_fontsize,
+            fontweight="bold",
+            ha="center",
+        )
         y_pos -= line_height * 1.5
 
         for i, stats in enumerate(stats_list):
             color = colors[i] if i < len(colors) else "black"
 
-            ax.text(0.05, y_pos, stats.name, fontsize=self.config.label_fontsize, color=color, fontweight="bold")
+            ax.text(
+                0.05,
+                y_pos,
+                stats.name,
+                fontsize=self.config.label_fontsize,
+                color=color,
+                fontweight="bold",
+            )
             y_pos -= line_height
 
             stat_items = [

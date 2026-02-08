@@ -4,7 +4,6 @@ Browser-based E2E test using Playwright.
 This test requires Playwright to be installed. If not installed, it will be skipped.
 """
 
-
 import numpy as np
 import pytest
 from PIL import Image

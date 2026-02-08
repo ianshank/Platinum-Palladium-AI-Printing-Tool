@@ -43,11 +43,11 @@ class ChemistryUsed:
     def total_drops(self) -> float:
         """Get total drops used."""
         return (
-            self.ferric_oxalate_drops +
-            self.ferric_oxalate_contrast_drops +
-            self.palladium_drops +
-            self.platinum_drops +
-            self.na2_drops
+            self.ferric_oxalate_drops
+            + self.ferric_oxalate_contrast_drops
+            + self.palladium_drops
+            + self.platinum_drops
+            + self.na2_drops
         )
 
     @property
@@ -157,7 +157,9 @@ class PrintRecord:
         """Create from dictionary."""
         return cls(
             id=UUID(data["id"]) if "id" in data else uuid4(),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if "timestamp" in data else datetime.now(),
+            timestamp=datetime.fromisoformat(data["timestamp"])
+            if "timestamp" in data
+            else datetime.now(),
             image_name=data.get("image_name", ""),
             negative_path=data.get("negative_path"),
             paper_type=data.get("paper_type", ""),
@@ -209,7 +211,8 @@ class PrintSession:
         if not self.records:
             return 0.0
         successful = sum(
-            1 for r in self.records
+            1
+            for r in self.records
             if r.result in (PrintResult.EXCELLENT, PrintResult.GOOD, PrintResult.ACCEPTABLE)
         )
         return (successful / len(self.records)) * 100
@@ -229,7 +232,8 @@ class PrintSession:
             "success_rate": f"{self.success_rate:.1f}%",
             "duration_hours": round(self.duration_hours or 0, 2),
             "papers_used": list({r.paper_type for r in self.records if r.paper_type}),
-            "avg_exposure_minutes": sum(r.exposure_time_minutes for r in self.records) / len(self.records),
+            "avg_exposure_minutes": sum(r.exposure_time_minutes for r in self.records)
+            / len(self.records),
         }
 
     def to_dict(self) -> dict:
@@ -250,7 +254,9 @@ class PrintSession:
         return cls(
             id=UUID(data["id"]) if "id" in data else uuid4(),
             name=data.get("name", ""),
-            started_at=datetime.fromisoformat(data["started_at"]) if "started_at" in data else datetime.now(),
+            started_at=datetime.fromisoformat(data["started_at"])
+            if "started_at" in data
+            else datetime.now(),
             ended_at=datetime.fromisoformat(data["ended_at"]) if data.get("ended_at") else None,
             records=[PrintRecord.from_dict(r) for r in data.get("records", [])],
             notes=data.get("notes", ""),
@@ -329,7 +335,9 @@ class SessionLogger:
         Returns:
             Path to saved file
         """
-        filename = f"session_{session.started_at.strftime('%Y%m%d_%H%M%S')}_{session.id.hex[:8]}.json"
+        filename = (
+            f"session_{session.started_at.strftime('%Y%m%d_%H%M%S')}_{session.id.hex[:8]}.json"
+        )
         filepath = self.storage_dir / filename
 
         with open(filepath, "w") as f:
@@ -367,14 +375,17 @@ class SessionLogger:
             try:
                 with open(filepath) as f:
                     data = json.load(f)
-                sessions.append({
-                    "filepath": str(filepath),
-                    "name": data.get("name", ""),
-                    "started_at": data.get("started_at"),
-                    "total_prints": len(data.get("records", [])),
-                })
+                sessions.append(
+                    {
+                        "filepath": str(filepath),
+                        "name": data.get("name", ""),
+                        "started_at": data.get("started_at"),
+                        "total_prints": len(data.get("records", [])),
+                    }
+                )
             except Exception as e:
                 import logging
+
                 logging.warning(f"Failed to list session {filepath}: {e}")
                 continue
 
@@ -417,6 +428,7 @@ class SessionLogger:
                         return records
             except Exception as e:
                 import logging
+
                 logging.warning(f"Failed to search session {filepath}: {e}")
                 continue
 
@@ -455,16 +467,21 @@ class SessionLogger:
                         stats[record.paper_type]["failed"] += 1
 
                     if record.exposure_time_minutes > 0:
-                        stats[record.paper_type]["avg_exposure"].append(record.exposure_time_minutes)
+                        stats[record.paper_type]["avg_exposure"].append(
+                            record.exposure_time_minutes
+                        )
             except Exception as e:
                 import logging
+
                 logging.warning(f"Failed to get stats for session {filepath}: {e}")
                 continue
 
         # Calculate averages
         for paper in stats:
             exposures_list = cast(list[float], stats[paper]["avg_exposure"])
-            stats[paper]["avg_exposure"] = sum(exposures_list) / len(exposures_list) if exposures_list else 0
+            stats[paper]["avg_exposure"] = (
+                sum(exposures_list) / len(exposures_list) if exposures_list else 0
+            )
 
         return stats
 

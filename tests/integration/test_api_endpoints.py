@@ -18,18 +18,18 @@ os.environ["PTPD_FORCE_LOCAL_STORAGE"] = "true"
 _staging_dir = tempfile.mkdtemp(prefix="ptpd_test_")
 os.environ["PTPD_STAGING_DIR"] = _staging_dir
 
-import pytest
-import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+import pytest
+import pytest_asyncio
 
 from ptpd_calibration.api.server import create_app
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def app():
@@ -49,9 +49,29 @@ async def client(app):
 # Sample data
 # ---------------------------------------------------------------------------
 
-SAMPLE_DENSITIES = [0.08, 0.15, 0.28, 0.42, 0.58, 0.72, 0.88, 1.02, 1.18,
-                     1.32, 1.45, 1.55, 1.65, 1.72, 1.78, 1.82, 1.86, 1.89,
-                     1.91, 1.93, 1.95]
+SAMPLE_DENSITIES = [
+    0.08,
+    0.15,
+    0.28,
+    0.42,
+    0.58,
+    0.72,
+    0.88,
+    1.02,
+    1.18,
+    1.32,
+    1.45,
+    1.55,
+    1.65,
+    1.72,
+    1.78,
+    1.82,
+    1.86,
+    1.89,
+    1.91,
+    1.93,
+    1.95,
+]
 
 SAMPLE_CURVE_INPUTS = [round(i / 20, 2) for i in range(21)]
 SAMPLE_CURVE_OUTPUTS = [round((i / 20) ** 0.9, 4) for i in range(21)]
@@ -60,6 +80,7 @@ SAMPLE_CURVE_OUTPUTS = [round((i / 20) ** 0.9, 4) for i in range(21)]
 # ---------------------------------------------------------------------------
 # Health & Root
 # ---------------------------------------------------------------------------
+
 
 class TestHealthEndpoints:
     """Tests for health and root endpoints."""
@@ -85,15 +106,19 @@ class TestHealthEndpoints:
 # Analysis
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeEndpoint:
     """Tests for the density analysis endpoint."""
 
     @pytest.mark.asyncio
     async def test_analyze_densities(self, client: httpx.AsyncClient):
         """POST /api/analyze returns density metrics."""
-        resp = await client.post("/api/analyze", json={
-            "densities": SAMPLE_DENSITIES,
-        })
+        resp = await client.post(
+            "/api/analyze",
+            json={
+                "densities": SAMPLE_DENSITIES,
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
 
@@ -114,19 +139,23 @@ class TestAnalyzeEndpoint:
 # Curves — Generate, Retrieve, Modify, Smooth, Export
 # ---------------------------------------------------------------------------
 
+
 class TestCurveEndpoints:
     """Tests for curve CRUD and manipulation endpoints."""
 
     @pytest.mark.asyncio
     async def test_generate_curve(self, client: httpx.AsyncClient):
         """POST /api/curves/generate creates a curve and returns its ID."""
-        resp = await client.post("/api/curves/generate", json={
-            "densities": SAMPLE_DENSITIES,
-            "name": "Integration Test Curve",
-            "curve_type": "linear",
-            "paper_type": "Platine Rag 310",
-            "chemistry": "Pt/Pd 50/50",
-        })
+        resp = await client.post(
+            "/api/curves/generate",
+            json={
+                "densities": SAMPLE_DENSITIES,
+                "name": "Integration Test Curve",
+                "curve_type": "linear",
+                "paper_type": "Platine Rag 310",
+                "chemistry": "Pt/Pd 50/50",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
 
@@ -140,13 +169,16 @@ class TestCurveEndpoints:
     @pytest.mark.asyncio
     async def test_modify_curve_brightness(self, client: httpx.AsyncClient):
         """POST /api/curves/modify applies brightness adjustment."""
-        resp = await client.post("/api/curves/modify", json={
-            "input_values": SAMPLE_CURVE_INPUTS,
-            "output_values": SAMPLE_CURVE_OUTPUTS,
-            "name": "Brightness Adjusted",
-            "adjustment_type": "brightness",
-            "amount": 0.1,
-        })
+        resp = await client.post(
+            "/api/curves/modify",
+            json={
+                "input_values": SAMPLE_CURVE_INPUTS,
+                "output_values": SAMPLE_CURVE_OUTPUTS,
+                "name": "Brightness Adjusted",
+                "adjustment_type": "brightness",
+                "amount": 0.1,
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
 
@@ -157,14 +189,17 @@ class TestCurveEndpoints:
     @pytest.mark.asyncio
     async def test_modify_curve_contrast(self, client: httpx.AsyncClient):
         """POST /api/curves/modify applies contrast adjustment."""
-        resp = await client.post("/api/curves/modify", json={
-            "input_values": SAMPLE_CURVE_INPUTS,
-            "output_values": SAMPLE_CURVE_OUTPUTS,
-            "name": "Contrast Adjusted",
-            "adjustment_type": "contrast",
-            "amount": 0.15,
-            "pivot": 0.5,
-        })
+        resp = await client.post(
+            "/api/curves/modify",
+            json={
+                "input_values": SAMPLE_CURVE_INPUTS,
+                "output_values": SAMPLE_CURVE_OUTPUTS,
+                "name": "Contrast Adjusted",
+                "adjustment_type": "contrast",
+                "amount": 0.15,
+                "pivot": 0.5,
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["success"] is True
@@ -173,27 +208,33 @@ class TestCurveEndpoints:
     @pytest.mark.asyncio
     async def test_modify_curve_gamma(self, client: httpx.AsyncClient):
         """POST /api/curves/modify applies gamma adjustment."""
-        resp = await client.post("/api/curves/modify", json={
-            "input_values": SAMPLE_CURVE_INPUTS,
-            "output_values": SAMPLE_CURVE_OUTPUTS,
-            "name": "Gamma Adjusted",
-            "adjustment_type": "gamma",
-            "amount": 0.2,
-        })
+        resp = await client.post(
+            "/api/curves/modify",
+            json={
+                "input_values": SAMPLE_CURVE_INPUTS,
+                "output_values": SAMPLE_CURVE_OUTPUTS,
+                "name": "Gamma Adjusted",
+                "adjustment_type": "gamma",
+                "amount": 0.2,
+            },
+        )
         assert resp.status_code == 200
         assert resp.json()["success"] is True
 
     @pytest.mark.asyncio
     async def test_smooth_curve_gaussian(self, client: httpx.AsyncClient):
         """POST /api/curves/smooth applies Gaussian smoothing."""
-        resp = await client.post("/api/curves/smooth", json={
-            "input_values": SAMPLE_CURVE_INPUTS,
-            "output_values": SAMPLE_CURVE_OUTPUTS,
-            "name": "Smoothed Curve",
-            "method": "gaussian",
-            "strength": 0.3,
-            "preserve_endpoints": True,
-        })
+        resp = await client.post(
+            "/api/curves/smooth",
+            json={
+                "input_values": SAMPLE_CURVE_INPUTS,
+                "output_values": SAMPLE_CURVE_OUTPUTS,
+                "name": "Smoothed Curve",
+                "method": "gaussian",
+                "strength": 0.3,
+                "preserve_endpoints": True,
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
 
@@ -204,12 +245,15 @@ class TestCurveEndpoints:
     @pytest.mark.asyncio
     async def test_export_curve_csv(self, client: httpx.AsyncClient):
         """POST /api/curves/export returns a downloadable file."""
-        densities_str = ",".join(str(d) for d in SAMPLE_DENSITIES)
-        resp = await client.post("/api/curves/export", data={
-            "densities": SAMPLE_DENSITIES,
-            "name": "export_test",
-            "format": "csv",
-        })
+        _ = ",".join(str(d) for d in SAMPLE_DENSITIES)
+        resp = await client.post(
+            "/api/curves/export",
+            data={
+                "densities": SAMPLE_DENSITIES,
+                "name": "export_test",
+                "format": "csv",
+            },
+        )
         # Export uses Form fields; httpx sends them as form-encoded
         assert resp.status_code == 200
         # Should return file content (not JSON)
@@ -218,18 +262,22 @@ class TestCurveEndpoints:
     @pytest.mark.asyncio
     async def test_modify_unknown_type_returns_400(self, client: httpx.AsyncClient):
         """POST /api/curves/modify with unknown type returns 400."""
-        resp = await client.post("/api/curves/modify", json={
-            "input_values": SAMPLE_CURVE_INPUTS,
-            "output_values": SAMPLE_CURVE_OUTPUTS,
-            "adjustment_type": "nonexistent",
-            "amount": 0.1,
-        })
+        resp = await client.post(
+            "/api/curves/modify",
+            json={
+                "input_values": SAMPLE_CURVE_INPUTS,
+                "output_values": SAMPLE_CURVE_OUTPUTS,
+                "adjustment_type": "nonexistent",
+                "amount": 0.1,
+            },
+        )
         assert resp.status_code == 400
 
 
 # ---------------------------------------------------------------------------
 # Calibrations — CRUD
 # ---------------------------------------------------------------------------
+
 
 class TestCalibrationEndpoints:
     """Tests for calibration record CRUD."""
@@ -238,16 +286,19 @@ class TestCalibrationEndpoints:
     async def test_create_and_list_calibrations(self, client: httpx.AsyncClient):
         """POST /api/calibrations creates a record, GET lists it."""
         # Create
-        create_resp = await client.post("/api/calibrations", json={
-            "paper_type": "Platine Rag 310",
-            "exposure_time": 12.5,
-            "metal_ratio": 0.6,
-            "contrast_agent": "none",
-            "developer": "potassium_oxalate",
-            "chemistry_type": "platinum_palladium",
-            "densities": SAMPLE_DENSITIES,
-            "notes": "Integration test calibration",
-        })
+        create_resp = await client.post(
+            "/api/calibrations",
+            json={
+                "paper_type": "Platine Rag 310",
+                "exposure_time": 12.5,
+                "metal_ratio": 0.6,
+                "contrast_agent": "none",
+                "developer": "potassium_oxalate",
+                "chemistry_type": "platinum_palladium",
+                "densities": SAMPLE_DENSITIES,
+                "notes": "Integration test calibration",
+            },
+        )
         assert create_resp.status_code == 200
         create_data = create_resp.json()
         assert create_data["success"] is True
@@ -267,15 +318,18 @@ class TestCalibrationEndpoints:
     async def test_get_calibration_by_id(self, client: httpx.AsyncClient):
         """GET /api/calibrations/{id} returns a specific record."""
         # Create first
-        create_resp = await client.post("/api/calibrations", json={
-            "paper_type": "Bergger COT 320",
-            "exposure_time": 15.0,
-            "metal_ratio": 0.5,
-            "contrast_agent": "none",
-            "developer": "potassium_oxalate",
-            "chemistry_type": "platinum_palladium",
-            "densities": SAMPLE_DENSITIES[:11],
-        })
+        create_resp = await client.post(
+            "/api/calibrations",
+            json={
+                "paper_type": "Bergger COT 320",
+                "exposure_time": 15.0,
+                "metal_ratio": 0.5,
+                "contrast_agent": "none",
+                "developer": "potassium_oxalate",
+                "chemistry_type": "platinum_palladium",
+                "densities": SAMPLE_DENSITIES[:11],
+            },
+        )
         cal_id = create_resp.json()["id"]
 
         # Get by ID
@@ -304,6 +358,7 @@ class TestCalibrationEndpoints:
 # Statistics
 # ---------------------------------------------------------------------------
 
+
 class TestStatisticsEndpoint:
     """Tests for the statistics endpoint."""
 
@@ -321,6 +376,7 @@ class TestStatisticsEndpoint:
 # Chat (with mocked LLM)
 # ---------------------------------------------------------------------------
 
+
 class TestChatEndpoint:
     """Tests for the chat endpoint with mocked LLM."""
 
@@ -331,10 +387,13 @@ class TestChatEndpoint:
         mock_assistant.chat = AsyncMock(return_value="This is a test response.")
 
         with patch("ptpd_calibration.llm.create_assistant", return_value=mock_assistant):
-            resp = await client.post("/api/chat", json={
-                "message": "What is platinum/palladium printing?",
-                "include_history": False,
-            })
+            resp = await client.post(
+                "/api/chat",
+                json={
+                    "message": "What is platinum/palladium printing?",
+                    "include_history": False,
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()

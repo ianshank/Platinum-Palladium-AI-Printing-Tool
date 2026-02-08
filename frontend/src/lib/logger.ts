@@ -77,13 +77,14 @@ class Logger {
     context?: Record<string, unknown>,
     source?: string
   ): LogEntry {
-    return {
+    const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       message,
-      context,
-      source,
     };
+    if (context !== undefined) entry.context = context;
+    if (source !== undefined) entry.source = source;
+    return entry;
   }
 
   /**

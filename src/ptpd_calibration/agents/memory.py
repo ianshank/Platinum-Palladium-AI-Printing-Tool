@@ -270,7 +270,11 @@ class AgentMemory:
         scored = []
         for key, item in self._long_term.items():
             age_days = (datetime.now() - item.last_accessed).days
-            score = item.importance * 0.5 + (1 - age_days / 365) * 0.3 + min(item.access_count / 10, 1) * 0.2
+            score = (
+                item.importance * 0.5
+                + (1 - age_days / 365) * 0.3
+                + min(item.access_count / 10, 1) * 0.2
+            )
             scored.append((key, score))
 
         # Sort by score and remove lowest

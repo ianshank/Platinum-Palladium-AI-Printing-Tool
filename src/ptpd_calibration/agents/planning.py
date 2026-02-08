@@ -203,9 +203,7 @@ class Planner:
         ]
         return Plan(goal=goal, steps=steps)
 
-    def suggest_adaptation(
-        self, plan: Plan, observation: str
-    ) -> list[str] | None:
+    def suggest_adaptation(self, plan: Plan, observation: str) -> list[str] | None:
         """
         Suggest plan adaptation based on observation.
 

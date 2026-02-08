@@ -428,9 +428,7 @@ class ImageProcessingProfiler:
         self._lock = threading.RLock()
         logger.info("ImageProcessingProfiler initialized")
 
-    def profile_operation(
-        self, func: Callable, *args, **kwargs
-    ) -> tuple[Any, dict[str, Any]]:
+    def profile_operation(self, func: Callable, *args, **kwargs) -> tuple[Any, dict[str, Any]]:
         """
         Profile any operation and return result with profiling data.
 
@@ -491,9 +489,7 @@ class ImageProcessingProfiler:
                 metadata=profile_data,
             )
 
-            logger.info(
-                f"Profiled {operation_name}: {wall_time:.3f}s, {mem_delta:.1f}MB"
-            )
+            logger.info(f"Profiled {operation_name}: {wall_time:.3f}s, {mem_delta:.1f}MB")
 
         return result, profile_data
 
@@ -559,9 +555,7 @@ class ImageProcessingProfiler:
             process = psutil.Process()
             mem_mb = process.memory_info().rss / 1024 / 1024
             self._memory_tracking[operation] = mem_mb
-            self.monitor.record_metric(
-                f"{operation}_memory_snapshot", mem_mb, "MB"
-            )
+            self.monitor.record_metric(f"{operation}_memory_snapshot", mem_mb, "MB")
 
     def get_memory_stats(self) -> dict[str, float]:
         """
@@ -670,9 +664,7 @@ class APIPerformanceTracker:
                 error=error,
             )
             self._requests.append(metric)
-            logger.debug(
-                f"Tracked {method} {endpoint}: {status} in {duration*1000:.1f}ms"
-            )
+            logger.debug(f"Tracked {method} {endpoint}: {status} in {duration * 1000:.1f}ms")
 
     @contextmanager
     def track(self, endpoint: str, method: str = "GET"):
@@ -796,9 +788,7 @@ class APIPerformanceTracker:
                 "overall_p95_ms": float(np.percentile(all_durations, 95)),
                 "endpoints": endpoint_stats,
                 "slowest_endpoints": self._get_slowest_endpoints(endpoint_stats),
-                "highest_error_endpoints": self._get_highest_error_endpoints(
-                    endpoint_stats
-                ),
+                "highest_error_endpoints": self._get_highest_error_endpoints(endpoint_stats),
             }
 
     def _get_slowest_endpoints(
@@ -856,9 +846,7 @@ class CacheManager:
             "expirations": 0,
         }
         self._lock = threading.RLock()
-        logger.info(
-            f"CacheManager initialized: max_size={max_size}, default_ttl={default_ttl}s"
-        )
+        logger.info(f"CacheManager initialized: max_size={max_size}, default_ttl={default_ttl}s")
 
     def get(self, key: str) -> Any | None:
         """
@@ -979,9 +967,7 @@ class CacheManager:
         """
         with self._lock:
             now = datetime.now()
-            expired_keys = [
-                key for key, expiry in self._expiry.items() if now > expiry
-            ]
+            expired_keys = [key for key, expiry in self._expiry.items() if now > expiry]
 
             for key in expired_keys:
                 self._cache.pop(key, None)
@@ -1133,9 +1119,7 @@ class ResourceMonitor:
                     "resource": "cpu",
                     "usage": resources.cpu_percent,
                     "threshold": self.cpu_threshold,
-                    "severity": "warning"
-                    if resources.cpu_percent < 95
-                    else "critical",
+                    "severity": "warning" if resources.cpu_percent < 95 else "critical",
                     "message": f"CPU usage at {resources.cpu_percent:.1f}%",
                 }
             )
@@ -1146,9 +1130,7 @@ class ResourceMonitor:
                     "resource": "memory",
                     "usage": resources.memory_percent,
                     "threshold": self.memory_threshold,
-                    "severity": "warning"
-                    if resources.memory_percent < 95
-                    else "critical",
+                    "severity": "warning" if resources.memory_percent < 95 else "critical",
                     "message": f"Memory usage at {resources.memory_percent:.1f}%",
                 }
             )
@@ -1262,9 +1244,7 @@ class PerformanceReport:
         # Filter metrics by session_id in metadata
         with self.monitor._lock:
             for op_name, metrics in self.monitor._metrics.items():
-                session_metrics = [
-                    m for m in metrics if m.metadata.get("session_id") == session_id
-                ]
+                session_metrics = [m for m in metrics if m.metadata.get("session_id") == session_id]
                 if session_metrics:
                     values = [m.value for m in session_metrics]
                     report["operations"][op_name] = {
