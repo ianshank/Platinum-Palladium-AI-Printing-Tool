@@ -175,9 +175,11 @@ class HumidityReading:
         return {
             "timestamp": self.timestamp.isoformat(),
             "humidity_percent": round(self.humidity_percent, 1),
-            "temperature_celsius": round(self.temperature_celsius, 1)
-            if self.temperature_celsius
-            else None,
+            "temperature_celsius": (
+                round(self.temperature_celsius, 1)
+                if self.temperature_celsius is not None
+                else None
+            ),
             "paper_type": self.paper_type,
             "notes": self.notes,
         }
@@ -198,8 +200,12 @@ class UVReading:
         return {
             "timestamp": self.timestamp.isoformat(),
             "intensity": round(self.intensity, 2),
-            "wavelength": round(self.wavelength, 1) if self.wavelength else None,
-            "bulb_hours": round(self.bulb_hours, 1) if self.bulb_hours else None,
+            "wavelength": (
+                round(self.wavelength, 1) if self.wavelength is not None else None
+            ),
+            "bulb_hours": (
+                round(self.bulb_hours, 1) if self.bulb_hours is not None else None
+            ),
             "notes": self.notes,
         }
 

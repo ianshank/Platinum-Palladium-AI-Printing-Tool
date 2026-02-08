@@ -19,7 +19,6 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 try:
     import qrcode
-    from qrcode.image.pil import PilImage  # noqa: F401
 
     HAS_QRCODE = True
 except ImportError:
