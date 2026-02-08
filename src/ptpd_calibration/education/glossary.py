@@ -29,16 +29,10 @@ class GlossaryTerm(BaseModel):
     term: str = Field(..., min_length=1, max_length=200, description="The term itself")
     definition: str = Field(..., min_length=1, description="Detailed definition")
     category: TermCategory = Field(..., description="Term category")
-    related_terms: list[str] = Field(
-        default_factory=list, description="Related terminology"
-    )
-    examples: list[str] = Field(
-        default_factory=list, description="Usage examples or notes"
-    )
+    related_terms: list[str] = Field(default_factory=list, description="Related terminology")
+    examples: list[str] = Field(default_factory=list, description="Usage examples or notes")
     synonyms: list[str] = Field(default_factory=list, description="Alternative names")
-    see_also: list[str] = Field(
-        default_factory=list, description="Cross-references to other terms"
-    )
+    see_also: list[str] = Field(default_factory=list, description="Cross-references to other terms")
 
 
 # Comprehensive glossary database
@@ -788,6 +782,423 @@ GLOSSARY_DATA = {
             "Popular alternative coating tool",
         ],
         "see_also": ["glass_rod", "coating"],
+    },
+    # =====================================================
+    # CYANOTYPE PROCESS TERMS
+    # =====================================================
+    "cyanotype": {
+        "term": "Cyanotype",
+        "definition": (
+            "Iron-based alternative photographic printing process producing characteristic Prussian blue "
+            "images. Invented by Sir John Herschel in 1842. Uses ferric ammonium citrate and potassium "
+            "ferricyanide as sensitizers. Developed in water. One of the simplest and most accessible "
+            "alternative processes. Often called 'blueprint' due to historical use in architectural drawings."
+        ),
+        "category": TermCategory.PROCESS,
+        "related_terms": ["ferric_ammonium_citrate", "potassium_ferricyanide", "prussian_blue"],
+        "examples": [
+            "Anna Atkins created first photographically illustrated book using cyanotypes (1843)",
+            "Exposure typically 10-30 minutes in direct sunlight",
+            "Development in running water for 5-10 minutes",
+            "Final image is Prussian blue (ferric ferrocyanide)",
+        ],
+        "synonyms": ["blueprint", "blue print", "sun print"],
+        "see_also": ["ferric_ammonium_citrate", "new_cyanotype"],
+    },
+    "ferric_ammonium_citrate": {
+        "term": "Ferric Ammonium Citrate",
+        "definition": (
+            "Iron(III) ammonium citrate, also known as FAC. Primary sensitizer for cyanotype printing. "
+            "Available in 'green' and 'brown' forms - green is more common and light-sensitive. "
+            "Mixed as 25% solution (Solution A) in classic cyanotype formula. Light-sensitive iron "
+            "compound that reduces to ferrous form when exposed to UV light."
+        ),
+        "category": TermCategory.CHEMISTRY,
+        "related_terms": ["cyanotype", "potassium_ferricyanide", "sensitizer"],
+        "examples": [
+            "Use 'green' form for best results",
+            "Mix 25g per 100ml distilled water for standard solution",
+            "Store in amber bottle, keeps 6+ months",
+            "Green color indicates proper iron oxidation state",
+        ],
+        "synonyms": ["FAC", "ammonium iron citrate", "green FAC"],
+        "see_also": ["cyanotype", "potassium_ferricyanide"],
+    },
+    "potassium_ferricyanide": {
+        "term": "Potassium Ferricyanide",
+        "definition": (
+            "K3[Fe(CN)6], the second component of cyanotype sensitizer. Forms Prussian blue when "
+            "combined with ferrous (reduced) iron. Mixed as 10% solution (Solution B) in classic "
+            "cyanotype. Despite 'cyanide' in name, is relatively safe when not heated or mixed with "
+            "strong acids. Produces characteristic blue color of cyanotypes."
+        ),
+        "category": TermCategory.CHEMISTRY,
+        "related_terms": ["cyanotype", "ferric_ammonium_citrate", "prussian_blue"],
+        "examples": [
+            "Mix 10g per 100ml distilled water",
+            "Orange-red crystals in solid form",
+            "Safe when used properly - avoid acids and heat",
+            "Also used in print bleaching and toning",
+        ],
+        "synonyms": ["red prussiate of potash", "potassium hexacyanoferrate(III)"],
+        "see_also": ["cyanotype", "ferric_ammonium_citrate"],
+    },
+    "prussian_blue": {
+        "term": "Prussian Blue",
+        "definition": (
+            "Ferric ferrocyanide (Fe4[Fe(CN)6]3), the deep blue pigment that forms the final image "
+            "in cyanotype prints. One of the first synthetic pigments. Extremely stable and lightfast "
+            "when fully oxidized. Forms when ferrous iron (from light exposure) reacts with ferricyanide "
+            "during development/washing."
+        ),
+        "category": TermCategory.CHEMISTRY,
+        "related_terms": ["cyanotype", "potassium_ferricyanide"],
+        "examples": [
+            "Final cyanotype image is Prussian blue pigment",
+            "Can be toned to other colors with various baths",
+            "Bleaches in alkaline conditions (washing soda)",
+            "Deep blue color intensifies over 24-48 hours",
+        ],
+        "synonyms": ["iron blue", "Berlin blue", "Milori blue"],
+        "see_also": ["cyanotype", "potassium_ferricyanide"],
+    },
+    "new_cyanotype": {
+        "term": "New Cyanotype",
+        "definition": (
+            "Improved cyanotype formula developed by Mike Ware using ammonium iron(III) oxalate "
+            "instead of ferric ammonium citrate. Produces higher Dmax, faster exposures, and better "
+            "tonal separation than classic formula. More expensive but preferred by serious practitioners "
+            "for fine art work."
+        ),
+        "category": TermCategory.PROCESS,
+        "related_terms": ["cyanotype", "ammonium_iron_oxalate"],
+        "examples": [
+            "30-50% shorter exposure times than classic",
+            "Higher maximum density achievable",
+            "Better highlight detail",
+            "Requires ammonium iron(III) oxalate",
+        ],
+        "synonyms": ["Ware cyanotype", "Mike Ware cyanotype"],
+        "see_also": ["cyanotype"],
+    },
+    "cyanotype_toning": {
+        "term": "Cyanotype Toning",
+        "definition": (
+            "Post-processing technique to change cyanotype color from blue to other hues. Common "
+            "toners: tannic acid/tea (brown/black), wine (purple), ammonia (yellow temporarily), "
+            "sodium carbonate bleach followed by redevelopment. Allows artistic variation while "
+            "maintaining archival quality."
+        ),
+        "category": TermCategory.ARTISTIC,
+        "related_terms": ["cyanotype", "prussian_blue"],
+        "examples": [
+            "Tea/tannic acid toning produces warm brown-black",
+            "Bleach with sodium carbonate, then tone",
+            "Some tones fade if not properly fixed",
+            "Experiment on test prints first",
+        ],
+        "see_also": ["cyanotype"],
+    },
+    # =====================================================
+    # SILVER GELATIN PROCESS TERMS
+    # =====================================================
+    "silver_gelatin": {
+        "term": "Silver Gelatin",
+        "definition": (
+            "Traditional photographic printing process using factory-prepared papers coated with "
+            "light-sensitive silver halides in gelatin. The standard black-and-white darkroom process. "
+            "Paper is exposed under an enlarger, developed in chemical developer, stopped, fixed, "
+            "and washed. Available in fiber-based (FB) and resin-coated (RC) varieties."
+        ),
+        "category": TermCategory.PROCESS,
+        "related_terms": ["fiber_based", "resin_coated", "enlarger", "darkroom"],
+        "examples": [
+            "Standard process for darkroom printing since 1870s",
+            "Paper is pre-sensitized - no coating required",
+            "Processing at 68°F (20°C) is standard",
+            "Available in graded or variable contrast",
+        ],
+        "synonyms": ["gelatin silver", "silver print", "darkroom print"],
+        "see_also": ["fiber_based", "resin_coated", "variable_contrast"],
+    },
+    "fiber_based": {
+        "term": "Fiber Based Paper",
+        "definition": (
+            "Traditional silver gelatin paper with emulsion coated on baryta (barium sulfate) layer "
+            "over cotton/alpha-cellulose fiber base. Considered archival standard. Requires longer "
+            "processing times: development 2-3 min, fix 5-10 min, wash 1 hour. Beautiful tonal range "
+            "and surface quality. Can be toned for permanence and color shifts."
+        ),
+        "category": TermCategory.MATERIALS,
+        "related_terms": ["silver_gelatin", "resin_coated", "baryta"],
+        "examples": [
+            "Museum-quality archival prints use FB paper",
+            "Longer wash time (60+ minutes) required",
+            "Can be air-dried, ferrotyped, or heat dried",
+            "Responds well to selenium and gold toning",
+        ],
+        "synonyms": ["FB paper", "baryta paper"],
+        "see_also": ["silver_gelatin", "resin_coated"],
+    },
+    "resin_coated": {
+        "term": "Resin Coated Paper",
+        "definition": (
+            "Silver gelatin paper with emulsion on plastic-coated paper base. Faster processing "
+            "than fiber-based: development 1-2 min, fix 2-3 min, wash 4-5 min. Easier to handle "
+            "and dries flat. Not considered archival but excellent for proof prints and general work. "
+            "More resistant to curling and damage during processing."
+        ),
+        "category": TermCategory.MATERIALS,
+        "related_terms": ["silver_gelatin", "fiber_based"],
+        "examples": [
+            "Quick processing for proof prints",
+            "4-minute wash is sufficient",
+            "Air dries flat in 30 minutes",
+            "Not recommended for long-term archival storage",
+        ],
+        "synonyms": ["RC paper", "PE paper"],
+        "see_also": ["silver_gelatin", "fiber_based"],
+    },
+    "variable_contrast": {
+        "term": "Variable Contrast Paper",
+        "definition": (
+            "Silver gelatin paper containing two emulsion layers sensitive to different colors. "
+            "Contrast is controlled by filtering the enlarger light: magenta filters increase contrast, "
+            "yellow filters decrease it. Standard grades 00-5 available. Allows local contrast control "
+            "through split-grade printing technique."
+        ),
+        "category": TermCategory.MATERIALS,
+        "related_terms": ["silver_gelatin", "split_grade", "multigrade_filter"],
+        "examples": [
+            "Ilford Multigrade is most popular brand",
+            "Grade 2 is normal contrast (no filter)",
+            "Magenta = high contrast, Yellow = low contrast",
+            "Split-grade printing uses both for local control",
+        ],
+        "synonyms": ["multigrade", "VC paper", "multicontrast"],
+        "see_also": ["silver_gelatin", "split_grade"],
+    },
+    "split_grade": {
+        "term": "Split Grade Printing",
+        "definition": (
+            "Darkroom technique using separate exposures through high and low contrast filters on "
+            "variable contrast paper. Shadows exposed through high contrast filter (grade 4-5), "
+            "highlights through low contrast filter (grade 0-1). Provides superior tonal control "
+            "and allows local contrast manipulation."
+        ),
+        "category": TermCategory.PROCESS,
+        "related_terms": ["variable_contrast", "dodging_burning"],
+        "examples": [
+            "First exposure: high contrast for shadows",
+            "Second exposure: low contrast for highlights",
+            "Adjust ratio to control overall contrast",
+            "Can dodge/burn each exposure separately",
+        ],
+        "synonyms": ["split-filter printing", "split filtering"],
+        "see_also": ["variable_contrast", "dodging_burning"],
+    },
+    "enlarger": {
+        "term": "Enlarger",
+        "definition": (
+            "Optical device for projecting negative image onto photographic paper. Light source "
+            "illuminates negative, lens focuses and magnifies image onto paper below. Types: "
+            "condenser (high contrast, sharp), diffusion (lower contrast, forgiving), cold light "
+            "(cool light, traditional favorite). Height adjustment controls print size."
+        ),
+        "category": TermCategory.EQUIPMENT,
+        "related_terms": ["silver_gelatin", "negative", "darkroom"],
+        "examples": [
+            "Condenser enlargers produce higher contrast",
+            "Diffusion enlargers hide dust and scratches",
+            "Raise head for larger prints (longer exposure)",
+            "Critical to maintain alignment and focus",
+        ],
+        "see_also": ["silver_gelatin", "darkroom"],
+    },
+    "darkroom": {
+        "term": "Darkroom",
+        "definition": (
+            "Light-tight workspace for processing light-sensitive photographic materials. For silver "
+            "gelatin printing: amber or red safelight illumination, wet and dry areas separated, "
+            "temperature-controlled water supply, ventilation. Essential for handling unexposed paper "
+            "and processing prints."
+        ),
+        "category": TermCategory.EQUIPMENT,
+        "related_terms": ["silver_gelatin", "enlarger", "safelight"],
+        "examples": [
+            "Amber safelight (OC filter) safe for most papers",
+            "Wet side for trays, dry side for enlarger",
+            "Running water at 68°F (20°C) ideal",
+            "Good ventilation essential for chemistry fumes",
+        ],
+        "see_also": ["silver_gelatin", "safelight"],
+    },
+    "safelight": {
+        "term": "Safelight",
+        "definition": (
+            "Filtered light source providing illumination in darkroom without fogging light-sensitive "
+            "materials. Silver gelatin papers typically require amber or red filters. Different filters "
+            "for different materials (ortho vs pan). Must be appropriate wattage and distance from "
+            "work surface."
+        ),
+        "category": TermCategory.EQUIPMENT,
+        "related_terms": ["darkroom", "silver_gelatin"],
+        "examples": [
+            "Kodak OC filter (amber) for most B&W papers",
+            "15-watt bulb, minimum 4 feet from paper",
+            "Test periodically for safety",
+            "Red safer but harder to work under",
+        ],
+        "see_also": ["darkroom", "silver_gelatin"],
+    },
+    "paper_developer": {
+        "term": "Paper Developer",
+        "definition": (
+            "Chemical solution that reduces exposed silver halides to metallic silver, making the "
+            "latent image visible. Standard types: Dektol/D-72 (neutral), Selectol (warm tone), "
+            "Amidol (cold tone). Typically used at 68°F (20°C) for 1-3 minutes. Developer choice "
+            "affects image tone and contrast."
+        ),
+        "category": TermCategory.CHEMISTRY,
+        "related_terms": ["silver_gelatin", "dektol", "development"],
+        "examples": [
+            "Dektol 1:2 dilution is standard",
+            "Warmer developer = warmer print tones",
+            "Exhausted developer produces flat prints",
+            "Development time affects density and contrast",
+        ],
+        "synonyms": ["print developer"],
+        "see_also": ["silver_gelatin", "dektol"],
+    },
+    "dektol": {
+        "term": "Dektol",
+        "definition": (
+            "Kodak's standard paper developer, similar to formula D-72. Produces neutral to slightly "
+            "cool black tones. Typically diluted 1:2 with water. Development time 1.5-2 minutes at "
+            "68°F. Industry standard developer for silver gelatin printing. Versatile and consistent "
+            "results."
+        ),
+        "category": TermCategory.CHEMISTRY,
+        "related_terms": ["paper_developer", "silver_gelatin"],
+        "examples": [
+            "Mix 1 part stock to 2 parts water",
+            "90 seconds development at 68°F",
+            "Produces neutral black tones",
+            "Can use longer for more density",
+        ],
+        "synonyms": ["D-72", "Kodak Dektol"],
+        "see_also": ["paper_developer", "silver_gelatin"],
+    },
+    "stop_bath": {
+        "term": "Stop Bath",
+        "definition": (
+            "Acidic solution (typically dilute acetic acid) used between developer and fixer to "
+            "immediately halt development. Prevents developer carryover into fixer and extends "
+            "fixer life. 30 seconds immersion typical. Indicator stop baths change color when "
+            "exhausted."
+        ),
+        "category": TermCategory.CHEMISTRY,
+        "related_terms": ["silver_gelatin", "fixer"],
+        "examples": [
+            "1% acetic acid or commercial indicator bath",
+            "30 seconds with agitation",
+            "Indicator turns purple when exhausted",
+            "Water rinse can substitute in pinch",
+        ],
+        "see_also": ["silver_gelatin", "fixer"],
+    },
+    "fixer": {
+        "term": "Fixer",
+        "definition": (
+            "Chemical solution that removes unexposed silver halides from print, making it light-stable. "
+            "Sodium thiosulfate (traditional) or ammonium thiosulfate (rapid). FB paper: 5-10 minutes, "
+            "RC paper: 2-3 minutes. Over-fixing can bleach highlights. Two-bath fixing recommended "
+            "for archival work."
+        ),
+        "category": TermCategory.CHEMISTRY,
+        "related_terms": ["silver_gelatin", "archival", "hypo_clear"],
+        "examples": [
+            "Ammonium thiosulfate (rapid fix) is faster",
+            "Two-bath fixing improves archival quality",
+            "Over-fixing causes image bleaching",
+            "Must be completely washed out",
+        ],
+        "synonyms": ["hypo", "sodium thiosulfate"],
+        "see_also": ["silver_gelatin", "hypo_clear"],
+    },
+    "hypo_clear": {
+        "term": "Hypo Clear",
+        "definition": (
+            "Wash aid solution used after fixing to reduce wash time for fiber-based papers. "
+            "Converts residual fixer to more easily washed compounds. Reduces FB wash from 60+ "
+            "minutes to 20-30 minutes. Essential for archival processing. Also called 'wash aid' "
+            "or 'fixer remover'."
+        ),
+        "category": TermCategory.CHEMISTRY,
+        "related_terms": ["fixer", "fiber_based", "archival"],
+        "examples": [
+            "Use after fixing, before final wash",
+            "2-3 minutes immersion",
+            "Dramatically reduces wash time for FB",
+            "Not necessary for RC papers",
+        ],
+        "synonyms": ["wash aid", "fixer remover", "hypo eliminator"],
+        "see_also": ["fixer", "fiber_based"],
+    },
+    "dodging_burning": {
+        "term": "Dodging and Burning",
+        "definition": (
+            "Darkroom techniques for local exposure control. Dodging: blocking light from areas "
+            "to make them lighter (hand, card on wire). Burning: giving additional exposure to "
+            "areas to make them darker (card with hole). Essential for controlling tonal balance "
+            "and directing viewer attention."
+        ),
+        "category": TermCategory.ARTISTIC,
+        "related_terms": ["silver_gelatin", "exposure"],
+        "examples": [
+            "Dodge shadows to retain detail",
+            "Burn highlights to add density",
+            "Keep tool moving to avoid hard edges",
+            "Plan adjustments before starting print",
+        ],
+        "synonyms": ["dodging", "burning", "burning in"],
+        "see_also": ["silver_gelatin", "split_grade"],
+    },
+    "test_strip": {
+        "term": "Test Strip",
+        "definition": (
+            "Series of progressive exposures on single piece of paper to determine correct "
+            "exposure time. Paper is exposed in strips with increasing time, then processed. "
+            "Provides visual guide for choosing base exposure. Essential step before making "
+            "final print."
+        ),
+        "category": TermCategory.PROCESS,
+        "related_terms": ["silver_gelatin", "exposure"],
+        "examples": [
+            "Start with 3-second increments",
+            "Process test strip normally",
+            "Choose exposure with good highlight detail",
+            "Make additional tests if needed",
+        ],
+        "see_also": ["silver_gelatin", "exposure"],
+    },
+    "toning_silver": {
+        "term": "Silver Print Toning",
+        "definition": (
+            "Post-processing treatment that changes silver gelatin print color and/or improves "
+            "permanence. Common toners: selenium (neutral to purple, archival), gold (blue-black, "
+            "highly archival), sepia (warm brown), selenium/gold split (multiple tones). Toning "
+            "converts metallic silver to more stable compounds."
+        ),
+        "category": TermCategory.PROCESS,
+        "related_terms": ["silver_gelatin", "archival"],
+        "examples": [
+            "Selenium 1:20 for subtle permanence boost",
+            "Gold toner for blue-black and permanence",
+            "Sepia requires bleach step first",
+            "Tone after complete washing",
+        ],
+        "see_also": ["silver_gelatin", "archival"],
     },
 }
 

@@ -148,6 +148,7 @@ ignore = [
 "src/**/api/server.py" = ["E402"]  # conditional FastAPI imports
 "src/**/__init__.py" = ["E402"]     # lazy conditional imports
 "src/**/ui/**" = ["E402", "ARG001", "ARG004", "ARG005"]  # Gradio UI patterns
+"src/**/neuro_symbolic/**" = ["ARG001"]  # recursive tree traversal interface args
 
 [tool.ruff.lint.isort]
 known-first-party = ["ptpd_calibration"]

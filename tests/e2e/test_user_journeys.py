@@ -5,7 +5,6 @@ These tests simulate complete user workflows without requiring browser automatio
 They test the full integration of modules as a user would experience them.
 """
 
-
 import numpy as np
 import pytest
 from PIL import Image
@@ -275,7 +274,7 @@ class TestZoneSystemJourney:
         arr = np.repeat(np.repeat(arr, 10, axis=0), 10, axis=1)
         return Image.fromarray(arr, mode="L")
 
-    def test_zone_analysis_workflow(self, sample_gradient, tmp_path):
+    def test_zone_analysis_workflow(self, sample_gradient, tmp_path):  # noqa: ARG002
         """
         Workflow: Upload Image → Analyze Zones → Get Recommendations
         """
@@ -490,7 +489,7 @@ class TestPrintSessionJourney:
         # Step 3: Log some prints
         for i in range(3):
             record = PrintRecord(
-                image_name=f"Test Image {i+1}",
+                image_name=f"Test Image {i + 1}",
                 paper_type="Arches Platine",
                 exposure_time_minutes=10.0 + i,
                 chemistry=ChemistryUsed(
@@ -584,3 +583,316 @@ class TestIntegratedWorkflow:
         print(f"Zone recommendation: {dev_adjustment} development")
         print(f"Chemistry: {total_metal:.0f} drops metal")
         print(f"Exposure: {exposure.format_time()}")
+
+
+class TestWizardStep3Linearization:
+    """Test Calibration Wizard Step 3 linearization configuration journey."""
+
+    def test_wizard_step3_mode_configuration(self):
+        """
+        Journey: Select Mode → Configure Options → Validate Configuration
+        """
+        from ptpd_calibration.ui.tabs.calibration_wizard import (
+            get_linearization_mode_choices,
+            get_mode_by_label,
+            get_paper_preset_choices,
+            get_strategy_labels,
+            get_target_labels,
+            wizard_is_valid_config,
+            wizard_on_config_change,
+            wizard_on_mode_change,
+        )
+
+        # Step 1: Get available modes
+        modes = get_linearization_mode_choices()
+        assert len(modes) == 4
+        assert "Single-curve linearization (recommended)" in modes
+
+        # Step 2: Select single-curve mode
+        mode_label = "Single-curve linearization (recommended)"
+        mode_config = get_mode_by_label(mode_label)
+        assert mode_config is not None
+        assert mode_config.requires_target is True
+        assert mode_config.requires_strategy is True
+
+        # Step 3: Mode change updates visibility
+        visibility_updates = wizard_on_mode_change(mode_label)
+        assert len(visibility_updates) == 7
+        assert visibility_updates[0]["visible"] is True  # Target visible
+        assert visibility_updates[1]["visible"] is True  # Strategy visible
+
+        # Step 4: Configure valid options
+        target_label = get_target_labels()[0]  # "Even tonal steps (linear)"
+        strategy_label = get_strategy_labels()[0]  # "Smooth spline (recommended)"
+        paper_preset = get_paper_preset_choices()[0]  # First paper
+
+        # Step 5: Validate configuration
+        is_valid, msg = wizard_is_valid_config(
+            mode_label=mode_label,
+            target_label=target_label,
+            strategy_label=strategy_label,
+            paper_preset=paper_preset,
+            existing_profile=None,
+            custom_chemistry="",
+            curve_name="Test Wizard Curve",
+        )
+        assert is_valid is True
+        assert msg == ""
+
+        # Step 6: Config change enables button
+        button_update, validation_msg = wizard_on_config_change(
+            mode_label=mode_label,
+            target_label=target_label,
+            strategy_label=strategy_label,
+            paper_preset=paper_preset,
+            existing_profile=None,
+            custom_chemistry="",
+            curve_name="Test Wizard Curve",
+        )
+        assert button_update["interactive"] is True
+
+    def test_wizard_step3_no_linearization_mode(self):
+        """
+        Journey: Select No Linearization → Generate Identity Curve
+        """
+        from ptpd_calibration.ui.tabs.calibration_wizard import (
+            WizardLinearizationMode,
+            get_mode_by_label,
+            get_mode_value_by_label,
+            wizard_is_valid_config,
+            wizard_on_mode_change,
+        )
+
+        # Step 1: Select no linearization mode
+        mode_label = "No linearization (straight curve)"
+        mode_config = get_mode_by_label(mode_label)
+
+        assert mode_config is not None
+        assert mode_config.requires_target is False
+        assert mode_config.requires_strategy is False
+        assert mode_config.requires_paper_preset is True
+
+        # Step 2: Mode change hides target/strategy
+        visibility_updates = wizard_on_mode_change(mode_label)
+        assert visibility_updates[0]["visible"] is False  # Target hidden
+        assert visibility_updates[1]["visible"] is False  # Strategy hidden
+        assert visibility_updates[2]["visible"] is True  # Paper visible
+
+        # Step 3: Validate configuration
+        is_valid, msg = wizard_is_valid_config(
+            mode_label=mode_label,
+            target_label="",  # Not required
+            strategy_label="",  # Not required
+            paper_preset="Arches Platine",
+            existing_profile=None,
+            custom_chemistry="",
+            curve_name="Identity Curve",
+        )
+        assert is_valid is True
+
+        # Step 4: Verify mode value
+        mode_value = get_mode_value_by_label(mode_label)
+        assert mode_value == WizardLinearizationMode.NO_LINEARIZATION.value
+
+    def test_wizard_step3_use_existing_mode(self):
+        """
+        Journey: Select Use Existing → Select Profile → Skip Generation
+        """
+        from ptpd_calibration.ui.tabs.calibration_wizard import (
+            get_mode_by_label,
+            wizard_is_valid_config,
+            wizard_on_mode_change,
+        )
+
+        # Step 1: Select use existing mode
+        mode_label = "Use existing profile"
+        mode_config = get_mode_by_label(mode_label)
+
+        assert mode_config is not None
+        assert mode_config.requires_existing_profile is True
+        assert mode_config.requires_target is False
+        assert mode_config.requires_strategy is False
+
+        # Step 2: Mode change shows existing profile dropdown
+        visibility_updates = wizard_on_mode_change(mode_label)
+        assert visibility_updates[0]["visible"] is False  # Target hidden
+        assert visibility_updates[1]["visible"] is False  # Strategy hidden
+        assert visibility_updates[2]["visible"] is False  # Paper hidden
+        assert visibility_updates[3]["visible"] is True  # Existing profile visible
+
+        # Step 3: Invalid without profile
+        is_valid, msg = wizard_is_valid_config(
+            mode_label=mode_label,
+            target_label="",
+            strategy_label="",
+            paper_preset="",
+            existing_profile=None,
+            custom_chemistry="",
+            curve_name="Test",
+        )
+        assert is_valid is False
+        assert "profile" in msg.lower()
+
+        # Step 4: Valid with profile selected
+        is_valid, msg = wizard_is_valid_config(
+            mode_label=mode_label,
+            target_label="",
+            strategy_label="",
+            paper_preset="",
+            existing_profile="My Existing Curve",
+            custom_chemistry="",
+            curve_name="Test",
+        )
+        assert is_valid is True
+
+    def test_wizard_step3_custom_paper_workflow(self):
+        """
+        Journey: Select Custom Paper → Enter Chemistry Notes → Validate
+        """
+        from ptpd_calibration.ui.tabs.calibration_wizard import (
+            get_paper_preset_choices,
+            wizard_is_valid_config,
+            wizard_on_paper_change,
+        )
+
+        # Step 1: Select custom paper
+        paper_preset = "Other / custom"
+        assert paper_preset in get_paper_preset_choices()
+
+        # Step 2: Paper change shows chemistry input
+        custom_visible, notes_update = wizard_on_paper_change(paper_preset)
+        assert custom_visible["visible"] is True
+        assert custom_visible["interactive"] is True
+        assert notes_update["value"] == ""
+
+        # Step 3: Invalid without chemistry notes
+        is_valid, msg = wizard_is_valid_config(
+            mode_label="Single-curve linearization (recommended)",
+            target_label="Even tonal steps (linear)",
+            strategy_label="Smooth spline (recommended)",
+            paper_preset=paper_preset,
+            existing_profile=None,
+            custom_chemistry="",
+            curve_name="Test Curve",
+        )
+        assert is_valid is False
+        assert "chemistry" in msg.lower()
+
+        # Step 4: Valid with chemistry notes
+        is_valid, msg = wizard_is_valid_config(
+            mode_label="Single-curve linearization (recommended)",
+            target_label="Even tonal steps (linear)",
+            strategy_label="Smooth spline (recommended)",
+            paper_preset=paper_preset,
+            existing_profile=None,
+            custom_chemistry="50/50 Pt/Pd, ammonium citrate, 5 drops Na2",
+            curve_name="Test Curve",
+        )
+        assert is_valid is True
+
+    def test_wizard_step3_linearization_integration(self):
+        """
+        Journey: Configure Wizard → Generate Curve with AutoLinearizer
+        """
+        from ptpd_calibration.curves.linearization import (
+            AutoLinearizer,
+            LinearizationConfig,
+            LinearizationMethod,
+            TargetResponse,
+        )
+        from ptpd_calibration.ui.tabs.calibration_wizard import (
+            get_strategy_value_by_label,
+            get_target_value_by_label,
+        )
+
+        # Step 1: Get configuration values from UI labels
+        strategy_label = "Smooth spline (recommended)"
+        target_label = "Even tonal steps (linear)"
+
+        strategy_value = get_strategy_value_by_label(strategy_label)
+        target_value = get_target_value_by_label(target_label)
+
+        assert strategy_value == LinearizationMethod.SPLINE_FIT.value
+        assert target_value == TargetResponse.LINEAR.value
+
+        # Step 2: Create linearizer config using UI-derived values
+        method_enum = LinearizationMethod(strategy_value)
+        target_enum = TargetResponse(target_value)
+
+        config = LinearizationConfig(
+            method=method_enum,
+            target=target_enum,
+            output_points=256,
+            smoothing=0.1,
+        )
+
+        # Step 3: Generate curve with sample densities
+        densities = [0.08, 0.15, 0.28, 0.45, 0.68, 0.95, 1.25, 1.48, 1.60]
+        linearizer = AutoLinearizer(config)
+
+        result = linearizer.linearize(
+            measured_densities=densities,
+            curve_name="Wizard Generated Curve",
+            target=target_enum,
+            method=method_enum,
+        )
+
+        # Step 4: Verify curve generation
+        assert result.curve is not None
+        assert result.curve.name == "Wizard Generated Curve"
+        assert result.method_used == method_enum
+        assert result.target_response == target_enum
+        assert len(result.curve.output_values) > 0
+        assert result.residual_error >= 0
+
+    def test_wizard_step3_all_strategies(self):
+        """
+        Journey: Test all strategy options generate valid curves
+        """
+        from ptpd_calibration.curves.linearization import (
+            AutoLinearizer,
+            LinearizationMethod,
+        )
+        from ptpd_calibration.ui.tabs.calibration_wizard import get_strategy_choices
+
+        densities = [0.08, 0.15, 0.28, 0.45, 0.68, 0.95, 1.25, 1.48, 1.60]
+
+        # Test each strategy from UI choices
+        for label, value in get_strategy_choices():
+            method = LinearizationMethod(value)
+            linearizer = AutoLinearizer()
+
+            result = linearizer.linearize(
+                measured_densities=densities,
+                curve_name=f"Test {label}",
+                method=method,
+            )
+
+            assert result.curve is not None, f"Strategy '{label}' failed to generate curve"
+            assert len(result.curve.output_values) > 0, f"Strategy '{label}' generated empty curve"
+
+    def test_wizard_step3_all_targets(self):
+        """
+        Journey: Test all target options generate valid curves
+        """
+        from ptpd_calibration.curves.linearization import (
+            AutoLinearizer,
+            TargetResponse,
+        )
+        from ptpd_calibration.ui.tabs.calibration_wizard import get_target_choices
+
+        densities = [0.08, 0.15, 0.28, 0.45, 0.68, 0.95, 1.25, 1.48, 1.60]
+
+        # Test each target from UI choices
+        for label, value in get_target_choices():
+            target = TargetResponse(value)
+            linearizer = AutoLinearizer()
+
+            result = linearizer.linearize(
+                measured_densities=densities,
+                curve_name=f"Test {label}",
+                target=target,
+            )
+
+            assert result.curve is not None, f"Target '{label}' failed to generate curve"
+            assert result.target_response == target, f"Target '{label}' mismatch"

@@ -4,7 +4,6 @@ Transfer learning for new papers and chemistries.
 Enables bootstrapping calibrations from similar known materials.
 """
 
-
 import numpy as np
 
 from ptpd_calibration.core.models import CalibrationRecord
@@ -293,9 +292,12 @@ class TransferLearner:
                 score += 0.15
 
         # Sizing
-        if query_chars.get("sizing") and known_chars.get("sizing"):
-            if query_chars["sizing"] == known_chars["sizing"]:
-                score += 0.2
+        if (
+            query_chars.get("sizing")
+            and known_chars.get("sizing")
+            and query_chars["sizing"] == known_chars["sizing"]
+        ):
+            score += 0.2
 
         # Characteristics overlap
         query_chars_set = set(query_chars.get("characteristics", []))

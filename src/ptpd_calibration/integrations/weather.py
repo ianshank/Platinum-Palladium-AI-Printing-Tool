@@ -13,7 +13,7 @@ from enum import Enum
 from typing import Any
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class CurrentConditions:
     @property
     def temperature_f(self) -> float:
         """Temperature in Fahrenheit."""
-        return self.temperature_c * 9/5 + 32
+        return self.temperature_c * 9 / 5 + 32
 
     @property
     def is_suitable_for_coating(self) -> bool:
@@ -75,7 +75,7 @@ class CurrentConditions:
             "condition": self.condition.value,
             "description": self.description,
             "timestamp": self.timestamp.isoformat(),
-            "suitable_for_coating": self.is_suitable_for_coating
+            "suitable_for_coating": self.is_suitable_for_coating,
         }
 
 
@@ -93,7 +93,7 @@ class ForecastPeriod:
     @property
     def temperature_f(self) -> float:
         """Temperature in Fahrenheit."""
-        return self.temperature_c * 9/5 + 32
+        return self.temperature_c * 9 / 5 + 32
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -104,7 +104,7 @@ class ForecastPeriod:
             "humidity_percent": self.humidity_percent,
             "condition": self.condition.value,
             "description": self.description,
-            "precipitation_probability": self.precipitation_probability
+            "precipitation_probability": self.precipitation_probability,
         }
 
 
@@ -117,7 +117,8 @@ class DryingTimeEstimate(BaseModel):
     conditions: CurrentConditions = Field(description="Weather conditions used")
     recommendations: list[str] = Field(default_factory=list, description="Recommendations")
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class CoatingRecommendation(BaseModel):
@@ -128,7 +129,8 @@ class CoatingRecommendation(BaseModel):
     reason: str = Field(description="Reason for recommendation")
     alternative_times: list[datetime] = Field(default_factory=list, description="Alternative times")
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class WeatherProvider(ABC):
@@ -148,7 +150,7 @@ class WeatherProvider(ABC):
         """
         self.api_key = api_key
         self.units = units
-        self._cache: dict[str, tuple[datetime, Any]] = {}
+        self._cache: dict[str, tuple[datetime, any]] = {}
         self._cache_duration = timedelta(minutes=10)
 
     @abstractmethod
@@ -253,14 +255,10 @@ class WeatherProvider(ABC):
                 "High humidity - consider using a dehumidifier or fan to speed drying"
             )
         elif conditions.humidity_percent < 30:
-            recommendations.append(
-                "Low humidity - monitor paper carefully to prevent over-drying"
-            )
+            recommendations.append("Low humidity - monitor paper carefully to prevent over-drying")
 
         if conditions.temperature_c < 15:
-            recommendations.append(
-                "Low temperature - consider moving to a warmer location"
-            )
+            recommendations.append("Low temperature - consider moving to a warmer location")
         elif conditions.temperature_c > 28:
             recommendations.append(
                 "High temperature - ensure good ventilation to prevent uneven drying"
@@ -281,7 +279,7 @@ class WeatherProvider(ABC):
             estimated_hours=round(estimated_hours, 1),
             confidence=round(confidence, 2),
             conditions=conditions,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     async def recommend_coating_time(
@@ -304,10 +302,7 @@ class WeatherProvider(ABC):
             CoatingRecommendation with best time and alternatives
         """
         forecast = await self.get_forecast(
-            location=location,
-            hours=forecast_hours,
-            latitude=latitude,
-            longitude=longitude
+            location=location, hours=forecast_hours, latitude=latitude, longitude=longitude
         )
 
         # Score each forecast period
@@ -319,11 +314,7 @@ class WeatherProvider(ABC):
             precip_score = 1.0 - period.precipitation_probability / 100
 
             # Weight the scores
-            total_score = (
-                temp_score * 0.4 +
-                humidity_score * 0.4 +
-                precip_score * 0.2
-            )
+            total_score = temp_score * 0.4 + humidity_score * 0.4 + precip_score * 0.2
 
             scored_periods.append((total_score, period))
 
@@ -345,13 +336,17 @@ class WeatherProvider(ABC):
         if best_period.precipitation_probability < 20:
             reasons.append("low precipitation risk")
 
-        reason = "Best conditions: " + ", ".join(reasons) if reasons else "Most suitable time in forecast"
+        reason = (
+            "Best conditions: " + ", ".join(reasons)
+            if reasons
+            else "Most suitable time in forecast"
+        )
 
         return CoatingRecommendation(
             best_time=best_period.timestamp,
             forecast=best_period,
             reason=reason,
-            alternative_times=alternatives
+            alternative_times=alternatives,
         )
 
     def _get_from_cache(self, key: str) -> Any | None:
@@ -404,11 +399,10 @@ class OpenWeatherMapProvider(WeatherProvider):
         cached = self._get_from_cache(cache_key)
         if cached:
             logger.debug("Returning cached current conditions")
-            from typing import cast
-            return cast(CurrentConditions, cached)
+            return cached
 
         # Build request parameters
-        params: dict[str, Any] = {
+        params = {
             "appid": self.api_key,
             "units": self.units,
         }
@@ -459,7 +453,7 @@ class OpenWeatherMapProvider(WeatherProvider):
             return cached
 
         # Build request parameters
-        params: dict[str, Any] = {
+        params = {
             "appid": self.api_key,
             "units": self.units,
         }
@@ -516,7 +510,7 @@ class OpenWeatherMapProvider(WeatherProvider):
             wind_speed_ms=wind.get("speed", 0.0),
             condition=condition,
             description=weather["description"],
-            timestamp=datetime.fromtimestamp(data["dt"])
+            timestamp=datetime.fromtimestamp(data["dt"]),
         )
 
     def _parse_forecast(self, data: dict, hours: int) -> list[ForecastPeriod]:
@@ -554,7 +548,7 @@ class OpenWeatherMapProvider(WeatherProvider):
                 humidity_percent=main["humidity"],
                 condition=condition,
                 description=weather["description"],
-                precipitation_probability=precip_prob
+                precipitation_probability=precip_prob,
             )
             periods.append(period)
 
@@ -571,7 +565,7 @@ class OpenWeatherMapProvider(WeatherProvider):
             wind_speed_ms=random.uniform(0, 5),
             condition=WeatherCondition.CLEAR,
             description="simulated clear sky",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
     def _simulate_forecast(self, hours: int) -> list[ForecastPeriod]:
@@ -582,13 +576,15 @@ class OpenWeatherMapProvider(WeatherProvider):
         base_time = datetime.now()
 
         for i in range(0, hours, 3):  # 3-hour intervals
-            periods.append(ForecastPeriod(
-                timestamp=base_time + timedelta(hours=i),
-                temperature_c=random.uniform(15, 25),
-                humidity_percent=random.uniform(40, 70),
-                condition=WeatherCondition.CLEAR,
-                description="simulated conditions",
-                precipitation_probability=random.uniform(0, 30)
-            ))
+            periods.append(
+                ForecastPeriod(
+                    timestamp=base_time + timedelta(hours=i),
+                    temperature_c=random.uniform(15, 25),
+                    humidity_percent=random.uniform(40, 70),
+                    condition=WeatherCondition.CLEAR,
+                    description="simulated conditions",
+                    precipitation_probability=random.uniform(0, 30),
+                )
+            )
 
         return periods

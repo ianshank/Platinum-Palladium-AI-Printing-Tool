@@ -16,10 +16,10 @@ def create_app():
         from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import FileResponse
         from pydantic import BaseModel
-    except ImportError:
+    except ImportError as err:
         raise ImportError(
             "FastAPI is required. Install with: pip install ptpd-calibration[api]"
-        ) from None
+        ) from err
 
     from ptpd_calibration.config import TabletType
     from ptpd_calibration.core.models import CalibrationRecord, CurveData
@@ -36,7 +36,6 @@ def create_app():
         save_curve,
     )
     from ptpd_calibration.detection import StepTabletReader
-    from ptpd_calibration.gcp.storage import get_storage_backend
     from ptpd_calibration.ml import CalibrationDatabase
 
     # Initialize app
@@ -57,25 +56,19 @@ def create_app():
     )
 
     # State
-    storage_backend = get_storage_backend(settings.gcp)
-    database = CalibrationDatabase(storage_backend=storage_backend)
-    database.load_from_storage()
-
+    database = CalibrationDatabase()
     upload_dir = settings.api.upload_dir or Path(tempfile.mkdtemp())
+    deep_learning_model_storage: dict = {}  # Storage for trained DL models
 
-    def save_curve_to_storage(curve: CurveData) -> None:
-        """Save curve to storage backend."""
-        path = f"curves/{str(curve.id)}.json"
-        storage_backend.save(path, curve.model_dump_json())
+    # Include deep learning router
+    try:
+        from ptpd_calibration.api.deep_learning import create_deep_learning_router
 
-    def get_curve_from_storage(curve_id: str) -> CurveData | None:
-        """Get curve from storage backend."""
-        path = f"curves/{curve_id}.json"
-        try:
-            data = storage_backend.load(path)
-            return CurveData.model_validate_json(data)
-        except Exception:
-            return None
+        deep_router = create_deep_learning_router(database, deep_learning_model_storage)
+        app.include_router(deep_router)
+    except ImportError:
+        # Deep learning dependencies not available
+        pass
 
     # Pydantic models
     class AnalyzeRequest(BaseModel):
@@ -114,7 +107,9 @@ def create_app():
         input_values: list[float]
         output_values: list[float]
         name: str = "Modified Curve"
-        adjustment_type: str = "brightness"  # brightness, contrast, gamma, levels, highlights, shadows, midtones
+        adjustment_type: str = (
+            "brightness"  # brightness, contrast, gamma, levels, highlights, shadows, midtones
+        )
         amount: float = 0.0
         # Additional parameters for specific adjustments
         pivot: float = 0.5  # For contrast
@@ -146,7 +141,7 @@ def create_app():
         paper_type: str | None = None
         additional_context: str | None = None
 
-    # Curve storage for session (in-memory; TODO: replace with persistent backend)
+    # Curve storage for session (in production, use database)
     curve_storage: dict[str, CurveData] = {}
 
     # Routes
@@ -193,10 +188,6 @@ def create_app():
             reader = StepTabletReader(tablet_type=TabletType(tablet_type))
             result = reader.read(file_path)
 
-            # Persist raw scan to storage
-            with open(file_path, "rb") as f:
-               storage_backend.save(f"scans/{file.filename}", f.read())
-
             return {
                 "success": True,
                 "extraction_id": str(result.extraction.id),
@@ -209,7 +200,7 @@ def create_app():
                 "warnings": result.extraction.warnings,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
+            raise HTTPException(status_code=400, detail=str(e)) from None
         finally:
             # Cleanup
             if file_path.exists():
@@ -229,9 +220,6 @@ def create_app():
                 chemistry=request.chemistry,
             )
 
-            # Store the generated curve
-            save_curve_to_storage(curve)
-
             return {
                 "success": True,
                 "curve_id": str(curve.id),
@@ -241,7 +229,7 @@ def create_app():
                 "output_values": curve.output_values[:10],
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
     @app.post("/api/curves/export")
     async def export_curve(
@@ -289,7 +277,7 @@ def create_app():
             # Convert requested channel to CurveData and store
             if channel.upper() in profile.channels:
                 curve_data = profile.to_curve_data(channel.upper())
-                save_curve_to_storage(curve_data)
+                curve_storage[str(curve_data.id)] = curve_data
             else:
                 curve_data = None
 
@@ -305,11 +293,13 @@ def create_app():
                 "curve_data": {
                     "input_values": curve_data.input_values[:20] if curve_data else [],
                     "output_values": curve_data.output_values[:20] if curve_data else [],
-                } if curve_data else None,
+                }
+                if curve_data
+                else None,
                 "summary": profile.summary(),
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
+            raise HTTPException(status_code=400, detail=str(e)) from None
         finally:
             # Cleanup
             if file_path.exists():
@@ -330,7 +320,7 @@ def create_app():
             # Convert requested channel to CurveData and store
             if channel.upper() in profile.channels:
                 curve_data = profile.to_curve_data(channel.upper())
-                save_curve_to_storage(curve_data)
+                curve_storage[str(curve_data.id)] = curve_data
             else:
                 curve_data = None
 
@@ -342,10 +332,12 @@ def create_app():
                 "curve_data": {
                     "input_values": curve_data.input_values if curve_data else [],
                     "output_values": curve_data.output_values if curve_data else [],
-                } if curve_data else None,
+                }
+                if curve_data
+                else None,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
     @app.post("/api/curves/modify")
     async def modify_curve(request: CurveModifyRequest):
@@ -389,7 +381,7 @@ def create_app():
                 raise ValueError(f"Unknown adjustment type: {adjustment_type}")
 
             # Store the modified curve
-            save_curve_to_storage(modified)
+            curve_storage[str(modified.id)] = modified
 
             return {
                 "success": True,
@@ -400,7 +392,7 @@ def create_app():
                 "output_values": modified.output_values,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
     @app.post("/api/curves/smooth")
     async def smooth_curve(request: CurveSmoothRequest):
@@ -417,16 +409,17 @@ def create_app():
                 output_values=request.output_values,
             )
 
-            modifier = CurveModifier(preserve_endpoints=request.preserve_endpoints)
+            modifier = CurveModifier()
             method = SmoothingMethod(request.method.lower())
             smoothed = modifier.smooth(
                 curve,
                 method=method,
                 strength=request.strength,
+                preserve_endpoints=request.preserve_endpoints,
             )
 
             # Store the smoothed curve
-            save_curve_to_storage(smoothed)
+            curve_storage[str(smoothed.id)] = smoothed
 
             return {
                 "success": True,
@@ -437,7 +430,7 @@ def create_app():
                 "output_values": smoothed.output_values,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
     @app.post("/api/curves/blend")
     async def blend_curves(request: CurveBlendRequest):
@@ -470,7 +463,7 @@ def create_app():
             blended.name = request.name
 
             # Store the blended curve
-            save_curve_to_storage(blended)
+            curve_storage[str(blended.id)] = blended
 
             return {
                 "success": True,
@@ -481,7 +474,7 @@ def create_app():
                 "output_values": blended.output_values,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
     @app.post("/api/curves/enhance")
     async def enhance_curve_ai(request: CurveEnhanceRequest):
@@ -517,7 +510,7 @@ def create_app():
                 )
 
             # Store the enhanced curve
-            save_curve_to_storage(result.enhanced_curve)
+            curve_storage[str(result.enhanced_curve.id)] = result.enhanced_curve
 
             return {
                 "success": True,
@@ -531,12 +524,12 @@ def create_app():
                 "output_values": result.enhanced_curve.output_values,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
     @app.get("/api/curves/{curve_id}")
     async def get_stored_curve(curve_id: str):
         """Get a stored curve by ID."""
-        curve = get_curve_from_storage(curve_id)
+        curve = curve_storage.get(curve_id)
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
 
@@ -563,7 +556,7 @@ def create_app():
         try:
             modifier = CurveModifier()
             modified = modifier.enforce_monotonicity(curve, direction=direction)
-            save_curve_to_storage(modified)
+            curve_storage[str(modified.id)] = modified
 
             return {
                 "success": True,
@@ -573,7 +566,7 @@ def create_app():
                 "output_values": modified.output_values,
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
     @app.get("/api/calibrations")
     async def list_calibrations(
@@ -644,7 +637,7 @@ def create_app():
 
             return {"response": response}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e)) from e
+            raise HTTPException(status_code=500, detail=str(e)) from None
 
     @app.post("/api/chat/recipe")
     async def suggest_recipe(request: RecipeRequest):
@@ -660,7 +653,7 @@ def create_app():
 
             return {"response": response}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e)) from e
+            raise HTTPException(status_code=500, detail=str(e)) from None
 
     @app.post("/api/chat/troubleshoot")
     async def troubleshoot(request: TroubleshootRequest):
@@ -673,7 +666,7 @@ def create_app():
 
             return {"response": response}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e)) from e
+            raise HTTPException(status_code=500, detail=str(e)) from None
 
     @app.get("/api/statistics")
     async def get_statistics():
@@ -687,10 +680,10 @@ def main():
     """Run the API server."""
     try:
         import uvicorn
-    except ImportError:
+    except ImportError as err:
         raise ImportError(
             "uvicorn is required. Install with: pip install ptpd-calibration[api]"
-        ) from None
+        ) from err
 
     settings = get_settings()
     app = create_app()

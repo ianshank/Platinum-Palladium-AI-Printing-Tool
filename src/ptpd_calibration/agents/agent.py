@@ -2,8 +2,8 @@
 Main calibration agent with ReAct-style reasoning.
 """
 
-import contextlib
 import json
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -111,9 +111,7 @@ class CalibrationAgent:
             thought, action = await self._think_and_act()
 
             # Record thought
-            self._reasoning_trace.append(
-                ReasoningStep(step_type="thought", content=thought)
-            )
+            self._reasoning_trace.append(ReasoningStep(step_type="thought", content=thought))
 
             if action is None:
                 # Agent decided to finish
@@ -134,12 +132,14 @@ class CalibrationAgent:
             )
 
             # Reflect if enabled
-            if self.settings.enable_reflection:
-                if self._iteration_count % self.settings.reflection_frequency == 0:
-                    reflection = await self._reflect()
-                    self._reasoning_trace.append(
-                        ReasoningStep(step_type="reflection", content=reflection)
-                    )
+            if (
+                self.settings.enable_reflection
+                and self._iteration_count % self.settings.reflection_frequency == 0
+            ):
+                reflection = await self._reflect()
+                self._reasoning_trace.append(
+                    ReasoningStep(step_type="reflection", content=reflection)
+                )
 
         # Generate final response
         return await self._generate_response(task)
@@ -193,7 +193,7 @@ ACTION: {{"tool": "analyze_densities", "args": {{"densities": [0.1, 0.3, 0.5, 0.
                         start = action_str.find("{")
                         end = action_str.rfind("}") + 1
                         if start >= 0 and end > start:
-                            with contextlib.suppress(json.JSONDecodeError):
+                            with suppress(json.JSONDecodeError):
                                 action = json.loads(action_str[start:end])
 
         return thought, action
@@ -221,9 +221,7 @@ ACTION: {{"tool": "analyze_densities", "args": {{"densities": [0.1, 0.3, 0.5, 0.
         result = await tool.execute(**tool_args)
 
         # Add to working memory
-        self.memory.add_to_working_memory(
-            f"Tool {tool_name}: {result.to_string()[:200]}"
-        )
+        self.memory.add_to_working_memory(f"Tool {tool_name}: {result.to_string()[:200]}")
 
         # Update plan
         if self._current_plan and self._current_plan.current_step:
@@ -299,9 +297,7 @@ Please provide a clear, helpful final response to the user summarizing the resul
         # Recent reasoning
         if self._reasoning_trace:
             recent = self._reasoning_trace[-3:]
-            trace_str = "\n".join(
-                f"[{s.step_type.upper()}] {s.content[:100]}" for s in recent
-            )
+            trace_str = "\n".join(f"[{s.step_type.upper()}] {s.content[:100]}" for s in recent)
             parts.append(f"Recent reasoning:\n{trace_str}")
 
         return "\n\n".join(parts)
@@ -310,9 +306,7 @@ Please provide a clear, helpful final response to the user summarizing the resul
         """Format available tools for prompt."""
         tool_list = []
         for tool in self.tools.list_tools():
-            params = ", ".join(
-                f"{p.name}: {p.type}" for p in tool.parameters if p.required
-            )
+            params = ", ".join(f"{p.name}: {p.type}" for p in tool.parameters if p.required)
             tool_list.append(f"- {tool.name}({params}): {tool.description}")
         return "\n".join(tool_list)
 

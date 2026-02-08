@@ -190,7 +190,9 @@ class WedgeAnalysisResult:
             "densities": [round(d, 4) for d in self.densities],
             "dmin": round(self.dmin, 4) if self.dmin is not None else None,
             "dmax": round(self.dmax, 4) if self.dmax is not None else None,
-            "density_range": round(self.density_range, 4) if self.density_range is not None else None,
+            "density_range": round(self.density_range, 4)
+            if self.density_range is not None
+            else None,
             "quality": self.quality.to_dict() if self.quality else None,
             "curve_generated": self.curve_generated,
             "curve_name": self.curve.name if self.curve else None,
@@ -377,9 +379,7 @@ class StepWedgeAnalyzer:
 
         return processed.tolist()
 
-    def _reject_outliers(
-        self, densities: np.ndarray, result: WedgeAnalysisResult
-    ) -> np.ndarray:
+    def _reject_outliers(self, densities: np.ndarray, result: WedgeAnalysisResult) -> np.ndarray:
         """Reject outlier density values using MAD."""
         if len(densities) < 5:
             return densities
@@ -404,9 +404,7 @@ class StepWedgeAnalyzer:
 
         return densities
 
-    def _fix_reversals(
-        self, densities: np.ndarray, result: WedgeAnalysisResult
-    ) -> np.ndarray:
+    def _fix_reversals(self, densities: np.ndarray, result: WedgeAnalysisResult) -> np.ndarray:
         """Fix any reversals in density progression."""
         densities = densities.copy()
         reversals_fixed = []
@@ -443,7 +441,9 @@ class StepWedgeAnalyzer:
         if density_range >= 2.0:
             density_range_score = 100.0
         elif density_range >= self.config.min_density_range:
-            density_range_score = 60 + 40 * (density_range - self.config.min_density_range) / (2.0 - self.config.min_density_range)
+            density_range_score = 60 + 40 * (density_range - self.config.min_density_range) / (
+                2.0 - self.config.min_density_range
+            )
         else:
             density_range_score = max(0, 60 * density_range / self.config.min_density_range)
             warnings.append(
@@ -633,6 +633,7 @@ class StepWedgeAnalyzer:
 
         except Exception as e:
             import logging
+
             logging.error(f"Failed to generate curve: {e}")
             return None
 

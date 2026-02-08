@@ -207,7 +207,7 @@ class PiezographyExporter(CurveExporter):
         x_new = np.linspace(0, 1, 101)
         y_new = np.interp(x_new, curve.input_values, curve.output_values)
 
-        for _i, (inp, out) in enumerate(zip(x_new, y_new, strict=False)):
+        for _i, (inp, out) in enumerate(zip(x_new, y_new, strict=True)):
             pz_input = int(inp * 100)
             pz_output = out * 100
             lines.append(f"{pz_input}={pz_output:.2f}")
@@ -235,7 +235,7 @@ class CSVExporter(CurveExporter):
         with open(path, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["input", "output"])
-            for inp, out in zip(curve.input_values, curve.output_values, strict=False):
+            for inp, out in zip(curve.input_values, curve.output_values, strict=True):
                 writer.writerow([f"{inp:.6f}", f"{out:.6f}"])
 
     def get_format_name(self) -> str:

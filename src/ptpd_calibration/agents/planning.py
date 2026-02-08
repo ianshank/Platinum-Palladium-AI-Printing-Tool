@@ -141,13 +141,12 @@ class Plan:
         """Generate a plan summary."""
         total = len(self.steps)
         completed = sum(1 for s in self.steps if s.status == PlanStatus.COMPLETED)
-        failed = sum(1 for s in self.steps if s.status == PlanStatus.FAILED)
+        _failed = sum(1 for s in self.steps if s.status == PlanStatus.FAILED)  # noqa: F841
 
         return (
             f"Plan: {self.goal}\n"
             f"Progress: {completed}/{total} steps ({self.progress:.0%})\n"
             f"Status: {self.status.value}\n"
-            f"Failed: {failed}\n"
             f"Adaptations: {self.adapted_count}"
         )
 
@@ -193,7 +192,7 @@ class Planner:
         steps = [PlanStep(description=desc) for desc in step_descriptions]
         return Plan(goal=goal, steps=steps)
 
-    def _create_generic_plan(self, goal: str, context: dict | None) -> Plan:
+    def _create_generic_plan(self, goal: str, _context: dict | None) -> Plan:
         """Create a generic plan."""
         steps = [
             PlanStep(description="Analyze the request and gather requirements"),
@@ -203,9 +202,7 @@ class Planner:
         ]
         return Plan(goal=goal, steps=steps)
 
-    def suggest_adaptation(
-        self, plan: Plan, observation: str
-    ) -> list[str] | None:
+    def suggest_adaptation(self, _plan: Plan, observation: str) -> list[str] | None:
         """
         Suggest plan adaptation based on observation.
 

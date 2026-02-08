@@ -1,43 +1,251 @@
 """
 Agentic system for autonomous calibration assistance.
+
+This module provides:
+- CalibrationAgent: Main ReAct-style agent for calibration tasks
+- Subagents: Specialized agents (Planner, SQE, Coder, Reviewer)
+- Orchestrator: Multi-agent workflow coordination
+- Communication: Inter-agent messaging
+- Logging: Structured JSON logging for observability
 """
 
 from ptpd_calibration.agents.agent import (
     AgentConfig,
     CalibrationAgent,
+    ReasoningStep,
     create_agent,
+)
+from ptpd_calibration.agents.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerSettings,
+    CircuitBreakerState,
+    CircuitOpenError,
+    CircuitState,
+    get_all_circuit_breaker_stats,
+    get_circuit_breaker,
+    reset_all_circuit_breakers,
+)
+from ptpd_calibration.agents.communication import (
+    AgentMessage,
+    ConversationContext,
+    ConversationManager,
+    MessageBus,
+    MessageHandler,
+    MessagePriority,
+    MessageType,
+    get_message_bus,
+    start_message_bus,
+    stop_message_bus,
+)
+
+# Observability components
+from ptpd_calibration.agents.health import (
+    AgentHealthReport,
+    DependencyHealth,
+    DependencyType,
+    HealthChecker,
+    HealthCheckResult,
+    HealthCheckSettings,
+    HealthStatus,
+    check_agent_health,
+    get_health_checker,
+)
+from ptpd_calibration.agents.logging import (
+    AgentLogger,
+    EventType,
+    LogContext,
+    LogEntry,
+    LogLevel,
+    configure_agent_logging,
+    get_agent_logger,
+    timed_operation,
 )
 from ptpd_calibration.agents.memory import (
     AgentMemory,
     MemoryItem,
 )
+from ptpd_calibration.agents.metrics import (
+    Counter,
+    Gauge,
+    Histogram,
+    MetricSample,
+    MetricsRegistry,
+    MetricsSettings,
+    MetricType,
+    get_agent_metrics,
+    get_metrics_registry,
+    record_request,
+    record_token_usage,
+    record_tool_call,
+)
+from ptpd_calibration.agents.orchestrator import (
+    OrchestratorAgent,
+    OrchestratorConfig,
+    TaskStatus,
+    Workflow,
+    WorkflowStatus,
+    WorkflowTask,
+    orchestrate_development,
+)
+from ptpd_calibration.agents.persistence import (
+    PersistenceSettings,
+    TaskCheckpoint,
+    WorkflowCheckpoint,
+    WorkflowPersistence,
+    WorkflowState,
+    create_workflow_checkpoint,
+    get_persistence,
+)
 from ptpd_calibration.agents.planning import (
     Plan,
     Planner,
+    PlanStatus,
     PlanStep,
+)
+from ptpd_calibration.agents.subagents import (
+    BaseSubagent,
+    CoderAgent,
+    PlannerAgent,
+    ReviewerAgent,
+    SQEAgent,
+    SubagentCapability,
+    SubagentConfig,
+    SubagentRegistry,
+    SubagentResult,
+    SubagentStatus,
+)
+from ptpd_calibration.agents.subagents.base import (
+    get_subagent_registry,
+    register_subagent,
 )
 from ptpd_calibration.agents.tools import (
     Tool,
+    ToolCategory,
+    ToolParameter,
     ToolRegistry,
     ToolResult,
     create_calibration_tools,
 )
+from ptpd_calibration.agents.utils import (
+    extract_classes,
+    extract_code_block,
+    extract_functions,
+    extract_imports,
+    format_bullet_list,
+    parse_json_response,
+    sanitize_identifier,
+    truncate_text,
+)
 
 __all__ = [
+    # Core Agent
+    "CalibrationAgent",
+    "AgentConfig",
+    "ReasoningStep",
+    "create_agent",
     # Tools
     "Tool",
     "ToolRegistry",
     "ToolResult",
+    "ToolCategory",
+    "ToolParameter",
     "create_calibration_tools",
-    # Agent
-    "CalibrationAgent",
-    "AgentConfig",
-    "create_agent",
     # Memory
     "AgentMemory",
     "MemoryItem",
     # Planning
     "Plan",
     "PlanStep",
+    "PlanStatus",
     "Planner",
+    # Subagents
+    "BaseSubagent",
+    "SubagentConfig",
+    "SubagentCapability",
+    "SubagentStatus",
+    "SubagentResult",
+    "SubagentRegistry",
+    "get_subagent_registry",
+    "register_subagent",
+    "PlannerAgent",
+    "SQEAgent",
+    "CoderAgent",
+    "ReviewerAgent",
+    # Orchestrator
+    "OrchestratorAgent",
+    "OrchestratorConfig",
+    "Workflow",
+    "WorkflowTask",
+    "WorkflowStatus",
+    "TaskStatus",
+    "orchestrate_development",
+    # Communication
+    "MessageBus",
+    "MessageHandler",
+    "AgentMessage",
+    "MessageType",
+    "MessagePriority",
+    "ConversationContext",
+    "ConversationManager",
+    "get_message_bus",
+    "start_message_bus",
+    "stop_message_bus",
+    # Logging
+    "AgentLogger",
+    "LogContext",
+    "LogEntry",
+    "LogLevel",
+    "EventType",
+    "get_agent_logger",
+    "configure_agent_logging",
+    "timed_operation",
+    # Utils
+    "extract_classes",
+    "extract_code_block",
+    "extract_functions",
+    "extract_imports",
+    "format_bullet_list",
+    "parse_json_response",
+    "sanitize_identifier",
+    "truncate_text",
+    # Health Checks
+    "HealthStatus",
+    "HealthChecker",
+    "HealthCheckSettings",
+    "HealthCheckResult",
+    "AgentHealthReport",
+    "DependencyHealth",
+    "DependencyType",
+    "check_agent_health",
+    "get_health_checker",
+    # Circuit Breaker
+    "CircuitBreaker",
+    "CircuitBreakerSettings",
+    "CircuitBreakerState",
+    "CircuitOpenError",
+    "CircuitState",
+    "get_circuit_breaker",
+    "reset_all_circuit_breakers",
+    "get_all_circuit_breaker_stats",
+    # Metrics
+    "Counter",
+    "Gauge",
+    "Histogram",
+    "MetricSample",
+    "MetricsRegistry",
+    "MetricsSettings",
+    "MetricType",
+    "get_metrics_registry",
+    "get_agent_metrics",
+    "record_request",
+    "record_tool_call",
+    "record_token_usage",
+    # Persistence
+    "WorkflowPersistence",
+    "WorkflowCheckpoint",
+    "TaskCheckpoint",
+    "WorkflowState",
+    "PersistenceSettings",
+    "get_persistence",
+    "create_workflow_checkpoint",
 ]

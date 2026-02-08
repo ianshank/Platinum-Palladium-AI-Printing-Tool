@@ -67,11 +67,7 @@ class InkLevel:
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
-        return {
-            "color": self.color,
-            "level_percent": self.level_percent,
-            "status": self.status
-        }
+        return {"color": self.color, "level_percent": self.level_percent, "status": self.status}
 
 
 class PrintSettings(BaseModel):
@@ -229,12 +225,7 @@ class EpsonDriver(PrinterInterface):
     - Epson 7900, 9900
     """
 
-    SUPPORTED_MODELS = [
-        "P800", "P900",
-        "3880", "3800",
-        "7900", "9900",
-        "R2400", "R2880"
-    ]
+    SUPPORTED_MODELS = ["P800", "P900", "3880", "3800", "7900", "9900", "R2400", "R2880"]
 
     def __init__(
         self,
@@ -329,12 +320,7 @@ class EpsonDriver(PrinterInterface):
             )
 
             # Create job
-            job = PrintJob(
-                job_id=job_id,
-                status="completed",
-                settings=settings,
-                pages=1
-            )
+            job = PrintJob(job_id=job_id, status="completed", settings=settings, pages=1)
 
             logger.info(f"Print job {job_id} completed (simulated)")
             return job
@@ -345,11 +331,7 @@ class EpsonDriver(PrinterInterface):
         # - Direct printer protocol communication
         raise NotImplementedError("Real printing not implemented")
 
-    def _prepare_image(
-        self,
-        image: Image.Image,
-        settings: PrintSettings
-    ) -> Image.Image:
+    def _prepare_image(self, image: Image.Image, settings: PrintSettings) -> Image.Image:
         """Prepare image for printing based on settings."""
         processed = image.copy()
 
@@ -364,16 +346,13 @@ class EpsonDriver(PrinterInterface):
             processed = processed.transpose(Image.FLIP_LEFT_RIGHT)
 
         # Invert for negative
-        if settings.invert and (processed.mode == "L" or processed.mode == "RGB"):
+        if settings.invert and processed.mode in ("L", "RGB"):
             processed = Image.eval(processed, lambda x: 255 - x)
 
         # Scale if needed
         if settings.scale_percent != 100.0:
             scale = settings.scale_percent / 100.0
-            new_size = (
-                int(processed.width * scale),
-                int(processed.height * scale)
-            )
+            new_size = (int(processed.width * scale), int(processed.height * scale))
             processed = processed.resize(new_size, Image.Resampling.LANCZOS)
 
         return processed
@@ -422,13 +401,12 @@ class EpsonDriver(PrinterInterface):
 
             if has_issues:
                 missing = random.sample(
-                    ["black_1", "black_2", "cyan_3", "magenta_5"],
-                    k=random.randint(1, 2)
+                    ["black_1", "black_2", "cyan_3", "magenta_5"], k=random.randint(1, 2)
                 )
                 quality = random.uniform(0.7, 0.9)
                 recommendations = [
                     "Run head cleaning cycle",
-                    "Print nozzle check pattern again after cleaning"
+                    "Print nozzle check pattern again after cleaning",
                 ]
                 success = False
             else:
@@ -441,7 +419,7 @@ class EpsonDriver(PrinterInterface):
                 success=success,
                 missing_nozzles=missing,
                 pattern_quality=quality,
-                recommendations=recommendations
+                recommendations=recommendations,
             )
 
             logger.info(f"Nozzle check complete: {result.success}")
@@ -465,7 +443,7 @@ class EpsonDriver(PrinterInterface):
             "connected": self.is_connected,
             "profile": str(self.current_profile) if self.current_profile else None,
             "ink_levels": {k: v.to_dict() for k, v in self.get_ink_levels().items()},
-            "simulated": self.simulate
+            "simulated": self.simulate,
         }
 
 
@@ -479,11 +457,7 @@ class CanonDriver(PrinterInterface):
     - Canon iPF series
     """
 
-    SUPPORTED_MODELS = [
-        "PRO-1000", "PRO-2000", "PRO-4000",
-        "PRO-100",
-        "iPF6400", "iPF8400"
-    ]
+    SUPPORTED_MODELS = ["PRO-1000", "PRO-2000", "PRO-4000", "PRO-100", "iPF6400", "iPF8400"]
 
     def __init__(
         self,
@@ -578,23 +552,14 @@ class CanonDriver(PrinterInterface):
                 f"{settings.quality.value}, {settings.resolution_dpi} DPI"
             )
 
-            job = PrintJob(
-                job_id=job_id,
-                status="completed",
-                settings=settings,
-                pages=1
-            )
+            job = PrintJob(job_id=job_id, status="completed", settings=settings, pages=1)
 
             logger.info(f"Print job {job_id} completed (simulated)")
             return job
 
         raise NotImplementedError("Real printing not implemented")
 
-    def _prepare_image(
-        self,
-        image: Image.Image,
-        settings: PrintSettings
-    ) -> Image.Image:
+    def _prepare_image(self, image: Image.Image, settings: PrintSettings) -> Image.Image:
         """Prepare image for Canon printing."""
         # Similar to Epson, but Canon has some specific requirements
         processed = image.copy()
@@ -607,15 +572,12 @@ class CanonDriver(PrinterInterface):
         if settings.mirror:
             processed = processed.transpose(Image.FLIP_LEFT_RIGHT)
 
-        if settings.invert and (processed.mode == "L" or processed.mode == "RGB"):
+        if settings.invert and processed.mode in ("L", "RGB"):
             processed = Image.eval(processed, lambda x: 255 - x)
 
         if settings.scale_percent != 100.0:
             scale = settings.scale_percent / 100.0
-            new_size = (
-                int(processed.width * scale),
-                int(processed.height * scale)
-            )
+            new_size = (int(processed.width * scale), int(processed.height * scale))
             processed = processed.resize(new_size, Image.Resampling.LANCZOS)
 
         return processed
@@ -656,14 +618,10 @@ class CanonDriver(PrinterInterface):
 
             if has_issues:
                 missing = random.sample(
-                    ["photo_black_1", "cyan_2", "gray_4"],
-                    k=random.randint(1, 2)
+                    ["photo_black_1", "cyan_2", "gray_4"], k=random.randint(1, 2)
                 )
                 quality = random.uniform(0.75, 0.92)
-                recommendations = [
-                    "Run standard cleaning",
-                    "If issue persists, run deep cleaning"
-                ]
+                recommendations = ["Run standard cleaning", "If issue persists, run deep cleaning"]
                 success = False
             else:
                 missing = []
@@ -675,7 +633,7 @@ class CanonDriver(PrinterInterface):
                 success=success,
                 missing_nozzles=missing,
                 pattern_quality=quality,
-                recommendations=recommendations
+                recommendations=recommendations,
             )
 
         raise NotImplementedError("Real nozzle check not implemented")
@@ -692,5 +650,5 @@ class CanonDriver(PrinterInterface):
             "connected": self.is_connected,
             "profile": str(self.current_profile) if self.current_profile else None,
             "ink_levels": {k: v.to_dict() for k, v in self.get_ink_levels().items()},
-            "simulated": self.simulate
+            "simulated": self.simulate,
         }

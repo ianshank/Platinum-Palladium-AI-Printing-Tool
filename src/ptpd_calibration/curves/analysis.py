@@ -168,14 +168,14 @@ class CurveAnalyzer:
     @staticmethod
     def suggest_adjustments(
         measured_densities: list[float],
-        target_densities: list[float] | None = None,
+        _target_densities: list[float] | None = None,
     ) -> list[str]:
         """
         Generate suggestions for process adjustments.
 
         Args:
             measured_densities: Measured density values.
-            target_densities: Optional target densities.
+            _target_densities: Optional target densities (reserved for future use).
 
         Returns:
             List of adjustment suggestions.
@@ -364,8 +364,7 @@ class CurveAnalyzer:
         elif current_range > target_range * 1.2:
             suggestions["contrast"] = "decrease"
             suggestions["contrast_suggestion"] = (
-                "Consider reducing Na2 or switching to pure palladium "
-                "for lower contrast."
+                "Consider reducing Na2 or switching to pure palladium for lower contrast."
             )
         else:
             suggestions["contrast"] = "good"

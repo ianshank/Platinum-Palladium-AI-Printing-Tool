@@ -1,3 +1,9 @@
+"""
+Tests for session logger module.
+
+Tests print session logging, record management, and statistics.
+"""
+
 from datetime import datetime, timedelta
 from uuid import uuid4
 
@@ -241,16 +247,20 @@ class TestPrintSession:
     def test_get_statistics_with_records(self):
         """Should calculate statistics correctly."""
         session = PrintSession()
-        session.add_record(PrintRecord(
-            paper_type="Arches Platine",
-            result=PrintResult.EXCELLENT,
-            exposure_time_minutes=10.0,
-        ))
-        session.add_record(PrintRecord(
-            paper_type="COT 320",
-            result=PrintResult.GOOD,
-            exposure_time_minutes=12.0,
-        ))
+        session.add_record(
+            PrintRecord(
+                paper_type="Arches Platine",
+                result=PrintResult.EXCELLENT,
+                exposure_time_minutes=10.0,
+            )
+        )
+        session.add_record(
+            PrintRecord(
+                paper_type="COT 320",
+                result=PrintResult.GOOD,
+                exposure_time_minutes=12.0,
+            )
+        )
 
         stats = session.get_statistics()
         assert stats["total_prints"] == 2
@@ -359,14 +369,16 @@ class TestSessionLogger:
         result = logger.end_session()
         assert result is None
 
-    def test_save_and_load_session(self, logger, tmp_path):
+    def test_save_and_load_session(self, logger, tmp_path):  # noqa: ARG002
         """Should save and load session."""
         session = PrintSession(name="Save Load Test")
-        session.add_record(PrintRecord(
-            image_name="save_load.tif",
-            paper_type="Arches Platine",
-            result=PrintResult.GOOD,
-        ))
+        session.add_record(
+            PrintRecord(
+                image_name="save_load.tif",
+                paper_type="Arches Platine",
+                result=PrintResult.GOOD,
+            )
+        )
 
         filepath = logger.save_session(session)
         assert filepath.exists()
@@ -432,7 +444,7 @@ class TestSessionLogger:
     def test_search_records_limit(self, logger):
         """Should respect search limit."""
         session = PrintSession(name="Search Limit")
-        for _i in range(10):
+        for _ in range(10):
             session.add_record(PrintRecord(paper_type="Test Paper"))
         logger.save_session(session)
 
@@ -442,21 +454,27 @@ class TestSessionLogger:
     def test_get_paper_statistics(self, logger):
         """Should calculate paper statistics."""
         session = PrintSession(name="Stats Test")
-        session.add_record(PrintRecord(
-            paper_type="Arches Platine",
-            result=PrintResult.EXCELLENT,
-            exposure_time_minutes=10.0,
-        ))
-        session.add_record(PrintRecord(
-            paper_type="Arches Platine",
-            result=PrintResult.GOOD,
-            exposure_time_minutes=12.0,
-        ))
-        session.add_record(PrintRecord(
-            paper_type="COT 320",
-            result=PrintResult.FAILED,
-            exposure_time_minutes=15.0,
-        ))
+        session.add_record(
+            PrintRecord(
+                paper_type="Arches Platine",
+                result=PrintResult.EXCELLENT,
+                exposure_time_minutes=10.0,
+            )
+        )
+        session.add_record(
+            PrintRecord(
+                paper_type="Arches Platine",
+                result=PrintResult.GOOD,
+                exposure_time_minutes=12.0,
+            )
+        )
+        session.add_record(
+            PrintRecord(
+                paper_type="COT 320",
+                result=PrintResult.FAILED,
+                exposure_time_minutes=15.0,
+            )
+        )
         logger.save_session(session)
 
         stats = logger.get_paper_statistics()

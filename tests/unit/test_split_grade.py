@@ -154,10 +154,10 @@ class TestSplitGradeSettings:
 
     def test_grade_validation_out_of_range(self):
         """Test that grades outside valid range raise errors."""
-        with pytest.raises(Exception):  # Pydantic ValidationError
+        with pytest.raises(ValueError):
             SplitGradeSettings(shadow_grade=-0.1)
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(shadow_grade=5.1)
 
     def test_exposure_ratio_validation(self):
@@ -168,34 +168,25 @@ class TestSplitGradeSettings:
         settings = SplitGradeSettings(shadow_exposure_ratio=1.0)
         assert settings.shadow_exposure_ratio == 1.0
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(shadow_exposure_ratio=-0.1)
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(shadow_exposure_ratio=1.1)
 
     def test_threshold_order_validation(self):
         """Test that shadow_threshold must be less than highlight_threshold."""
         # Valid thresholds
-        settings = SplitGradeSettings(
-            shadow_threshold=0.3,
-            highlight_threshold=0.7
-        )
+        settings = SplitGradeSettings(shadow_threshold=0.3, highlight_threshold=0.7)
         assert settings.shadow_threshold == 0.3
         assert settings.highlight_threshold == 0.7
 
         # Invalid: shadow >= highlight
         with pytest.raises(ValueError, match="must be less than"):
-            SplitGradeSettings(
-                shadow_threshold=0.7,
-                highlight_threshold=0.3
-            )
+            SplitGradeSettings(shadow_threshold=0.7, highlight_threshold=0.3)
 
         with pytest.raises(ValueError, match="must be less than"):
-            SplitGradeSettings(
-                shadow_threshold=0.5,
-                highlight_threshold=0.5
-            )
+            SplitGradeSettings(shadow_threshold=0.5, highlight_threshold=0.5)
 
     def test_blend_gamma_validation(self):
         """Test blend gamma validation."""
@@ -205,10 +196,10 @@ class TestSplitGradeSettings:
         settings = SplitGradeSettings(blend_gamma=4.0)
         assert settings.blend_gamma == 4.0
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(blend_gamma=0.4)
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(blend_gamma=4.1)
 
     def test_platinum_ratio_validation(self):
@@ -219,15 +210,15 @@ class TestSplitGradeSettings:
         settings = SplitGradeSettings(platinum_ratio=1.0)
         assert settings.platinum_ratio == 1.0
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(platinum_ratio=-0.1)
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(platinum_ratio=1.1)
 
     def test_all_blend_modes(self):
         """Test all blend mode options."""
-        for mode in BlendMode:
+        for mode in list(BlendMode):
             settings = SplitGradeSettings(blend_mode=mode)
             assert settings.blend_mode == mode
 
@@ -391,9 +382,7 @@ class TestTonalCurveAdjuster:
     def test_apply_curve_to_image(self, adjuster, linear_gradient):
         """Test applying curve to image."""
         processed = adjuster.apply_curve_to_image(
-            linear_gradient,
-            grade=2.5,
-            apply_metal_characteristic=False
+            linear_gradient, grade=2.5, apply_metal_characteristic=False
         )
 
         assert processed.shape == linear_gradient.shape
@@ -406,9 +395,7 @@ class TestTonalCurveAdjuster:
         adjuster = TonalCurveAdjuster(settings)
 
         processed = adjuster.apply_curve_to_image(
-            linear_gradient,
-            grade=2.5,
-            apply_metal_characteristic=True
+            linear_gradient, grade=2.5, apply_metal_characteristic=True
         )
 
         assert processed.shape == linear_gradient.shape
@@ -470,12 +457,15 @@ class TestSplitGradeSimulatorAnalysis:
         assert 0.0 <= analysis.midtone_percentage <= 1.0
         assert 0.0 <= analysis.highlight_percentage <= 1.0
         # Percentages should sum to approximately 1.0
-        assert pytest.approx(
-            analysis.shadow_percentage +
-            analysis.midtone_percentage +
-            analysis.highlight_percentage,
-            abs=0.01
-        ) == 1.0
+        assert (
+            pytest.approx(
+                analysis.shadow_percentage
+                + analysis.midtone_percentage
+                + analysis.highlight_percentage,
+                abs=0.01,
+            )
+            == 1.0
+        )
 
     def test_analyze_image_low_key(self, simulator, low_key_image):
         """Test analysis identifies low-key images."""
@@ -548,10 +538,7 @@ class TestSplitGradeSimulatorMasks:
     @pytest.fixture
     def simulator(self):
         """Create a SplitGradeSimulator instance."""
-        settings = SplitGradeSettings(
-            mask_blur_radius=5.0,
-            mask_feather_amount=0.1
-        )
+        settings = SplitGradeSettings(mask_blur_radius=5.0, mask_feather_amount=0.1)
         return SplitGradeSimulator(settings)
 
     def test_create_shadow_mask_shape(self, simulator, normal_contrast_image):
@@ -610,7 +597,7 @@ class TestSplitGradeSimulatorMasks:
         # Lower threshold should select more pixels
         assert np.sum(mask_low > 0.5) > np.sum(mask_high > 0.5)
 
-    def test_mask_blur_effect(self, simulator, step_wedge_image):
+    def test_mask_blur_effect(self, simulator, step_wedge_image):  # noqa: ARG002
         """Test that blur smooths mask transitions."""
         # Create simulator with no blur
         no_blur_sim = SplitGradeSimulator(SplitGradeSettings(mask_blur_radius=0.0))
@@ -623,7 +610,7 @@ class TestSplitGradeSimulatorMasks:
         # Blurred mask should be smoother (less variation)
         assert np.std(mask_blur) < np.std(mask_no_blur)
 
-    def test_mask_feather_effect(self, simulator, linear_gradient):
+    def test_mask_feather_effect(self, simulator, linear_gradient):  # noqa: ARG002
         """Test that feathering affects mask values."""
         no_feather_sim = SplitGradeSimulator(
             SplitGradeSettings(mask_feather_amount=0.0, mask_blur_radius=0.0)
@@ -662,13 +649,16 @@ class TestSplitGradeSimulatorBlendModes:
         """Create highlight-processed image."""
         return linear_gradient * 1.2  # Lighter (will be clipped)
 
-    @pytest.mark.parametrize("blend_mode", [
-        BlendMode.LINEAR,
-        BlendMode.GAMMA,
-        BlendMode.SOFT_LIGHT,
-        BlendMode.OVERLAY,
-        BlendMode.CUSTOM,
-    ])
+    @pytest.mark.parametrize(
+        "blend_mode",
+        [
+            BlendMode.LINEAR,
+            BlendMode.GAMMA,
+            BlendMode.SOFT_LIGHT,
+            BlendMode.OVERLAY,
+            BlendMode.CUSTOM,
+        ],
+    )
     def test_blend_exposures_all_modes(self, simulator, shadow_image, highlight_image, blend_mode):
         """Test all blend modes produce valid output."""
         settings = SplitGradeSettings(blend_mode=blend_mode)
@@ -685,10 +675,7 @@ class TestSplitGradeSimulatorBlendModes:
 
     def test_blend_exposures_linear(self, simulator, shadow_image, highlight_image):
         """Test linear blend mode."""
-        settings = SplitGradeSettings(
-            blend_mode=BlendMode.LINEAR,
-            shadow_exposure_ratio=0.5
-        )
+        settings = SplitGradeSettings(blend_mode=BlendMode.LINEAR, shadow_exposure_ratio=0.5)
 
         result = simulator.blend_exposures(
             shadow_image,
@@ -703,9 +690,7 @@ class TestSplitGradeSimulatorBlendModes:
     def test_blend_exposures_gamma(self, simulator, shadow_image, highlight_image):
         """Test gamma blend mode."""
         settings = SplitGradeSettings(
-            blend_mode=BlendMode.GAMMA,
-            blend_gamma=2.2,
-            shadow_exposure_ratio=0.5
+            blend_mode=BlendMode.GAMMA, blend_gamma=2.2, shadow_exposure_ratio=0.5
         )
 
         result = simulator.blend_exposures(
@@ -739,17 +724,11 @@ class TestSplitGradeSimulatorBlendModes:
 
     def test_blend_exposures_exposure_ratio_effect(self, simulator, shadow_image, highlight_image):
         """Test that exposure ratio affects the blend."""
-        settings_shadow = SplitGradeSettings(
-            blend_mode=BlendMode.LINEAR,
-            shadow_exposure_ratio=0.8
-        )
-        result_shadow = simulator.blend_exposures(
-            shadow_image, highlight_image, settings_shadow
-        )
+        settings_shadow = SplitGradeSettings(blend_mode=BlendMode.LINEAR, shadow_exposure_ratio=0.8)
+        result_shadow = simulator.blend_exposures(shadow_image, highlight_image, settings_shadow)
 
         settings_highlight = SplitGradeSettings(
-            blend_mode=BlendMode.LINEAR,
-            shadow_exposure_ratio=0.2
+            blend_mode=BlendMode.LINEAR, shadow_exposure_ratio=0.2
         )
         result_highlight = simulator.blend_exposures(
             shadow_image, highlight_image, settings_highlight
@@ -795,10 +774,7 @@ class TestSplitGradeSimulatorSimulation:
 
     def test_simulate_split_grade_preserve_highlights(self, simulator, linear_gradient):
         """Test highlight preservation."""
-        settings = SplitGradeSettings(
-            preserve_highlights=True,
-            highlight_hold_point=0.95
-        )
+        settings = SplitGradeSettings(preserve_highlights=True, highlight_hold_point=0.95)
 
         result = simulator.simulate_split_grade(linear_gradient, settings)
 
@@ -811,10 +787,7 @@ class TestSplitGradeSimulatorSimulation:
 
     def test_simulate_split_grade_preserve_shadows(self, simulator, linear_gradient):
         """Test shadow preservation."""
-        settings = SplitGradeSettings(
-            preserve_shadows=True,
-            shadow_hold_point=0.05
-        )
+        settings = SplitGradeSettings(preserve_shadows=True, shadow_hold_point=0.05)
 
         result = simulator.simulate_split_grade(linear_gradient, settings)
 
@@ -849,24 +822,21 @@ class TestSplitGradeSimulatorSimulation:
         """Test preview result generation."""
         result_dict = simulator.preview_result(normal_contrast_image)
 
-        assert 'original' in result_dict
-        assert 'processed' in result_dict
-        assert result_dict['original'].shape == normal_contrast_image.shape
-        assert result_dict['processed'].shape == normal_contrast_image.shape
+        assert "original" in result_dict
+        assert "processed" in result_dict
+        assert result_dict["original"].shape == normal_contrast_image.shape
+        assert result_dict["processed"].shape == normal_contrast_image.shape
 
     def test_preview_result_with_masks(self, simulator, normal_contrast_image):
         """Test preview with masks included."""
-        result_dict = simulator.preview_result(
-            normal_contrast_image,
-            include_masks=True
-        )
+        result_dict = simulator.preview_result(normal_contrast_image, include_masks=True)
 
-        assert 'original' in result_dict
-        assert 'processed' in result_dict
-        assert 'shadow_mask' in result_dict
-        assert 'highlight_mask' in result_dict
-        assert result_dict['shadow_mask'].shape == normal_contrast_image.shape
-        assert result_dict['highlight_mask'].shape == normal_contrast_image.shape
+        assert "original" in result_dict
+        assert "processed" in result_dict
+        assert "shadow_mask" in result_dict
+        assert "highlight_mask" in result_dict
+        assert result_dict["shadow_mask"].shape == normal_contrast_image.shape
+        assert result_dict["highlight_mask"].shape == normal_contrast_image.shape
 
 
 # ==============================================================================
@@ -890,9 +860,9 @@ class TestSplitGradeSimulatorExposureCalculations:
         assert calc.total_exposure_seconds == 120.0
         assert calc.shadow_exposure_seconds > 0
         assert calc.highlight_exposure_seconds > 0
-        assert pytest.approx(
-            calc.shadow_exposure_seconds + calc.highlight_exposure_seconds
-        ) == 120.0
+        assert (
+            pytest.approx(calc.shadow_exposure_seconds + calc.highlight_exposure_seconds) == 120.0
+        )
 
     def test_calculate_exposure_times_custom_ratio(self, simulator):
         """Test exposure calculation with custom ratio."""
@@ -960,9 +930,10 @@ class TestSplitGradeSimulatorExposureCalculations:
             calc = simulator.calculate_exposure_times(base_time=base_time)
 
             assert calc.total_exposure_seconds == base_time
-            assert pytest.approx(
-                calc.shadow_exposure_seconds + calc.highlight_exposure_seconds
-            ) == base_time
+            assert (
+                pytest.approx(calc.shadow_exposure_seconds + calc.highlight_exposure_seconds)
+                == base_time
+            )
 
 
 # ==============================================================================
@@ -1076,7 +1047,7 @@ class TestSplitGradeSimulatorHelpers:
             mean_lum=0.5,
             contrast=0.2,  # Low contrast
             is_low_key=False,
-            is_high_key=False
+            is_high_key=False,
         )
 
         # Low contrast should get harder grades
@@ -1089,7 +1060,7 @@ class TestSplitGradeSimulatorHelpers:
             mean_lum=0.5,
             contrast=0.8,  # High contrast
             is_low_key=False,
-            is_high_key=False
+            is_high_key=False,
         )
 
         # High contrast should get softer grades
@@ -1099,10 +1070,7 @@ class TestSplitGradeSimulatorHelpers:
     def test_recommend_thresholds(self, simulator):
         """Test threshold recommendations."""
         shadow_thresh, highlight_thresh = simulator._recommend_thresholds(
-            p25=0.25,
-            p75=0.75,
-            shadow_pct=0.3,
-            highlight_pct=0.3
+            p25=0.25, p75=0.75, shadow_pct=0.3, highlight_pct=0.3
         )
 
         assert 0.0 <= shadow_thresh <= 1.0
@@ -1114,10 +1082,7 @@ class TestSplitGradeSimulatorHelpers:
     def test_recommend_exposure_ratio(self, simulator):
         """Test exposure ratio recommendations."""
         ratio = simulator._recommend_exposure_ratio(
-            shadow_pct=0.4,
-            highlight_pct=0.2,
-            is_low_key=False,
-            is_high_key=False
+            shadow_pct=0.4, highlight_pct=0.2, is_low_key=False, is_high_key=False
         )
 
         assert 0.4 <= ratio <= 0.75
@@ -1185,13 +1150,13 @@ class TestSplitGradeIntegration:
         simulator = SplitGradeSimulator()
         results = {}
 
-        for mode in BlendMode:
+        for mode in list(BlendMode):
             settings = SplitGradeSettings(blend_mode=mode)
             result = simulator.simulate_split_grade(normal_contrast_image, settings)
             results[mode] = result
 
         # All should produce valid results
-        for mode, result in results.items():
+        for _mode, result in results.items():
             assert result.shape == normal_contrast_image.shape
             assert np.all(result >= 0.0)
             assert np.all(result <= 1.0)

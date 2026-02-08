@@ -47,7 +47,7 @@ class TestEndToEndStepWedgeWorkflow:
             # Simulate typical Pt/Pd toe curve
             normalized = i / (num_patches - 1)
             # Non-linear response (toe + shoulder)
-            response = normalized ** 0.85
+            response = normalized**0.85
             value = int(255 * (1 - response))
 
             x_start = i * patch_width
@@ -60,9 +60,9 @@ class TestEndToEndStepWedgeWorkflow:
 
         # Add white margin (paper)
         full_img = np.full((height + 60, width + 60, 3), 248, dtype=np.uint8)
-        full_img[30:height + 30, 30:width + 30, 0] = img
-        full_img[30:height + 30, 30:width + 30, 1] = img
-        full_img[30:height + 30, 30:width + 30, 2] = img
+        full_img[30 : height + 30, 30 : width + 30, 0] = img
+        full_img[30 : height + 30, 30 : width + 30, 1] = img
+        full_img[30 : height + 30, 30 : width + 30, 2] = img
 
         image_path = tmp_path / "step_tablet_synthetic.png"
         Image.fromarray(full_img).save(image_path)
@@ -205,34 +205,42 @@ class TestMultiCurveComparison:
 
         # Linear curve
         inputs = list(np.linspace(0, 1, 256))
-        curves.append(CurveData(
-            name="Linear Reference",
-            input_values=inputs,
-            output_values=inputs.copy(),
-        ))
+        curves.append(
+            CurveData(
+                name="Linear Reference",
+                input_values=inputs,
+                output_values=inputs.copy(),
+            )
+        )
 
         # Gamma 0.9 curve
-        curves.append(CurveData(
-            name="Gamma 0.9",
-            input_values=inputs,
-            output_values=list(np.array(inputs) ** 0.9),
-        ))
+        curves.append(
+            CurveData(
+                name="Gamma 0.9",
+                input_values=inputs,
+                output_values=list(np.array(inputs) ** 0.9),
+            )
+        )
 
         # Gamma 1.2 curve
-        curves.append(CurveData(
-            name="Gamma 1.2",
-            input_values=inputs,
-            output_values=list(np.array(inputs) ** 1.2),
-        ))
+        curves.append(
+            CurveData(
+                name="Gamma 1.2",
+                input_values=inputs,
+                output_values=list(np.array(inputs) ** 1.2),
+            )
+        )
 
         # S-curve
         t = np.array(inputs)
         s_curve = t * t * (3 - 2 * t)
-        curves.append(CurveData(
-            name="S-Curve",
-            input_values=inputs,
-            output_values=list(s_curve),
-        ))
+        curves.append(
+            CurveData(
+                name="S-Curve",
+                input_values=inputs,
+                output_values=list(s_curve),
+            )
+        )
 
         return curves
 

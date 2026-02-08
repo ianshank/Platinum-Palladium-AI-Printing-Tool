@@ -5,7 +5,7 @@ import gradio as gr
 from ptpd_calibration.llm import create_assistant
 
 
-def build_ai_assistant_tab() -> None:
+def build_ai_assistant_tab():
     """Build the AI Assistant tab."""
     with gr.TabItem("🤖 AI Assistant"):
         gr.Markdown(
@@ -21,9 +21,7 @@ def build_ai_assistant_tab() -> None:
             # Chat area
             with gr.Column(scale=2):
                 chatbot = gr.Chatbot(
-                    label="Pt/Pd Printing Assistant",
-                    height=500,
-                    avatar_images=(None, "🤖")
+                    label="Pt/Pd Printing Assistant", height=500, avatar_images=(None, "🤖")
                 )
 
                 with gr.Row():
@@ -49,18 +47,15 @@ def build_ai_assistant_tab() -> None:
                     label="Active Curve",
                     choices=["None", "Arches Platine v2", "Bergger COT320"],
                     value="None",
-                    allow_custom_value=True
+                    allow_custom_value=True,
                 )
                 context_paper = gr.Dropdown(
                     label="Current Paper",
                     choices=["Arches Platine", "Bergger COT320", "Hahnemühle Platinum Rag"],
                     value="Arches Platine",
-                    allow_custom_value=True
+                    allow_custom_value=True,
                 )
-                context_image = gr.Image(
-                    label="Reference Image (optional)",
-                    type="filepath"
-                )
+                context_image = gr.Image(label="Reference Image (optional)", type="filepath")
 
                 gr.Markdown("### 📚 Resources")
                 gr.Markdown("""
@@ -74,7 +69,7 @@ def build_ai_assistant_tab() -> None:
         prompt_two.click(lambda: "Coating recipe for 8x10", outputs=msg_input)
         prompt_three.click(lambda: "Compare Arches vs Bergger", outputs=msg_input)
 
-        async def chat(message: str, history: list, curve: str, paper: str, image_path: str | None) -> tuple[str, list]:
+        async def chat(message, history, curve, paper, image_path):
             try:
                 assistant = create_assistant()
                 context_lines = [
@@ -101,14 +96,13 @@ def build_ai_assistant_tab() -> None:
         send_btn.click(
             chat,
             inputs=[msg_input, chatbot, context_curve, context_paper, context_image],
-            outputs=[msg_input, chatbot]
+            outputs=[msg_input, chatbot],
         )
 
         msg_input.submit(
             chat,
             inputs=[msg_input, chatbot, context_curve, context_paper, context_image],
-            outputs=[msg_input, chatbot]
+            outputs=[msg_input, chatbot],
         )
 
         clear_btn.click(lambda: None, None, chatbot, queue=False)
-

@@ -12,19 +12,24 @@ Provides sophisticated tools for:
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 try:
     import qrcode
+    from qrcode.image.pil import PilImage as _PilImage  # noqa: F401
+
     HAS_QRCODE = True
+    del _PilImage  # Only used to test availability
 except ImportError:
     HAS_QRCODE = False
 
 
-def _get_truetype_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+def _get_truetype_font(
+    size: int, bold: bool = False
+) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     """Get a TrueType font with cross-platform support.
 
     Tries multiple common font paths for Windows, macOS, and Linux.
@@ -48,11 +53,11 @@ def _get_truetype_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont 
     # Common font directories by platform
     font_paths = [
         "/usr/share/fonts/truetype/dejavu/",  # Linux (Debian/Ubuntu)
-        "/usr/share/fonts/dejavu/",            # Linux (other distros)
-        "/System/Library/Fonts/",              # macOS
-        "/Library/Fonts/",                     # macOS
-        "C:/Windows/Fonts/",                   # Windows
-        "C:\\Windows\\Fonts\\",                # Windows (alternative)
+        "/usr/share/fonts/dejavu/",  # Linux (other distros)
+        "/System/Library/Fonts/",  # macOS
+        "/Library/Fonts/",  # macOS
+        "C:/Windows/Fonts/",  # Windows
+        "C:\\Windows\\Fonts\\",  # Windows (alternative)
     ]
 
     # Try each combination of path and font name
@@ -290,7 +295,7 @@ class AlternativeProcessSimulator:
                 gamma=0.95,
                 contrast=0.9,
                 shadow_color=pigment_color,
-                midtone_color=cast(tuple[int, int, int], tuple(int(c * 1.8) for c in pigment_color)),
+                midtone_color=tuple(int(c * 1.8) for c in pigment_color),
                 highlight_color=(245, 240, 232),
                 dmax=1.4,
                 dmin=0.08,
@@ -349,14 +354,14 @@ class AlternativeProcessSimulator:
         # Convert to PIL Image if needed
         if isinstance(image, np.ndarray):
             if image.ndim == 2:
-                pil_img = Image.fromarray(image.astype(np.uint8), mode='L')
+                pil_img = Image.fromarray(image.astype(np.uint8), mode="L")
             else:
-                pil_img = Image.fromarray(image.astype(np.uint8), mode='RGB')
+                pil_img = Image.fromarray(image.astype(np.uint8), mode="RGB")
         else:
             pil_img = image
 
         # Convert to grayscale for processing
-        gray = pil_img.convert('L') if pil_img.mode != 'L' else pil_img
+        gray = pil_img.convert("L") if pil_img.mode != "L" else pil_img
 
         # Convert to normalized array
         arr = np.array(gray, dtype=np.float32) / 255.0
@@ -404,25 +409,146 @@ class AlternativeProcessSimulator:
 
         # Convert to 8-bit
         rgb_output = np.clip(rgb_output * 255, 0, 255).astype(np.uint8)
-        result = Image.fromarray(rgb_output, mode='RGB')
+        result = Image.fromarray(rgb_output, mode="RGB")
 
         # Store process info in image metadata
-        result.info['process'] = process_name
+        result.info["process"] = process_name
 
         return result
+
+    def simulate_silver_gelatin(
+        self,
+        image: Image.Image | np.ndarray,
+        tone: str = "neutral",
+        params: AlternativeProcessParams | None = None,
+    ) -> Image.Image:
+        """Simulate silver gelatin (traditional darkroom) print.
+
+        Silver gelatin prints can range from cool neutral blacks to warm
+        brown-blacks depending on paper and developer choice.
+
+        Args:
+            image: Input image to simulate
+            tone: Tone color ("neutral", "warm", "cold", "sepia")
+            params: Optional custom parameters
+
+        Returns:
+            Simulated silver gelatin print image
+        """
+        if params is None:
+            preset_key = f"silver_gelatin_{tone}"
+            params = self._process_presets.get(
+                preset_key, self._process_presets["silver_gelatin_neutral"]
+            )
+
+        return self._apply_process_simulation(image, params, f"Silver Gelatin ({tone})")
+
+    def simulate_argyrotype(
+        self,
+        image: Image.Image | np.ndarray,
+        params: AlternativeProcessParams | None = None,
+    ) -> Image.Image:
+        """Simulate argyrotype print.
+
+        Argyrotype is a silver-iron printing process that produces
+        beautiful brown to purple-brown tones.
+
+        Args:
+            image: Input image to simulate
+            params: Optional custom parameters
+
+        Returns:
+            Simulated argyrotype image
+        """
+        if params is None:
+            params = self._process_presets["argyrotype"]
+
+        return self._apply_process_simulation(image, params, "Argyrotype")
 
     def _create_process_presets(self) -> dict[str, AlternativeProcessParams]:
         """Create preset parameters for various processes."""
         return {
-            'cyanotype': AlternativeProcessParams(
-                gamma=1.2, contrast=1.15,
+            "cyanotype": AlternativeProcessParams(
+                gamma=1.2,
+                contrast=1.15,
                 shadow_color=(0, 20, 60),
+                midtone_color=(40, 100, 160),
                 highlight_color=(160, 200, 240),
+                dmax=1.9,
+                dmin=0.12,
             ),
-            'vandyke': AlternativeProcessParams(
-                gamma=1.1, contrast=1.05,
+            "vandyke": AlternativeProcessParams(
+                gamma=1.1,
+                contrast=1.05,
                 shadow_color=(25, 15, 8),
+                midtone_color=(120, 80, 50),
                 highlight_color=(230, 210, 180),
+                dmax=1.8,
+                dmin=0.15,
+            ),
+            "kallitype": AlternativeProcessParams(
+                gamma=1.15,
+                contrast=1.1,
+                shadow_color=(20, 18, 15),
+                midtone_color=(110, 95, 80),
+                highlight_color=(240, 230, 215),
+                dmax=1.85,
+                dmin=0.1,
+            ),
+            "silver_gelatin_neutral": AlternativeProcessParams(
+                gamma=1.0,
+                contrast=1.0,
+                shadow_color=(15, 15, 15),
+                midtone_color=(100, 100, 100),
+                highlight_color=(250, 250, 250),
+                dmax=2.1,
+                dmin=0.04,
+            ),
+            "silver_gelatin_warm": AlternativeProcessParams(
+                gamma=1.0,
+                contrast=1.0,
+                shadow_color=(20, 15, 10),
+                midtone_color=(110, 95, 85),
+                highlight_color=(255, 250, 240),
+                dmax=2.0,
+                dmin=0.05,
+            ),
+            "silver_gelatin_cold": AlternativeProcessParams(
+                gamma=1.05,
+                contrast=1.05,
+                shadow_color=(10, 12, 15),
+                midtone_color=(90, 95, 100),
+                highlight_color=(248, 250, 255),
+                dmax=2.15,
+                dmin=0.03,
+            ),
+            "silver_gelatin_sepia": AlternativeProcessParams(
+                gamma=0.95,
+                contrast=0.95,
+                shadow_color=(35, 25, 15),
+                midtone_color=(130, 100, 70),
+                highlight_color=(255, 245, 225),
+                dmax=1.8,
+                dmin=0.08,
+                stain_level=0.05,
+            ),
+            "salt_print": AlternativeProcessParams(
+                gamma=0.9,
+                contrast=0.85,
+                shadow_color=(40, 30, 20),
+                midtone_color=(140, 120, 95),
+                highlight_color=(240, 230, 210),
+                dmax=1.3,
+                dmin=0.18,
+            ),
+            "argyrotype": AlternativeProcessParams(
+                gamma=1.15,
+                contrast=1.1,
+                shadow_color=(30, 20, 25),
+                midtone_color=(130, 100, 110),
+                highlight_color=(245, 235, 225),
+                dmax=1.8,
+                dmin=0.12,
             ),
         }
 
@@ -461,8 +587,8 @@ class NegativeBlender:
         neg_arrays = []
         for neg in negatives:
             if isinstance(neg, Image.Image):
-                if neg.mode != 'L':
-                    neg = neg.convert('L')
+                if neg.mode != "L":
+                    neg = neg.convert("L")
                 arr = np.array(neg, dtype=np.float32) / 255.0
             else:
                 arr = neg.astype(np.float32)
@@ -484,8 +610,8 @@ class NegativeBlender:
                     mask_arrays.append(np.ones(target_size, dtype=np.float32))
                     continue
                 if isinstance(mask, Image.Image):
-                    if mask.mode != 'L':
-                        mask = mask.convert('L')
+                    if mask.mode != "L":
+                        mask = mask.convert("L")
                     m_arr = np.array(mask, dtype=np.float32) / 255.0
                 else:
                     m_arr = mask.astype(np.float32)
@@ -514,7 +640,7 @@ class NegativeBlender:
 
         # Convert back to image
         result = np.clip(result * 255, 0, 255).astype(np.uint8)
-        return Image.fromarray(result, mode='L')
+        return Image.fromarray(result, mode="L")
 
     def create_contrast_mask(
         self,
@@ -534,8 +660,8 @@ class NegativeBlender:
         """
         # Convert to array
         if isinstance(image, Image.Image):
-            if image.mode != 'L':
-                image = image.convert('L')
+            if image.mode != "L":
+                image = image.convert("L")
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -557,7 +683,7 @@ class NegativeBlender:
         mask = np.clip(gradient_magnitude / threshold, 0, 1)
 
         # Smooth the mask
-        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode='L')
+        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
         mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=5))
 
         return mask_img
@@ -578,8 +704,8 @@ class NegativeBlender:
         """
         # Convert to array
         if isinstance(image, Image.Image):
-            if image.mode != 'L':
-                image = image.convert('L')
+            if image.mode != "L":
+                image = image.convert("L")
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -590,7 +716,7 @@ class NegativeBlender:
         mask = np.clip((arr - threshold) / (1 - threshold), 0, 1)
 
         # Smooth transitions
-        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode='L')
+        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
         mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=3))
 
         return mask_img
@@ -611,8 +737,8 @@ class NegativeBlender:
         """
         # Convert to array
         if isinstance(image, Image.Image):
-            if image.mode != 'L':
-                image = image.convert('L')
+            if image.mode != "L":
+                image = image.convert("L")
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -623,7 +749,7 @@ class NegativeBlender:
         mask = 1.0 - np.clip((arr - 0) / threshold, 0, 1)
 
         # Smooth transitions
-        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode='L')
+        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
         mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=3))
 
         return mask_img
@@ -650,8 +776,8 @@ class NegativeBlender:
         """
         # Convert image to array
         if isinstance(image, Image.Image):
-            if image.mode != 'L':
-                image = image.convert('L')
+            if image.mode != "L":
+                image = image.convert("L")
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -663,7 +789,7 @@ class NegativeBlender:
         # Apply dodging (lighten)
         if dodge_mask is not None:
             if isinstance(dodge_mask, Image.Image):
-                dodge_arr = np.array(dodge_mask.convert('L'), dtype=np.float32) / 255.0
+                dodge_arr = np.array(dodge_mask.convert("L"), dtype=np.float32) / 255.0
             else:
                 dodge_arr = dodge_mask.astype(np.float32)
                 if dodge_arr.max() > 1.0:
@@ -676,7 +802,7 @@ class NegativeBlender:
         # Apply burning (darken)
         if burn_mask is not None:
             if isinstance(burn_mask, Image.Image):
-                burn_arr = np.array(burn_mask.convert('L'), dtype=np.float32) / 255.0
+                burn_arr = np.array(burn_mask.convert("L"), dtype=np.float32) / 255.0
             else:
                 burn_arr = burn_mask.astype(np.float32)
                 if burn_arr.max() > 1.0:
@@ -684,11 +810,11 @@ class NegativeBlender:
 
             # Burning: move toward 0 (black)
             burn_effect = result * (1 - burn_amount)
-            result = cast(np.ndarray, result * (1 - burn_arr) + burn_effect * burn_arr)
+            result = result * (1 - burn_arr) + burn_effect * burn_arr
 
         # Convert back to image
         result = np.clip(result * 255, 0, 255).astype(np.uint8)
-        return Image.fromarray(result, mode='L')
+        return Image.fromarray(result, mode="L")
 
     def create_multi_layer_mask(
         self,
@@ -708,11 +834,11 @@ class NegativeBlender:
             raise ValueError("At least one layer is required")
 
         if blend_modes is None:
-            blend_modes = ['multiply'] * len(layers)
+            blend_modes = ["multiply"] * len(layers)
 
         # Convert first layer
         if isinstance(layers[0], Image.Image):
-            result = np.array(layers[0].convert('L'), dtype=np.float32) / 255.0
+            result = np.array(layers[0].convert("L"), dtype=np.float32) / 255.0
         else:
             result = layers[0].astype(np.float32)
             if result.max() > 1.0:
@@ -721,28 +847,28 @@ class NegativeBlender:
         # Blend remaining layers
         for i in range(1, len(layers)):
             if isinstance(layers[i], Image.Image):
-                layer = np.array(layers[i].convert('L'), dtype=np.float32) / 255.0
+                layer = np.array(layers[i].convert("L"), dtype=np.float32) / 255.0
             else:
                 layer = layers[i].astype(np.float32)
                 if layer.max() > 1.0:
                     layer = layer / 255.0
 
-            mode = blend_modes[i] if i < len(blend_modes) else 'multiply'
+            mode = blend_modes[i] if i < len(blend_modes) else "multiply"
 
-            if mode == 'add':
+            if mode == "add":
                 result = np.clip(result + layer, 0, 1)
-            elif mode == 'multiply':
+            elif mode == "multiply":
                 result = result * layer
-            elif mode == 'max':
+            elif mode == "max":
                 result = np.maximum(result, layer)
-            elif mode == 'min':
+            elif mode == "min":
                 result = np.minimum(result, layer)
             else:
                 result = result * layer  # Default to multiply
 
         # Convert to image
         result = np.clip(result * 255, 0, 255).astype(np.uint8)
-        return Image.fromarray(result, mode='L')
+        return Image.fromarray(result, mode="L")
 
     def _apply_blend_mode(
         self,
@@ -771,19 +897,19 @@ class NegativeBlender:
             result = np.zeros_like(base)
             result[mask] = 2 * base[mask] * blend[mask]
             result[~mask] = 1 - 2 * (1 - base[~mask]) * (1 - blend[~mask])
-            return cast(np.ndarray, result)
+            return result
         elif mode == BlendMode.SOFT_LIGHT:
-            return cast(np.ndarray, (1 - 2 * blend) * base**2 + 2 * blend * base)
+            return (1 - 2 * blend) * base**2 + 2 * blend * base
         elif mode == BlendMode.HARD_LIGHT:
             mask = blend < 0.5
             result = np.zeros_like(base)
             result[mask] = 2 * base[mask] * blend[mask]
             result[~mask] = 1 - 2 * (1 - base[~mask]) * (1 - blend[~mask])
-            return cast(np.ndarray, result)
+            return result
         elif mode == BlendMode.LINEAR_DODGE:
-            return cast(np.ndarray, np.clip(base + blend, 0, 1))
+            return np.clip(base + blend, 0, 1)
         elif mode == BlendMode.LINEAR_BURN:
-            return cast(np.ndarray, np.clip(base + blend - 1, 0, 1))
+            return np.clip(base + blend - 1, 0, 1)
         else:
             return blend
 
@@ -795,7 +921,7 @@ class QRMetadataGenerator:
     labels suitable for attachment to finished prints.
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         """Initialize the QR metadata generator."""
         if not HAS_QRCODE:
             raise ImportError(
@@ -807,7 +933,7 @@ class QRMetadataGenerator:
         self,
         print_data: PrintMetadata,
         size: int = 200,
-        error_correction: str = 'H',
+        error_correction: str = "H",
     ) -> Image.Image:
         """Generate QR code with print metadata.
 
@@ -826,10 +952,10 @@ class QRMetadataGenerator:
         qr = qrcode.QRCode(
             version=None,  # Auto-detect
             error_correction={
-                'L': qrcode.constants.ERROR_CORRECT_L,
-                'M': qrcode.constants.ERROR_CORRECT_M,
-                'Q': qrcode.constants.ERROR_CORRECT_Q,
-                'H': qrcode.constants.ERROR_CORRECT_H,
+                "L": qrcode.constants.ERROR_CORRECT_L,
+                "M": qrcode.constants.ERROR_CORRECT_M,
+                "Q": qrcode.constants.ERROR_CORRECT_Q,
+                "H": qrcode.constants.ERROR_CORRECT_H,
             }.get(error_correction, qrcode.constants.ERROR_CORRECT_H),
             box_size=10,
             border=2,
@@ -857,18 +983,18 @@ class QRMetadataGenerator:
         """
         if isinstance(recipe, PrintMetadata):
             data = {
-                'title': recipe.title,
-                'artist': recipe.artist,
-                'date': recipe.date,
-                'edition': recipe.edition,
-                'paper': recipe.paper,
-                'chemistry': recipe.chemistry,
-                'exposure': recipe.exposure_time,
-                'developer': recipe.developer,
-                'curve': recipe.curve_name,
-                'dmax': recipe.dmax,
-                'dmin': recipe.dmin,
-                'notes': recipe.notes,
+                "title": recipe.title,
+                "artist": recipe.artist,
+                "date": recipe.date,
+                "edition": recipe.edition,
+                "paper": recipe.paper,
+                "chemistry": recipe.chemistry,
+                "exposure": recipe.exposure_time,
+                "developer": recipe.developer,
+                "curve": recipe.curve_name,
+                "dmax": recipe.dmax,
+                "dmin": recipe.dmin,
+                "notes": recipe.notes,
             }
         else:
             data = recipe
@@ -892,11 +1018,10 @@ class QRMetadataGenerator:
         """
         try:
             from pyzbar.pyzbar import decode as decode_qr
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
-                "pyzbar library is required for QR decoding. "
-                "Install with: pip install pyzbar"
-            ) from None
+                "pyzbar library is required for QR decoding. Install with: pip install pyzbar"
+            ) from err
 
         # Load image if path
         if isinstance(qr_image, (str, Path)):
@@ -909,7 +1034,7 @@ class QRMetadataGenerator:
             raise ValueError("No QR code found in image")
 
         # Parse the data
-        data_str = decoded[0].data.decode('utf-8')
+        data_str = decoded[0].data.decode("utf-8")
         return self._parse_encoded_data(data_str)
 
     def create_archival_label(
@@ -929,7 +1054,7 @@ class QRMetadataGenerator:
             Label image ready for printing
         """
         # Create white background
-        label = Image.new('RGB', label_size, color='white')
+        label = Image.new("RGB", label_size, color="white")
         draw = ImageDraw.Draw(label)
 
         # Generate QR code
@@ -952,37 +1077,41 @@ class QRMetadataGenerator:
         # Draw text fields
         y = text_y
         if print_info.title:
-            draw.text((text_x, y), f"Title: {print_info.title}", fill='black', font=font_large)
+            draw.text((text_x, y), f"Title: {print_info.title}", fill="black", font=font_large)
             y += line_height
 
         if print_info.artist:
-            draw.text((text_x, y), f"Artist: {print_info.artist}", fill='black', font=font_small)
+            draw.text((text_x, y), f"Artist: {print_info.artist}", fill="black", font=font_small)
             y += line_height
 
         if print_info.date:
-            draw.text((text_x, y), f"Date: {print_info.date}", fill='black', font=font_small)
+            draw.text((text_x, y), f"Date: {print_info.date}", fill="black", font=font_small)
             y += line_height
 
         if print_info.edition:
-            draw.text((text_x, y), f"Edition: {print_info.edition}", fill='black', font=font_small)
+            draw.text((text_x, y), f"Edition: {print_info.edition}", fill="black", font=font_small)
             y += line_height
 
         y += 10  # Extra spacing
 
         if print_info.paper:
-            draw.text((text_x, y), f"Paper: {print_info.paper}", fill='black', font=font_small)
+            draw.text((text_x, y), f"Paper: {print_info.paper}", fill="black", font=font_small)
             y += line_height
 
         if print_info.chemistry:
-            draw.text((text_x, y), f"Chemistry: {print_info.chemistry}", fill='black', font=font_small)
+            draw.text(
+                (text_x, y), f"Chemistry: {print_info.chemistry}", fill="black", font=font_small
+            )
             y += line_height
 
         if print_info.exposure_time:
-            draw.text((text_x, y), f"Exposure: {print_info.exposure_time}", fill='black', font=font_small)
+            draw.text(
+                (text_x, y), f"Exposure: {print_info.exposure_time}", fill="black", font=font_small
+            )
             y += line_height
 
         if print_info.dmax > 0:
-            draw.text((text_x, y), f"Dmax: {print_info.dmax:.2f}", fill='black', font=font_small)
+            draw.text((text_x, y), f"Dmax: {print_info.dmax:.2f}", fill="black", font=font_small)
             y += line_height
 
         return label
@@ -997,11 +1126,11 @@ class QRMetadataGenerator:
             Parsed dictionary
         """
         result = {}
-        parts = data_str.split('|')
+        parts = data_str.split("|")
 
         for part in parts:
-            if ':' in part:
-                key, value = part.split(':', 1)
+            if ":" in part:
+                key, value = part.split(":", 1)
                 result[key] = value
 
         return result
@@ -1014,17 +1143,17 @@ class StyleTransfer:
     and historic periods to contemporary images.
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         """Initialize the style transfer system."""
         self.styles = self.load_historic_styles()
 
-    def load_historic_styles(self) -> dict[HistoricStyle | str, StyleParameters]:
+    def load_historic_styles(self) -> dict[str, StyleParameters]:
         """Load database of historic Pt/Pd print styles.
 
         Returns:
             Dictionary of style name to parameters
         """
-        styles: dict[HistoricStyle | str, StyleParameters] = {
+        styles = {
             HistoricStyle.PICTORIALIST_1890S: StyleParameters(
                 name="1890s Pictorialist",
                 description="Soft-focus pictorialist style with gentle tones",
@@ -1130,7 +1259,7 @@ class StyleTransfer:
         """
         # Convert to grayscale array
         if isinstance(reference_image, Image.Image):
-            gray = reference_image.convert('L') if reference_image.mode != 'L' else reference_image
+            gray = reference_image.convert("L") if reference_image.mode != "L" else reference_image
             arr = np.array(gray, dtype=np.float32) / 255.0
         else:
             arr = reference_image.astype(np.float32)
@@ -1156,7 +1285,7 @@ class StyleTransfer:
         contrast = np.clip(std_dev * 3, 0.5, 1.5)
 
         # Estimate color characteristics from RGB if available
-        if isinstance(reference_image, Image.Image) and reference_image.mode == 'RGB':
+        if isinstance(reference_image, Image.Image) and reference_image.mode == "RGB":
             rgb_arr = np.array(reference_image, dtype=np.float32) / 255.0
 
             # Sample shadow and highlight colors
@@ -1183,8 +1312,8 @@ class StyleTransfer:
             contrast=float(contrast),
             toe_contrast=1.0,
             shoulder_contrast=1.0,
-            shadow_tone=(int(shadow_color[0]), int(shadow_color[1]), int(shadow_color[2])),
-            highlight_tone=(int(highlight_color[0]), int(highlight_color[1]), int(highlight_color[2])),
+            shadow_tone=shadow_color,
+            highlight_tone=highlight_color,
             dmax=float(2.0 - shadow_val * 0.5),
             dmin=float(0.05 + highlight_val * 0.1),
             paper_warmth=0.5,
@@ -1239,17 +1368,17 @@ class StyleTransfer:
         # Create style with defaults
         style = StyleParameters(
             name=name,
-            description=parameters.get('description', 'Custom style'),
-            gamma=parameters.get('gamma', 1.0),
-            contrast=parameters.get('contrast', 1.0),
-            toe_contrast=parameters.get('toe_contrast', 1.0),
-            shoulder_contrast=parameters.get('shoulder_contrast', 1.0),
-            shadow_tone=parameters.get('shadow_tone', (20, 18, 16)),
-            highlight_tone=parameters.get('highlight_tone', (245, 240, 235)),
-            dmax=parameters.get('dmax', 1.7),
-            dmin=parameters.get('dmin', 0.08),
-            paper_warmth=parameters.get('paper_warmth', 0.5),
-            texture_strength=parameters.get('texture_strength', 0.0),
+            description=parameters.get("description", "Custom style"),
+            gamma=parameters.get("gamma", 1.0),
+            contrast=parameters.get("contrast", 1.0),
+            toe_contrast=parameters.get("toe_contrast", 1.0),
+            shoulder_contrast=parameters.get("shoulder_contrast", 1.0),
+            shadow_tone=parameters.get("shadow_tone", (20, 18, 16)),
+            highlight_tone=parameters.get("highlight_tone", (245, 240, 235)),
+            dmax=parameters.get("dmax", 1.7),
+            dmin=parameters.get("dmin", 0.08),
+            paper_warmth=parameters.get("paper_warmth", 0.5),
+            texture_strength=parameters.get("texture_strength", 0.0),
         )
 
         # Add to styles dictionary
@@ -1274,13 +1403,13 @@ class StyleTransfer:
         # Convert to PIL and grayscale
         if isinstance(image, np.ndarray):
             if image.ndim == 2:
-                pil_img = Image.fromarray((image * 255).astype(np.uint8), mode='L')
+                pil_img = Image.fromarray((image * 255).astype(np.uint8), mode="L")
             else:
-                pil_img = Image.fromarray((image * 255).astype(np.uint8), mode='RGB')
+                pil_img = Image.fromarray((image * 255).astype(np.uint8), mode="RGB")
         else:
             pil_img = image
 
-        gray = pil_img.convert('L') if pil_img.mode != 'L' else pil_img
+        gray = pil_img.convert("L") if pil_img.mode != "L" else pil_img
 
         # Convert to array
         arr = np.array(gray, dtype=np.float32) / 255.0
@@ -1327,10 +1456,10 @@ class StyleTransfer:
 
         # Convert to image
         rgb_output = (rgb_output * 255).astype(np.uint8)
-        result = Image.fromarray(rgb_output, mode='RGB')
+        result = Image.fromarray(rgb_output, mode="RGB")
 
         # Store style info
-        result.info['style'] = params.name
+        result.info["style"] = params.name
 
         return result
 
@@ -1342,7 +1471,7 @@ class PrintComparison:
     by comparing digital files with scanned prints.
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         """Initialize the print comparison system."""
         pass
 
@@ -1367,6 +1496,7 @@ class PrintComparison:
         # Resize to match if needed
         if orig_arr.shape != scan_arr.shape:
             from scipy.ndimage import zoom
+
             scale_y = orig_arr.shape[0] / scan_arr.shape[0]
             scale_x = orig_arr.shape[1] / scan_arr.shape[1]
             scan_arr = zoom(scan_arr, (scale_y, scale_x), order=1)
@@ -1397,13 +1527,13 @@ class PrintComparison:
             range_preservation = float(np.clip(min(scan_range, orig_range) / max_range, 0.0, 1.0))
 
         return {
-            'rmse': float(rmse),
-            'psnr': float(psnr),
-            'similarity_score': float(similarity),
-            'histogram_correlation': float(hist_correlation),
-            'tonal_range_preservation': float(range_preservation),
-            'original_range': orig_range,
-            'print_range': scan_range,
+            "rmse": float(rmse),
+            "psnr": float(psnr),
+            "similarity_score": float(similarity),
+            "histogram_correlation": float(hist_correlation),
+            "tonal_range_preservation": float(range_preservation),
+            "original_range": orig_range,
+            "print_range": scan_range,
         }
 
     def generate_difference_map(
@@ -1429,6 +1559,7 @@ class PrintComparison:
         # Resize to match if needed
         if arr1.shape != arr2.shape:
             from scipy.ndimage import zoom
+
             scale_y = arr2.shape[0] / arr1.shape[0]
             scale_x = arr2.shape[1] / arr1.shape[1]
             arr2 = zoom(arr2, (scale_y, scale_x), order=1)
@@ -1464,17 +1595,17 @@ class PrintComparison:
             rgb_diff[neg_mask, 2] = 0.5 + np.abs(diff[neg_mask]) * 0.5
 
             rgb_diff = np.clip(rgb_diff * 255, 0, 255).astype(np.uint8)
-            return Image.fromarray(rgb_diff, mode='RGB')
+            return Image.fromarray(rgb_diff, mode="RGB")
         else:
             # Grayscale difference
             diff_normalized = (np.abs(diff) * 255).astype(np.uint8)
-            return Image.fromarray(diff_normalized, mode='L')
+            return Image.fromarray(diff_normalized, mode="L")
 
     def calculate_similarity_score(
         self,
         image1: Image.Image | np.ndarray,
         image2: Image.Image | np.ndarray,
-        method: str = 'ssim',
+        method: str = "ssim",
     ) -> float:
         """Calculate numerical similarity score between images.
 
@@ -1493,22 +1624,23 @@ class PrintComparison:
         # Resize to match if needed
         if arr1.shape != arr2.shape:
             from scipy.ndimage import zoom
+
             scale_y = arr2.shape[0] / arr1.shape[0]
             scale_x = arr2.shape[1] / arr1.shape[1]
             arr2 = zoom(arr2, (scale_y, scale_x), order=1)
 
-        if method == 'mse':
+        if method == "mse":
             mse = np.mean((arr1 - arr2) ** 2)
             return float(np.clip(1.0 - np.sqrt(mse), 0.0, 1.0))
 
-        elif method == 'correlation':
+        elif method == "correlation":
             corr = np.corrcoef(arr1.flatten(), arr2.flatten())[0, 1]
             return float(np.clip((corr + 1) / 2, 0.0, 1.0))  # Map from [-1, 1] to [0, 1]
 
-        elif method == 'ssim':
+        elif method == "ssim":
             # Simplified SSIM calculation
-            c1 = 0.01 ** 2
-            c2 = 0.03 ** 2
+            c1 = 0.01**2
+            c2 = 0.03**2
 
             mu1 = arr1.mean()
             mu2 = arr2.mean()
@@ -1518,8 +1650,9 @@ class PrintComparison:
 
             sigma12 = np.mean((arr1 - mu1) * (arr2 - mu2))
 
-            ssim = ((2 * mu1 * mu2 + c1) * (2 * sigma12 + c2)) / \
-                   ((mu1**2 + mu2**2 + c1) * (sigma1**2 + sigma2**2 + c2))
+            ssim = ((2 * mu1 * mu2 + c1) * (2 * sigma12 + c2)) / (
+                (mu1**2 + mu2**2 + c1) * (sigma1**2 + sigma2**2 + c2)
+            )
 
             return float(np.clip((ssim + 1) / 2, 0.0, 1.0))  # Normalize to 0-1
 
@@ -1551,7 +1684,7 @@ class PrintComparison:
             raise ValueError(f"Reference key {reference_key} not in images")
 
         reference = images[reference_key]
-        self._to_gray_array(reference)
+        _ = self._to_gray_array(reference)  # Validate reference can be converted
 
         # Compare all images to reference
         comparisons = {}
@@ -1562,30 +1695,30 @@ class PrintComparison:
 
             # Calculate various metrics
             comparison = self.compare_before_after(reference, img)
-            comparison['similarity_ssim'] = self.calculate_similarity_score(
-                reference, img, method='ssim'
+            comparison["similarity_ssim"] = self.calculate_similarity_score(
+                reference, img, method="ssim"
             )
-            comparison['similarity_correlation'] = self.calculate_similarity_score(
-                reference, img, method='correlation'
+            comparison["similarity_correlation"] = self.calculate_similarity_score(
+                reference, img, method="correlation"
             )
 
             comparisons[name] = comparison
 
         # Generate summary statistics
         if comparisons:
-            avg_similarity = np.mean([c['similarity_ssim'] for c in comparisons.values()])
-            avg_psnr = np.mean([c['psnr'] for c in comparisons.values()])
+            avg_similarity = np.mean([c["similarity_ssim"] for c in comparisons.values()])
+            avg_psnr = np.mean([c["psnr"] for c in comparisons.values()])
         else:
             avg_similarity = 1.0
-            avg_psnr = float('inf')
+            avg_psnr = float("inf")
 
         return {
-            'reference': reference_key,
-            'num_images': len(images),
-            'comparisons': comparisons,
-            'summary': {
-                'average_similarity': float(avg_similarity),
-                'average_psnr': float(avg_psnr),
+            "reference": reference_key,
+            "num_images": len(images),
+            "comparisons": comparisons,
+            "summary": {
+                "average_similarity": float(avg_similarity),
+                "average_psnr": float(avg_psnr),
             },
         }
 
@@ -1602,7 +1735,7 @@ class PrintComparison:
             Normalized grayscale array (0-1)
         """
         if isinstance(image, Image.Image):
-            gray = image.convert('L') if image.mode != 'L' else image
+            gray = image.convert("L") if image.mode != "L" else image
             arr = np.array(gray, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)

@@ -255,8 +255,10 @@ class S3Provider(CloudProvider):
 
         try:
             import boto3
-        except ImportError:
-            raise ImportError("boto3 is required for S3 sync. Install with: pip install boto3") from None
+        except ImportError as err:
+            raise ImportError(
+                "boto3 is required for S3 sync. Install with: pip install boto3"
+            ) from err
 
         self.bucket = config.get("bucket")
         if not self.bucket:
@@ -472,22 +474,14 @@ class SyncManager:
         for conflict in conflicts:
             try:
                 if strategy == ConflictStrategy.LOCAL_WINS:
-                    self.provider.upload_file(
-                        conflict["local_path"], conflict["remote_path"]
-                    )
+                    self.provider.upload_file(conflict["local_path"], conflict["remote_path"])
                 elif strategy == ConflictStrategy.REMOTE_WINS:
-                    self.provider.download_file(
-                        conflict["remote_path"], conflict["local_path"]
-                    )
+                    self.provider.download_file(conflict["remote_path"], conflict["local_path"])
                 elif strategy == ConflictStrategy.NEWEST_WINS:
                     if conflict["local_newer"]:
-                        self.provider.upload_file(
-                            conflict["local_path"], conflict["remote_path"]
-                        )
+                        self.provider.upload_file(conflict["local_path"], conflict["remote_path"])
                     else:
-                        self.provider.download_file(
-                            conflict["remote_path"], conflict["local_path"]
-                        )
+                        self.provider.download_file(conflict["remote_path"], conflict["local_path"])
                 resolved["resolved"] += 1
             except Exception:
                 resolved["failed"] += 1
@@ -501,9 +495,7 @@ class SyncManager:
         Returns:
             Datetime of last sync, or None if never synced
         """
-        successful_syncs = [
-            r for r in self.sync_history if r.status == SyncStatus.COMPLETED
-        ]
+        successful_syncs = [r for r in self.sync_history if r.status == SyncStatus.COMPLETED]
         if successful_syncs:
             return successful_syncs[-1].timestamp
         return None
@@ -589,18 +581,14 @@ class SyncManager:
             try:
                 with open(self.sync_state_path, encoding="utf-8") as f:
                     data = json.load(f)
-                    self.sync_history = [
-                        SyncRecord(**record) for record in data.get("history", [])
-                    ]
+                    self.sync_history = [SyncRecord(**record) for record in data.get("history", [])]
             except Exception:
                 self.sync_history = []
 
     def _save_sync_state(self) -> None:
         """Save sync state to file."""
         try:
-            data = {
-                "history": [record.model_dump() for record in self.sync_history[-100:]]
-            }
+            data = {"history": [record.model_dump() for record in self.sync_history[-100:]]}
             self.sync_state_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.sync_state_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, default=str)

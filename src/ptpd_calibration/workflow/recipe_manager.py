@@ -10,6 +10,7 @@ chemistry, exposure, environmental conditions, and calibration curves.
 import json
 import sqlite3
 from collections.abc import Callable
+from contextlib import suppress
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
@@ -61,9 +62,7 @@ class PrintRecipe(BaseModel):
 
     # Paper settings
     paper_type: str = Field(..., description="Paper type name")
-    paper_profile_id: UUID | None = Field(
-        default=None, description="Reference to paper profile"
-    )
+    paper_profile_id: UUID | None = Field(default=None, description="Reference to paper profile")
 
     # Chemistry settings
     chemistry_type: ChemistryType = Field(
@@ -82,9 +81,7 @@ class PrintRecipe(BaseModel):
     contrast_agent: ContrastAgent = Field(
         default=ContrastAgent.NONE, description="Contrast agent type"
     )
-    contrast_agent_drops: float = Field(
-        default=0.0, ge=0.0, description="Contrast agent drops"
-    )
+    contrast_agent_drops: float = Field(default=0.0, ge=0.0, description="Contrast agent drops")
 
     # Developer settings
     developer: DeveloperType = Field(
@@ -121,16 +118,12 @@ class PrintRecipe(BaseModel):
     )
 
     # Curve settings
-    curve_id: UUID | None = Field(
-        default=None, description="Calibration curve identifier"
-    )
+    curve_id: UUID | None = Field(default=None, description="Calibration curve identifier")
     curve_name: str | None = Field(default=None, description="Curve name for reference")
 
     # Version tracking
     version: int = Field(default=1, ge=1, description="Recipe version number")
-    created_at: datetime = Field(
-        default_factory=datetime.now, description="Creation timestamp"
-    )
+    created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp")
     modified_at: datetime = Field(
         default_factory=datetime.now, description="Last modification timestamp"
     )
@@ -586,9 +579,7 @@ class RecipeManager:
 
             exp_param = float(params["exposure_time_minutes"])
             if recipe.exposure_time_minutes > 0 and exp_param > 0:
-                log_ratio = abs(
-                    math.log(recipe.exposure_time_minutes) - math.log(exp_param)
-                )
+                log_ratio = abs(math.log(recipe.exposure_time_minutes) - math.log(exp_param))
                 score += 0.15 * max(0, 1 - log_ratio / 2)
             weights += 0.15
 
@@ -646,9 +637,7 @@ class WorkflowJob(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
     started_at: datetime | None = None
     completed_at: datetime | None = None
-    scheduled_for: datetime | None = Field(
-        default=None, description="Scheduled execution time"
-    )
+    scheduled_for: datetime | None = Field(default=None, description="Scheduled execution time")
     progress: float = Field(default=0.0, ge=0.0, le=1.0, description="Job progress (0-1)")
 
     @property
@@ -746,9 +735,7 @@ class WorkflowAutomation:
 
         return job
 
-    def schedule_workflow(
-        self, workflow: list[WorkflowStep], schedule: datetime
-    ) -> WorkflowJob:
+    def schedule_workflow(self, workflow: list[WorkflowStep], schedule: datetime) -> WorkflowJob:
         """
         Schedule a workflow for later execution.
 
@@ -934,11 +921,9 @@ class WorkflowAutomation:
 
         callbacks = self._job_callbacks.get(job_id, [])
         for callback in callbacks:
-            try:
-                callback(job)
-            except Exception:
+            with suppress(Exception):
                 # Silently ignore callback errors
-                pass
+                callback(job)
 
 
 class RecipeDatabase:
@@ -1015,16 +1000,10 @@ class RecipeDatabase:
         """)
 
         # Create indices for common queries
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_paper_type ON recipes(paper_type)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_chemistry_type ON recipes(chemistry_type)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_paper_type ON recipes(paper_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_chemistry_type ON recipes(chemistry_type)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_created_at ON recipes(created_at)")
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_quality_rating ON recipes(quality_rating)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_quality_rating ON recipes(quality_rating)")
 
         conn.commit()
         conn.close()
@@ -1203,27 +1182,23 @@ class RecipeDatabase:
 
         # Apply filters
         if "paper_type" in filters:
-            recipes = [
-                r for r in recipes if r.paper_type.lower() == filters["paper_type"].lower()
-            ]
+            recipes = [r for r in recipes if r.paper_type.lower() == filters["paper_type"].lower()]
 
         if "chemistry_type" in filters:
             recipes = [r for r in recipes if r.chemistry_type.value == filters["chemistry_type"]]
 
         if "min_quality_rating" in filters:
             min_rating = filters["min_quality_rating"]
-            recipes = [
-                r for r in recipes if r.quality_rating and r.quality_rating >= min_rating
-            ]
+            recipes = [r for r in recipes if r.quality_rating and r.quality_rating >= min_rating]
 
         if "tags" in filters:
-            filter_tags = set(filters["tags"]) if isinstance(filters["tags"], list) else {filters["tags"]}
+            filter_tags = (
+                set(filters["tags"]) if isinstance(filters["tags"], list) else {filters["tags"]}
+            )
             recipes = [r for r in recipes if any(tag in r.tags for tag in filter_tags)]
 
         if "uv_source" in filters:
-            recipes = [
-                r for r in recipes if r.uv_source.lower() == filters["uv_source"].lower()
-            ]
+            recipes = [r for r in recipes if r.uv_source.lower() == filters["uv_source"].lower()]
 
         if "developer" in filters:
             recipes = [r for r in recipes if r.developer.value == filters["developer"]]

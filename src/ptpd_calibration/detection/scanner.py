@@ -130,9 +130,27 @@ class ScannerCalibration:
         # Create linear correction curves for each channel
         for _i, (curve, ws, bs, tw, tb) in enumerate(
             [
-                (profile.red_curve, white_sample[0], black_sample[0], target_white[0], target_black[0]),
-                (profile.green_curve, white_sample[1], black_sample[1], target_white[1], target_black[1]),
-                (profile.blue_curve, white_sample[2], black_sample[2], target_white[2], target_black[2]),
+                (
+                    profile.red_curve,
+                    white_sample[0],
+                    black_sample[0],
+                    target_white[0],
+                    target_black[0],
+                ),
+                (
+                    profile.green_curve,
+                    white_sample[1],
+                    black_sample[1],
+                    target_white[1],
+                    target_black[1],
+                ),
+                (
+                    profile.blue_curve,
+                    white_sample[2],
+                    black_sample[2],
+                    target_white[2],
+                    target_black[2],
+                ),
             ]
         ):
             # Linear mapping from sample range to target range

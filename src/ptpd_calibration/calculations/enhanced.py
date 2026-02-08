@@ -13,7 +13,6 @@ This module extends the basic exposure and chemistry calculators with:
 - Environmental and seasonal adjustments
 """
 
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from ptpd_calibration.config import ChemistrySettings, get_settings
@@ -356,7 +355,9 @@ class UVExposureCalculator:
         if humidity < 30:
             warnings.append("Low humidity (<30%) may cause uneven coating and slow exposure")
         elif humidity > 70:
-            warnings.append("High humidity (>70%) may accelerate exposure and affect coating drying")
+            warnings.append(
+                "High humidity (>70%) may accelerate exposure and affect coating drying"
+            )
 
         # 2. Temperature factor
         # Higher temperature = faster exposure (increased chemical activity)
@@ -378,9 +379,13 @@ class UVExposureCalculator:
         density_factor = 2 ** (density_delta / 0.3)
 
         if density_delta > 0.3:
-            notes.append(f"Dense negative (+{density_delta:.2f}D) requires {density_factor:.1f}x exposure")
+            notes.append(
+                f"Dense negative (+{density_delta:.2f}D) requires {density_factor:.1f}x exposure"
+            )
         elif density_delta < -0.3:
-            notes.append(f"Thin negative ({density_delta:.2f}D) requires {density_factor:.2f}x exposure")
+            notes.append(
+                f"Thin negative ({density_delta:.2f}D) requires {density_factor:.2f}x exposure"
+            )
 
         # 4. UV intensity factor
         # Lower intensity = more time needed
@@ -393,13 +398,13 @@ class UVExposureCalculator:
 
         # 5. Calculate final exposure
         adjusted_exposure = (
-            base_time *
-            humidity_factor *
-            temperature_factor *
-            density_factor *
-            intensity_factor *
-            paper_factor *
-            chemistry_factor
+            base_time
+            * humidity_factor
+            * temperature_factor
+            * density_factor
+            * intensity_factor
+            * paper_factor
+            * chemistry_factor
         )
 
         # 6. Calculate confidence interval
@@ -409,9 +414,13 @@ class UVExposureCalculator:
 
         # 7. Add practical warnings
         if adjusted_exposure > 30:
-            warnings.append("Long exposure (>30 min) - consider using faster light source or thinner negative")
+            warnings.append(
+                "Long exposure (>30 min) - consider using faster light source or thinner negative"
+            )
         if adjusted_exposure < 1:
-            warnings.append("Short exposure (<1 min) - risk of underexposure, consider neutral density filter")
+            warnings.append(
+                "Short exposure (<1 min) - risk of underexposure, consider neutral density filter"
+            )
 
         return ExposureResult(
             adjusted_exposure_minutes=adjusted_exposure,
@@ -509,18 +518,14 @@ class CoatingVolumeCalculator:
 
         # 1. Get paper absorption rate
         absorption_rate = self.DEFAULT_PAPER_PROFILES.get(
-            paper_type.lower(),
-            self.settings.drops_per_square_inch / self.settings.drops_per_ml
+            paper_type.lower(), self.settings.drops_per_square_inch / self.settings.drops_per_ml
         )
 
         if paper_type.lower() not in self.DEFAULT_PAPER_PROFILES:
             notes.append(f"Using default absorption rate for unknown paper type '{paper_type}'")
 
         # 2. Get coating method efficiency
-        method_efficiency = self.METHOD_EFFICIENCY.get(
-            coating_method.lower(),
-            1.0
-        )
+        method_efficiency = self.METHOD_EFFICIENCY.get(coating_method.lower(), 1.0)
 
         if coating_method.lower() not in self.METHOD_EFFICIENCY:
             notes.append(f"Using default efficiency for unknown coating method '{coating_method}'")
@@ -648,25 +653,31 @@ class CostCalculator:
 
         # Parse paper size
         try:
-            dimensions = paper_size.lower().replace('"', '').split('x')
+            dimensions = paper_size.lower().replace('"', "").split("x")
             width = float(dimensions[0])
             height = float(dimensions[1])
             paper_area = width * height
-        except (ValueError, IndexError):
-            raise ValueError(f"Invalid paper size format: {paper_size}. Use format like '8x10' or '11x14'") from None
+        except (ValueError, IndexError) as err:
+            raise ValueError(
+                f"Invalid paper size format: {paper_size}. Use format like '8x10' or '11x14'"
+            ) from err
 
         # Chemistry costs
-        ferric_cost = chemistry.get('ferric_oxalate_ml', 0) * self.settings.ferric_oxalate_cost_per_ml
-        platinum_cost = chemistry.get('platinum_ml', 0) * self.settings.platinum_cost_per_ml
-        palladium_cost = chemistry.get('palladium_ml', 0) * self.settings.palladium_cost_per_ml
-        contrast_cost = chemistry.get('na2_ml', 0) * self.settings.na2_cost_per_ml
+        ferric_cost = (
+            chemistry.get("ferric_oxalate_ml", 0) * self.settings.ferric_oxalate_cost_per_ml
+        )
+        platinum_cost = chemistry.get("platinum_ml", 0) * self.settings.platinum_cost_per_ml
+        palladium_cost = chemistry.get("palladium_ml", 0) * self.settings.palladium_cost_per_ml
+        contrast_cost = chemistry.get("na2_ml", 0) * self.settings.na2_cost_per_ml
 
-        total_chemistry_ml = sum([
-            chemistry.get('ferric_oxalate_ml', 0),
-            chemistry.get('platinum_ml', 0),
-            chemistry.get('palladium_ml', 0),
-            chemistry.get('na2_ml', 0),
-        ])
+        total_chemistry_ml = sum(
+            [
+                chemistry.get("ferric_oxalate_ml", 0),
+                chemistry.get("platinum_ml", 0),
+                chemistry.get("palladium_ml", 0),
+                chemistry.get("na2_ml", 0),
+            ]
+        )
 
         # Paper cost
         paper_cost_per_sq_inch = self.DEFAULT_PAPER_COSTS.get(paper_type.lower(), 0.10)
@@ -675,20 +686,30 @@ class CostCalculator:
         # Processing costs
         other_costs = 0.0
         if include_processing:
-            developer_cost = (paper_area * self.DEVELOPER_ML_PER_SQ_INCH / 1000.0) * self.DEVELOPER_COST_PER_LITER
-            clearing_cost = (paper_area * self.CLEARING_ML_PER_SQ_INCH / 1000.0) * self.CLEARING_BATH_COST_PER_LITER
+            developer_cost = (
+                paper_area * self.DEVELOPER_ML_PER_SQ_INCH / 1000.0
+            ) * self.DEVELOPER_COST_PER_LITER
+            clearing_cost = (
+                paper_area * self.CLEARING_ML_PER_SQ_INCH / 1000.0
+            ) * self.CLEARING_BATH_COST_PER_LITER
             other_costs = developer_cost + clearing_cost
             notes.append("Processing costs include developer and clearing baths")
 
         # Total cost
-        total_cost = ferric_cost + platinum_cost + palladium_cost + contrast_cost + paper_cost + other_costs
+        total_cost = (
+            ferric_cost + platinum_cost + palladium_cost + contrast_cost + paper_cost + other_costs
+        )
 
         # Calculate metal ratio
-        total_metal = chemistry.get('platinum_ml', 0) + chemistry.get('palladium_ml', 0)
-        platinum_ratio = chemistry.get('platinum_ml', 0) / total_metal if total_metal > 0 else 0
+        total_metal = chemistry.get("platinum_ml", 0) + chemistry.get("palladium_ml", 0)
+        platinum_ratio = chemistry.get("platinum_ml", 0) / total_metal if total_metal > 0 else 0
 
         # Cost per ml
-        chemistry_cost_per_ml = (ferric_cost + platinum_cost + palladium_cost + contrast_cost) / total_chemistry_ml if total_chemistry_ml > 0 else 0
+        chemistry_cost_per_ml = (
+            (ferric_cost + platinum_cost + palladium_cost + contrast_cost) / total_chemistry_ml
+            if total_chemistry_ml > 0
+            else 0
+        )
 
         return PrintCostResult(
             total_cost_usd=total_cost,
@@ -749,8 +770,12 @@ class CostCalculator:
         most_expensive = max(prints, key=lambda p: p.total_cost_usd)
         least_expensive = min(prints, key=lambda p: p.total_cost_usd)
 
-        notes.append(f"Most expensive print: {most_expensive.paper_size} at ${most_expensive.total_cost_usd:.2f}")
-        notes.append(f"Least expensive print: {least_expensive.paper_size} at ${least_expensive.total_cost_usd:.2f}")
+        notes.append(
+            f"Most expensive print: {most_expensive.paper_size} at ${most_expensive.total_cost_usd:.2f}"
+        )
+        notes.append(
+            f"Least expensive print: {least_expensive.paper_size} at ${least_expensive.total_cost_usd:.2f}"
+        )
 
         chemistry_percent = (total_chemistry / total_session * 100) if total_session > 0 else 0
         notes.append(f"Chemistry represents {chemistry_percent:.1f}% of total session cost")
@@ -786,7 +811,7 @@ class CostCalculator:
             SolutionUsageEstimate with recommended stock levels
         """
         # Parse size
-        dimensions = avg_size.lower().replace('"', '').split('x')
+        dimensions = avg_size.lower().replace('"', "").split("x")
         width = float(dimensions[0])
         height = float(dimensions[1])
         avg_area = width * height
@@ -876,11 +901,13 @@ class CostCalculator:
         ]
 
         if session_cost.notes:
-            lines.extend([
-                "-" * 60,
-                "INSIGHTS",
-                "-" * 60,
-            ])
+            lines.extend(
+                [
+                    "-" * 60,
+                    "INSIGHTS",
+                    "-" * 60,
+                ]
+            )
             for note in session_cost.notes:
                 lines.append(f"• {note}")
 
@@ -938,7 +965,7 @@ class DilutionCalculator:
         water_ml = volume - concentrate_ml
 
         # Express as ratio
-        # Normalize to smallest whole numbers
+        # Normalize to smallest whole numbers (concentrate part is always 1)
         ratio_parts_water = round((water_ml / concentrate_ml), 1)
 
         if ratio_parts_water == int(ratio_parts_water):
@@ -946,7 +973,9 @@ class DilutionCalculator:
         else:
             dilution_ratio = f"1:{ratio_parts_water:.1f}"
 
-        notes.append(f"Mix {concentrate_ml:.1f} ml concentrate with {water_ml:.1f} ml distilled water")
+        notes.append(
+            f"Mix {concentrate_ml:.1f} ml concentrate with {water_ml:.1f} ml distilled water"
+        )
         notes.append(f"Dilution ratio: {dilution_ratio} (concentrate:water)")
 
         if target_strength <= 3.0:
@@ -1134,12 +1163,16 @@ class EnvironmentalCompensation:
             # Drying time decreases ~5% per 1000 ft
             adjustment_factor = 1.0 - (altitude / 1000.0 * 0.05)
             adjustment_factor = max(0.7, adjustment_factor)  # Cap at 30% reduction
-            notes.append(f"At {altitude:.0f} ft altitude, drying time reduced by {(1 - adjustment_factor) * 100:.1f}%")
+            notes.append(
+                f"At {altitude:.0f} ft altitude, drying time reduced by {(1 - adjustment_factor) * 100:.1f}%"
+            )
         elif value_type == "exposure_time":
             # UV intensity increases ~4% per 1000 ft, so exposure time decreases
             adjustment_factor = 1.0 - (altitude / 1000.0 * 0.04)
             adjustment_factor = max(0.6, adjustment_factor)  # Cap at 40% reduction
-            notes.append(f"At {altitude:.0f} ft altitude, UV intensity higher - reduce exposure by {(1 - adjustment_factor) * 100:.1f}%")
+            notes.append(
+                f"At {altitude:.0f} ft altitude, UV intensity higher - reduce exposure by {(1 - adjustment_factor) * 100:.1f}%"
+            )
         else:
             adjustment_factor = 1.0
             notes.append(f"No altitude adjustment for {value_type}")
@@ -1155,9 +1188,6 @@ class EnvironmentalCompensation:
             adjustment_factor=adjustment_factor,
             adjustment_type=f"altitude_{value_type}",
             altitude_feet=altitude,
-            month=None,
-            humidity_percent=None,
-            temperature_fahrenheit=None,
             notes=notes,
         )
 
@@ -1203,12 +1233,16 @@ class EnvironmentalCompensation:
             # Variation: ±15% from base
             adjustment_factor = 1.0 - (seasonal_factor * 0.15)
             season_name = self._get_season_name(month)
-            notes.append(f"{season_name}: drying time adjusted by {(adjustment_factor - 1) * 100:+.1f}%")
+            notes.append(
+                f"{season_name}: drying time adjusted by {(adjustment_factor - 1) * 100:+.1f}%"
+            )
         elif value_type == "exposure_time":
             # Summer = faster exposure (warmer), Winter = slower
             adjustment_factor = 1.0 - (seasonal_factor * 0.10)
             season_name = self._get_season_name(month)
-            notes.append(f"{season_name}: exposure time adjusted by {(adjustment_factor - 1) * 100:+.1f}%")
+            notes.append(
+                f"{season_name}: exposure time adjusted by {(adjustment_factor - 1) * 100:+.1f}%"
+            )
         else:
             adjustment_factor = 1.0
 
@@ -1220,9 +1254,6 @@ class EnvironmentalCompensation:
             adjustment_factor=adjustment_factor,
             adjustment_type=f"season_{value_type}",
             month=month,
-            altitude_feet=None,
-            humidity_percent=None,
-            temperature_fahrenheit=None,
             notes=notes,
         )
 
@@ -1308,7 +1339,9 @@ class EnvironmentalCompensation:
             absorbency_factor = 1.0
 
         # 4. Calculate base drying time
-        drying_minutes = base_drying_minutes * humidity_factor * temperature_factor * absorbency_factor
+        drying_minutes = (
+            base_drying_minutes * humidity_factor * temperature_factor * absorbency_factor
+        )
 
         # 5. Forced air adjustment
         if forced_air:

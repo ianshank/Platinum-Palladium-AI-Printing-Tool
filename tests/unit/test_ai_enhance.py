@@ -58,8 +58,28 @@ def noisy_curve():
 def non_monotonic_curve():
     """Create a non-monotonic curve for testing."""
     inputs = list(np.linspace(0, 1, 20))
-    outputs = [0.0, 0.1, 0.08, 0.2, 0.18, 0.3, 0.35, 0.4, 0.38, 0.5,
-               0.55, 0.6, 0.58, 0.7, 0.75, 0.8, 0.78, 0.9, 0.95, 1.0]
+    outputs = [
+        0.0,
+        0.1,
+        0.08,
+        0.2,
+        0.18,
+        0.3,
+        0.35,
+        0.4,
+        0.38,
+        0.5,
+        0.55,
+        0.6,
+        0.58,
+        0.7,
+        0.75,
+        0.8,
+        0.78,
+        0.9,
+        0.95,
+        1.0,
+    ]
     return CurveData(
         name="Non-Monotonic",
         input_values=inputs,
@@ -354,7 +374,7 @@ class TestLLMResponseParsing:
 class TestConfidenceCalculation:
     """Tests for confidence score calculation."""
 
-    def test_confidence_high_for_simple_curve(self, linear_curve):
+    def test_confidence_high_for_simple_curve(self, linear_curve):  # noqa: ARG002
         """Test high confidence for simple, clean curve."""
         enhancer = CurveAIEnhancer()
         issues = []
@@ -380,10 +400,7 @@ class TestConfidenceCalculation:
     def test_confidence_minimum(self):
         """Test confidence has minimum value."""
         enhancer = CurveAIEnhancer()
-        issues = [
-            CurveIssue("test", "high", "overall", "test", "test")
-            for _ in range(10)
-        ]
+        issues = [CurveIssue("test", "high", "overall", "test", "test") for _ in range(10)]
         adjustments = ["adj" for _ in range(20)]
 
         confidence = enhancer._calculate_confidence(issues, adjustments)

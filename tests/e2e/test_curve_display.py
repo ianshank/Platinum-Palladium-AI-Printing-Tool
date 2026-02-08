@@ -24,6 +24,7 @@ ProfileName=Test UTF-16
 255=255
 """
 
+
 @pytest.fixture
 def curve_files(tmp_path):
     """Create test curve files."""
@@ -35,9 +36,10 @@ def curve_files(tmp_path):
 
     return utf8_file, utf16_file
 
+
 @pytest.mark.browser
 @pytest.mark.skip(reason="Playwright selectors pending update for hierarchical navigation")
-def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):
+def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):  # noqa: ARG001
     """
     Test loading curve files:
     1. Upload UTF-8 file
@@ -113,5 +115,3 @@ def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):
     # Enable statistics
     page.get_by_label("Show Statistics Panel").check()
     expect(page.get_by_text("Gamma:")).to_be_visible()
-
-

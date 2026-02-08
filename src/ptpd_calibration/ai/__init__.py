@@ -25,13 +25,11 @@ from ptpd_calibration.ai.platinum_palladium_ai import (
 __all__ = [
     # Main class
     "PlatinumPalladiumAI",
-
     # Enums
     "TonePreference",
     "ContrastLevel",
     "PrinterProfile",
     "ProblemArea",
-
     # Result models
     "TonalityAnalysisResult",
     "ExposurePrediction",

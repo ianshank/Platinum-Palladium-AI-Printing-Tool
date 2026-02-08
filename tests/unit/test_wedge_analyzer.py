@@ -232,7 +232,7 @@ class TestStepWedgeAnalyzer:
         """Generate sample density measurements."""
         # Typical Pt/Pd response curve
         steps = np.linspace(0, 1, 21)
-        densities = 0.1 + 2.0 * (steps ** 0.85)
+        densities = 0.1 + 2.0 * (steps**0.85)
         return list(densities)
 
     @pytest.fixture

@@ -22,12 +22,12 @@ for Pt/Pd printing, including:
 - Performance monitoring and profiling
 """
 
+from contextlib import suppress
+
 __version__ = "1.1.0"
 
 # Core models
 # Configuration
-import contextlib
-
 from ptpd_calibration.config import (
     ExportFormat,
     InterpolationMethod,
@@ -77,7 +77,7 @@ from ptpd_calibration.detection import (
 )
 
 # ML (optional - requires scikit-learn)
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.ml import (
         ActiveLearner,
         CalibrationDatabase,
@@ -86,14 +86,14 @@ with contextlib.suppress(ImportError):
     )
 
 # LLM (optional - requires anthropic/openai)
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.llm import (
         CalibrationAssistant,
         create_assistant,
     )
 
 # Agents (optional - requires LLM)
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.agents import (
         AgentMemory,
         CalibrationAgent,
@@ -105,7 +105,7 @@ with contextlib.suppress(ImportError):
     )
 
 # Advanced features
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.advanced import (
         AlternativeProcessParams,
         AlternativeProcessSimulator,
@@ -120,9 +120,9 @@ with contextlib.suppress(ImportError):
     )
 
 # Platinum/Palladium AI
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.ai import (
-        ChemistryRecommendation,
+        ChemistrySuggestion,
         DigitalNegativeResult,
         ExposurePrediction,
         PlatinumPalladiumAI,
@@ -132,7 +132,7 @@ with contextlib.suppress(ImportError):
     )
 
 # Split-grade printing
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.imaging.split_grade import (
         SplitGradeSettings,
         SplitGradeSimulator,
@@ -140,7 +140,7 @@ with contextlib.suppress(ImportError):
     )
 
 # Recipe management and workflow
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.workflow import (
         PrintRecipe,
         RecipeDatabase,
@@ -149,7 +149,7 @@ with contextlib.suppress(ImportError):
     )
 
 # Enhanced calculations
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.calculations import (
         CoatingVolumeCalculator,
         CostCalculator,
@@ -159,7 +159,7 @@ with contextlib.suppress(ImportError):
     )
 
 # Data management
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.data import (
         DataExporter,
         DataImporter,
@@ -171,7 +171,7 @@ with contextlib.suppress(ImportError):
     )
 
 # Hardware integrations
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.integrations import (
         CanonDriver,
         EpsonDriver,
@@ -184,7 +184,7 @@ with contextlib.suppress(ImportError):
     )
 
 # Quality assurance
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.qa import (
         AlertSystem,
         ChemistryFreshnessTracker,
@@ -195,7 +195,7 @@ with contextlib.suppress(ImportError):
     )
 
 # Education
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.education import (
         Glossary,
         TipsManager,
@@ -203,7 +203,7 @@ with contextlib.suppress(ImportError):
     )
 
 # Performance monitoring
-with contextlib.suppress(ImportError):
+with suppress(ImportError):
     from ptpd_calibration.monitoring import (
         APIPerformanceTracker,
         CacheManager,
@@ -285,7 +285,7 @@ __all__ = [
     "PlatinumPalladiumAI",
     "TonalityAnalysisResult",
     "ExposurePrediction",
-    "ChemistryRecommendation",
+    "ChemistrySuggestion",
     "DigitalNegativeResult",
     "PrintQualityAnalysis",
     "WorkflowOptimization",
