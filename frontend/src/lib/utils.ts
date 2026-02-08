@@ -82,9 +82,10 @@ export function formatDate(
   date: Date | string | number,
   options?: Intl.DateTimeFormatOptions
 ): string {
-  const d = typeof date === 'string' || typeof date === 'number'
-    ? new Date(date)
-    : date;
+  const d =
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -197,9 +198,8 @@ export function downloadFile(
   filename: string,
   mimeType = 'application/octet-stream'
 ): void {
-  const blob = typeof data === 'string'
-    ? new Blob([data], { type: mimeType })
-    : data;
+  const blob =
+    typeof data === 'string' ? new Blob([data], { type: mimeType }) : data;
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -259,9 +259,15 @@ export async function copyToClipboard(text: string): Promise<boolean> {
  * Create a type-safe event emitter
  */
 export function createEventEmitter<Events extends Record<string, unknown>>(): {
-  on: <K extends keyof Events>(event: K, handler: (data: Events[K]) => void) => () => void;
+  on: <K extends keyof Events>(
+    event: K,
+    handler: (data: Events[K]) => void
+  ) => () => void;
   emit: <K extends keyof Events>(event: K, data: Events[K]) => void;
-  off: <K extends keyof Events>(event: K, handler: (data: Events[K]) => void) => void;
+  off: <K extends keyof Events>(
+    event: K,
+    handler: (data: Events[K]) => void
+  ) => void;
 } {
   const handlers = new Map<keyof Events, Set<(data: unknown) => void>>();
 

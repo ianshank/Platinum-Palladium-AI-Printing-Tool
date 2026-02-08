@@ -98,7 +98,10 @@ export const createCurveSlice: StateCreator<
   ...initialState,
 
   setCurve: (curve) => {
-    logger.debug('Curve: setCurve', { id: curve.id, pointCount: curve.points.length });
+    logger.debug('Curve: setCurve', {
+      id: curve.id,
+      pointCount: curve.points.length,
+    });
     set((state) => {
       state.curve.current = curve;
       state.curve.points = [...curve.points];
@@ -211,7 +214,7 @@ export const createCurveSlice: StateCreator<
     logger.debug('Curve: applyContrast', { value });
     get().curve.pushUndo();
     set((state) => {
-      const factor = (1 + value);
+      const factor = 1 + value;
       state.curve.points = state.curve.points.map((p) => ({
         ...p,
         y: clamp01((p.y - 0.5) * factor + 0.5),

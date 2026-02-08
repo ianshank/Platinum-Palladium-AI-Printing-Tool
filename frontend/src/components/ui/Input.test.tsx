@@ -30,7 +30,9 @@ describe('Input', () => {
   describe('Error State', () => {
     it('displays error message when error prop is provided', () => {
       render(<Input error="This field is required" />);
-      expect(screen.getByRole('alert')).toHaveTextContent('This field is required');
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'This field is required'
+      );
     });
 
     it('applies error styling when error prop is provided', () => {
@@ -40,7 +42,10 @@ describe('Input', () => {
 
     it('sets aria-invalid to true when error is present', () => {
       render(<Input error="Error" data-testid="input" />);
-      expect(screen.getByTestId('input')).toHaveAttribute('aria-invalid', 'true');
+      expect(screen.getByTestId('input')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      );
     });
 
     it('links error message with aria-describedby', () => {
@@ -48,7 +53,10 @@ describe('Input', () => {
       const input = screen.getByRole('textbox');
       const errorId = input.getAttribute('aria-describedby');
       expect(errorId).toBe('test-input-error');
-      expect(screen.getByRole('alert')).toHaveAttribute('id', 'test-input-error');
+      expect(screen.getByRole('alert')).toHaveAttribute(
+        'id',
+        'test-input-error'
+      );
     });
 
     it('generates unique ID when not provided', () => {
@@ -81,22 +89,12 @@ describe('Input', () => {
     });
 
     it('adds padding when left element is present', () => {
-      render(
-        <Input
-          leftElement={<span>L</span>}
-          data-testid="input"
-        />
-      );
+      render(<Input leftElement={<span>L</span>} data-testid="input" />);
       expect(screen.getByTestId('input')).toHaveClass('pl-10');
     });
 
     it('adds padding when right element is present', () => {
-      render(
-        <Input
-          rightElement={<span>R</span>}
-          data-testid="input"
-        />
-      );
+      render(<Input rightElement={<span>R</span>} data-testid="input" />);
       expect(screen.getByTestId('input')).toHaveClass('pr-10');
     });
   });
@@ -133,12 +131,17 @@ describe('Input', () => {
   describe('Accessibility', () => {
     it('has no aria-invalid when no error', () => {
       render(<Input data-testid="input" />);
-      expect(screen.getByTestId('input')).toHaveAttribute('aria-invalid', 'false');
+      expect(screen.getByTestId('input')).toHaveAttribute(
+        'aria-invalid',
+        'false'
+      );
     });
 
     it('has no aria-describedby when no error', () => {
       render(<Input data-testid="input" />);
-      expect(screen.getByTestId('input')).not.toHaveAttribute('aria-describedby');
+      expect(screen.getByTestId('input')).not.toHaveAttribute(
+        'aria-describedby'
+      );
     });
   });
 

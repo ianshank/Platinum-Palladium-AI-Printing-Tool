@@ -18,177 +18,187 @@ import { useChat } from './useChat';
 // --- Mock dependencies ---
 
 vi.mock('@/lib/logger', () => ({
-    logger: {
-        debug: vi.fn(),
-        info: vi.fn(),
-        error: vi.fn(),
-        warn: vi.fn(),
-    },
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+  },
 }));
 
 const mockMutate = vi.fn();
 
 vi.mock('@/api/hooks', () => ({
-    useSendMessage: (opts: Record<string, unknown>) => {
-        // Store options for testing callbacks
-        (globalThis as any).__sendMessageOpts = opts;
-        return { mutate: mockMutate };
-    },
+  useSendMessage: (opts: Record<string, unknown>) => {
+    // Store options for testing callbacks
+    (globalThis as any).__sendMessageOpts = opts;
+    return { mutate: mockMutate };
+  },
 }));
 
 // Store mock state
 const mockChatState = {
-    messages: [] as Array<{ id: string; role: string; content: string; timestamp: string }>,
-    isLoading: false,
-    isStreaming: false,
-    streamContent: '',
-    error: null as string | null,
-    conversationId: null as string | null,
-    startStreaming: vi.fn(),
-    appendStreamContent: vi.fn(),
-    finishStreaming: vi.fn(),
-    clearMessages: vi.fn(),
-    startNewConversation: vi.fn(),
+  messages: [] as Array<{
+    id: string;
+    role: string;
+    content: string;
+    timestamp: string;
+  }>,
+  isLoading: false,
+  isStreaming: false,
+  streamContent: '',
+  error: null as string | null,
+  conversationId: null as string | null,
+  startStreaming: vi.fn(),
+  appendStreamContent: vi.fn(),
+  finishStreaming: vi.fn(),
+  clearMessages: vi.fn(),
+  startNewConversation: vi.fn(),
 };
 
 const mockUIState = {
-    addToast: vi.fn(),
+  addToast: vi.fn(),
 };
 
 vi.mock('@/stores', () => ({
-    useStore: (selector: (state: any) => any) =>
-        selector({ chat: mockChatState, ui: mockUIState }),
+  useStore: (selector: (state: any) => any) =>
+    selector({ chat: mockChatState, ui: mockUIState }),
 }));
 
 describe('useChat', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        mockChatState.messages = [];
-        mockChatState.isLoading = false;
-        mockChatState.isStreaming = false;
-        mockChatState.streamContent = '';
-        mockChatState.error = null;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockChatState.messages = [];
+    mockChatState.isLoading = false;
+    mockChatState.isStreaming = false;
+    mockChatState.streamContent = '';
+    mockChatState.error = null;
+  });
+
+  it('returns initial state correctly', () => {
+    const { result } = renderHook(() => useChat());
+
+    expect(result.current.messages).toEqual([]);
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isStreaming).toBe(false);
+    expect(result.current.streamContent).toBe('');
+    expect(result.current.error).toBeNull();
+    expect(result.current.isBusy).toBe(false);
+  });
+
+  it('sendSuggestion calls mutate with trimmed text', () => {
+    const { result } = renderHook(() => useChat());
+
+    act(() => {
+      result.current.sendSuggestion('  Hello world  ');
     });
 
-    it('returns initial state correctly', () => {
-        const { result } = renderHook(() => useChat());
+    expect(mockMutate).toHaveBeenCalledWith({ message: 'Hello world' });
+  });
 
-        expect(result.current.messages).toEqual([]);
-        expect(result.current.isLoading).toBe(false);
-        expect(result.current.isStreaming).toBe(false);
-        expect(result.current.streamContent).toBe('');
-        expect(result.current.error).toBeNull();
-        expect(result.current.isBusy).toBe(false);
+  it('sendSuggestion does not send empty string', () => {
+    const { result } = renderHook(() => useChat());
+
+    act(() => {
+      result.current.sendSuggestion('');
     });
 
-    it('sendSuggestion calls mutate with trimmed text', () => {
-        const { result } = renderHook(() => useChat());
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
 
-        act(() => {
-            result.current.sendSuggestion('  Hello world  ');
-        });
+  it('sendSuggestion does not send whitespace-only string', () => {
+    const { result } = renderHook(() => useChat());
 
-        expect(mockMutate).toHaveBeenCalledWith({ message: 'Hello world' });
+    act(() => {
+      result.current.sendSuggestion('   ');
     });
 
-    it('sendSuggestion does not send empty string', () => {
-        const { result } = renderHook(() => useChat());
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
 
-        act(() => {
-            result.current.sendSuggestion('');
-        });
+  it('sendSuggestion does not send while loading', () => {
+    mockChatState.isLoading = true;
+    const { result } = renderHook(() => useChat());
 
-        expect(mockMutate).not.toHaveBeenCalled();
+    act(() => {
+      result.current.sendSuggestion('Hello');
     });
 
-    it('sendSuggestion does not send whitespace-only string', () => {
-        const { result } = renderHook(() => useChat());
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
 
-        act(() => {
-            result.current.sendSuggestion('   ');
-        });
+  it('sendSuggestion does not send while streaming', () => {
+    mockChatState.isStreaming = true;
+    const { result } = renderHook(() => useChat());
 
-        expect(mockMutate).not.toHaveBeenCalled();
+    act(() => {
+      result.current.sendSuggestion('Hello');
     });
 
-    it('sendSuggestion does not send while loading', () => {
-        mockChatState.isLoading = true;
-        const { result } = renderHook(() => useChat());
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
 
-        act(() => {
-            result.current.sendSuggestion('Hello');
-        });
+  it('clear delegates to store clearMessages', () => {
+    const { result } = renderHook(() => useChat());
 
-        expect(mockMutate).not.toHaveBeenCalled();
+    act(() => {
+      result.current.clear();
     });
 
-    it('sendSuggestion does not send while streaming', () => {
-        mockChatState.isStreaming = true;
-        const { result } = renderHook(() => useChat());
+    expect(mockChatState.clearMessages).toHaveBeenCalledTimes(1);
+  });
 
-        act(() => {
-            result.current.sendSuggestion('Hello');
-        });
+  it('newConversation delegates to store startNewConversation', () => {
+    const { result } = renderHook(() => useChat());
 
-        expect(mockMutate).not.toHaveBeenCalled();
+    act(() => {
+      result.current.newConversation();
     });
 
-    it('clear delegates to store clearMessages', () => {
-        const { result } = renderHook(() => useChat());
+    expect(mockChatState.startNewConversation).toHaveBeenCalledTimes(1);
+  });
 
-        act(() => {
-            result.current.clear();
-        });
+  it('isBusy is true when loading', () => {
+    mockChatState.isLoading = true;
+    const { result } = renderHook(() => useChat());
+    expect(result.current.isBusy).toBe(true);
+  });
 
-        expect(mockChatState.clearMessages).toHaveBeenCalledTimes(1);
-    });
+  it('isBusy is true when streaming', () => {
+    mockChatState.isStreaming = true;
+    const { result } = renderHook(() => useChat());
+    expect(result.current.isBusy).toBe(true);
+  });
 
-    it('newConversation delegates to store startNewConversation', () => {
-        const { result } = renderHook(() => useChat());
+  it('isBusy is false when neither loading nor streaming', () => {
+    const { result } = renderHook(() => useChat());
+    expect(result.current.isBusy).toBe(false);
+  });
 
-        act(() => {
-            result.current.newConversation();
-        });
+  it('reflects messages from store', () => {
+    const msgs = [
+      {
+        id: 'msg-1',
+        role: 'user',
+        content: 'Hi',
+        timestamp: '2026-02-07T10:00:00Z',
+      },
+    ];
+    mockChatState.messages = msgs;
 
-        expect(mockChatState.startNewConversation).toHaveBeenCalledTimes(1);
-    });
+    const { result } = renderHook(() => useChat());
+    expect(result.current.messages).toBe(msgs);
+  });
 
-    it('isBusy is true when loading', () => {
-        mockChatState.isLoading = true;
-        const { result } = renderHook(() => useChat());
-        expect(result.current.isBusy).toBe(true);
-    });
+  it('reflects error from store', () => {
+    mockChatState.error = 'Something broke';
+    const { result } = renderHook(() => useChat());
+    expect(result.current.error).toBe('Something broke');
+  });
 
-    it('isBusy is true when streaming', () => {
-        mockChatState.isStreaming = true;
-        const { result } = renderHook(() => useChat());
-        expect(result.current.isBusy).toBe(true);
-    });
-
-    it('isBusy is false when neither loading nor streaming', () => {
-        const { result } = renderHook(() => useChat());
-        expect(result.current.isBusy).toBe(false);
-    });
-
-    it('reflects messages from store', () => {
-        const msgs = [
-            { id: 'msg-1', role: 'user', content: 'Hi', timestamp: '2026-02-07T10:00:00Z' },
-        ];
-        mockChatState.messages = msgs;
-
-        const { result } = renderHook(() => useChat());
-        expect(result.current.messages).toBe(msgs);
-    });
-
-    it('reflects error from store', () => {
-        mockChatState.error = 'Something broke';
-        const { result } = renderHook(() => useChat());
-        expect(result.current.error).toBe('Something broke');
-    });
-
-    it('reflects streamContent from store', () => {
-        mockChatState.streamContent = 'Partial response...';
-        const { result } = renderHook(() => useChat());
-        expect(result.current.streamContent).toBe('Partial response...');
-    });
+  it('reflects streamContent from store', () => {
+    mockChatState.streamContent = 'Partial response...';
+    const { result } = renderHook(() => useChat());
+    expect(result.current.streamContent).toBe('Partial response...');
+  });
 });

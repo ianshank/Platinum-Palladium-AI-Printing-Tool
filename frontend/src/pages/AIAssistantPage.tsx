@@ -6,9 +6,12 @@ import { type FC } from 'react';
 import { AIAssistant } from '@/components/assistant/AIAssistant';
 
 export const AIAssistantPage: FC = () => (
-    <div className="container mx-auto py-6 h-[calc(100vh-8rem)]" data-testid="assistant-page">
-        <AIAssistant className="h-full" />
-    </div>
+  <div
+    className="container mx-auto h-[calc(100vh-8rem)] py-6"
+    data-testid="assistant-page"
+  >
+    <AIAssistant className="h-full" />
+  </div>
 );
 
 AIAssistantPage.displayName = 'AIAssistantPage';

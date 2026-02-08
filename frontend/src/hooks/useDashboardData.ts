@@ -14,20 +14,20 @@ import type { CalibrationSummary, StatisticsResponse } from '@/types/models';
 
 /** Shape of the dashboard data bundle */
 export interface DashboardData {
-    statistics: StatisticsResponse | null;
-    recentCalibrations: CalibrationSummary[];
-    isLoading: boolean;
-    error: string | null;
-    lastFetched: Date | null;
+  statistics: StatisticsResponse | null;
+  recentCalibrations: CalibrationSummary[];
+  isLoading: boolean;
+  error: string | null;
+  lastFetched: Date | null;
 }
 
 /** Default empty state */
 const INITIAL_STATE: DashboardData = {
-    statistics: null,
-    recentCalibrations: [],
-    isLoading: false,
-    error: null,
-    lastFetched: null,
+  statistics: null,
+  recentCalibrations: [],
+  isLoading: false,
+  error: null,
+  lastFetched: null,
 };
 
 /**
@@ -37,82 +37,82 @@ const INITIAL_STATE: DashboardData = {
  * @returns Dashboard data, refresh function, and loading state
  */
 export function useDashboardData(autoRefresh = false) {
-    const [data, setData] = useState<DashboardData>(INITIAL_STATE);
-    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const isMountedRef = useRef(true);
+  const [data, setData] = useState<DashboardData>(INITIAL_STATE);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isMountedRef = useRef(true);
 
-    const fetchDashboardData = useCallback(async () => {
-        logger.debug('Dashboard: Fetching data');
-        setData((prev) => ({ ...prev, isLoading: true, error: null }));
+  const fetchDashboardData = useCallback(async () => {
+    logger.debug('Dashboard: Fetching data');
+    setData((prev) => ({ ...prev, isLoading: true, error: null }));
 
-        try {
-            const [statistics, calibrationResponse] = await Promise.all([
-                api.statistics.get(),
-                api.calibrations.list(undefined, config.calibration.defaultSteps),
-            ]);
+    try {
+      const [statistics, calibrationResponse] = await Promise.all([
+        api.statistics.get(),
+        api.calibrations.list(undefined, config.calibration.defaultSteps),
+      ]);
 
-            if (!isMountedRef.current) return;
+      if (!isMountedRef.current) return;
 
-            logger.debug('Dashboard: Data fetched', {
-                totalRecords: statistics.total_records,
-                calibrationCount: calibrationResponse.count,
-            });
+      logger.debug('Dashboard: Data fetched', {
+        totalRecords: statistics.total_records,
+        calibrationCount: calibrationResponse.count,
+      });
 
-            setData({
-                statistics,
-                recentCalibrations: calibrationResponse.records,
-                isLoading: false,
-                error: null,
-                lastFetched: new Date(),
-            });
-        } catch (err) {
-            if (!isMountedRef.current) return;
+      setData({
+        statistics,
+        recentCalibrations: calibrationResponse.records,
+        isLoading: false,
+        error: null,
+        lastFetched: new Date(),
+      });
+    } catch (err) {
+      if (!isMountedRef.current) return;
 
-            const message =
-                err instanceof Error ? err.message : 'Failed to load dashboard data';
-            logger.error('Dashboard: Fetch failed', { error: message });
+      const message =
+        err instanceof Error ? err.message : 'Failed to load dashboard data';
+      logger.error('Dashboard: Fetch failed', { error: message });
 
-            setData((prev) => ({
-                ...prev,
-                isLoading: false,
-                error: message,
-            }));
-        }
-    }, []);
+      setData((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: message,
+      }));
+    }
+  }, []);
 
-    const refresh = useCallback(() => {
-        logger.debug('Dashboard: Manual refresh triggered');
-        return fetchDashboardData();
-    }, [fetchDashboardData]);
+  const refresh = useCallback(() => {
+    logger.debug('Dashboard: Manual refresh triggered');
+    return fetchDashboardData();
+  }, [fetchDashboardData]);
 
-    // Initial fetch
-    useEffect(() => {
-        isMountedRef.current = true;
-        fetchDashboardData();
+  // Initial fetch
+  useEffect(() => {
+    isMountedRef.current = true;
+    fetchDashboardData();
 
-        return () => {
-            isMountedRef.current = false;
-        };
-    }, [fetchDashboardData]);
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [fetchDashboardData]);
 
-    // Auto-refresh timer (driven by config staleTime, not hardcoded)
-    useEffect(() => {
-        if (!autoRefresh) return;
+  // Auto-refresh timer (driven by config staleTime, not hardcoded)
+  useEffect(() => {
+    if (!autoRefresh) return;
 
-        const intervalMs = config.api.staleTime;
-        logger.debug('Dashboard: Auto-refresh enabled', { intervalMs });
+    const intervalMs = config.api.staleTime;
+    logger.debug('Dashboard: Auto-refresh enabled', { intervalMs });
 
-        intervalRef.current = setInterval(() => {
-            fetchDashboardData();
-        }, intervalMs);
+    intervalRef.current = setInterval(() => {
+      fetchDashboardData();
+    }, intervalMs);
 
-        return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-            }
-        };
-    }, [autoRefresh, fetchDashboardData]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [autoRefresh, fetchDashboardData]);
 
-    return { ...data, refresh };
+  return { ...data, refresh };
 }

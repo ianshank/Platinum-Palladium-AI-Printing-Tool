@@ -80,8 +80,8 @@ const initialState = {
 // Coating constants (ml per square inch)
 const COATING_FACTORS: Record<ChemistrySlice['coatingMethod'], number> = {
   brush: 0.035,
-  rod: 0.030,
-  puddle: 0.040,
+  rod: 0.03,
+  puddle: 0.04,
 };
 
 export const createChemistrySlice: StateCreator<
@@ -154,7 +154,8 @@ export const createChemistrySlice: StateCreator<
   },
 
   calculateRecipe: () => {
-    const { paperSize, metalRatio, coatingMethod, contrastLevel, developer } = get().chemistry;
+    const { paperSize, metalRatio, coatingMethod, contrastLevel, developer } =
+      get().chemistry;
 
     logger.debug('Chemistry: calculateRecipe', {
       paperSize: paperSize.name,
@@ -196,7 +197,10 @@ export const createChemistrySlice: StateCreator<
       developer: { ...developer },
     };
 
-    logger.info('Chemistry: recipe calculated', recipe as unknown as Record<string, unknown>);
+    logger.info(
+      'Chemistry: recipe calculated',
+      recipe as unknown as Record<string, unknown>
+    );
 
     set((state) => {
       state.chemistry.recipe = recipe;

@@ -80,7 +80,10 @@ const initialState = {
     recentActivity: [],
   } as SessionStats,
   selectedRecordId: null as string | null,
-  filterDateRange: { start: null, end: null } as { start: string | null; end: string | null },
+  filterDateRange: { start: null, end: null } as {
+    start: string | null;
+    end: string | null;
+  },
   filterResult: 'all' as PrintRecord['result'] | 'all',
   isLoading: false,
 };
@@ -111,7 +114,10 @@ export const createSessionSlice: StateCreator<
   },
 
   updateRecord: (id, updates) => {
-    logger.debug('Session: updateRecord', { id, updates: Object.keys(updates) });
+    logger.debug('Session: updateRecord', {
+      id,
+      updates: Object.keys(updates),
+    });
     set((state) => {
       const record = state.session.records.find((r) => r.id === id);
       if (record) {
@@ -179,13 +185,17 @@ export const createSessionSlice: StateCreator<
 
     // Calculate average exposure
     const exposureTimes = records.map((r) => r.exposure.timeSeconds);
-    const averageExposure = exposureTimes.reduce((a, b) => a + b, 0) / exposureTimes.length;
+    const averageExposure =
+      exposureTimes.reduce((a, b) => a + b, 0) / exposureTimes.length;
 
     // Find most used paper
-    const paperCounts = records.reduce((acc, r) => {
-      acc[r.paperType] = (acc[r.paperType] ?? 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const paperCounts = records.reduce(
+      (acc, r) => {
+        acc[r.paperType] = (acc[r.paperType] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     let mostUsedPaper: string | null = null;
     let maxCount = 0;
@@ -203,7 +213,9 @@ export const createSessionSlice: StateCreator<
       const date = new Date(now);
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0]!;
-      const count = records.filter((r) => r.timestamp.startsWith(dateStr)).length;
+      const count = records.filter((r) =>
+        r.timestamp.startsWith(dateStr)
+      ).length;
       recentActivity.push({ date: dateStr, count });
     }
 

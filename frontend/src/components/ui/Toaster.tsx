@@ -21,13 +21,17 @@ export const Toaster: FC = () => {
             toast.variant, // Enable group styling based on variant
             'data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none',
             'data-[state=open]:animate-in data-[state=open]:animate-slide-in-from-top-full',
-            'data-[state=closed]:animate-out data-[state=closed]:animate-fade-out-80 data-[state=closed]:animate-slide-out-to-right-full',
+            'data-[state=closed]:animate-fade-out-80 data-[state=closed]:animate-out data-[state=closed]:animate-slide-out-to-right-full',
             'data-[swipe=end]:animate-out',
             {
-              'border-border bg-background text-foreground': toast.variant === 'default' || !toast.variant,
-              'border-success/50 bg-success/10 text-success': toast.variant === 'success',
-              'border-warning/50 bg-warning/10 text-warning': toast.variant === 'warning',
-              'border-destructive/50 bg-destructive/10 text-destructive': toast.variant === 'error',
+              'border-border bg-background text-foreground':
+                toast.variant === 'default' || !toast.variant,
+              'border-success/50 bg-success/10 text-success':
+                toast.variant === 'success',
+              'border-warning/50 bg-warning/10 text-warning':
+                toast.variant === 'warning',
+              'border-destructive/50 bg-destructive/10 text-destructive':
+                toast.variant === 'error',
             }
           )}
           onOpenChange={(open) => {

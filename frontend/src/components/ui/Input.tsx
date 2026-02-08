@@ -14,7 +14,10 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
  * Input component with error state and optional icons
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, error, leftElement, rightElement, id, ...props }, ref) => {
+  (
+    { className, type, error, leftElement, rightElement, id, ...props },
+    ref
+  ) => {
     // Generate a stable ID for accessibility if not provided
     const generatedId = useId();
     const inputId = id ?? generatedId;

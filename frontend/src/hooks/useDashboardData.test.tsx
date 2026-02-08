@@ -13,161 +13,161 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 
 // Use vi.hoisted so the mock references are available before vi.mock factories run
 const { mockStatisticsGet, mockCalibrationsList } = vi.hoisted(() => ({
-    mockStatisticsGet: vi.fn(),
-    mockCalibrationsList: vi.fn(),
+  mockStatisticsGet: vi.fn(),
+  mockCalibrationsList: vi.fn(),
 }));
 
 vi.mock('@/lib/logger', () => ({
-    logger: {
-        debug: vi.fn(),
-        info: vi.fn(),
-        error: vi.fn(),
-        warn: vi.fn(),
-    },
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+  },
 }));
 
 vi.mock('@/api/client', () => ({
-    api: {
-        statistics: { get: mockStatisticsGet },
-        calibrations: { list: mockCalibrationsList },
-    },
+  api: {
+    statistics: { get: mockStatisticsGet },
+    calibrations: { list: mockCalibrationsList },
+  },
 }));
 
 vi.mock('@/config', () => ({
-    config: {
-        api: { staleTime: 60000 },
-        calibration: { defaultSteps: 21 },
-    },
+  config: {
+    api: { staleTime: 60000 },
+    calibration: { defaultSteps: 21 },
+  },
 }));
 
 // Import AFTER mocks are set up
 import { useDashboardData } from './useDashboardData';
 
 const mockStatistics = {
-    total_records: 42,
-    success_rate: 0.85,
-    average_exposure: 180,
-    paper_types: ['Arches Platine'],
+  total_records: 42,
+  success_rate: 0.85,
+  average_exposure: 180,
+  paper_types: ['Arches Platine'],
 };
 
 const mockCalibrations = {
-    count: 3,
-    records: [
-        { id: 'cal-1', name: 'Test Cal', timestamp: '2026-02-07T10:00:00Z' },
-    ],
+  count: 3,
+  records: [
+    { id: 'cal-1', name: 'Test Cal', timestamp: '2026-02-07T10:00:00Z' },
+  ],
 };
 
 describe('useDashboardData', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        mockStatisticsGet.mockResolvedValue(mockStatistics);
-        mockCalibrationsList.mockResolvedValue(mockCalibrations);
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockStatisticsGet.mockResolvedValue(mockStatistics);
+    mockCalibrationsList.mockResolvedValue(mockCalibrations);
+  });
+
+  it('returns initial loading state', () => {
+    const { result } = renderHook(() => useDashboardData());
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.statistics).toBeNull();
+    expect(result.current.recentCalibrations).toEqual([]);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('fetches statistics and calibrations on mount', async () => {
+    const { result } = renderHook(() => useDashboardData());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
     });
 
-    it('returns initial loading state', () => {
-        const { result } = renderHook(() => useDashboardData());
+    expect(mockStatisticsGet).toHaveBeenCalledTimes(1);
+    expect(mockCalibrationsList).toHaveBeenCalledTimes(1);
+    expect(result.current.statistics).toEqual(mockStatistics);
+    expect(result.current.recentCalibrations).toEqual(mockCalibrations.records);
+  });
 
-        expect(result.current.isLoading).toBe(true);
-        expect(result.current.statistics).toBeNull();
-        expect(result.current.recentCalibrations).toEqual([]);
-        expect(result.current.error).toBeNull();
+  it('sets lastFetched after successful fetch', async () => {
+    const { result } = renderHook(() => useDashboardData());
+
+    await waitFor(() => {
+      expect(result.current.lastFetched).not.toBeNull();
     });
 
-    it('fetches statistics and calibrations on mount', async () => {
-        const { result } = renderHook(() => useDashboardData());
+    expect(result.current.lastFetched).toBeInstanceOf(Date);
+  });
 
-        await waitFor(() => {
-            expect(result.current.isLoading).toBe(false);
-        });
+  it('handles API errors gracefully', async () => {
+    mockStatisticsGet.mockRejectedValueOnce(new Error('Network error'));
 
-        expect(mockStatisticsGet).toHaveBeenCalledTimes(1);
-        expect(mockCalibrationsList).toHaveBeenCalledTimes(1);
-        expect(result.current.statistics).toEqual(mockStatistics);
-        expect(result.current.recentCalibrations).toEqual(mockCalibrations.records);
+    const { result } = renderHook(() => useDashboardData());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
     });
 
-    it('sets lastFetched after successful fetch', async () => {
-        const { result } = renderHook(() => useDashboardData());
+    expect(result.current.error).toBe('Network error');
+    expect(result.current.statistics).toBeNull();
+  });
 
-        await waitFor(() => {
-            expect(result.current.lastFetched).not.toBeNull();
-        });
+  it('handles non-Error rejection', async () => {
+    mockStatisticsGet.mockRejectedValueOnce('string error');
 
-        expect(result.current.lastFetched).toBeInstanceOf(Date);
+    const { result } = renderHook(() => useDashboardData());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
     });
 
-    it('handles API errors gracefully', async () => {
-        mockStatisticsGet.mockRejectedValueOnce(new Error('Network error'));
+    expect(result.current.error).toBe('Failed to load dashboard data');
+  });
 
-        const { result } = renderHook(() => useDashboardData());
+  it('manual refresh re-fetches data', async () => {
+    const { result } = renderHook(() => useDashboardData());
 
-        await waitFor(() => {
-            expect(result.current.isLoading).toBe(false);
-        });
-
-        expect(result.current.error).toBe('Network error');
-        expect(result.current.statistics).toBeNull();
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
     });
 
-    it('handles non-Error rejection', async () => {
-        mockStatisticsGet.mockRejectedValueOnce('string error');
+    expect(mockStatisticsGet).toHaveBeenCalledTimes(1);
 
-        const { result } = renderHook(() => useDashboardData());
-
-        await waitFor(() => {
-            expect(result.current.isLoading).toBe(false);
-        });
-
-        expect(result.current.error).toBe('Failed to load dashboard data');
+    await act(async () => {
+      await result.current.refresh();
     });
 
-    it('manual refresh re-fetches data', async () => {
-        const { result } = renderHook(() => useDashboardData());
+    expect(mockStatisticsGet).toHaveBeenCalledTimes(2);
+  });
 
-        await waitFor(() => {
-            expect(result.current.isLoading).toBe(false);
-        });
+  it('auto-refresh triggers re-fetch', async () => {
+    // Use real timers — just verify that auto-refresh mode fetches at least once
+    const { result } = renderHook(() => useDashboardData(true));
 
-        expect(mockStatisticsGet).toHaveBeenCalledTimes(1);
-
-        await act(async () => {
-            await result.current.refresh();
-        });
-
-        expect(mockStatisticsGet).toHaveBeenCalledTimes(2);
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
     });
 
-    it('auto-refresh triggers re-fetch', async () => {
-        // Use real timers — just verify that auto-refresh mode fetches at least once
-        const { result } = renderHook(() => useDashboardData(true));
+    // At minimum, the initial fetch should have happened
+    expect(mockStatisticsGet).toHaveBeenCalled();
+    expect(mockCalibrationsList).toHaveBeenCalled();
+  });
 
-        await waitFor(() => {
-            expect(result.current.isLoading).toBe(false);
-        });
+  it('does not fail when auto-refresh is disabled', async () => {
+    const { result } = renderHook(() => useDashboardData(false));
 
-        // At minimum, the initial fetch should have happened
-        expect(mockStatisticsGet).toHaveBeenCalled();
-        expect(mockCalibrationsList).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
     });
 
-    it('does not fail when auto-refresh is disabled', async () => {
-        const { result } = renderHook(() => useDashboardData(false));
+    expect(mockStatisticsGet).toHaveBeenCalledTimes(1);
+  });
 
-        await waitFor(() => {
-            expect(result.current.isLoading).toBe(false);
-        });
+  it('cleans up without errors on unmount', async () => {
+    const { result, unmount } = renderHook(() => useDashboardData(true));
 
-        expect(mockStatisticsGet).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
     });
 
-    it('cleans up without errors on unmount', async () => {
-        const { result, unmount } = renderHook(() => useDashboardData(true));
-
-        await waitFor(() => {
-            expect(result.current.isLoading).toBe(false);
-        });
-
-        // Unmount should not throw
-        expect(() => unmount()).not.toThrow();
-    });
+    // Unmount should not throw
+    expect(() => unmount()).not.toThrow();
+  });
 });

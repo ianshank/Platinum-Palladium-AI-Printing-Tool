@@ -27,7 +27,7 @@ const LoadingScreen: FC = () => (
     className="flex h-screen flex-col items-center justify-center bg-background"
     data-testid="loading-screen"
   >
-    <div className="animate-fade-in flex flex-col items-center gap-6">
+    <div className="flex animate-fade-in flex-col items-center gap-6">
       {/* Logo badge */}
       <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary shadow-lg">
         <span className="text-2xl font-bold text-primary-foreground">Pt</span>
@@ -45,9 +45,18 @@ const LoadingScreen: FC = () => (
 
       {/* Animated dots */}
       <div className="flex gap-1.5">
-        <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
-        <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '150ms' }} />
-        <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '300ms' }} />
+        <div
+          className="h-2 w-2 animate-bounce rounded-full bg-primary"
+          style={{ animationDelay: '0ms' }}
+        />
+        <div
+          className="h-2 w-2 animate-bounce rounded-full bg-primary"
+          style={{ animationDelay: '150ms' }}
+        />
+        <div
+          className="h-2 w-2 animate-bounce rounded-full bg-primary"
+          style={{ animationDelay: '300ms' }}
+        />
       </div>
     </div>
   </div>

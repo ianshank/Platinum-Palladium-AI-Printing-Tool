@@ -25,10 +25,25 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard, shortcut: 'Ctrl+1' },
-  { path: '/calibration', label: 'Calibration', icon: SlidersHorizontal, shortcut: 'Ctrl+2' },
+  {
+    path: '/calibration',
+    label: 'Calibration',
+    icon: SlidersHorizontal,
+    shortcut: 'Ctrl+2',
+  },
   { path: '/curves', label: 'Curves', icon: LineChart, shortcut: 'Ctrl+3' },
-  { path: '/chemistry', label: 'Chemistry', icon: FlaskConical, shortcut: 'Ctrl+4' },
-  { path: '/assistant', label: 'AI Assistant', icon: MessageSquare, shortcut: 'Ctrl+5' },
+  {
+    path: '/chemistry',
+    label: 'Chemistry',
+    icon: FlaskConical,
+    shortcut: 'Ctrl+4',
+  },
+  {
+    path: '/assistant',
+    label: 'AI Assistant',
+    icon: MessageSquare,
+    shortcut: 'Ctrl+5',
+  },
   { path: '/session', label: 'Session Log', icon: History },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -63,7 +78,9 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
         <div className="flex h-16 items-center justify-between border-b px-4">
           <Link to="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-              <span className="text-lg font-bold text-primary-foreground">Pt</span>
+              <span className="text-lg font-bold text-primary-foreground">
+                Pt
+              </span>
             </div>
             <span className="text-lg font-semibold">Pt/Pd Tool</span>
           </Link>
@@ -153,7 +170,8 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
 
           {/* Page title */}
           <h1 className="text-lg font-semibold">
-            {NAV_ITEMS.find((item) => item.path === location.pathname)?.label ?? 'Dashboard'}
+            {NAV_ITEMS.find((item) => item.path === location.pathname)?.label ??
+              'Dashboard'}
           </h1>
 
           {/* Spacer */}
@@ -164,9 +182,7 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

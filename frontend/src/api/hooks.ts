@@ -3,7 +3,13 @@
  * Provides caching, loading states, and error handling
  */
 
-import { useMutation, type UseMutationOptions, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
+import {
+  useMutation,
+  type UseMutationOptions,
+  useQuery,
+  useQueryClient,
+  type UseQueryOptions,
+} from '@tanstack/react-query';
 import { api, type ApiError, type AxiosError } from './client';
 import type {
   CalibrationCreateResponse,
@@ -37,7 +43,10 @@ export const queryKeys = {
 // ============================================================================
 
 export function useHealthCheck(
-  options?: Omit<UseQueryOptions<{ status: string }, AxiosError<ApiError>>, 'queryKey' | 'queryFn'>
+  options?: Omit<
+    UseQueryOptions<{ status: string }, AxiosError<ApiError>>,
+    'queryKey' | 'queryFn'
+  >
 ) {
   return useQuery({
     queryKey: queryKeys.health(),
@@ -53,7 +62,10 @@ export function useHealthCheck(
 
 export function useCurve(
   id: string,
-  options?: Omit<UseQueryOptions<unknown, AxiosError<ApiError>>, 'queryKey' | 'queryFn'>
+  options?: Omit<
+    UseQueryOptions<unknown, AxiosError<ApiError>>,
+    'queryKey' | 'queryFn'
+  >
 ) {
   return useQuery({
     queryKey: queryKeys.curve(id),
@@ -67,7 +79,12 @@ export function useGenerateCurve(
   options?: UseMutationOptions<
     CurveGenerationResponse,
     AxiosError<ApiError>,
-    { measurements: number[]; type?: string; name?: string; curve_type?: string }
+    {
+      measurements: number[];
+      type?: string;
+      name?: string;
+      curve_type?: string;
+    }
   >
 ) {
   const queryClient = useQueryClient();
@@ -75,13 +92,21 @@ export function useGenerateCurve(
   const setProcessing = useStore((state) => state.ui.setProcessing);
 
   return useMutation({
-    mutationFn: (data: { measurements: number[]; type?: string; name?: string; curve_type?: string }) => api.curves.generate(data),
+    mutationFn: (data: {
+      measurements: number[];
+      type?: string;
+      name?: string;
+      curve_type?: string;
+    }) => api.curves.generate(data),
     onMutate: () => {
       setProcessing(true);
       logger.info('Generating curve...');
     },
     onSuccess: (data) => {
-      logger.info('Curve generated', { id: data.curve_id, pointCount: data.input_values.length });
+      logger.info('Curve generated', {
+        id: data.curve_id,
+        pointCount: data.input_values.length,
+      });
       addToast({
         title: 'Curve Generated',
         description: `Created curve with ${data.input_values.length} points`,
@@ -182,7 +207,9 @@ export function useUploadScan(
 ) {
   const addToast = useStore((state) => state.ui.addToast);
   const startUpload = useStore((state) => state.image.startUpload);
-  const updateUploadProgress = useStore((state) => state.image.updateUploadProgress);
+  const updateUploadProgress = useStore(
+    (state) => state.image.updateUploadProgress
+  );
   const setError = useStore((state) => state.image.setError);
 
   return useMutation({
@@ -215,7 +242,10 @@ export function useUploadScan(
 // ============================================================================
 
 export function useCalibrations(
-  options?: Omit<UseQueryOptions<CalibrationListResponse, AxiosError<ApiError>>, 'queryKey' | 'queryFn'>
+  options?: Omit<
+    UseQueryOptions<CalibrationListResponse, AxiosError<ApiError>>,
+    'queryKey' | 'queryFn'
+  >
 ) {
   return useQuery({
     queryKey: queryKeys.calibrations(),
@@ -226,7 +256,10 @@ export function useCalibrations(
 
 export function useCalibration(
   id: string,
-  options?: Omit<UseQueryOptions<unknown, AxiosError<ApiError>>, 'queryKey' | 'queryFn'>
+  options?: Omit<
+    UseQueryOptions<unknown, AxiosError<ApiError>>,
+    'queryKey' | 'queryFn'
+  >
 ) {
   return useQuery({
     queryKey: queryKeys.calibration(id),
@@ -237,19 +270,26 @@ export function useCalibration(
 }
 
 export function useCreateCalibration(
-  options?: UseMutationOptions<CalibrationCreateResponse, AxiosError<ApiError>, Omit<CalibrationRecord, 'id' | 'timestamp'>>
+  options?: UseMutationOptions<
+    CalibrationCreateResponse,
+    AxiosError<ApiError>,
+    Omit<CalibrationRecord, 'id' | 'timestamp'>
+  >
 ) {
   const queryClient = useQueryClient();
   const addToast = useStore((state) => state.ui.addToast);
 
   return useMutation({
-    mutationFn: (data: Omit<CalibrationRecord, 'id' | 'timestamp'>) => api.calibrations.create(data),
+    mutationFn: (data: Omit<CalibrationRecord, 'id' | 'timestamp'>) =>
+      api.calibrations.create(data),
     onSuccess: () => {
       addToast({
         title: 'Calibration Saved',
         variant: 'success',
       });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.calibrations() });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.calibrations(),
+      });
     },
     onError: (error) => {
       addToast({
@@ -307,7 +347,10 @@ export function useSendMessage(
 // ============================================================================
 
 export function useStatistics(
-  options?: Omit<UseQueryOptions<StatisticsResponse, AxiosError<ApiError>>, 'queryKey' | 'queryFn'>
+  options?: Omit<
+    UseQueryOptions<StatisticsResponse, AxiosError<ApiError>>,
+    'queryKey' | 'queryFn'
+  >
 ) {
   return useQuery({
     queryKey: queryKeys.statistics(),
@@ -367,33 +410,58 @@ const GRADE_ACCEPTABLE = 50;
  * Assess scan quality from extracted density data.
  * Returns quality grade, score (0–100), and any issues found.
  */
-export const assessScanQuality = (input: ScanAnalysisInput): QualityAssessment => {
+export const assessScanQuality = (
+  input: ScanAnalysisInput
+): QualityAssessment => {
   const issues: QualityIssue[] = [];
   let score = 100;
 
   // Check density range
   if (input.range < DENSITY_RANGE_LOW) {
-    issues.push({ type: 'warning', message: 'Low density range', suggestion: 'Increase exposure time or check chemistry' });
+    issues.push({
+      type: 'warning',
+      message: 'Low density range',
+      suggestion: 'Increase exposure time or check chemistry',
+    });
     score -= PENALTY_LOW_RANGE;
   } else if (input.range < DENSITY_RANGE_MODERATE) {
-    issues.push({ type: 'warning', message: 'Moderate density range', suggestion: 'Consider adjusting exposure' });
+    issues.push({
+      type: 'warning',
+      message: 'Moderate density range',
+      suggestion: 'Consider adjusting exposure',
+    });
     score -= PENALTY_MODERATE_RANGE;
   }
 
   // Check patch count
   if (input.num_patches < MIN_PATCH_COUNT) {
-    issues.push({ type: 'error', message: `Only ${input.num_patches} patches detected`, suggestion: 'Rescan with better alignment' });
+    issues.push({
+      type: 'error',
+      message: `Only ${input.num_patches} patches detected`,
+      suggestion: 'Rescan with better alignment',
+    });
     score -= PENALTY_LOW_PATCHES;
   }
 
   // Check Dmax
   if (input.dmax < DMAX_LOW_THRESHOLD) {
-    issues.push({ type: 'warning', message: 'Low Dmax — print may lack shadow detail', suggestion: 'Check chemistry concentration' });
+    issues.push({
+      type: 'warning',
+      message: 'Low Dmax — print may lack shadow detail',
+      suggestion: 'Check chemistry concentration',
+    });
     score -= PENALTY_LOW_DMAX;
   }
 
   const clampedScore = Math.max(0, Math.min(100, score));
-  const overall = clampedScore >= GRADE_EXCELLENT ? 'excellent' : clampedScore >= GRADE_GOOD ? 'good' : clampedScore >= GRADE_ACCEPTABLE ? 'acceptable' : 'poor';
+  const overall =
+    clampedScore >= GRADE_EXCELLENT
+      ? 'excellent'
+      : clampedScore >= GRADE_GOOD
+        ? 'good'
+        : clampedScore >= GRADE_ACCEPTABLE
+          ? 'acceptable'
+          : 'poor';
 
   return {
     quality: overall,

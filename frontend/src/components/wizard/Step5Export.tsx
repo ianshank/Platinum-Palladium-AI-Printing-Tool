@@ -63,7 +63,7 @@ const FormatOption = styled.label<{ $selected: boolean }>`
     $selected ? theme.colors.background.secondary : 'transparent'};
   border: 1px solid
     ${({ theme, $selected }) =>
-    $selected ? theme.colors.accent.primary : theme.colors.border.default};
+      $selected ? theme.colors.accent.primary : theme.colors.border.default};
   border-radius: ${({ theme }) => theme.radii.md};
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
@@ -97,14 +97,16 @@ const Button = styled.button<{ $primary?: boolean; disabled?: boolean }>`
   border: ${({ theme, $primary }) =>
     $primary ? 'none' : `1px solid ${theme.colors.border.default}`};
   border-radius: ${({ theme }) => theme.radii.md};
-  cursor: ${({ disabled }) => disabled ? 'not-allowed' : 'pointer'};
+  cursor: ${({ disabled }) => (disabled ? 'not-allowed' : 'pointer')};
   font-weight: 600;
-  opacity: ${({ disabled }) => disabled ? 0.5 : 1};
+  opacity: ${({ disabled }) => (disabled ? 0.5 : 1)};
   transition: all 0.2s;
 
   &:hover:not(:disabled) {
     background-color: ${({ theme, $primary }) =>
-    $primary ? theme.colors.accent.primaryHover : theme.colors.background.hover};
+      $primary
+        ? theme.colors.accent.primaryHover
+        : theme.colors.background.hover};
   }
 `;
 
@@ -119,12 +121,18 @@ export function Step5Export() {
   const theme = useTheme();
 
   // Local state
-  const [exportFormat, setExportFormat] = useState<string>(tabletConfig.defaults.exportFormat);
+  const [exportFormat, setExportFormat] = useState<string>(
+    tabletConfig.defaults.exportFormat
+  );
 
   // Store selectors
-  const curveName = useStore((state) => state.calibration.current?.name || 'Untitled Curve');
+  const curveName = useStore(
+    (state) => state.calibration.current?.name || 'Untitled Curve'
+  );
   const curveId = useStore((state) => state.curve.current?.id);
-  const resetCalibration = useStore((state) => state.calibration.resetCalibration);
+  const resetCalibration = useStore(
+    (state) => state.calibration.resetCalibration
+  );
   const prevStep = useStore((state) => state.calibration.previousStep);
   const resetCurve = useStore((state) => state.curve.resetCurve);
 
@@ -133,7 +141,7 @@ export function Step5Export() {
 
   const handleDownload = () => {
     if (!curveId) {
-      alert("No curve generated to export.");
+      alert('No curve generated to export.');
       return;
     }
 
@@ -149,9 +157,14 @@ export function Step5Export() {
           const link = document.createElement('a');
           link.href = url;
           // Find extension
-          const formatConfig = tabletConfig.exportFormats.find(f => f.id === exportFormat);
+          const formatConfig = tabletConfig.exportFormats.find(
+            (f) => f.id === exportFormat
+          );
           const ext = formatConfig?.extension || '.txt';
-          link.setAttribute('download', `${curveName.replace(/\s+/g, '_')}${ext}`);
+          link.setAttribute(
+            'download',
+            `${curveName.replace(/\s+/g, '_')}${ext}`
+          );
           document.body.appendChild(link);
           link.click();
           link.remove();
@@ -162,7 +175,9 @@ export function Step5Export() {
   };
 
   const handleFinish = () => {
-    if (confirm('Are you sure you want to finish? This will reset the wizard.')) {
+    if (
+      confirm('Are you sure you want to finish? This will reset the wizard.')
+    ) {
       resetCalibration();
       resetCurve();
     }
@@ -174,7 +189,8 @@ export function Step5Export() {
         <SuccessIcon>✓</SuccessIcon>
         <Title>Calibration Complete!</Title>
         <Description>
-          Your curve has been generated successfully. Choose a format below to download your digital negative curve.
+          Your curve has been generated successfully. Choose a format below to
+          download your digital negative curve.
         </Description>
 
         <FormatsGrid>
@@ -197,13 +213,14 @@ export function Step5Export() {
         </FormatsGrid>
 
         <ButtonGroup>
-          <Button onClick={prevStep}>
-            Back
-          </Button>
+          <Button onClick={prevStep}>Back</Button>
           <Button $primary onClick={handleDownload} disabled={isPending}>
             {isPending ? 'Preparing Download...' : 'Download Curve'}
           </Button>
-          <Button onClick={handleFinish} style={{ marginLeft: theme.spacing[4] }}>
+          <Button
+            onClick={handleFinish}
+            style={{ marginLeft: theme.spacing[4] }}
+          >
             Start New Calibration
           </Button>
         </ButtonGroup>

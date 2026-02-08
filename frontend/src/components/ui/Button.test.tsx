@@ -9,7 +9,9 @@ describe('Button', () => {
   describe('Rendering', () => {
     it('renders with default props', () => {
       render(<Button>Click me</Button>);
-      expect(screen.getByRole('button', { name: 'Click me' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Click me' })
+      ).toBeInTheDocument();
     });
 
     it('renders with different variants', () => {
@@ -63,7 +65,11 @@ describe('Button', () => {
 
     it('does not call onClick when disabled', async () => {
       const handleClick = vi.fn();
-      render(<Button onClick={handleClick} disabled>Click me</Button>);
+      render(
+        <Button onClick={handleClick} disabled>
+          Click me
+        </Button>
+      );
 
       await fireEvent.click(screen.getByRole('button'));
       expect(handleClick).not.toHaveBeenCalled();
@@ -71,7 +77,11 @@ describe('Button', () => {
 
     it('does not call onClick when loading', async () => {
       const handleClick = vi.fn();
-      render(<Button onClick={handleClick} isLoading>Click me</Button>);
+      render(
+        <Button onClick={handleClick} isLoading>
+          Click me
+        </Button>
+      );
 
       await fireEvent.click(screen.getByRole('button'));
       expect(handleClick).not.toHaveBeenCalled();
@@ -83,12 +93,18 @@ describe('Button', () => {
       render(<Button isLoading>Loading</Button>);
 
       // Check for spinner (SVG with animate-spin class)
-      const spinner = screen.getByRole('button').querySelector('svg.animate-spin');
+      const spinner = screen
+        .getByRole('button')
+        .querySelector('svg.animate-spin');
       expect(spinner).toBeInTheDocument();
     });
 
     it('shows custom loading text', () => {
-      render(<Button isLoading loadingText="Please wait...">Submit</Button>);
+      render(
+        <Button isLoading loadingText="Please wait...">
+          Submit
+        </Button>
+      );
       expect(screen.getByText('Please wait...')).toBeInTheDocument();
     });
 
@@ -118,7 +134,9 @@ describe('Button', () => {
           <a href="/test">Link Button</a>
         </Button>
       );
-      expect(screen.getByRole('link', { name: 'Link Button' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'Link Button' })
+      ).toBeInTheDocument();
     });
   });
 
@@ -154,7 +172,7 @@ describe('Button', () => {
 
       const button = screen.getByRole('button');
       await fireEvent.keyDown(button, { key: 'Enter' });
-      // Enter on button triggers click
+      expect(handleClick).toHaveBeenCalledTimes(1);
     });
   });
 });

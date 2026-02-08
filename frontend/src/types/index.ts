@@ -53,7 +53,13 @@ export type InterpolationType = 'linear' | 'cubic' | 'monotonic' | 'pchip';
 /**
  * Export formats
  */
-export type ExportFormat = 'qtr' | 'piezography' | 'csv' | 'json' | 'acv' | 'cube';
+export type ExportFormat =
+  | 'qtr'
+  | 'piezography'
+  | 'csv'
+  | 'json'
+  | 'acv'
+  | 'cube';
 
 /**
  * Density measurement from a step tablet
@@ -310,5 +316,6 @@ export type RequireKeys<T, K extends keyof T> = T & Required<Pick<T, K>>;
 /**
  * Async function return type
  */
-export type AsyncReturnType<T extends (...args: unknown[]) => Promise<unknown>> =
-  T extends (...args: unknown[]) => Promise<infer R> ? R : never;
+export type AsyncReturnType<
+  T extends (...args: unknown[]) => Promise<unknown>,
+> = T extends (...args: unknown[]) => Promise<infer R> ? R : never;

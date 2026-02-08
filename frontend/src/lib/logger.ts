@@ -231,10 +231,7 @@ class Logger {
   /**
    * Log with performance timing
    */
-  async timeAsync<T>(
-    label: string,
-    fn: () => Promise<T>
-  ): Promise<T> {
+  async timeAsync<T>(label: string, fn: () => Promise<T>): Promise<T> {
     const endTimer = this.time(label);
     try {
       const result = await fn();
@@ -254,7 +251,7 @@ class ChildLogger {
   constructor(
     private parent: Logger,
     private source: string
-  ) { }
+  ) {}
 
   debug(message: string, context?: Record<string, unknown>): void {
     this.parent.debug(`[${this.source}] ${message}`, context);

@@ -62,7 +62,10 @@ export interface CalibrationSlice {
   nextStep: () => void;
   previousStep: () => void;
   addMeasurement: (measurement: DensityMeasurement) => void;
-  updateMeasurement: (step: number, measurement: Partial<DensityMeasurement>) => void;
+  updateMeasurement: (
+    step: number,
+    measurement: Partial<DensityMeasurement>
+  ) => void;
   setMeasurements: (measurements: DensityMeasurement[]) => void;
   setAnalyzing: (analyzing: boolean) => void;
   setAnalysisProgress: (progress: number) => void;
@@ -137,7 +140,10 @@ export const createCalibrationSlice: StateCreator<
   previousStep: () => {
     const current = get().calibration.currentStep;
     if (current > 0) {
-      logger.debug('Calibration: previousStep', { from: current, to: current - 1 });
+      logger.debug('Calibration: previousStep', {
+        from: current,
+        to: current - 1,
+      });
       set((state) => {
         state.calibration.currentStep = current - 1;
       });
@@ -164,7 +170,7 @@ export const createCalibrationSlice: StateCreator<
         if (index !== -1) {
           state.calibration.current.measurements[index] = {
             ...state.calibration.current.measurements[index],
-            ...measurement as DensityMeasurement,
+            ...(measurement as DensityMeasurement),
           };
           state.calibration.current.updatedAt = new Date().toISOString();
         }
@@ -173,7 +179,9 @@ export const createCalibrationSlice: StateCreator<
   },
 
   setMeasurements: (measurements) => {
-    logger.debug('Calibration: setMeasurements', { count: measurements.length });
+    logger.debug('Calibration: setMeasurements', {
+      count: measurements.length,
+    });
     set((state) => {
       if (state.calibration.current) {
         state.calibration.current.measurements = measurements;
@@ -286,7 +294,7 @@ export const createCalibrationSlice: StateCreator<
       if (state.calibration.current) {
         state.calibration.current.metadata = {
           ...state.calibration.current.metadata,
-          ...metadata
+          ...metadata,
         };
         state.calibration.current.updatedAt = new Date().toISOString();
       }

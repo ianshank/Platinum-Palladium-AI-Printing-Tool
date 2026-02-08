@@ -170,3 +170,7 @@ checkpoints/
 
 # Frontend lock file (use pnpm-lock.yaml instead)
 frontend/package-lock.json
+
+# Tooling
+node_modules/
+.npm/
