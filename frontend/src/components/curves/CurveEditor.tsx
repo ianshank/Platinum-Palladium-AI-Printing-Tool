@@ -45,6 +45,7 @@ const AdjustmentSelect = ({ value, onChange }: { value: string, onChange: (val: 
     <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        aria-label="Adjustment type"
         className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
     >
         <option value="contrast">Contrast</option>
@@ -99,8 +100,9 @@ export function CurveEditor({ initialCurve, onSave, className }: CurveEditorProp
             } else {
                 setError('Failed to apply adjustment');
             }
-        } catch (err: any) {
-            setError(err.message || 'Error applying adjustment');
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Error applying adjustment';
+            setError(message);
         } finally {
             setIsApplying(false);
         }
