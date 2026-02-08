@@ -1,21 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { createMockFile, renderWithProviders } from '@/test-utils';
+import { createMockFile, renderWithProviders, userEvent } from '@/test-utils';
+import { useUploadScan } from '@/api/hooks';
 import { Step1Upload } from '../Step1Upload';
 
 // Mock the API hook
 const mockMutate = vi.fn();
 vi.mock('@/api/hooks', () => ({
-    useUploadScan: () => ({
+    useUploadScan: vi.fn(() => ({
         mutate: mockMutate,
         isPending: false,
         error: null,
-    }),
+    })),
 }));
 
 describe('Step1Upload', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(useUploadScan).mockReturnValue({
+            mutate: mockMutate,
+            isPending: false,
+            error: null,
+        } as any);
     });
 
     it('renders upload zone and tablet options', () => {
@@ -34,7 +40,7 @@ describe('Step1Upload', () => {
         const fileInput = screen.getByTestId('dropzone-input');
 
         if (fileInput) {
-            await fireEvent.change(fileInput, { target: { files: [file] } });
+            await userEvent.upload(fileInput, file);
 
             await waitFor(() => {
                 expect(screen.getByText('test-scan.png')).toBeInTheDocument();
@@ -48,7 +54,7 @@ describe('Step1Upload', () => {
         const file = createMockFile('test-scan.png', 1024, 'image/png');
         const fileInput = screen.getByTestId('dropzone-input');
 
-        await fireEvent.change(fileInput, { target: { files: [file] } });
+        await userEvent.upload(fileInput, file);
 
         const continueBtn = screen.getByRole('button', { name: /Analyze & Continue/i });
 
@@ -66,5 +72,51 @@ describe('Step1Upload', () => {
             }),
             expect.any(Object)
         );
+    });
+
+    it('displays error message when upload fails', async () => {
+        const mockError = new Error('Server Error');
+        const mockMutateWithError = vi.fn((_data, options) => {
+            options.onError(mockError);
+        });
+
+        vi.mocked(useUploadScan).mockReturnValue({
+            mutate: mockMutateWithError,
+            isPending: false,
+            error: null,
+        } as any);
+
+        renderWithProviders(<Step1Upload />);
+
+        const file = createMockFile('test.png', 1024, 'image/png');
+        const fileInput = screen.getByTestId('dropzone-input');
+        await userEvent.upload(fileInput, file);
+
+        const continueBtn = screen.getByRole('button', { name: /Analyze & Continue/i });
+        fireEvent.click(continueBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Server Error/i)).toBeInTheDocument();
+        });
+    });
+
+    it('handles file replacement', async () => {
+        renderWithProviders(<Step1Upload />);
+
+        const file1 = createMockFile('test1.png', 1024, 'image/png');
+        const file2 = createMockFile('test2.png', 2048, 'image/png');
+        const fileInput = screen.getByTestId('dropzone-input');
+
+        // First drop
+        await userEvent.upload(fileInput, file1);
+        expect(screen.getByText('test1.png')).toBeInTheDocument();
+
+        // Second drop
+        await userEvent.upload(fileInput, file2);
+
+        await waitFor(() => {
+            expect(screen.getByText('test2.png')).toBeInTheDocument();
+            expect(screen.queryByText('test1.png')).not.toBeInTheDocument();
+        });
     });
 });

@@ -82,4 +82,33 @@ describe('ScanUpload', () => {
             expect(screen.getByText(/network error/i)).toBeInTheDocument();
         });
     });
+
+    it('rejects files larger than 20MB', async () => {
+        renderWithProviders(<ScanUpload />);
+
+        const largeFile = createMockImageFile('huge.png', 25 * 1024 * 1024); // 25MB
+        const input = screen.getByTestId('scan-upload-input');
+
+        await userEvent.upload(input, largeFile);
+
+        await waitFor(() => {
+            expect(screen.getByText(/file is too large/i)).toBeInTheDocument();
+        });
+    });
+
+    it('allows clearing the selected file', async () => {
+        renderWithProviders(<ScanUpload />);
+
+        const file = createMockImageFile('test.png');
+        const input = screen.getByTestId('scan-upload-input');
+
+        await userEvent.upload(input, file);
+        expect(screen.getByText('test.png')).toBeInTheDocument();
+
+        const clearButton = screen.getByRole('button', { name: /remove file/i });
+        await userEvent.click(clearButton);
+
+        expect(screen.queryByText('test.png')).not.toBeInTheDocument();
+        expect(screen.getByText(/click to upload or drag and drop/i)).toBeInTheDocument();
+    });
 });

@@ -17,7 +17,11 @@ vi.mock('@/api/client', () => ({
 vi.mock('./ScanUpload', () => ({
     ScanUpload: ({ onUploadComplete }: any) => (
         <div data-testid="scan-upload-mock">
-            <button onClick={() => onUploadComplete('mock-extraction-id')}>
+            <button onClick={() => onUploadComplete({
+                extraction_id: 'mock-extraction-id',
+                densities: [0.1, 0.5, 0.9],
+                success: true
+            })}>
                 Simulate Upload
             </button>
         </div>
@@ -99,5 +103,21 @@ describe('CalibrationWizard', () => {
         // Step 5: Finish (Index 5)
         expect(screen.getByText('Complete')).toBeInTheDocument();
         expect(screen.getByTestId('curve-editor-mock')).toBeInTheDocument();
+    });
+
+    it('preserves state when navigating back', async () => {
+        renderWithProviders(<CalibrationWizard />);
+
+        // Fill setup
+        const paperInput = screen.getByPlaceholderText(/Arches Platine/i);
+        await userEvent.type(paperInput, 'Special Paper');
+
+        await userEvent.click(screen.getByRole('button', { name: /next/i }));
+
+        // Go back
+        await userEvent.click(screen.getByRole('button', { name: /back/i }));
+
+        // Check if value is still there
+        expect(screen.getByDisplayValue('Special Paper')).toBeInTheDocument();
     });
 });

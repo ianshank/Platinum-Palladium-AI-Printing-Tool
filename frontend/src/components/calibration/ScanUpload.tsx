@@ -117,9 +117,9 @@ export function ScanUpload({ onUploadComplete, className = '', targetType }: Sca
                 {/* State: File Selected / Uploading / Success */}
                 {file && (
                     <div className="w-full space-y-4">
-                        <div className="flex items-center justify-between p-3 bg-white border rounded-md shadow-sm">
+                        <div className="flex items-center justify-between p-3 bg-background border rounded-md shadow-sm">
                             <div className="flex items-center gap-3 overflow-hidden">
-                                <div className={`p-2 rounded-full ${success ? 'bg-green-100' : 'bg-blue-50'}`}>
+                                <div className={`p-2 rounded-full ${success ? 'bg-green-100/10' : 'bg-blue-50/10'}`}>
                                     {success ? (
                                         <CheckCircle2 className="w-5 h-5 text-green-600" />
                                     ) : (

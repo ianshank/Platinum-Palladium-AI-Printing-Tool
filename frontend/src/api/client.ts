@@ -4,7 +4,7 @@
  */
 
 import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
-import { config } from '@/config';
+import { config, isDev } from '@/config';
 import { logger } from '@/lib/logger';
 import type {
   AnalysisResponse,
@@ -38,7 +38,7 @@ export interface ApiError {
  */
 function createApiClient(): AxiosInstance {
   const client = axios.create({
-    baseURL: config.api.baseUrl,
+    baseURL: isDev ? '' : config.api.baseUrl,
     timeout: config.api.timeout,
     headers: {
       'Content-Type': 'application/json',

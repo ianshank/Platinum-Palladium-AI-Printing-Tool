@@ -46,9 +46,15 @@ def create_app():
     )
 
     # CORS
+    cors_origins_set = set(settings.api.cors_origins)
+    # Allow localhost:3000 only in reload (development) mode
+    if settings.api.reload:
+        cors_origins_set.add("http://localhost:3000")
+    cors_origins = list(cors_origins_set)
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.api.cors_origins,
+        allow_origins=cors_origins,
         allow_credentials=settings.api.cors_allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],

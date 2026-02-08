@@ -191,8 +191,8 @@ export function CalibrationWizard() {
                             <div key={step.id} className="flex items-center">
                                 <div className={cn(
                                     "flex items-center gap-2 px-4 py-2 rounded-full border transition-colors",
-                                    isActive ? "border-primary bg-primary/5 text-primary" :
-                                        isCompleted ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 text-gray-400"
+                                    isActive ? "border-primary bg-primary/10 text-primary" :
+                                        isCompleted ? "border-green-500 bg-green-500/10 text-green-500" : "border-muted text-muted-foreground"
                                 )}>
                                     <Icon className="w-4 h-4" />
                                     <span className="text-sm font-medium">{step.title}</span>
@@ -206,7 +206,7 @@ export function CalibrationWizard() {
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border shadow-sm">
+            <div className="bg-card p-6 rounded-xl border shadow-sm">
                 {renderStepContent()}
             </div>
         </div>
