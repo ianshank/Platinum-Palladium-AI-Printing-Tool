@@ -210,10 +210,35 @@ def create_app():
 
         logger.debug("Scan upload: original=%s safe=%s", original_filename, safe_name)
 
-        # Save uploaded file
-        with open(file_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
+        # ── Stream upload to disk with size enforcement ─────────────
+        max_bytes = settings.api.max_upload_size_mb * 1024 * 1024
+        bytes_written = 0
+        _CHUNK_SIZE = 64 * 1024  # 64 KB chunks
+
+        try:
+            with open(file_path, "wb") as f:
+                while True:
+                    chunk = await file.read(_CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    bytes_written += len(chunk)
+                    if bytes_written > max_bytes:
+                        # Clean up partial file before rejecting
+                        f.close()
+                        if file_path.exists():
+                            file_path.unlink()
+                        raise HTTPException(
+                            status_code=413,
+                            detail=f"Upload exceeds maximum size of "
+                            f"{settings.api.max_upload_size_mb} MB",
+                        )
+                    f.write(chunk)
+        except HTTPException:
+            raise  # Re-raise 413 without catching it below
+        except OSError as exc:
+            if file_path.exists():
+                file_path.unlink()
+            raise HTTPException(status_code=500, detail=f"Failed to save upload: {exc}")
 
         try:
             # Process scan
