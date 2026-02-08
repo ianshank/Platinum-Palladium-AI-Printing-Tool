@@ -6,9 +6,11 @@
       "Write(frontend/**)",
       "Write(migration/**)",
       "Write(.claude/**)",
+      "Write(kb/**)",
       "Edit(frontend/**)",
       "Edit(migration/**)",
       "Edit(.claude/**)",
+      "Edit(kb/**)",
       "Bash(pnpm *)",
       "Bash(npm *)",
       "Bash(npx *)",
@@ -16,6 +18,8 @@
       "Bash(uvicorn *)",
       "Bash(git *)",
       "Bash(python *)",
+      "Bash(jq *)",
+      "Bash(bash *)",
       "Grep",
       "Glob"
     ],
@@ -27,6 +31,46 @@
     ]
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/kb-start.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/kb-start.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/kb-start.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are the session handoff agent for a multi-role workflow with three roles: Planning, DEV-SQE, and Pre-PR.\n\nInput context: $ARGUMENTS\n\nRules:\n1. If stop_hook_active is true in the input, respond with: {\"decision\": \"approve\", \"reason\": \"Stop hook already active, allowing stop.\"}\n2. Otherwise, determine which role(s) performed meaningful work this session by examining the conversation context:\n   - PLANNING work: task breakdowns, architecture decisions, acceptance criteria, specs\n   - DEV-SQE work: code changes, tests written, implementations, bug fixes\n   - PRE-PR work: lint/format checks, test validation, PR preparation, documentation review\n3. If meaningful work was done, respond with: {\"decision\": \"block\", \"reason\": \"Perform session handoff for [ROLE(S)]. For each active role, follow the handoff skill at .claude/skills/[role]-handoff/SKILL.md. Update kb/ledger/ledger.jsonl (append only), kb/summaries/[role].md, and kb/sessions/[role].state.json. Check for cross-role handoffs: Planning tasks ready for dev should create PLANNING-HANDOFF events. DEV-SQE completions should create DEV-SQE-HANDOFF events. Design gaps should create DESIGN-GAP events. QA failures should create QA-GAP events.\"}\n4. If no meaningful work was done, respond with: {\"decision\": \"approve\", \"reason\": \"No substantive changes to record.\"}",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write(frontend/**/*.tsx)",
@@ -82,7 +126,8 @@
   "env": {
     "PROJECT_ROOT": "/home/user/Platinum-Palladium-AI-Printing-Tool",
     "API_BASE_URL": "http://localhost:8000",
-    "MIGRATION_PHASE": "Phase 1: Project Setup",
-    "LOG_LEVEL": "debug"
+    "MIGRATION_PHASE": "Phase 3: Migration Completion & Hardening",
+    "LOG_LEVEL": "debug",
+    "KB_DEBUG": "false"
   }
 }
