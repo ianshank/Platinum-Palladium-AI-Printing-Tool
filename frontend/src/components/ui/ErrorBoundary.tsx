@@ -102,7 +102,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                         </summary>
                         <pre className="mt-2 max-h-40 overflow-auto rounded-md bg-muted p-3 text-xs text-muted-foreground">
                             {error.message}
-                            {error.stack && `\n\n${error.stack}`}
+                            {process.env['NODE_ENV'] === 'development' &&
+                                error.stack &&
+                                `\n\n${error.stack}`}
                         </pre>
                     </details>
 

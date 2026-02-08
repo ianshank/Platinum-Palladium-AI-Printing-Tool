@@ -9,9 +9,10 @@ import type { ScanUploadResponse } from '@/types/models';
 interface ScanUploadProps {
     onUploadComplete?: (response: ScanUploadResponse) => void;
     className?: string;
+    targetType?: string;
 }
 
-export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps) {
+export function ScanUpload({ onUploadComplete, className = '', targetType }: ScanUploadProps) {
     const [file, setFile] = useState<File | null>(null);
     const [progress, setProgress] = useState<number>(0);
     const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -23,7 +24,14 @@ export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps
         setSuccess(false);
 
         if (fileRejections.length > 0) {
-            setError('Invalid file type. Please upload an image (PNG, JPG, TIFF).');
+            const isSizeError = fileRejections.some((r) =>
+                r.errors.some((e) => e.code === 'file-too-large')
+            );
+            setError(
+                isSizeError
+                    ? 'File is too large. Max size is 20MB.'
+                    : 'Invalid file type. Please upload an image (PNG, JPG, TIFF).'
+            );
             return;
         }
 
@@ -38,6 +46,7 @@ export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps
             'image/*': ['.png', '.jpg', '.jpeg', '.tiff', '.tif']
         },
         maxFiles: 1,
+        maxSize: 20 * 1024 * 1024, // 20MB
         disabled: isUploading || success
     });
 
@@ -49,7 +58,7 @@ export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps
         setError(null);
 
         try {
-            const response = await api.scan.upload(file, 'stouffer_21', (p) => setProgress(p));
+            const response = await api.scan.upload(file, targetType || 'stouffer_21', (p) => setProgress(p));
 
             if (response.success) {
                 setSuccess(true);
@@ -59,8 +68,9 @@ export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps
             } else {
                 setError('Upload failed but no error message returned.');
             }
-        } catch (err: any) {
-            setError(err.message || 'Upload failed. Please try again.');
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Upload failed. Please try again.';
+            setError(message);
         } finally {
             setIsUploading(false);
         }
@@ -126,6 +136,8 @@ export function ScanUpload({ onUploadComplete, className = '' }: ScanUploadProps
                                 <button
                                     onClick={clearFile}
                                     className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                    title="Remove file"
+                                    aria-label="Remove file"
                                 >
                                     <X className="w-4 h-4 text-gray-500" />
                                 </button>

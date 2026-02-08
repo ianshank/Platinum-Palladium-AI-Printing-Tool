@@ -57,6 +57,20 @@ const storeMiddleware: StoreMiddleware = (
               isProcessing: false,
             },
           }),
+          merge: (persistedState: unknown, currentState: StoreState): StoreState => {
+            const persisted = persistedState as Partial<StoreState>;
+            if (!persisted || !persisted.ui) {
+              return currentState;
+            }
+
+            return {
+              ...currentState,
+              ui: {
+                ...currentState.ui,
+                ...persisted.ui,
+              },
+            };
+          },
         }
       )
     ),
