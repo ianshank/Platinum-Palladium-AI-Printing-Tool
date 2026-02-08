@@ -55,7 +55,7 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-transform duration-200 lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-transform duration-200',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -138,7 +138,10 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className={cn(
+        'flex flex-1 flex-col overflow-hidden transition-all duration-200',
+        sidebarOpen && 'lg:pl-64'
+      )}>
         {/* Top bar */}
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6">
           <Button

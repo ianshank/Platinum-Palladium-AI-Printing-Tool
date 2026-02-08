@@ -6,6 +6,10 @@ vi.mock('@/stores', () => ({
     useStore: vi.fn(),
 }));
 
+vi.mock('@/hooks', () => ({
+    useAppShortcuts: vi.fn(),
+}));
+
 vi.mock('@/components/Layout', () => ({
     Layout: ({ children }: { children: React.ReactNode }) => (
         <div data-testid="layout">{children}</div>

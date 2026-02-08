@@ -35,7 +35,7 @@ const Slider = React.forwardRef<
         <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary/20 bg-gray-200">
             <SliderPrimitive.Range className="absolute h-full bg-primary bg-blue-600" />
         </SliderPrimitive.Track>
-        <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-primary bg-background bg-white ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
+        <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
     </SliderPrimitive.Root>
 ));
 Slider.displayName = SliderPrimitive.Root.displayName;
@@ -177,7 +177,7 @@ export function CurveEditor({ initialCurve, onSave, className }: CurveEditorProp
                             label={{ value: 'Output Density', angle: -90, position: 'insideLeft' }}
                         />
                         <Tooltip
-                            contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '4px', border: '1px solid #ccc' }}
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '4px', border: '1px solid hsl(var(--border))', color: 'hsl(var(--card-foreground))' }}
                         />
                         <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 255, y: 255 }]} stroke="#ccc" strokeDasharray="3 3" />
                         <Line
