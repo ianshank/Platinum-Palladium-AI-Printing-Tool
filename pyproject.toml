@@ -126,8 +126,31 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "B008",   # do not perform function calls in argument defaults
+    "B904",   # raise-without-from (requires AST-aware multi-line fixes)
     "C901",   # too complex
+    "SIM102", # collapsible-if (readability preference)
+    "SIM105", # suppressible-exception (clarity preference)
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: unused arguments are common in fixtures/mocks; B017 is valid for asserting any exception
+"tests/**/*.py" = ["ARG001", "ARG002", "ARG005", "B007", "B017", "E402", "E701", "E741", "SIM102", "SIM105", "SIM117"]
+# Gradio UI: event handlers must accept arguments dictated by Gradio's callback signatures
+"src/ptpd_calibration/ui/**/*.py" = ["ARG001", "ARG002", "ARG005", "B007", "E402"]
+# Education module: tutorial/example code uses simplified patterns
+"src/ptpd_calibration/education/**/*.py" = ["ARG001", "ARG002"]
+# Curves/ML/Detection: abstract interface stubs have params for future implementation
+"src/ptpd_calibration/curves/**/*.py" = ["ARG002", "ARG004"]
+"src/ptpd_calibration/ml/**/*.py" = ["ARG002"]
+"src/ptpd_calibration/detection/**/*.py" = ["ARG002"]
+"src/ptpd_calibration/imaging/split_grade.py" = ["ARG002"]
+"src/ptpd_calibration/monitoring/**/*.py" = ["ARG002"]
+"src/ptpd_calibration/gcp/storage.py" = ["ARG002"]
+"src/ptpd_calibration/agents/**/*.py" = ["ARG002", "SIM102"]
+"src/ptpd_calibration/ai/**/*.py" = ["ARG002"]
+"src/ptpd_calibration/analysis/**/*.py" = ["ARG002"]
+"src/ptpd_calibration/ui/tabs/**/*.py" = ["E701", "ARG005"]
+
 
 [tool.ruff.lint.isort]
 known-first-party = ["ptpd_calibration"]

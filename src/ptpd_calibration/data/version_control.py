@@ -116,15 +116,9 @@ class VersionController:
         )
 
         # Create indices
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_item_id ON versions(item_id)"
-        )
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_branch ON versions(item_id, branch)"
-        )
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_timestamp ON versions(timestamp DESC)"
-        )
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_item_id ON versions(item_id)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_branch ON versions(item_id, branch)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON versions(timestamp DESC)")
 
         # Create branches table
         self.conn.execute(
@@ -556,9 +550,7 @@ class VersionController:
         row = cursor.fetchone()
         return self._row_to_version(row) if row else None
 
-    def _find_common_ancestor(
-        self, v1: VersionedItem, v2: VersionedItem
-    ) -> VersionedItem | None:
+    def _find_common_ancestor(self, v1: VersionedItem, v2: VersionedItem) -> VersionedItem | None:
         """Find common ancestor of two versions."""
         # Simple implementation - traverse v1's parents until we find one in v2's lineage
         v1_ancestors = self._get_ancestors(v1)
@@ -598,11 +590,7 @@ class VersionController:
             base_val = base.get(key)
 
             # Conflict if both changed from base and values differ
-            if (
-                source_val != base_val
-                and target_val != base_val
-                and source_val != target_val
-            ):
+            if source_val != base_val and target_val != base_val and source_val != target_val:
                 conflicts.append(
                     MergeConflict(
                         key=key,

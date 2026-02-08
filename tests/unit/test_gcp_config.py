@@ -1,12 +1,12 @@
 """
 Unit tests for GCP configuration management.
 """
+
 import os
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
 
 from ptpd_calibration.gcp.config import GCPConfig, get_gcp_config
 
@@ -84,9 +84,8 @@ class TestGetGCPConfig:
         get_gcp_config.cache_clear()
 
     def test_raises_without_env(self) -> None:
-        with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(Exception):
-                get_gcp_config()
+        with patch.dict(os.environ, {}, clear=True), pytest.raises(Exception):
+            get_gcp_config()
 
     def test_returns_config_with_env(self) -> None:
         env = {

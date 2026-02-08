@@ -1,7 +1,7 @@
 """
 Unit tests for storage backends (LocalBackend and GCSBackend).
 """
-import os
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 

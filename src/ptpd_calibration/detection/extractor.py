@@ -398,9 +398,7 @@ class DensityExtractor:
 
         return float(uniformity)
 
-    def _calculate_quality(
-        self, patches: list[PatchData], detection: DetectionResult
-    ) -> float:
+    def _calculate_quality(self, patches: list[PatchData], detection: DetectionResult) -> float:
         """Calculate overall extraction quality score."""
         if not patches:
             return 0.0
@@ -426,9 +424,7 @@ class DensityExtractor:
 
         return float(quality)
 
-    def _generate_warnings(
-        self, patches: list[PatchData], detection: DetectionResult
-    ) -> list[str]:
+    def _generate_warnings(self, patches: list[PatchData], detection: DetectionResult) -> list[str]:
         """Generate warnings based on extraction quality."""
         warnings = []
 

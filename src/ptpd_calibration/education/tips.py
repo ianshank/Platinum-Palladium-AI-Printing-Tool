@@ -49,9 +49,7 @@ class Tip(BaseModel):
         default_factory=list, description="Conditions when this tip is relevant"
     )
     priority: int = Field(default=1, ge=1, le=5, description="Importance (1=low, 5=critical)")
-    related_terms: list[str] = Field(
-        default_factory=list, description="Related glossary terms"
-    )
+    related_terms: list[str] = Field(default_factory=list, description="Related glossary terms")
 
 
 # Comprehensive tips database
@@ -606,9 +604,7 @@ class TipsManager:
             candidates = [t for t in candidates if t.category == category]
 
         if difficulty:
-            candidates = [
-                t for t in candidates if t.difficulty in [difficulty, TipDifficulty.ALL]
-            ]
+            candidates = [t for t in candidates if t.difficulty in [difficulty, TipDifficulty.ALL]]
 
         if unseen_only:
             candidates = [t for t in candidates if t.id not in self.seen_tips]
@@ -737,11 +733,7 @@ class TipsManager:
             List of related Tip objects
         """
         term_lower = term.lower()
-        related = [
-            t
-            for t in self.tips
-            if any(term_lower in rt.lower() for rt in t.related_terms)
-        ]
+        related = [t for t in self.tips if any(term_lower in rt.lower() for rt in t.related_terms)]
 
         return sorted(related, key=lambda t: t.priority, reverse=True)
 
@@ -757,8 +749,7 @@ class TipsManager:
             "seen_tips": len(self.seen_tips),
             "unseen_tips": len(self.tips) - len(self.seen_tips),
             "tips_by_category": {
-                cat.value: len([t for t in self.tips if t.category == cat])
-                for cat in TipCategory
+                cat.value: len([t for t in self.tips if t.category == cat]) for cat in TipCategory
             },
             "tips_by_difficulty": {
                 diff.value: len([t for t in self.tips if t.difficulty == diff])

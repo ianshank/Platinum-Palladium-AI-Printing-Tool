@@ -55,9 +55,7 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
                         if record.result
                         in (PrintResult.EXCELLENT, PrintResult.GOOD, PrintResult.ACCEPTABLE)
                     )
-                    success_pct = (
-                        (successful / session_records) * 100 if session_records else 0
-                    )
+                    success_pct = (successful / session_records) * 100 if session_records else 0
                     summary_rows.append(
                         [
                             session.records[0].timestamp.strftime("%b %d"),
@@ -86,9 +84,7 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
                         ]
                     )
 
-            overall_success_rate = (
-                (success_count / total_records * 100) if total_records else 0.0
-            )
+            overall_success_rate = (success_count / total_records * 100) if total_records else 0.0
 
             return (
                 recent_records,
@@ -129,7 +125,7 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
         )
 
         # Auto-refresh dashboard on load
-        dashboard_timer = gr.Timer(value=10) # Refresh every 10 seconds or on load
+        dashboard_timer = gr.Timer(value=10)  # Refresh every 10 seconds or on load
 
         dashboard_timer.tick(
             compute_dashboard_metrics,
@@ -148,15 +144,16 @@ def build_dashboard_tab(onboarding_state: gr.State, session_logger: SessionLogge
 
         # Helper to generate JS click
         def jump_js(tab_index: int) -> str:
-            return f"() => {{ document.querySelectorAll('.main-tabs button')[{tab_index}].click(); }}"
+            return (
+                f"() => {{ document.querySelectorAll('.main-tabs button')[{tab_index}].click(); }}"
+            )
 
         # Assuming tab indices: 0=Dashboard, 1=Calibration, 2=Image Prep, 3=Darkroom, 4=AI
         # And subtabs... this is tricky. Gradio doesn't easily support deep linking to subtabs.
         # We'll just link to main tabs for now.
 
-        btn_scan.click(None, None, None, js=jump_js(1)) # Calibration
-        btn_chem.click(None, None, None, js=jump_js(3)) # Darkroom
-        btn_expo.click(None, None, None, js=jump_js(3)) # Darkroom
-        btn_neg.click(None, None, None, js=jump_js(2)) # Image Prep
-        btn_ai.click(None, None, None, js=jump_js(4))   # AI
-
+        btn_scan.click(None, None, None, js=jump_js(1))  # Calibration
+        btn_chem.click(None, None, None, js=jump_js(3))  # Darkroom
+        btn_expo.click(None, None, None, js=jump_js(3))  # Darkroom
+        btn_neg.click(None, None, None, js=jump_js(2))  # Image Prep
+        btn_ai.click(None, None, None, js=jump_js(4))  # AI

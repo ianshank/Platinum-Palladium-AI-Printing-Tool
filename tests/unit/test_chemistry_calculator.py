@@ -176,7 +176,9 @@ class TestChemistryCalculator:
         assert no_contrast.ferric_oxalate_contrast_drops == 0
         assert with_contrast.ferric_oxalate_contrast_drops > 0
         # Total FO should be split
-        total_fo_with = with_contrast.ferric_oxalate_drops + with_contrast.ferric_oxalate_contrast_drops
+        total_fo_with = (
+            with_contrast.ferric_oxalate_drops + with_contrast.ferric_oxalate_contrast_drops
+        )
         assert abs(total_fo_with - no_contrast.ferric_oxalate_drops) < 0.1
 
     def test_calculate_high_absorbency_paper(self, calculator):
@@ -265,7 +267,8 @@ class TestChemistryCalculator:
     def test_calculate_from_preset_with_options(self, calculator):
         """Preset calculation should accept other options."""
         recipe = calculator.calculate_from_preset(
-            8.0, 10.0,
+            8.0,
+            10.0,
             MetalMix.CLASSIC_MIX,
             paper_absorbency=PaperAbsorbency.HIGH,
             coating_method=CoatingMethod.ROD,

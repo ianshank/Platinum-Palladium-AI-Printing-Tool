@@ -136,7 +136,7 @@ class PaperProfile:
             id=UUID(profile_id) if profile_id else uuid4(),
             characteristics=PaperCharacteristics.from_dict(chars_data),
             coating_behavior=CoatingBehavior(coating_behavior),
-            **{k: v for k, v in data.items() if k in cls.__dataclass_fields__}
+            **{k: v for k, v in data.items() if k in cls.__dataclass_fields__},
         )
         return profile
 
@@ -467,6 +467,7 @@ class PaperDatabase:
                 self._custom_papers[key] = PaperProfile.from_dict(paper_data)
         except Exception as e:
             import logging
+
             logging.warning(f"Failed to load custom papers: {e}")
             pass
 

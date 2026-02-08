@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -242,16 +241,20 @@ class TestPrintSession:
     def test_get_statistics_with_records(self):
         """Should calculate statistics correctly."""
         session = PrintSession()
-        session.add_record(PrintRecord(
-            paper_type="Arches Platine",
-            result=PrintResult.EXCELLENT,
-            exposure_time_minutes=10.0,
-        ))
-        session.add_record(PrintRecord(
-            paper_type="COT 320",
-            result=PrintResult.GOOD,
-            exposure_time_minutes=12.0,
-        ))
+        session.add_record(
+            PrintRecord(
+                paper_type="Arches Platine",
+                result=PrintResult.EXCELLENT,
+                exposure_time_minutes=10.0,
+            )
+        )
+        session.add_record(
+            PrintRecord(
+                paper_type="COT 320",
+                result=PrintResult.GOOD,
+                exposure_time_minutes=12.0,
+            )
+        )
 
         stats = session.get_statistics()
         assert stats["total_prints"] == 2
@@ -363,11 +366,13 @@ class TestSessionLogger:
     def test_save_and_load_session(self, logger, tmp_path):
         """Should save and load session."""
         session = PrintSession(name="Save Load Test")
-        session.add_record(PrintRecord(
-            image_name="save_load.tif",
-            paper_type="Arches Platine",
-            result=PrintResult.GOOD,
-        ))
+        session.add_record(
+            PrintRecord(
+                image_name="save_load.tif",
+                paper_type="Arches Platine",
+                result=PrintResult.GOOD,
+            )
+        )
 
         filepath = logger.save_session(session)
         assert filepath.exists()
@@ -443,21 +448,27 @@ class TestSessionLogger:
     def test_get_paper_statistics(self, logger):
         """Should calculate paper statistics."""
         session = PrintSession(name="Stats Test")
-        session.add_record(PrintRecord(
-            paper_type="Arches Platine",
-            result=PrintResult.EXCELLENT,
-            exposure_time_minutes=10.0,
-        ))
-        session.add_record(PrintRecord(
-            paper_type="Arches Platine",
-            result=PrintResult.GOOD,
-            exposure_time_minutes=12.0,
-        ))
-        session.add_record(PrintRecord(
-            paper_type="COT 320",
-            result=PrintResult.FAILED,
-            exposure_time_minutes=15.0,
-        ))
+        session.add_record(
+            PrintRecord(
+                paper_type="Arches Platine",
+                result=PrintResult.EXCELLENT,
+                exposure_time_minutes=10.0,
+            )
+        )
+        session.add_record(
+            PrintRecord(
+                paper_type="Arches Platine",
+                result=PrintResult.GOOD,
+                exposure_time_minutes=12.0,
+            )
+        )
+        session.add_record(
+            PrintRecord(
+                paper_type="COT 320",
+                result=PrintResult.FAILED,
+                exposure_time_minutes=15.0,
+            )
+        )
         logger.save_session(session)
 
         stats = logger.get_paper_statistics()

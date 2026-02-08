@@ -4,6 +4,7 @@ Security tests for the Pt/Pd Calibration Studio.
 Validates that API key handling, input sanitization, filesystem boundaries,
 and configuration security follow best practices.
 """
+
 import os
 from pathlib import Path
 from unittest.mock import patch

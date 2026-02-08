@@ -64,13 +64,13 @@ class SplitGradeSettings(BaseSettings):
         default=2.5,
         ge=0.0,
         le=5.0,
-        description="Contrast grade for shadow regions (0=softest, 5=hardest)"
+        description="Contrast grade for shadow regions (0=softest, 5=hardest)",
     )
     highlight_grade: float = Field(
         default=1.5,
         ge=0.0,
         le=5.0,
-        description="Contrast grade for highlight regions (0=softest, 5=hardest)"
+        description="Contrast grade for highlight regions (0=softest, 5=hardest)",
     )
 
     # Exposure ratio (percentage of total exposure time)
@@ -78,39 +78,29 @@ class SplitGradeSettings(BaseSettings):
         default=0.6,
         ge=0.0,
         le=1.0,
-        description="Ratio of total exposure time for shadows (0.0-1.0)"
+        description="Ratio of total exposure time for shadows (0.0-1.0)",
     )
 
     # Blend settings
     blend_mode: BlendMode = Field(
-        default=BlendMode.GAMMA,
-        description="Method for blending shadow and highlight exposures"
+        default=BlendMode.GAMMA, description="Method for blending shadow and highlight exposures"
     )
     blend_gamma: float = Field(
-        default=2.2,
-        ge=0.5,
-        le=4.0,
-        description="Gamma value for gamma blend mode"
+        default=2.2, ge=0.5, le=4.0, description="Gamma value for gamma blend mode"
     )
     blend_softness: float = Field(
-        default=0.5,
-        ge=0.0,
-        le=1.0,
-        description="Softness of blend transition (0=hard, 1=soft)"
+        default=0.5, ge=0.0, le=1.0, description="Softness of blend transition (0=hard, 1=soft)"
     )
 
     # Tonal thresholds (0-1 range)
     shadow_threshold: float = Field(
-        default=0.4,
-        ge=0.0,
-        le=1.0,
-        description="Threshold separating shadows from midtones (0-1)"
+        default=0.4, ge=0.0, le=1.0, description="Threshold separating shadows from midtones (0-1)"
     )
     highlight_threshold: float = Field(
         default=0.7,
         ge=0.0,
         le=1.0,
-        description="Threshold separating highlights from midtones (0-1)"
+        description="Threshold separating highlights from midtones (0-1)",
     )
 
     # Mask generation
@@ -118,13 +108,10 @@ class SplitGradeSettings(BaseSettings):
         default=10.0,
         ge=0.0,
         le=100.0,
-        description="Gaussian blur radius for mask smoothing (pixels)"
+        description="Gaussian blur radius for mask smoothing (pixels)",
     )
     mask_feather_amount: float = Field(
-        default=0.2,
-        ge=0.0,
-        le=1.0,
-        description="Amount of feathering at mask edges"
+        default=0.2, ge=0.0, le=1.0, description="Amount of feathering at mask edges"
     )
 
     # Metal characteristics
@@ -132,33 +119,31 @@ class SplitGradeSettings(BaseSettings):
         default=0.0,
         ge=0.0,
         le=1.0,
-        description="Platinum to palladium ratio (0=pure Pd, 1=pure Pt)"
+        description="Platinum to palladium ratio (0=pure Pd, 1=pure Pt)",
     )
 
     # Advanced settings
     preserve_highlights: bool = Field(
-        default=True,
-        description="Prevent highlight blocking in bright areas"
+        default=True, description="Prevent highlight blocking in bright areas"
     )
     preserve_shadows: bool = Field(
-        default=True,
-        description="Prevent shadow crushing in dark areas"
+        default=True, description="Prevent shadow crushing in dark areas"
     )
     highlight_hold_point: float = Field(
         default=0.95,
         ge=0.8,
         le=1.0,
-        description="Point above which highlights are held to paper white"
+        description="Point above which highlights are held to paper white",
     )
     shadow_hold_point: float = Field(
         default=0.05,
         ge=0.0,
         le=0.2,
-        description="Point below which shadows are held to maximum density"
+        description="Point below which shadows are held to maximum density",
     )
 
-    @model_validator(mode='after')
-    def validate_thresholds(self) -> 'SplitGradeSettings':
+    @model_validator(mode="after")
+    def validate_thresholds(self) -> "SplitGradeSettings":
         """Ensure thresholds are in correct order."""
         if self.shadow_threshold >= self.highlight_threshold:
             raise ValueError(
@@ -563,9 +548,9 @@ class SplitGradeSimulator:
         # Convert to luminance if color
         if img_array.ndim == 3:
             # Convert RGB to luminance
-            luminance = 0.299 * img_array[:, :, 0] + \
-                       0.587 * img_array[:, :, 1] + \
-                       0.114 * img_array[:, :, 2]
+            luminance = (
+                0.299 * img_array[:, :, 0] + 0.587 * img_array[:, :, 1] + 0.114 * img_array[:, :, 2]
+            )
         else:
             luminance = img_array
 
@@ -594,11 +579,7 @@ class SplitGradeSimulator:
 
         # Determine if split-grade would be beneficial
         # Benefits: wide tonal range, significant shadows AND highlights
-        needs_split_grade = (
-            tonal_range > 0.5 and
-            shadow_pct > 0.15 and
-            highlight_pct > 0.15
-        )
+        needs_split_grade = tonal_range > 0.5 and shadow_pct > 0.15 and highlight_pct > 0.15
 
         # Recommend parameters based on analysis
         rec_shadow_grade, rec_highlight_grade = self._recommend_grades(
@@ -866,13 +847,15 @@ class SplitGradeSimulator:
 
         # Build result dictionary
         result = {
-            'original': luminance,
-            'processed': processed,
+            "original": luminance,
+            "processed": processed,
         }
 
         if include_masks:
-            result['shadow_mask'] = self.create_shadow_mask(img_array, settings.shadow_threshold)
-            result['highlight_mask'] = self.create_highlight_mask(img_array, settings.highlight_threshold)
+            result["shadow_mask"] = self.create_shadow_mask(img_array, settings.shadow_threshold)
+            result["highlight_mask"] = self.create_highlight_mask(
+                img_array, settings.highlight_threshold
+            )
 
         return result
 
@@ -916,9 +899,13 @@ class SplitGradeSimulator:
             notes.append("Similar grades: Consider single-grade printing instead")
 
         if shadow_time < 5:
-            notes.append(f"Short shadow exposure ({shadow_time:.1f}s): Consider increasing base time")
+            notes.append(
+                f"Short shadow exposure ({shadow_time:.1f}s): Consider increasing base time"
+            )
         if highlight_time < 5:
-            notes.append(f"Short highlight exposure ({highlight_time:.1f}s): Consider increasing base time")
+            notes.append(
+                f"Short highlight exposure ({highlight_time:.1f}s): Consider increasing base time"
+            )
 
         return ExposureCalculation(
             total_exposure_seconds=base_time,
@@ -975,9 +962,9 @@ class SplitGradeSimulator:
             return img_array
         elif img_array.ndim == 3:
             # Convert RGB to luminance using standard weights
-            return (0.299 * img_array[:, :, 0] +
-                   0.587 * img_array[:, :, 1] +
-                   0.114 * img_array[:, :, 2])
+            return (
+                0.299 * img_array[:, :, 0] + 0.587 * img_array[:, :, 1] + 0.114 * img_array[:, :, 2]
+            )
         else:
             raise ValueError(f"Unsupported image dimensions: {img_array.ndim}")
 
@@ -1134,7 +1121,7 @@ class SplitGradeSimulator:
         result = np.where(
             shadow < 0.5,
             highlight - (1 - 2 * shadow) * highlight * (1 - highlight),
-            highlight + (2 * shadow - 1) * (np.sqrt(highlight) - highlight)
+            highlight + (2 * shadow - 1) * (np.sqrt(highlight) - highlight),
         )
         # Blend with mask
         return shadow * (1 - mask) + result * mask
@@ -1157,9 +1144,7 @@ class SplitGradeSimulator:
         """
         # Overlay formula
         result = np.where(
-            highlight < 0.5,
-            2 * shadow * highlight,
-            1 - 2 * (1 - shadow) * (1 - highlight)
+            highlight < 0.5, 2 * shadow * highlight, 1 - 2 * (1 - shadow) * (1 - highlight)
         )
         # Blend with mask
         return shadow * (1 - mask) + result * mask

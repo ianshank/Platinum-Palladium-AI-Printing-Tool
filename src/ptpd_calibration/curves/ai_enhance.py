@@ -151,19 +151,25 @@ class CurveAIEnhancer:
         ]
 
         if issues:
-            lines.extend([
-                "### Identified Issues",
-            ])
+            lines.extend(
+                [
+                    "### Identified Issues",
+                ]
+            )
             for issue in issues:
-                lines.append(f"- **{issue.severity.upper()}** ({issue.location}): {issue.description}")
+                lines.append(
+                    f"- **{issue.severity.upper()}** ({issue.location}): {issue.description}"
+                )
             lines.append("")
 
         if include_recommendations:
             recommendations = self._generate_suggestions(issues, EnhancementGoal.LINEARIZATION)
             if recommendations:
-                lines.extend([
-                    "### Recommendations",
-                ])
+                lines.extend(
+                    [
+                        "### Recommendations",
+                    ]
+                )
                 for rec in recommendations:
                     lines.append(f"- {rec}")
 
@@ -191,7 +197,7 @@ class CurveAIEnhancer:
         prompt = f"""{analysis_text}
 
 ### Enhancement Goal
-{goal.value.replace('_', ' ').title()}
+{goal.value.replace("_", " ").title()}
 
 """
         if user_requirements:
@@ -276,7 +282,9 @@ Please respond in a structured format that can be parsed."""
                 applied.append(f"midtones: {adjustments['midtones']:+.2f}")
 
             if "smoothing" in adjustments and adjustments["smoothing"] > 0:
-                enhanced = self.modifier.smooth(enhanced, SmoothingMethod.GAUSSIAN, adjustments["smoothing"])
+                enhanced = self.modifier.smooth(
+                    enhanced, SmoothingMethod.GAUSSIAN, adjustments["smoothing"]
+                )
                 applied.append(f"smoothing: {adjustments['smoothing']:.2f}")
 
             analysis = self._analyze_curve(curve, None)
@@ -324,7 +332,7 @@ Please respond in a structured format that can be parsed."""
         linear = inputs
         errors = outputs - linear
         analysis["max_linearity_error"] = float(np.max(np.abs(errors)))
-        analysis["rms_linearity_error"] = float(np.sqrt(np.mean(errors ** 2)))
+        analysis["rms_linearity_error"] = float(np.sqrt(np.mean(errors**2)))
         analysis["mean_linearity_error"] = float(np.mean(errors))
 
         # Shape characterization
@@ -346,9 +354,15 @@ Please respond in a structured format that can be parsed."""
         m_response = outputs[midtone_idx] / max(inputs[midtone_idx], 0.001)
         s_response = outputs[shadow_idx] / max(inputs[shadow_idx], 0.001)
 
-        analysis["highlight_response"] = "compressed" if h_response < 0.9 else "expanded" if h_response > 1.1 else "normal"
-        analysis["midtone_response"] = "compressed" if m_response < 0.9 else "expanded" if m_response > 1.1 else "normal"
-        analysis["shadow_response"] = "compressed" if s_response < 0.9 else "expanded" if s_response > 1.1 else "normal"
+        analysis["highlight_response"] = (
+            "compressed" if h_response < 0.9 else "expanded" if h_response > 1.1 else "normal"
+        )
+        analysis["midtone_response"] = (
+            "compressed" if m_response < 0.9 else "expanded" if m_response > 1.1 else "normal"
+        )
+        analysis["shadow_response"] = (
+            "compressed" if s_response < 0.9 else "expanded" if s_response > 1.1 else "normal"
+        )
 
         # Smoothness
         second_diff = np.diff(diffs)
@@ -373,64 +387,76 @@ Please respond in a structured format that can be parsed."""
 
         # Check monotonicity
         if not analysis.get("is_monotonic", True):
-            issues.append(CurveIssue(
-                issue_type="non_monotonic",
-                severity="high",
-                location="overall",
-                description=f"Curve has {analysis.get('num_reversals', 0)} reversals",
-                suggested_fix="Apply monotonicity enforcement",
-            ))
+            issues.append(
+                CurveIssue(
+                    issue_type="non_monotonic",
+                    severity="high",
+                    location="overall",
+                    description=f"Curve has {analysis.get('num_reversals', 0)} reversals",
+                    suggested_fix="Apply monotonicity enforcement",
+                )
+            )
 
         # Check roughness
         roughness = analysis.get("roughness", 0)
         if roughness > 0.01:
-            issues.append(CurveIssue(
-                issue_type="rough",
-                severity="medium" if roughness < 0.03 else "high",
-                location="overall",
-                description=f"Curve is rough (std: {roughness:.4f})",
-                suggested_fix="Apply smoothing filter",
-            ))
+            issues.append(
+                CurveIssue(
+                    issue_type="rough",
+                    severity="medium" if roughness < 0.03 else "high",
+                    location="overall",
+                    description=f"Curve is rough (std: {roughness:.4f})",
+                    suggested_fix="Apply smoothing filter",
+                )
+            )
 
         # Goal-specific checks
         if goal == EnhancementGoal.LINEARIZATION:
             if analysis["max_linearity_error"] > 0.1:
-                issues.append(CurveIssue(
-                    issue_type="non_linear",
-                    severity="high" if analysis["max_linearity_error"] > 0.2 else "medium",
-                    location="overall",
-                    description=f"Max linearity error: {analysis['max_linearity_error']:.3f}",
-                    suggested_fix="Apply linearization correction",
-                ))
+                issues.append(
+                    CurveIssue(
+                        issue_type="non_linear",
+                        severity="high" if analysis["max_linearity_error"] > 0.2 else "medium",
+                        location="overall",
+                        description=f"Max linearity error: {analysis['max_linearity_error']:.3f}",
+                        suggested_fix="Apply linearization correction",
+                    )
+                )
 
         elif goal in (EnhancementGoal.HIGHLIGHT_DETAIL, EnhancementGoal.HIGH_KEY):
             if analysis["highlight_response"] == "compressed":
-                issues.append(CurveIssue(
-                    issue_type="compressed_highlights",
-                    severity="medium",
-                    location="highlights",
-                    description="Highlights are compressed",
-                    suggested_fix="Boost highlight values",
-                ))
+                issues.append(
+                    CurveIssue(
+                        issue_type="compressed_highlights",
+                        severity="medium",
+                        location="highlights",
+                        description="Highlights are compressed",
+                        suggested_fix="Boost highlight values",
+                    )
+                )
 
         elif goal in (EnhancementGoal.SHADOW_DETAIL, EnhancementGoal.LOW_KEY):
             if analysis["shadow_response"] == "compressed":
-                issues.append(CurveIssue(
-                    issue_type="compressed_shadows",
-                    severity="medium",
-                    location="shadows",
-                    description="Shadows are compressed",
-                    suggested_fix="Open up shadow values",
-                ))
+                issues.append(
+                    CurveIssue(
+                        issue_type="compressed_shadows",
+                        severity="medium",
+                        location="shadows",
+                        description="Shadows are compressed",
+                        suggested_fix="Open up shadow values",
+                    )
+                )
 
         elif goal == EnhancementGoal.SMOOTH_GRADATION and roughness > 0.005:
-            issues.append(CurveIssue(
-                issue_type="rough_gradation",
-                severity="medium",
-                location="overall",
-                description="Gradation is not smooth enough",
-                suggested_fix="Apply heavy smoothing",
-            ))
+            issues.append(
+                CurveIssue(
+                    issue_type="rough_gradation",
+                    severity="medium",
+                    location="overall",
+                    description="Gradation is not smooth enough",
+                    suggested_fix="Apply heavy smoothing",
+                )
+            )
 
         return issues
 
@@ -535,6 +561,7 @@ Please respond in a structured format that can be parsed."""
         for key in adjustments:
             # Look for patterns like "brightness: 0.1" or "brightness = -0.2"
             import re
+
             patterns = [
                 rf"{key}[:\s=]+([+-]?\d*\.?\d+)",
                 rf"{key}\s*\(([+-]?\d*\.?\d+)\)",

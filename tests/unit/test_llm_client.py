@@ -1,7 +1,8 @@
 """
 Unit tests for LLM client implementations and factory.
 """
-from unittest.mock import MagicMock, patch
+
+from unittest.mock import patch
 
 import pytest
 
@@ -28,6 +29,7 @@ def _make_settings(
 
 
 # ── AnthropicClient ─────────────────────────────────────────────
+
 
 class TestAnthropicClient:
     """Tests for the Anthropic LLM client."""
@@ -57,6 +59,7 @@ class TestAnthropicClient:
 
 # ── OpenAIClient ────────────────────────────────────────────────
 
+
 class TestOpenAIClient:
     """Tests for the OpenAI LLM client."""
 
@@ -83,6 +86,7 @@ class TestOpenAIClient:
 
 
 # ── Factory ─────────────────────────────────────────────────────
+
 
 class TestCreateClient:
     """Tests for the create_client factory function."""

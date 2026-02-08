@@ -29,16 +29,10 @@ class GlossaryTerm(BaseModel):
     term: str = Field(..., min_length=1, max_length=200, description="The term itself")
     definition: str = Field(..., min_length=1, description="Detailed definition")
     category: TermCategory = Field(..., description="Term category")
-    related_terms: list[str] = Field(
-        default_factory=list, description="Related terminology"
-    )
-    examples: list[str] = Field(
-        default_factory=list, description="Usage examples or notes"
-    )
+    related_terms: list[str] = Field(default_factory=list, description="Related terminology")
+    examples: list[str] = Field(default_factory=list, description="Usage examples or notes")
     synonyms: list[str] = Field(default_factory=list, description="Alternative names")
-    see_also: list[str] = Field(
-        default_factory=list, description="Cross-references to other terms"
-    )
+    see_also: list[str] = Field(default_factory=list, description="Cross-references to other terms")
 
 
 # Comprehensive glossary database

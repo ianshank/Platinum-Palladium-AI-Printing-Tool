@@ -1,4 +1,3 @@
-
 import numpy as np
 from PIL import Image
 
@@ -20,7 +19,7 @@ def test_grayscale_flat_validation():
         original_format=None,
         original_dpi=None,
         curve_applied=False,
-        inverted=False
+        inverted=False,
     )
 
     # Validate
@@ -30,9 +29,9 @@ def test_grayscale_flat_validation():
 
     # Check color behavior
     arr_color = np.zeros((100, 100, 3), dtype=np.uint8)
-    arr_color[:,:,0] = 128 # Channel 0 is flat
-    arr_color[:,:,1] = np.random.randint(0, 255, (100, 100)) # Channel 1 is valid
-    arr_color[:,:,2] = np.random.randint(0, 255, (100, 100)) # Channel 2 is valid
+    arr_color[:, :, 0] = 128  # Channel 0 is flat
+    arr_color[:, :, 1] = np.random.randint(0, 255, (100, 100))  # Channel 1 is valid
+    arr_color[:, :, 2] = np.random.randint(0, 255, (100, 100))  # Channel 2 is valid
 
     img_color = Image.fromarray(arr_color, mode="RGB")
     result_color = ProcessingResult(
@@ -42,11 +41,12 @@ def test_grayscale_flat_validation():
         original_format=None,
         original_dpi=None,
         curve_applied=False,
-        inverted=False
+        inverted=False,
     )
     stats_color = processor.validate_image_channels(result_color, require_uniform=False)
 
     print(f"Color Image with one flat channel Stats: {stats_color['all_channels_processed']}")
+
 
 if __name__ == "__main__":
     test_grayscale_flat_validation()

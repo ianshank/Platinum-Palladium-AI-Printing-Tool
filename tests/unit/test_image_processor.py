@@ -576,10 +576,7 @@ class TestPerChannelCurves:
     def test_apply_single_channel_curve(self, processor, rgb_image, red_boost_curve):
         """Apply curve to only red channel."""
         result = processor.load_image(rgb_image)
-        processed = processor.apply_curves_per_channel(
-            result,
-            curves={"R": red_boost_curve}
-        )
+        processed = processor.apply_curves_per_channel(result, curves={"R": red_boost_curve})
 
         proc_arr = np.array(processed.image)
         orig_arr = np.array(rgb_image)
@@ -596,8 +593,7 @@ class TestPerChannelCurves:
         """Apply different curves to R and G channels."""
         result = processor.load_image(rgb_image)
         processed = processor.apply_curves_per_channel(
-            result,
-            curves={"R": red_boost_curve, "G": green_reduce_curve}
+            result, curves={"R": red_boost_curve, "G": green_reduce_curve}
         )
 
         proc_arr = np.array(processed.image)
@@ -621,22 +617,16 @@ class TestPerChannelCurves:
 
         result = processor.load_image(rgb_image)
         processed = processor.apply_curves_per_channel(
-            result,
-            curves={"R": red_boost_curve, "G": green_reduce_curve, "B": blue_curve}
+            result, curves={"R": red_boost_curve, "G": green_reduce_curve, "B": blue_curve}
         )
 
         assert processed.curve_applied is True
         assert "Applied per-channel curves: R, G, B" in processed.processing_notes[-1]
 
-    def test_per_channel_preserves_alpha(
-        self, processor, rgba_image, red_boost_curve
-    ):
+    def test_per_channel_preserves_alpha(self, processor, rgba_image, red_boost_curve):
         """Per-channel curves should preserve alpha."""
         result = processor.load_image(rgba_image)
-        processed = processor.apply_curves_per_channel(
-            result,
-            curves={"R": red_boost_curve}
-        )
+        processed = processor.apply_curves_per_channel(result, curves={"R": red_boost_curve})
 
         proc_arr = np.array(processed.image)
         # Alpha should be preserved

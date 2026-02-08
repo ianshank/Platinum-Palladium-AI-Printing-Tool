@@ -364,8 +364,7 @@ class CurveAnalyzer:
         elif current_range > target_range * 1.2:
             suggestions["contrast"] = "decrease"
             suggestions["contrast_suggestion"] = (
-                "Consider reducing Na2 or switching to pure palladium "
-                "for lower contrast."
+                "Consider reducing Na2 or switching to pure palladium for lower contrast."
             )
         else:
             suggestions["contrast"] = "good"

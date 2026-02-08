@@ -198,14 +198,10 @@ class TestPrintRecipe:
     def test_recipe_validation_exposure_time(self):
         """Test exposure time validation (0.1-120 minutes)."""
         # Valid times
-        recipe1 = PrintRecipe(
-            name="Test", paper_type="Paper", exposure_time_minutes=0.1
-        )
+        recipe1 = PrintRecipe(name="Test", paper_type="Paper", exposure_time_minutes=0.1)
         assert recipe1.exposure_time_minutes == 0.1
 
-        recipe2 = PrintRecipe(
-            name="Test", paper_type="Paper", exposure_time_minutes=120.0
-        )
+        recipe2 = PrintRecipe(name="Test", paper_type="Paper", exposure_time_minutes=120.0)
         assert recipe2.exposure_time_minutes == 120.0
 
         # Invalid times
@@ -229,9 +225,7 @@ class TestPrintRecipe:
 
         # Invalid temperatures
         with pytest.raises(ValueError):
-            PrintRecipe(
-                name="Test", paper_type="Paper", developer_temperature_f=30.0
-            )
+            PrintRecipe(name="Test", paper_type="Paper", developer_temperature_f=30.0)
 
         with pytest.raises(ValueError):
             PrintRecipe(name="Test", paper_type="Paper", temperature_f=100.0)
@@ -443,9 +437,7 @@ class TestRecipeManager:
         recipe_manager.database.add_recipe(sample_recipe)
         original_modified = sample_recipe.modified_at
 
-        updated = recipe_manager.update_recipe(
-            sample_recipe.recipe_id, {"notes": "Test"}
-        )
+        updated = recipe_manager.update_recipe(sample_recipe.recipe_id, {"notes": "Test"})
 
         assert updated.modified_at > original_modified
 
@@ -503,9 +495,7 @@ class TestRecipeManager:
             chemistry_type=ChemistryType.PURE_PALLADIUM,
         )
 
-        recipes = recipe_manager.list_recipes(
-            {"chemistry_type": ChemistryType.PURE_PLATINUM.value}
-        )
+        recipes = recipe_manager.list_recipes({"chemistry_type": ChemistryType.PURE_PLATINUM.value})
 
         assert len(recipes) == 1
         assert recipes[0].chemistry_type == ChemistryType.PURE_PLATINUM
@@ -548,9 +538,7 @@ class TestRecipeManager:
         """Test exporting recipe to JSON format."""
         recipe_manager.database.add_recipe(sample_recipe)
 
-        exported = recipe_manager.export_recipe(
-            sample_recipe.recipe_id, RecipeFormat.JSON
-        )
+        exported = recipe_manager.export_recipe(sample_recipe.recipe_id, RecipeFormat.JSON)
 
         assert isinstance(exported, str)
         data = json.loads(exported)
@@ -561,9 +549,7 @@ class TestRecipeManager:
         """Test exporting recipe to YAML format."""
         recipe_manager.database.add_recipe(sample_recipe)
 
-        exported = recipe_manager.export_recipe(
-            sample_recipe.recipe_id, RecipeFormat.YAML
-        )
+        exported = recipe_manager.export_recipe(sample_recipe.recipe_id, RecipeFormat.YAML)
 
         assert isinstance(exported, str)
         data = yaml.safe_load(exported)
@@ -626,9 +612,7 @@ class TestRecipeManager:
         recipe_manager.database.add_recipe(sample_recipe)
 
         # Create two clones
-        clone1 = recipe_manager.clone_recipe(
-            sample_recipe.recipe_id, {"name": "Clone 1"}
-        )
+        clone1 = recipe_manager.clone_recipe(sample_recipe.recipe_id, {"name": "Clone 1"})
         clone2 = recipe_manager.clone_recipe(clone1.recipe_id, {"name": "Clone 2"})
 
         # Get history from the latest
@@ -728,9 +712,7 @@ class TestRecipeManager:
         )
 
         params = {"paper_type": "Completely Different"}
-        suggestions = recipe_manager.suggest_similar_recipes(
-            params, limit=10, min_similarity=0.9
-        )
+        suggestions = recipe_manager.suggest_similar_recipes(params, limit=10, min_similarity=0.9)
 
         # Very high threshold should yield few or no results
         assert all(s[1] >= 0.9 for s in suggestions)
@@ -769,9 +751,7 @@ class TestWorkflowAutomation:
         assert job.status == WorkflowStatus.PENDING
         assert all(isinstance(step, WorkflowStep) for step in job.steps)
 
-    def test_batch_job_step_parameters(
-        self, workflow_automation, sample_recipe, tmp_path
-    ):
+    def test_batch_job_step_parameters(self, workflow_automation, sample_recipe, tmp_path):
         """Test that batch job steps have correct parameters."""
         images = [tmp_path / "test.tif"]
         output_dir = tmp_path / "output"
@@ -898,9 +878,7 @@ class TestWorkflowAutomation:
         job = workflow_automation.schedule_workflow(steps, datetime.now())
 
         result_data = {"output": "success", "files_processed": 3}
-        success = workflow_automation.log_workflow_result(
-            job.job_id, result_data, success=True
-        )
+        success = workflow_automation.log_workflow_result(job.job_id, result_data, success=True)
 
         assert success is True
         assert job.status == WorkflowStatus.COMPLETED
@@ -914,9 +892,7 @@ class TestWorkflowAutomation:
         job = workflow_automation.schedule_workflow(steps, datetime.now())
 
         result_data = {"error": "Processing failed"}
-        success = workflow_automation.log_workflow_result(
-            job.job_id, result_data, success=False
-        )
+        success = workflow_automation.log_workflow_result(job.job_id, result_data, success=False)
 
         assert success is True
         assert job.status == WorkflowStatus.FAILED
@@ -1150,24 +1126,16 @@ class TestRecipeDatabase:
             )
         )
 
-        results = recipe_db.query_recipes(
-            {"chemistry_type": ChemistryType.PURE_PLATINUM.value}
-        )
+        results = recipe_db.query_recipes({"chemistry_type": ChemistryType.PURE_PLATINUM.value})
 
         assert len(results) == 1
         assert results[0].chemistry_type == ChemistryType.PURE_PLATINUM
 
     def test_query_recipes_by_min_quality_rating(self, recipe_db):
         """Test querying by minimum quality rating."""
-        recipe_db.add_recipe(
-            PrintRecipe(name="R1", paper_type="Test", quality_rating=3.0)
-        )
-        recipe_db.add_recipe(
-            PrintRecipe(name="R2", paper_type="Test", quality_rating=4.5)
-        )
-        recipe_db.add_recipe(
-            PrintRecipe(name="R3", paper_type="Test", quality_rating=5.0)
-        )
+        recipe_db.add_recipe(PrintRecipe(name="R1", paper_type="Test", quality_rating=3.0))
+        recipe_db.add_recipe(PrintRecipe(name="R2", paper_type="Test", quality_rating=4.5))
+        recipe_db.add_recipe(PrintRecipe(name="R3", paper_type="Test", quality_rating=5.0))
 
         results = recipe_db.query_recipes({"min_quality_rating": 4.0})
 
@@ -1176,15 +1144,9 @@ class TestRecipeDatabase:
 
     def test_query_recipes_by_tags(self, recipe_db):
         """Test querying by tags."""
-        recipe_db.add_recipe(
-            PrintRecipe(name="R1", paper_type="Test", tags=["platinum", "warm"])
-        )
-        recipe_db.add_recipe(
-            PrintRecipe(name="R2", paper_type="Test", tags=["palladium", "cool"])
-        )
-        recipe_db.add_recipe(
-            PrintRecipe(name="R3", paper_type="Test", tags=["platinum", "cool"])
-        )
+        recipe_db.add_recipe(PrintRecipe(name="R1", paper_type="Test", tags=["platinum", "warm"]))
+        recipe_db.add_recipe(PrintRecipe(name="R2", paper_type="Test", tags=["palladium", "cool"]))
+        recipe_db.add_recipe(PrintRecipe(name="R3", paper_type="Test", tags=["platinum", "cool"]))
 
         results = recipe_db.query_recipes({"tags": ["platinum"]})
 
@@ -1193,12 +1155,8 @@ class TestRecipeDatabase:
 
     def test_query_recipes_by_uv_source(self, recipe_db):
         """Test querying by UV source."""
-        recipe_db.add_recipe(
-            PrintRecipe(name="R1", paper_type="Test", uv_source="UV LED")
-        )
-        recipe_db.add_recipe(
-            PrintRecipe(name="R2", paper_type="Test", uv_source="Metal Halide")
-        )
+        recipe_db.add_recipe(PrintRecipe(name="R1", paper_type="Test", uv_source="UV LED"))
+        recipe_db.add_recipe(PrintRecipe(name="R2", paper_type="Test", uv_source="Metal Halide"))
 
         results = recipe_db.query_recipes({"uv_source": "UV LED"})
 
@@ -1215,14 +1173,10 @@ class TestRecipeDatabase:
             )
         )
         recipe_db.add_recipe(
-            PrintRecipe(
-                name="R2", paper_type="Test", developer=DeveloperType.AMMONIUM_CITRATE
-            )
+            PrintRecipe(name="R2", paper_type="Test", developer=DeveloperType.AMMONIUM_CITRATE)
         )
 
-        results = recipe_db.query_recipes(
-            {"developer": DeveloperType.POTASSIUM_OXALATE.value}
-        )
+        results = recipe_db.query_recipes({"developer": DeveloperType.POTASSIUM_OXALATE.value})
 
         assert len(results) == 1
         assert results[0].developer == DeveloperType.POTASSIUM_OXALATE
@@ -1425,14 +1379,10 @@ class TestIntegration:
         results = recipe_manager.search_recipes("Cloned")
         assert len(results) == 1
 
-    def test_batch_workflow_with_recipe(
-        self, workflow_automation, recipe_manager, tmp_path
-    ):
+    def test_batch_workflow_with_recipe(self, workflow_automation, recipe_manager, tmp_path):
         """Test creating and executing a batch workflow with a recipe."""
         # Create recipe
-        recipe = recipe_manager.create_recipe(
-            name="Batch Recipe", paper_type="Test Paper"
-        )
+        recipe = recipe_manager.create_recipe(name="Batch Recipe", paper_type="Test Paper")
 
         # Create batch job
         images = [tmp_path / f"image{i}.tif" for i in range(3)]
@@ -1454,9 +1404,7 @@ class TestIntegration:
 
         # Export to file
         json_file = tmp_path / "export.json"
-        exported = recipe_manager.export_recipe(
-            sample_recipe.recipe_id, RecipeFormat.JSON
-        )
+        exported = recipe_manager.export_recipe(sample_recipe.recipe_id, RecipeFormat.JSON)
         with open(json_file, "w") as f:
             f.write(exported)
 
@@ -1472,19 +1420,13 @@ class TestIntegration:
     def test_recipe_versioning_chain(self, recipe_manager):
         """Test creating a chain of recipe versions."""
         # Create original
-        v1 = recipe_manager.create_recipe(
-            name="Version 1", paper_type="Test", pt_pd_ratio=0.5
-        )
+        v1 = recipe_manager.create_recipe(name="Version 1", paper_type="Test", pt_pd_ratio=0.5)
 
         # Clone to v2
-        v2 = recipe_manager.clone_recipe(
-            v1.recipe_id, {"name": "Version 2", "pt_pd_ratio": 0.6}
-        )
+        v2 = recipe_manager.clone_recipe(v1.recipe_id, {"name": "Version 2", "pt_pd_ratio": 0.6})
 
         # Clone to v3
-        v3 = recipe_manager.clone_recipe(
-            v2.recipe_id, {"name": "Version 3", "pt_pd_ratio": 0.7}
-        )
+        v3 = recipe_manager.clone_recipe(v2.recipe_id, {"name": "Version 3", "pt_pd_ratio": 0.7})
 
         # Get complete history
         history = recipe_manager.get_recipe_history(v3.recipe_id)

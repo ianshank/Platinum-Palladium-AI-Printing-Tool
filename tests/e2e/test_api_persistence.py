@@ -1,4 +1,3 @@
-
 import json
 import os
 import shutil
@@ -21,6 +20,7 @@ def temp_storage_dir():
     yield Path(temp_dir)
     shutil.rmtree(temp_dir)
 
+
 @pytest.fixture
 def mock_env(temp_storage_dir):
     """Mock environment variables for local storage."""
@@ -37,6 +37,7 @@ def mock_env(temp_storage_dir):
         get_gcp_config.cache_clear()
         yield
         ptpd_calibration.config._settings = None
+
 
 def test_curve_persistence(mock_env, temp_storage_dir):
     """Test that curves are persisted to local storage."""
@@ -73,6 +74,7 @@ def test_curve_persistence(mock_env, temp_storage_dir):
     assert retrieved_data["curve_id"] == curve_id
     assert retrieved_data["name"] == "Test Curve"
 
+
 def test_scan_upload_persistence(mock_env, temp_storage_dir):
     """Test that uploaded scans are persisted."""
     client = TestClient(create_app())
@@ -85,11 +87,10 @@ def test_scan_upload_persistence(mock_env, temp_storage_dir):
     with patch("ptpd_calibration.detection.StepTabletReader.read") as mock_read:
         # Create a mock result
         from ptpd_calibration.core.models import ExtractionResult, StepTabletResult
+
         mock_result = StepTabletResult(
             extraction=ExtractionResult(
-                image_size=(100, 100),
-                tablet_bounds=(0, 0, 100, 100),
-                patches=[]
+                image_size=(100, 100), tablet_bounds=(0, 0, 100, 100), patches=[]
             )
         )
         mock_read.return_value = mock_result
@@ -102,6 +103,7 @@ def test_scan_upload_persistence(mock_env, temp_storage_dir):
     expected_path = temp_storage_dir / "scans" / "test_scan.jpg"
     assert expected_path.exists()
     assert expected_path.read_bytes() == scan_content
+
 
 def test_database_persistence(mock_env, temp_storage_dir):
     """Test that calibration records are persisted."""
@@ -117,7 +119,7 @@ def test_database_persistence(mock_env, temp_storage_dir):
         "developer": "potassium_oxalate",
         "chemistry_type": "platinum_palladium",
         "densities": [0.1, 0.5, 1.2],
-        "notes": "Test record"
+        "notes": "Test record",
     }
 
     response = client.post("/api/calibrations", json=record_data)

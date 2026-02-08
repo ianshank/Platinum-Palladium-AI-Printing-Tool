@@ -126,25 +126,15 @@ class AutoLinearizer:
 
         # Compute linearization based on method
         if method == LinearizationMethod.DIRECT_INVERSION:
-            curve, notes = self._direct_inversion(
-                input_positions, densities, target_densities
-            )
+            curve, notes = self._direct_inversion(input_positions, densities, target_densities)
         elif method == LinearizationMethod.SPLINE_FIT:
-            curve, notes = self._spline_fit(
-                input_positions, densities, target_densities
-            )
+            curve, notes = self._spline_fit(input_positions, densities, target_densities)
         elif method == LinearizationMethod.POLYNOMIAL_FIT:
-            curve, notes = self._polynomial_fit(
-                input_positions, densities, target_densities
-            )
+            curve, notes = self._polynomial_fit(input_positions, densities, target_densities)
         elif method == LinearizationMethod.ITERATIVE:
-            curve, notes = self._iterative_linearize(
-                input_positions, densities, target_densities
-            )
+            curve, notes = self._iterative_linearize(input_positions, densities, target_densities)
         else:  # HYBRID
-            curve, notes = self._hybrid_linearize(
-                input_positions, densities, target_densities
-            )
+            curve, notes = self._hybrid_linearize(input_positions, densities, target_densities)
 
         # Compute error metrics
         residual_error, max_deviation = self._compute_error(
@@ -197,8 +187,7 @@ class AutoLinearizer:
         existing_inputs = np.array(existing_curve.input_values)
         existing_outputs = np.array(existing_curve.output_values)
         current_interp = interpolate.interp1d(
-            existing_inputs, existing_outputs,
-            kind="cubic", fill_value="extrapolate"
+            existing_inputs, existing_outputs, kind="cubic", fill_value="extrapolate"
         )
 
         # Apply correction
@@ -212,13 +201,12 @@ class AutoLinearizer:
         # Create refined curve
         output_x = np.linspace(0, 1, self.config.output_points)
         refined_interp = interpolate.interp1d(
-            input_positions, corrected_outputs,
-            kind="cubic", fill_value="extrapolate"
+            input_positions, corrected_outputs, kind="cubic", fill_value="extrapolate"
         )
         output_y = np.clip(refined_interp(output_x), 0, 1)
 
         # Compute error metrics
-        residual_error = float(np.sqrt(np.mean(error ** 2)))
+        residual_error = float(np.sqrt(np.mean(error**2)))
         max_deviation = float(np.max(np.abs(error)))
 
         notes = [
@@ -273,11 +261,9 @@ class AutoLinearizer:
         elif target == TargetResponse.PERCEPTUAL:
             # Use L* (lightness) curve for perceptual uniformity
             # Simplified approximation
-            return np.where(
-                x <= 0.008856,
-                x * 903.3 / 100,
-                1.16 * np.power(x, 1 / 3) - 0.16
-            ) / 1.0  # Normalize
+            return (
+                np.where(x <= 0.008856, x * 903.3 / 100, 1.16 * np.power(x, 1 / 3) - 0.16) / 1.0
+            )  # Normalize
 
         else:  # CUSTOM or default
             return x
@@ -306,8 +292,7 @@ class AutoLinearizer:
         # Create inverse mapping
         # For each target value, find what input gives that measured value
         inverse_interp = interpolate.interp1d(
-            measured_norm, input_positions,
-            kind="linear", fill_value="extrapolate"
+            measured_norm, input_positions, kind="linear", fill_value="extrapolate"
         )
 
         # Generate output curve
@@ -348,25 +333,23 @@ class AutoLinearizer:
             # Need at least 4 points for cubic spline
             if len(measured_norm) >= 4:
                 spline = interpolate.UnivariateSpline(
-                    measured_norm, input_positions,
-                    s=smoothing, k=3
+                    measured_norm, input_positions, s=smoothing, k=3
                 )
                 notes.append(f"Smoothing factor: {smoothing:.2f}")
             else:
                 # Use linear for few points
                 spline = interpolate.interp1d(
-                    measured_norm, input_positions,
-                    kind="linear", fill_value="extrapolate"
+                    measured_norm, input_positions, kind="linear", fill_value="extrapolate"
                 )
                 notes.append("Linear interpolation (few data points)")
         except Exception as e:
             # Fall back to linear interpolation
             # Log the exception for debugging
             import logging
+
             logging.warning(f"Spline fit failed, falling back to linear: {e}")
             spline = interpolate.interp1d(
-                measured_norm, input_positions,
-                kind="linear", fill_value="extrapolate"
+                measured_norm, input_positions, kind="linear", fill_value="extrapolate"
             )
             notes.append("Fallback to linear interpolation")
 
@@ -452,7 +435,9 @@ class AutoLinearizer:
 
             # Adjust curve based on error
             adjustment = 0.5 / (i + 1)  # Decreasing adjustment
-            current_y = np.clip(current_y + np.interp(curve[0], input_positions, error) * adjustment, 0, 1)
+            current_y = np.clip(
+                current_y + np.interp(curve[0], input_positions, error) * adjustment, 0, 1
+            )
 
             # Enforce monotonicity
             current_y = self._enforce_monotonicity(current_y)
@@ -498,7 +483,9 @@ class AutoLinearizer:
             error = target - measured_norm
 
             adjustment = 0.3 / (i + 1)
-            current_y = np.clip(current_y + np.interp(curve[0], input_positions, error) * adjustment, 0, 1)
+            current_y = np.clip(
+                current_y + np.interp(curve[0], input_positions, error) * adjustment, 0, 1
+            )
             current_y = self._enforce_monotonicity(current_y)
 
         if self.config.preserve_endpoints:
@@ -543,10 +530,7 @@ class AutoLinearizer:
             Tuple of (RMS error, max deviation)
         """
         # Interpolate curve at input positions
-        interp = interpolate.interp1d(
-            curve[0], curve[1],
-            kind="linear", fill_value="extrapolate"
-        )
+        interp = interpolate.interp1d(curve[0], curve[1], kind="linear", fill_value="extrapolate")
 
         # Normalize measured
         measured_norm = (measured - measured.min()) / (measured.max() - measured.min() + 1e-10)
@@ -557,7 +541,7 @@ class AutoLinearizer:
         # Compute error vs target
         error = target - predicted
 
-        rms_error = float(np.sqrt(np.mean(error ** 2)))
+        rms_error = float(np.sqrt(np.mean(error**2)))
         max_dev = float(np.max(np.abs(error)))
 
         return rms_error, max_dev
@@ -570,7 +554,10 @@ class AutoLinearizer:
             List of (value, description) tuples
         """
         return [
-            (LinearizationMethod.DIRECT_INVERSION.value, "Direct Inversion - Simple inverse mapping"),
+            (
+                LinearizationMethod.DIRECT_INVERSION.value,
+                "Direct Inversion - Simple inverse mapping",
+            ),
             (LinearizationMethod.SPLINE_FIT.value, "Spline Fit - Smooth cubic spline"),
             (LinearizationMethod.POLYNOMIAL_FIT.value, "Polynomial - Polynomial regression"),
             (LinearizationMethod.ITERATIVE.value, "Iterative - Refinement iterations"),

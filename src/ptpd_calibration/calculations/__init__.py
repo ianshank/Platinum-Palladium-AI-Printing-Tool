@@ -64,7 +64,6 @@ __all__ = [
     "CostCalculator",
     "DilutionCalculator",
     "EnvironmentalCompensation",
-
     # Result Models
     "ExposureResult",
     "CoatingResult",

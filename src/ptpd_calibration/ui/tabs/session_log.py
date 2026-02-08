@@ -44,7 +44,7 @@ def build_session_log_tab(session_logger: SessionLogger) -> None:
             for sess_summary in sessions:
                 # We might need to load full session to get records
                 try:
-                    sess = session_logger.load_session(Path(sess_summary['filepath']))
+                    sess = session_logger.load_session(Path(sess_summary["filepath"]))
                     if not sess.records:
                         continue
 
@@ -58,10 +58,13 @@ def build_session_log_tab(session_logger: SessionLogger) -> None:
                     """
 
                     for rec in sess.records:
-                        color = "#4ade80" # Green
-                        if rec.result == PrintResult.ACCEPTABLE: color = "#facc15" # Yellow
-                        elif rec.result == PrintResult.POOR: color = "#f87171" # Red
-                        elif rec.result == PrintResult.FAILED: color = "#ef4444" # Redder
+                        color = "#4ade80"  # Green
+                        if rec.result == PrintResult.ACCEPTABLE:
+                            color = "#facc15"  # Yellow
+                        elif rec.result == PrintResult.POOR:
+                            color = "#f87171"  # Red
+                        elif rec.result == PrintResult.FAILED:
+                            color = "#ef4444"  # Redder
 
                         html += f"""
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 0.9em;">
@@ -93,4 +96,3 @@ def build_session_log_tab(session_logger: SessionLogger) -> None:
 
         # Initial load
         # gr.Timer(1).tick(refresh_data, outputs=[timeline_view, best_practices]) # Timer not always reliable for init, check main app
-

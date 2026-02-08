@@ -24,7 +24,10 @@ class ChannelCurve:
     @property
     def as_normalized(self) -> tuple[list[float], list[float]]:
         """Get curve as normalized 0-1 input/output pairs."""
-        inputs = [i / (len(self.values) - 1) if len(self.values) > 1 else 0.0 for i in range(len(self.values))]
+        inputs = [
+            i / (len(self.values) - 1) if len(self.values) > 1 else 0.0
+            for i in range(len(self.values))
+        ]
         outputs = [v / 255.0 for v in self.values]
         return inputs, outputs
 
@@ -272,19 +275,18 @@ class QuadFileParser:
                         current_channel = channel_name
 
                         if current_channel not in self._profile.channels:
-                             self._profile.channels[current_channel] = ChannelCurve(
-                                name=current_channel,
-                                values=[0] * 256
+                            self._profile.channels[current_channel] = ChannelCurve(
+                                name=current_channel, values=[0] * 256
                             )
                         value_index = 0
                 elif line.startswith("## QuadToneRIP"):
-                    pass # Header
+                    pass  # Header
                 else:
                     self._profile.comments.append(line[1:].strip())
                 continue
 
             # Parse number
-            if current_channel and (line[0].isdigit() or line.startswith('-')):
+            if current_channel and (line[0].isdigit() or line.startswith("-")):
                 try:
                     val = int(line)
                     # QTR simple format uses 16-bit values (0-65535)
@@ -292,7 +294,9 @@ class QuadFileParser:
                     norm_val = int((val / 65535.0) * 255.0)
 
                     if value_index < 256:
-                        self._profile.channels[current_channel].values[value_index] = max(0, min(255, norm_val))
+                        self._profile.channels[current_channel].values[value_index] = max(
+                            0, min(255, norm_val)
+                        )
                         value_index += 1
                 except ValueError:
                     pass

@@ -186,7 +186,7 @@ class TestXRiteIntegration:
             device_id="12345",
             mode=MeasurementMode.REFLECTION,
             aperture=ApertureSize.MEDIUM,
-            simulate=True
+            simulate=True,
         )
 
         assert device.device_id == "12345"
@@ -323,9 +323,7 @@ class TestXRiteIntegration:
 
         num_patches = 5
         measurements = device.read_strip(
-            num_patches=num_patches,
-            patch_prefix="strip",
-            delay_seconds=0.1
+            num_patches=num_patches, patch_prefix="strip", delay_seconds=0.1
         )
 
         assert len(measurements) == num_patches
@@ -345,9 +343,7 @@ class TestXRiteIntegration:
             output_path = Path(tmpdir) / "measurements.txt"
 
             result_path = device.export_measurements(
-                measurements=measurements,
-                output_path=output_path,
-                format=ExportFormat.CGATS
+                measurements=measurements, output_path=output_path, format=ExportFormat.CGATS
             )
 
             assert result_path.exists()
@@ -373,14 +369,12 @@ class TestXRiteIntegration:
             output_path = Path(tmpdir) / "measurements.csv"
 
             result_path = device.export_measurements(
-                measurements=measurements,
-                output_path=output_path,
-                format=ExportFormat.CSV
+                measurements=measurements, output_path=output_path, format=ExportFormat.CSV
             )
 
             assert result_path.exists()
             content = result_path.read_text()
-            lines = content.strip().split('\n')
+            lines = content.strip().split("\n")
 
             # Check header
             assert "patch_id" in lines[0]
@@ -402,9 +396,7 @@ class TestXRiteIntegration:
             output_path = Path(tmpdir) / "measurements.json"
 
             result_path = device.export_measurements(
-                measurements=measurements,
-                output_path=output_path,
-                format=ExportFormat.JSON
+                measurements=measurements, output_path=output_path, format=ExportFormat.JSON
             )
 
             assert result_path.exists()
@@ -437,7 +429,7 @@ class TestCurrentConditions:
             wind_speed_ms=2.5,
             condition=WeatherCondition.CLEAR,
             description="clear sky",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         assert conditions.temperature_c == 20.0
@@ -452,7 +444,7 @@ class TestCurrentConditions:
             wind_speed_ms=2.5,
             condition=WeatherCondition.CLEAR,
             description="clear sky",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         # 20°C = 68°F
@@ -467,7 +459,7 @@ class TestCurrentConditions:
             wind_speed_ms=2.5,
             condition=WeatherCondition.CLEAR,
             description="clear sky",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         assert conditions.is_suitable_for_coating is True
@@ -481,7 +473,7 @@ class TestCurrentConditions:
             wind_speed_ms=2.5,
             condition=WeatherCondition.CLEAR,
             description="clear sky",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         assert conditions.is_suitable_for_coating is False
@@ -495,7 +487,7 @@ class TestCurrentConditions:
             wind_speed_ms=2.5,
             condition=WeatherCondition.CLEAR,
             description="clear sky",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         assert conditions.is_suitable_for_coating is False
@@ -515,12 +507,11 @@ class TestWeatherProvider:
             wind_speed_ms=2.5,
             condition=WeatherCondition.CLEAR,
             description="clear sky",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         estimate = provider.calculate_drying_time(
-            conditions=conditions,
-            paper_type=PaperType.COLD_PRESS
+            conditions=conditions, paper_type=PaperType.COLD_PRESS
         )
 
         assert isinstance(estimate, DryingTimeEstimate)
@@ -540,12 +531,11 @@ class TestWeatherProvider:
             wind_speed_ms=2.5,
             condition=WeatherCondition.CLOUDY,
             description="cloudy",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         estimate = provider.calculate_drying_time(
-            conditions=conditions,
-            paper_type=PaperType.COLD_PRESS
+            conditions=conditions, paper_type=PaperType.COLD_PRESS
         )
 
         # High humidity should increase drying time
@@ -563,12 +553,11 @@ class TestWeatherProvider:
             wind_speed_ms=2.5,
             condition=WeatherCondition.CLEAR,
             description="clear",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         estimate = provider.calculate_drying_time(
-            conditions=conditions,
-            paper_type=PaperType.COLD_PRESS
+            conditions=conditions, paper_type=PaperType.COLD_PRESS
         )
 
         # Low temperature should increase drying time
@@ -586,7 +575,7 @@ class TestWeatherProvider:
             wind_speed_ms=2.5,
             condition=WeatherCondition.CLEAR,
             description="clear",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         hot_press = provider.calculate_drying_time(conditions, PaperType.HOT_PRESS)
@@ -616,24 +605,13 @@ class TestOpenWeatherMapProvider:
     async def test_get_current_conditions_with_mock_api(self):
         """Test current conditions with mocked API response."""
         mock_response = {
-            "main": {
-                "temp": 18.5,
-                "humidity": 65,
-                "pressure": 1015
-            },
-            "weather": [
-                {
-                    "main": "Clouds",
-                    "description": "scattered clouds"
-                }
-            ],
-            "wind": {
-                "speed": 3.2
-            },
-            "dt": int(datetime.now().timestamp())
+            "main": {"temp": 18.5, "humidity": 65, "pressure": 1015},
+            "weather": [{"main": "Clouds", "description": "scattered clouds"}],
+            "wind": {"speed": 3.2},
+            "dt": int(datetime.now().timestamp()),
         }
 
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             # Setup mock
             mock_response_obj = Mock()
             mock_response_obj.json.return_value = mock_response
@@ -654,7 +632,7 @@ class TestOpenWeatherMapProvider:
     @pytest.mark.asyncio
     async def test_get_current_conditions_api_error(self):
         """Test current conditions falls back to simulation on API error."""
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             # Setup mock to raise error
             mock_get = AsyncMock()
             mock_get.side_effect = httpx.HTTPError("Network error")
@@ -685,24 +663,16 @@ class TestOpenWeatherMapProvider:
         mock_response = {
             "list": [
                 {
-                    "dt": int((now + timedelta(hours=i*3)).timestamp()),
-                    "main": {
-                        "temp": 20.0 + i,
-                        "humidity": 50 + i
-                    },
-                    "weather": [
-                        {
-                            "main": "Clear",
-                            "description": "clear sky"
-                        }
-                    ],
-                    "pop": 0.1 * i
+                    "dt": int((now + timedelta(hours=i * 3)).timestamp()),
+                    "main": {"temp": 20.0 + i, "humidity": 50 + i},
+                    "weather": [{"main": "Clear", "description": "clear sky"}],
+                    "pop": 0.1 * i,
                 }
                 for i in range(8)  # 24 hours in 3-hour increments
             ]
         }
 
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_response_obj = Mock()
             mock_response_obj.json.return_value = mock_response
             mock_response_obj.raise_for_status = Mock()
@@ -723,8 +693,7 @@ class TestOpenWeatherMapProvider:
         provider = OpenWeatherMapProvider(api_key=None)
 
         recommendation = await provider.recommend_coating_time(
-            location="Portland, OR",
-            forecast_hours=24
+            location="Portland, OR", forecast_hours=24
         )
 
         assert isinstance(recommendation, CoatingRecommendation)
@@ -738,17 +707,13 @@ class TestOpenWeatherMapProvider:
         """Test that results are cached."""
         # Use mock API to test caching properly
         mock_response = {
-            "main": {
-                "temp": 20.0,
-                "humidity": 50,
-                "pressure": 1013
-            },
+            "main": {"temp": 20.0, "humidity": 50, "pressure": 1013},
             "weather": [{"main": "Clear", "description": "clear sky"}],
             "wind": {"speed": 2.5},
-            "dt": int(datetime.now().timestamp())
+            "dt": int(datetime.now().timestamp()),
         }
 
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_response_obj = Mock()
             mock_response_obj.json.return_value = mock_response
             mock_response_obj.raise_for_status = Mock()
@@ -792,11 +757,7 @@ class TestInkLevel:
         ink = InkLevel(color="cyan", level_percent=50.0, status="low")
         d = ink.to_dict()
 
-        assert d == {
-            "color": "cyan",
-            "level_percent": 50.0,
-            "status": "low"
-        }
+        assert d == {"color": "cyan", "level_percent": 50.0, "status": "low"}
 
 
 class TestPrintSettings:
@@ -821,7 +782,7 @@ class TestPrintSettings:
             media_type=MediaType.PICTORICO,
             resolution_dpi=5760,
             mirror=True,
-            invert=True
+            invert=True,
         )
 
         assert settings.quality == PrintQuality.MAX
@@ -836,11 +797,7 @@ class TestEpsonDriver:
 
     def test_initialization(self):
         """Test Epson driver initialization."""
-        driver = EpsonDriver(
-            printer_name="Epson Stylus Photo R2400",
-            model="R2400",
-            simulate=True
-        )
+        driver = EpsonDriver(printer_name="Epson Stylus Photo R2400", model="R2400", simulate=True)
 
         assert driver.printer_name == "Epson Stylus Photo R2400"
         assert driver.model == "R2400"
@@ -871,7 +828,7 @@ class TestEpsonDriver:
         """Test setting profile fails when not connected."""
         driver = EpsonDriver(simulate=True)
 
-        with tempfile.NamedTemporaryFile(suffix='.icc') as f:
+        with tempfile.NamedTemporaryFile(suffix=".icc") as f:
             result = driver.set_profile(Path(f.name))
 
         assert result is False
@@ -881,7 +838,7 @@ class TestEpsonDriver:
         driver = EpsonDriver(simulate=True)
         driver.connect()
 
-        with tempfile.NamedTemporaryFile(suffix='.icc', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".icc", delete=False) as f:
             profile_path = Path(f.name)
 
         try:
@@ -905,7 +862,7 @@ class TestEpsonDriver:
         """Test printing fails when not connected."""
         driver = EpsonDriver(simulate=True)
 
-        image = Image.new('L', (100, 100), color=128)
+        image = Image.new("L", (100, 100), color=128)
 
         with pytest.raises(ConnectionError, match="not connected"):
             driver.print_negative(image)
@@ -915,12 +872,9 @@ class TestEpsonDriver:
         driver = EpsonDriver(simulate=True)
         driver.connect()
 
-        image = Image.new('L', (100, 100), color=128)
+        image = Image.new("L", (100, 100), color=128)
         settings = PrintSettings(
-            quality=PrintQuality.PHOTO,
-            resolution_dpi=2880,
-            mirror=True,
-            invert=True
+            quality=PrintQuality.PHOTO, resolution_dpi=2880, mirror=True, invert=True
         )
 
         job = driver.print_negative(image, settings)
@@ -936,7 +890,7 @@ class TestEpsonDriver:
         driver = EpsonDriver(simulate=True)
         driver.connect()
 
-        image = Image.new('L', (100, 100), color=128)
+        image = Image.new("L", (100, 100), color=128)
 
         job = driver.print_negative(image)
 
@@ -1001,11 +955,7 @@ class TestCanonDriver:
 
     def test_initialization(self):
         """Test Canon driver initialization."""
-        driver = CanonDriver(
-            printer_name="Canon PRO-1000",
-            model="PRO-1000",
-            simulate=True
-        )
+        driver = CanonDriver(printer_name="Canon PRO-1000", model="PRO-1000", simulate=True)
 
         assert driver.printer_name == "Canon PRO-1000"
         assert driver.model == "PRO-1000"
@@ -1026,7 +976,7 @@ class TestCanonDriver:
         driver = CanonDriver(simulate=True)
         driver.connect()
 
-        image = Image.new('L', (100, 100), color=128)
+        image = Image.new("L", (100, 100), color=128)
 
         job = driver.print_negative(image)
 
@@ -1094,12 +1044,12 @@ class TestICCProfileManager:
         # Create a simple sRGB profile
         profile = ImageCms.createProfile("sRGB")
 
-        with tempfile.NamedTemporaryFile(suffix='.icc', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".icc", delete=False) as f:
             profile_path = Path(f.name)
             # Save profile using ImageCmsProfile wrapper
             profile_wrapper = ImageCms.ImageCmsProfile(profile)
             profile_bytes = profile_wrapper.tobytes()
-            with open(profile_path, 'wb') as pf:
+            with open(profile_path, "wb") as pf:
                 pf.write(profile_bytes)
 
         try:
@@ -1118,11 +1068,11 @@ class TestICCProfileManager:
 
         profile = ImageCms.createProfile("sRGB")
 
-        with tempfile.NamedTemporaryFile(suffix='.icc', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".icc", delete=False) as f:
             profile_path = Path(f.name)
             profile_wrapper = ImageCms.ImageCmsProfile(profile)
             profile_bytes = profile_wrapper.tobytes()
-            with open(profile_path, 'wb') as pf:
+            with open(profile_path, "wb") as pf:
                 pf.write(profile_bytes)
 
         try:
@@ -1140,16 +1090,14 @@ class TestICCProfileManager:
         manager = ICCProfileManager()
 
         # Create test image
-        image = Image.new('RGB', (100, 100), color=(128, 128, 128))
+        image = Image.new("RGB", (100, 100), color=(128, 128, 128))
 
         # Create profiles
         ImageCms.createProfile("sRGB")
         target_profile = ImageCms.createProfile("sRGB")
 
         result = manager.apply_profile(
-            image=image,
-            profile=target_profile,
-            rendering_intent=RenderingIntent.PERCEPTUAL
+            image=image, profile=target_profile, rendering_intent=RenderingIntent.PERCEPTUAL
         )
 
         assert isinstance(result, Image.Image)
@@ -1160,7 +1108,7 @@ class TestICCProfileManager:
         manager = ICCProfileManager()
 
         # Create RGB image
-        image = Image.new('RGB', (100, 100), color=(128, 128, 128))
+        image = Image.new("RGB", (100, 100), color=(128, 128, 128))
 
         # Create profiles
         source_profile = ImageCms.createProfile("sRGB")
@@ -1171,7 +1119,7 @@ class TestICCProfileManager:
                 image=image,
                 source_profile=source_profile,
                 target_profile=target_profile,
-                rendering_intent=RenderingIntent.RELATIVE_COLORIMETRIC
+                rendering_intent=RenderingIntent.RELATIVE_COLORIMETRIC,
             )
 
             assert isinstance(result, Image.Image)
@@ -1193,7 +1141,7 @@ class TestICCProfileManager:
         """Test validating invalid ICC file."""
         manager = ICCProfileManager()
 
-        with tempfile.NamedTemporaryFile(suffix='.icc', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".icc", delete=False) as f:
             # Write invalid content
             f.write(b"not an ICC profile")
             profile_path = Path(f.name)
@@ -1213,11 +1161,11 @@ class TestICCProfileManager:
         # Create valid profile
         profile = ImageCms.createProfile("sRGB")
 
-        with tempfile.NamedTemporaryFile(suffix='.icc', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".icc", delete=False) as f:
             profile_path = Path(f.name)
             profile_wrapper = ImageCms.ImageCmsProfile(profile)
             profile_bytes = profile_wrapper.tobytes()
-            with open(profile_path, 'wb') as pf:
+            with open(profile_path, "wb") as pf:
                 pf.write(profile_bytes)
 
         try:
@@ -1239,7 +1187,7 @@ class TestICCProfileManager:
         """Test embedding profile in image."""
         manager = ICCProfileManager()
 
-        image = Image.new('RGB', (100, 100), color=(128, 128, 128))
+        image = Image.new("RGB", (100, 100), color=(128, 128, 128))
         profile = ImageCms.createProfile("sRGB")
 
         result = manager.embed_profile(image, profile)
@@ -1257,8 +1205,8 @@ class TestICCProfileManager:
         profile_wrapper = ImageCms.ImageCmsProfile(profile)
         profile_bytes = profile_wrapper.tobytes()
 
-        image = Image.new('RGB', (100, 100), color=(128, 128, 128))
-        image.info['icc_profile'] = profile_bytes
+        image = Image.new("RGB", (100, 100), color=(128, 128, 128))
+        image.info["icc_profile"] = profile_bytes
 
         extracted = manager.extract_profile(image)
 
@@ -1268,7 +1216,7 @@ class TestICCProfileManager:
         """Test extracting profile from image without profile."""
         manager = ICCProfileManager()
 
-        image = Image.new('RGB', (100, 100), color=(128, 128, 128))
+        image = Image.new("RGB", (100, 100), color=(128, 128, 128))
 
         extracted = manager.extract_profile(image)
 
@@ -1314,16 +1262,14 @@ class TestICCProfileManager:
         measurements = [
             (np.array([255, 255, 255]), np.array([95, 0, 0])),  # White
             (np.array([128, 128, 128]), np.array([50, 0, 0])),  # Gray
-            (np.array([0, 0, 0]), np.array([5, 0, 0])),         # Black
+            (np.array([0, 0, 0]), np.array([5, 0, 0])),  # Black
         ]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             profile_path = Path(tmpdir) / "custom_paper.icc"
 
             result = manager.create_paper_profile(
-                measurements=measurements,
-                profile_path=profile_path,
-                paper_name="Test Paper"
+                measurements=measurements, profile_path=profile_path, paper_name="Test Paper"
             )
 
             assert result.exists()
@@ -1351,7 +1297,7 @@ class TestICCProfileManager:
             rgb_profile = ImageCms.createProfile("sRGB")
             profile_wrapper = ImageCms.ImageCmsProfile(rgb_profile)
             profile_bytes = profile_wrapper.tobytes()
-            with open(tmpdir / "rgb.icc", 'wb') as f:
+            with open(tmpdir / "rgb.icc", "wb") as f:
                 f.write(profile_bytes)
 
             manager = ICCProfileManager(custom_profile_dir=tmpdir)
@@ -1381,7 +1327,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_weather_api_network_error(self):
         """Test weather API handles network errors."""
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_get = AsyncMock()
             mock_get.side_effect = httpx.NetworkError("Connection failed")
             mock_client.return_value.__aenter__.return_value.get = mock_get
@@ -1406,7 +1352,7 @@ class TestErrorHandling:
         """Test ICC manager handles invalid files."""
         manager = ICCProfileManager()
 
-        with tempfile.NamedTemporaryFile(suffix='.icc', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".icc", delete=False) as f:
             f.write(b"invalid data")
             invalid_path = Path(f.name)
 
@@ -1484,7 +1430,7 @@ class TestIntegrationWorkflows:
         assert isinstance(nozzle_result, NozzleCheckResult)
 
         # Print image
-        image = Image.new('L', (100, 100), color=128)
+        image = Image.new("L", (100, 100), color=128)
         job = driver.print_negative(image)
         assert job.status == "completed"
 
@@ -1497,7 +1443,7 @@ class TestIntegrationWorkflows:
         manager = ICCProfileManager()
 
         # Create test image
-        image = Image.new('RGB', (100, 100), color=(128, 128, 128))
+        image = Image.new("RGB", (100, 100), color=(128, 128, 128))
 
         # Get default profile
         profile = manager.get_default_rgb_profile()

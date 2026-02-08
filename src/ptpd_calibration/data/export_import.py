@@ -179,9 +179,7 @@ class DataExporter:
                         row[key] = value
                 writer.writerow(row)
 
-    def export_prints(
-        self, filters: dict[str, Any] | None, format: str, path: Path
-    ) -> int:
+    def export_prints(self, filters: dict[str, Any] | None, format: str, path: Path) -> int:
         """
         Export print records from database.
 
@@ -223,9 +221,7 @@ class DataExporter:
 
         return len(data)
 
-    def export_recipes(
-        self, recipe_ids: list[UUID], format: str, path: Path
-    ) -> int:
+    def export_recipes(self, recipe_ids: list[UUID], format: str, path: Path) -> int:
         """
         Export specific recipes.
 
@@ -553,8 +549,7 @@ class DataImporter:
                 # Check if it's a list (all children are 'item')
                 if all(subchild.tag == "item" for subchild in child):
                     result[child.tag] = [
-                        self._xml_to_dict(item) if len(item) > 0 else item.text
-                        for item in child
+                        self._xml_to_dict(item) if len(item) > 0 else item.text for item in child
                     ]
                 else:
                     result[child.tag] = self._xml_to_dict(child)

@@ -4,7 +4,6 @@ This conftest supports both functional user journey tests and Playwright browser
 Playwright is optional - if not installed, browser tests will be skipped.
 """
 
-
 import pytest
 
 # Try to import playwright, but don't fail if not available
@@ -64,7 +63,9 @@ def pytest_collection_modifyitems(config, items):
             if "browser" in item.keywords:
                 item.add_marker(skip_browser)
 
+
 from pathlib import Path
+
 
 @pytest.fixture
 def real_quad_path():

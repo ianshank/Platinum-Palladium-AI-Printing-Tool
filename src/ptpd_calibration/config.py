@@ -159,22 +159,16 @@ class LLMSettings(BaseSettings):
     # Provider configuration
     provider: LLMProvider = Field(default=LLMProvider.ANTHROPIC)
     api_key: str | None = Field(
-        default=None,
-        description="Primary API key (used if provider-specific key not set)"
+        default=None, description="Primary API key (used if provider-specific key not set)"
     )
     anthropic_api_key: str | None = Field(
-        default=None,
-        description="Anthropic API key for Claude models"
+        default=None, description="Anthropic API key for Claude models"
     )
-    openai_api_key: str | None = Field(
-        default=None,
-        description="OpenAI API key for GPT models"
-    )
+    openai_api_key: str | None = Field(default=None, description="OpenAI API key for GPT models")
 
     # Runtime API key (can be set via UI, takes precedence)
     runtime_api_key: str | None = Field(
-        default=None,
-        description="Runtime API key set via UI (takes precedence over env vars)"
+        default=None, description="Runtime API key set via UI (takes precedence over env vars)"
     )
 
     # Model selection
@@ -297,7 +291,7 @@ class ChemistrySettings(BaseSettings):
         default=0.465,
         ge=0.2,
         le=1.0,
-        description="Base drops per square inch for average absorbency paper"
+        description="Base drops per square inch for average absorbency paper",
     )
 
     # Drops per ml (standard plastic dropper)
@@ -308,7 +302,7 @@ class ChemistrySettings(BaseSettings):
         default=0.0,
         ge=0.0,
         le=1.0,
-        description="Default platinum ratio (0.0 = all palladium, 1.0 = all platinum)"
+        description="Default platinum ratio (0.0 = all palladium, 1.0 = all platinum)",
     )
 
     # Contrast agent (Na2) default drops per 24 drops of metal
@@ -316,31 +310,22 @@ class ChemistrySettings(BaseSettings):
         default=0.25,
         ge=0.0,
         le=0.5,
-        description="Na2 drops as ratio of metal drops (e.g., 6 drops Na2 per 24 drops metal = 0.25)"
+        description="Na2 drops as ratio of metal drops (e.g., 6 drops Na2 per 24 drops metal = 0.25)",
     )
 
     # Paper absorbency multipliers
     low_absorbency_multiplier: float = Field(
-        default=0.80,
-        ge=0.5,
-        le=1.0,
-        description="Multiplier for hot press/low absorbency papers"
+        default=0.80, ge=0.5, le=1.0, description="Multiplier for hot press/low absorbency papers"
     )
     medium_absorbency_multiplier: float = Field(default=1.0, ge=0.8, le=1.2)
     high_absorbency_multiplier: float = Field(
-        default=1.20,
-        ge=1.0,
-        le=1.5,
-        description="Multiplier for cold press/high absorbency papers"
+        default=1.20, ge=1.0, le=1.5, description="Multiplier for cold press/high absorbency papers"
     )
 
     # Coating method adjustments
     brush_coating_multiplier: float = Field(default=1.0, ge=0.8, le=1.2)
     rod_coating_multiplier: float = Field(
-        default=0.75,
-        ge=0.5,
-        le=1.0,
-        description="Glass rod coating uses less solution"
+        default=0.75, ge=0.5, le=1.0, description="Glass rod coating uses less solution"
     )
 
     # Default margin (inches to subtract from each side for coating area)
@@ -407,9 +392,7 @@ class WorkflowSettings(BaseSettings):
     )
 
     # Workflow execution
-    enable_scheduling: bool = Field(
-        default=True, description="Enable workflow scheduling"
-    )
+    enable_scheduling: bool = Field(default=True, description="Enable workflow scheduling")
     max_concurrent_workflows: int = Field(
         default=3, ge=1, le=10, description="Maximum concurrent workflows"
     )
@@ -455,8 +438,7 @@ class QASettings(BaseSettings):
     ideal_humidity_max: float = Field(default=60.0, ge=40.0, le=80.0)
     humidity_tolerance: float = Field(default=5.0, ge=2.0, le=15.0)
     humidity_optimal_range: tuple[float, float] = Field(
-        default=(45.0, 55.0),
-        description="Optimal humidity range (min, max) in percent"
+        default=(45.0, 55.0), description="Optimal humidity range (min, max) in percent"
     )
 
     # Drying time estimation (hours per % humidity difference)
@@ -529,8 +511,7 @@ class RecipeSettings(BaseSettings):
 
     # Database settings
     database_path: Path | None = Field(
-        default=None,
-        description="Path to recipe database (defaults to data_dir/recipes.db)"
+        default=None, description="Path to recipe database (defaults to data_dir/recipes.db)"
     )
 
     # Versioning
@@ -559,8 +540,7 @@ class AdvancedFeaturesSettings(BaseSettings):
     qr_code_enabled: bool = Field(default=True)
     qr_code_size: int = Field(default=100, ge=50, le=500)
     qr_error_correction: str = Field(
-        default="M",
-        description="QR error correction level (L, M, Q, H)"
+        default="M", description="QR error correction level (L, M, Q, H)"
     )
     qr_border_size: int = Field(default=4, ge=1, le=10)
 
@@ -588,71 +568,53 @@ class IntegrationSettings(BaseSettings):
 
     # Weather API settings
     weather_api_key: str | None = Field(
-        default=None,
-        description="OpenWeatherMap API key for environmental data"
+        default=None, description="OpenWeatherMap API key for environmental data"
     )
     weather_api_url: str = Field(
         default="https://api.openweathermap.org/data/2.5/weather",
-        description="Weather API endpoint URL"
+        description="Weather API endpoint URL",
     )
     weather_location: str = Field(
-        default="Portland, OR",
-        description="Default location for weather data"
+        default="Portland, OR", description="Default location for weather data"
     )
     weather_cache_minutes: int = Field(
-        default=10,
-        ge=1,
-        le=60,
-        description="Weather data cache duration (minutes)"
+        default=10, ge=1, le=60, description="Weather data cache duration (minutes)"
     )
 
     # Spectrophotometer settings
     spectrophotometer_port: str | None = Field(
-        default=None,
-        description="Serial port for spectrophotometer (e.g., /dev/ttyUSB0 or COM3)"
+        default=None, description="Serial port for spectrophotometer (e.g., /dev/ttyUSB0 or COM3)"
     )
     spectro_device_id: str | None = Field(
-        default=None,
-        description="Spectrophotometer device identifier"
+        default=None, description="Spectrophotometer device identifier"
     )
     spectro_measurement_mode: str = Field(
         default="reflection",
-        description="Default measurement mode (reflection, transmission, density)"
+        description="Default measurement mode (reflection, transmission, density)",
     )
     spectro_aperture_size: str = Field(
-        default="medium",
-        description="Aperture size (small, medium, large)"
+        default="medium", description="Aperture size (small, medium, large)"
     )
     spectro_baud_rate: int = Field(default=9600, ge=1200, le=115200)
     spectro_timeout_seconds: int = Field(default=5, ge=1, le=30)
     spectro_simulate: bool = Field(
-        default=True,
-        description="Use simulated spectrophotometer for testing"
+        default=True, description="Use simulated spectrophotometer for testing"
     )
 
     # Printer settings
     default_printer_name: str | None = Field(
-        default=None,
-        description="Default printer for digital negatives"
+        default=None, description="Default printer for digital negatives"
     )
     default_printer_brand: str = Field(
-        default="epson",
-        description="Default printer brand (epson, canon, hp)"
+        default="epson", description="Default printer brand (epson, canon, hp)"
     )
-    default_printer_model: str = Field(
-        default="R2400",
-        description="Default printer model"
-    )
+    default_printer_model: str = Field(default="R2400", description="Default printer model")
     printer_driver: str = Field(
-        default="gutenprint",
-        description="Printer driver (gutenprint, cups, native)"
+        default="gutenprint", description="Printer driver (gutenprint, cups, native)"
     )
     printer_resolution: int = Field(default=2880, ge=360, le=5760)
     printer_paper_feed: str = Field(default="sheet", description="Paper feed type")
-    printer_simulate: bool = Field(
-        default=True,
-        description="Use simulated printer for testing"
-    )
+    printer_simulate: bool = Field(default=True, description="Use simulated printer for testing")
 
     # ICC Profile settings
     icc_profile_paths: list[str] = Field(
@@ -660,25 +622,20 @@ class IntegrationSettings(BaseSettings):
             "/usr/share/color/icc",
             "~/.local/share/color/icc",
         ],
-        description="System ICC profile search paths"
+        description="System ICC profile search paths",
     )
     custom_profile_dir: Path | None = Field(
-        default=None,
-        description="Custom directory for ICC profiles"
+        default=None, description="Custom directory for ICC profiles"
     )
     default_rendering_intent: str = Field(
         default="perceptual",
-        description="Default ICC rendering intent (perceptual, relative, saturation, absolute)"
+        description="Default ICC rendering intent (perceptual, relative, saturation, absolute)",
     )
-    default_icc_profile: str | None = Field(
-        default=None,
-        description="Default ICC profile name"
-    )
+    default_icc_profile: str | None = Field(default=None, description="Default ICC profile name")
 
     # Paper drying time defaults
     default_paper_type: str = Field(
-        default="cold_press",
-        description="Default paper type for drying time calculations"
+        default="cold_press", description="Default paper type for drying time calculations"
     )
 
 
@@ -689,12 +646,10 @@ class EducationSettings(BaseSettings):
 
     # Tutorial paths
     tutorials_path: Path | None = Field(
-        default=None,
-        description="Path to tutorials directory (defaults to data_dir/tutorials)"
+        default=None, description="Path to tutorials directory (defaults to data_dir/tutorials)"
     )
     glossary_path: Path | None = Field(
-        default=None,
-        description="Path to glossary file (defaults to data_dir/glossary.json)"
+        default=None, description="Path to glossary file (defaults to data_dir/glossary.json)"
     )
 
     # Display settings
@@ -705,15 +660,12 @@ class EducationSettings(BaseSettings):
     # Tutorial difficulty
     default_difficulty_level: str = Field(
         default="beginner",
-        description="Default tutorial difficulty (beginner, intermediate, advanced)"
+        description="Default tutorial difficulty (beginner, intermediate, advanced)",
     )
 
     # Progress tracking
     track_progress: bool = Field(default=True, description="Track tutorial progress")
-    progress_file: Path | None = Field(
-        default=None,
-        description="Path to progress tracking file"
-    )
+    progress_file: Path | None = Field(default=None, description="Path to progress tracking file")
 
 
 class PerformanceSettings(BaseSettings):
@@ -722,13 +674,9 @@ class PerformanceSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PTPD_PERFORMANCE_")
 
     # Profiling
-    enable_profiling: bool = Field(
-        default=False,
-        description="Enable performance profiling"
-    )
+    enable_profiling: bool = Field(default=False, description="Enable performance profiling")
     profiling_output_dir: Path | None = Field(
-        default=None,
-        description="Directory for profiling output"
+        default=None, description="Directory for profiling output"
     )
     profile_memory: bool = Field(default=False)
     profile_cpu: bool = Field(default=True)
@@ -736,34 +684,19 @@ class PerformanceSettings(BaseSettings):
     # Caching
     enable_cache: bool = Field(default=True)
     cache_ttl_seconds: int = Field(
-        default=3600,
-        ge=60,
-        le=86400,
-        description="Cache time-to-live in seconds"
+        default=3600, ge=60, le=86400, description="Cache time-to-live in seconds"
     )
     cache_max_size: int = Field(
-        default=1000,
-        ge=10,
-        le=100000,
-        description="Maximum number of cached items"
+        default=1000, ge=10, le=100000, description="Maximum number of cached items"
     )
-    cache_backend: str = Field(
-        default="memory",
-        description="Cache backend (memory, redis, disk)"
-    )
+    cache_backend: str = Field(default="memory", description="Cache backend (memory, redis, disk)")
 
     # Metrics
     enable_metrics: bool = Field(default=True)
     metrics_retention_days: int = Field(
-        default=30,
-        ge=1,
-        le=365,
-        description="Days to retain performance metrics"
+        default=30, ge=1, le=365, description="Days to retain performance metrics"
     )
-    metrics_export_path: Path | None = Field(
-        default=None,
-        description="Path to export metrics"
-    )
+    metrics_export_path: Path | None = Field(default=None, description="Path to export metrics")
 
     # Optimization
     lazy_loading: bool = Field(default=True)
@@ -778,35 +711,26 @@ class DataManagementSettings(BaseSettings):
 
     # Database settings
     database_path: Path | None = Field(
-        default=None,
-        description="Path to main database (defaults to data_dir/ptpd.db)"
+        default=None, description="Path to main database (defaults to data_dir/ptpd.db)"
     )
     database_backup_path: Path | None = Field(
-        default=None,
-        description="Path to database backups directory"
+        default=None, description="Path to database backups directory"
     )
 
     # Backup settings
     auto_backup: bool = Field(default=True)
     backup_interval_hours: int = Field(
-        default=24,
-        ge=1,
-        le=168,
-        description="Hours between automatic backups"
+        default=24, ge=1, le=168, description="Hours between automatic backups"
     )
     max_backup_count: int = Field(
-        default=30,
-        ge=1,
-        le=365,
-        description="Maximum number of backups to keep"
+        default=30, ge=1, le=365, description="Maximum number of backups to keep"
     )
     backup_compression: bool = Field(default=True)
 
     # Cloud sync
     cloud_sync_enabled: bool = Field(default=False)
     cloud_provider: str = Field(
-        default="s3",
-        description="Cloud provider (s3, gcs, azure, dropbox)"
+        default="s3", description="Cloud provider (s3, gcs, azure, dropbox)"
     )
     cloud_bucket_name: str | None = Field(default=None)
     cloud_api_key: str | None = Field(default=None)
@@ -814,10 +738,7 @@ class DataManagementSettings(BaseSettings):
 
     # Data retention
     data_retention_days: int = Field(
-        default=365,
-        ge=7,
-        le=3650,
-        description="Days to retain historical data"
+        default=365, ge=7, le=3650, description="Days to retain historical data"
     )
     archive_old_data: bool = Field(default=True)
 
@@ -833,42 +754,24 @@ class CalculationsSettings(BaseSettings):
 
     # Environmental factor coefficients
     temperature_coefficient: float = Field(
-        default=0.02,
-        ge=0.0,
-        le=0.1,
-        description="Exposure adjustment per degree C from optimal"
+        default=0.02, ge=0.0, le=0.1, description="Exposure adjustment per degree C from optimal"
     )
     humidity_coefficient: float = Field(
-        default=0.015,
-        ge=0.0,
-        le=0.1,
-        description="Exposure adjustment per % humidity from optimal"
+        default=0.015, ge=0.0, le=0.1, description="Exposure adjustment per % humidity from optimal"
     )
     altitude_coefficient: float = Field(
-        default=0.001,
-        ge=0.0,
-        le=0.01,
-        description="Exposure adjustment per 100m elevation"
+        default=0.001, ge=0.0, le=0.01, description="Exposure adjustment per 100m elevation"
     )
 
     # Optimal conditions
     optimal_temperature_c: float = Field(
-        default=20.0,
-        ge=15.0,
-        le=25.0,
-        description="Optimal working temperature in Celsius"
+        default=20.0, ge=15.0, le=25.0, description="Optimal working temperature in Celsius"
     )
     optimal_humidity_percent: float = Field(
-        default=50.0,
-        ge=30.0,
-        le=70.0,
-        description="Optimal relative humidity percentage"
+        default=50.0, ge=30.0, le=70.0, description="Optimal relative humidity percentage"
     )
     optimal_uv_intensity: float = Field(
-        default=100.0,
-        ge=10.0,
-        le=1000.0,
-        description="Optimal UV intensity (arbitrary units)"
+        default=100.0, ge=10.0, le=1000.0, description="Optimal UV intensity (arbitrary units)"
     )
 
     # Cost per ml values (USD)

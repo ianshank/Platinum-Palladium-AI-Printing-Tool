@@ -75,7 +75,7 @@ class ProfileInfo:
             "size_bytes": self.size_bytes,
             "creation_date": self.creation_date,
             "manufacturer": self.manufacturer,
-            "model": self.model
+            "model": self.model,
         }
 
 
@@ -105,16 +105,14 @@ class ICCProfileManager:
         "Darwin": [  # macOS
             Path("/Library/ColorSync/Profiles"),
             Path("/System/Library/ColorSync/Profiles"),
-            Path.home() / "Library/ColorSync/Profiles"
+            Path.home() / "Library/ColorSync/Profiles",
         ],
         "Linux": [
             Path("/usr/share/color/icc"),
             Path("/usr/local/share/color/icc"),
-            Path.home() / ".color/icc"
+            Path.home() / ".color/icc",
         ],
-        "Windows": [
-            Path("C:/Windows/System32/spool/drivers/color")
-        ]
+        "Windows": [Path("C:/Windows/System32/spool/drivers/color")],
     }
 
     def __init__(self, custom_profile_dir: Path | None = None):
@@ -195,21 +193,17 @@ class ICCProfileManager:
 
         # Get source profile (embedded or sRGB default)
         try:
-            if 'icc_profile' in image.info:
+            if "icc_profile" in image.info:
                 import io
-                source_profile = ImageCms.ImageCmsProfile(io.BytesIO(image.info['icc_profile']))
+
+                source_profile = ImageCms.ImageCmsProfile(io.BytesIO(image.info["icc_profile"]))
             else:
                 # Use sRGB as default source
                 source_profile = ImageCms.createProfile("sRGB")
 
             # Create transform
             transform = ImageCms.buildTransform(
-                source_profile,
-                profile,
-                image.mode,
-                image.mode,
-                renderingIntent=intent,
-                flags=0
+                source_profile, profile, image.mode, image.mode, renderingIntent=intent, flags=0
             )
 
             # Apply transform
@@ -279,7 +273,7 @@ class ICCProfileManager:
             )
 
             # Write a marker file indicating this is a template
-            with open(profile_path, 'wb') as f:
+            with open(profile_path, "wb") as f:
                 # This is a placeholder - real ICC profile creation
                 # requires proper binary structure per ICC spec
                 f.write(b"ICC_PROFILE_PLACEHOLDER\n")
@@ -287,9 +281,7 @@ class ICCProfileManager:
                 f.write(f"Patches: {len(measurements)}\n".encode())
 
             logger.info(f"Profile template created: {profile_path}")
-            logger.info(
-                "For production use, process measurements with Argyll CMS or similar tool"
-            )
+            logger.info("For production use, process measurements with Argyll CMS or similar tool")
 
             return profile_path
 
@@ -388,7 +380,7 @@ class ICCProfileManager:
                 copyright=copyright_info,
                 color_space=color_space,
                 profile_class=profile_class,
-                size_bytes=path.stat().st_size
+                size_bytes=path.stat().st_size,
             )
 
         except Exception as e:
@@ -408,7 +400,7 @@ class ICCProfileManager:
             ProfileClass enum value, or None if reading fails
         """
         try:
-            with open(path, 'rb') as f:
+            with open(path, "rb") as f:
                 # Skip to byte offset 12 (profile class signature)
                 f.seek(12)
                 class_signature = f.read(4)
@@ -419,13 +411,13 @@ class ICCProfileManager:
 
                 # Map ICC profile class signatures to ProfileClass enum
                 signature_map = {
-                    b'scnr': ProfileClass.INPUT,       # Scanner/Input
-                    b'mntr': ProfileClass.DISPLAY,     # Display/Monitor
-                    b'prtr': ProfileClass.OUTPUT,      # Printer/Output
-                    b'link': ProfileClass.DEVICE_LINK, # Device Link
-                    b'spac': ProfileClass.COLOR_SPACE, # Color Space
-                    b'abst': ProfileClass.ABSTRACT,    # Abstract
-                    b'nmcl': ProfileClass.NAMED_COLOR, # Named Color
+                    b"scnr": ProfileClass.INPUT,  # Scanner/Input
+                    b"mntr": ProfileClass.DISPLAY,  # Display/Monitor
+                    b"prtr": ProfileClass.OUTPUT,  # Printer/Output
+                    b"link": ProfileClass.DEVICE_LINK,  # Device Link
+                    b"spac": ProfileClass.COLOR_SPACE,  # Color Space
+                    b"abst": ProfileClass.ABSTRACT,  # Abstract
+                    b"nmcl": ProfileClass.NAMED_COLOR,  # Named Color
                 }
 
                 profile_class = signature_map.get(class_signature)
@@ -437,8 +429,7 @@ class ICCProfileManager:
                     )
                 else:
                     logger.warning(
-                        f"Unknown profile class signature: {class_signature.hex()} "
-                        f"in {path.name}"
+                        f"Unknown profile class signature: {class_signature.hex()} in {path.name}"
                     )
 
                 return profile_class
@@ -496,15 +487,14 @@ class ICCProfileManager:
                 source_mode,
                 target_mode,
                 renderingIntent=intent,
-                flags=0
+                flags=0,
             )
 
             # Apply transform
             result = ImageCms.applyTransform(image, transform)
 
             logger.info(
-                f"Converted color space: {source_mode} -> {target_mode} "
-                f"({rendering_intent.value})"
+                f"Converted color space: {source_mode} -> {target_mode} ({rendering_intent.value})"
             )
 
             return result
@@ -531,11 +521,7 @@ class ICCProfileManager:
         # Check file exists
         if not profile_path.exists():
             errors.append(f"File not found: {profile_path}")
-            return ProfileValidation(
-                is_valid=False,
-                profile_path=profile_path,
-                errors=errors
-            )
+            return ProfileValidation(is_valid=False, profile_path=profile_path, errors=errors)
 
         # Check file size
         size = profile_path.stat().st_size
@@ -546,7 +532,7 @@ class ICCProfileManager:
 
         # Check ICC signature
         try:
-            with open(profile_path, 'rb') as f:
+            with open(profile_path, "rb") as f:
                 # ICC profiles start with size (4 bytes) and signature
                 header = f.read(128)
 
@@ -555,10 +541,8 @@ class ICCProfileManager:
                 else:
                     # Check profile signature at offset 36-40
                     signature = header[36:40]
-                    if signature != b'acsp':
-                        errors.append(
-                            f"Invalid ICC signature: {signature} (expected 'acsp')"
-                        )
+                    if signature != b"acsp":
+                        errors.append(f"Invalid ICC signature: {signature} (expected 'acsp')")
 
         except Exception as e:
             errors.append(f"Failed to read file: {e}")
@@ -582,14 +566,10 @@ class ICCProfileManager:
             profile_path=profile_path,
             errors=errors,
             warnings=warnings,
-            info=info
+            info=info,
         )
 
-    def embed_profile(
-        self,
-        image: Image.Image,
-        profile: ImageCms.ImageCmsProfile
-    ) -> Image.Image:
+    def embed_profile(self, image: Image.Image, profile: ImageCms.ImageCmsProfile) -> Image.Image:
         """
         Embed ICC profile in image.
 
@@ -606,7 +586,7 @@ class ICCProfileManager:
 
             # Create new image with profile embedded
             result = image.copy()
-            result.info['icc_profile'] = profile_bytes
+            result.info["icc_profile"] = profile_bytes
 
             logger.debug("Embedded ICC profile in image")
             return result
@@ -626,9 +606,10 @@ class ICCProfileManager:
             ImageCmsProfile if found, None otherwise
         """
         try:
-            if 'icc_profile' in image.info:
+            if "icc_profile" in image.info:
                 import io
-                profile = ImageCms.ImageCmsProfile(io.BytesIO(image.info['icc_profile']))
+
+                profile = ImageCms.ImageCmsProfile(io.BytesIO(image.info["icc_profile"]))
                 logger.debug("Extracted embedded ICC profile")
                 return profile
             else:

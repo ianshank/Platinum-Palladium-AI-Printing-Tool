@@ -31,6 +31,7 @@ def create_dummy_step_tablet(output_path: Path):
     img.save(output_path)
     print(f"Created dummy step tablet at {output_path}")
 
+
 if __name__ == "__main__":
     output = Path("tests/fixtures/step_tablet_dummy.png")
     create_dummy_step_tablet(output)

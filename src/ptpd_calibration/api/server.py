@@ -14,12 +14,10 @@ def create_app():
     try:
         from fastapi import FastAPI, File, Form, HTTPException, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
-        from fastapi.responses import FileResponse, JSONResponse
+        from fastapi.responses import FileResponse, JSONResponse  # noqa: F401
         from pydantic import BaseModel
     except ImportError:
-        raise ImportError(
-            "FastAPI is required. Install with: pip install ptpd-calibration[api]"
-        )
+        raise ImportError("FastAPI is required. Install with: pip install ptpd-calibration[api]")
 
     from ptpd_calibration.config import TabletType
     from ptpd_calibration.core.models import CalibrationRecord, CurveData
@@ -114,7 +112,9 @@ def create_app():
         input_values: list[float]
         output_values: list[float]
         name: str = "Modified Curve"
-        adjustment_type: str = "brightness"  # brightness, contrast, gamma, levels, highlights, shadows, midtones
+        adjustment_type: str = (
+            "brightness"  # brightness, contrast, gamma, levels, highlights, shadows, midtones
+        )
         amount: float = 0.0
         # Additional parameters for specific adjustments
         pivot: float = 0.5  # For contrast
@@ -195,7 +195,7 @@ def create_app():
 
             # Persist raw scan to storage
             with open(file_path, "rb") as f:
-               storage_backend.save(f"scans/{file.filename}", f.read())
+                storage_backend.save(f"scans/{file.filename}", f.read())
 
             return {
                 "success": True,
@@ -305,7 +305,9 @@ def create_app():
                 "curve_data": {
                     "input_values": curve_data.input_values[:20] if curve_data else [],
                     "output_values": curve_data.output_values[:20] if curve_data else [],
-                } if curve_data else None,
+                }
+                if curve_data
+                else None,
                 "summary": profile.summary(),
             }
         except Exception as e:
@@ -342,7 +344,9 @@ def create_app():
                 "curve_data": {
                     "input_values": curve_data.input_values if curve_data else [],
                     "output_values": curve_data.output_values if curve_data else [],
-                } if curve_data else None,
+                }
+                if curve_data
+                else None,
             }
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -556,7 +560,7 @@ def create_app():
         direction: str = "increasing",
     ):
         """Enforce monotonicity on a stored curve."""
-        curve = curve_storage.get(curve_id)
+        curve = get_curve_from_storage(curve_id)
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
 
@@ -688,9 +692,7 @@ def main():
     try:
         import uvicorn
     except ImportError:
-        raise ImportError(
-            "uvicorn is required. Install with: pip install ptpd-calibration[api]"
-        )
+        raise ImportError("uvicorn is required. Install with: pip install ptpd-calibration[api]")
 
     settings = get_settings()
     app = create_app()

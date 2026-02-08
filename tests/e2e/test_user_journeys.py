@@ -5,7 +5,6 @@ These tests simulate complete user workflows without requiring browser automatio
 They test the full integration of modules as a user would experience them.
 """
 
-
 import numpy as np
 import pytest
 from PIL import Image
@@ -490,7 +489,7 @@ class TestPrintSessionJourney:
         # Step 3: Log some prints
         for i in range(3):
             record = PrintRecord(
-                image_name=f"Test Image {i+1}",
+                image_name=f"Test Image {i + 1}",
                 paper_type="Arches Platine",
                 exposure_time_minutes=10.0 + i,
                 chemistry=ChemistryUsed(

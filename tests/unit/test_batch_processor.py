@@ -3,6 +3,7 @@ Tests for batch processor module.
 
 Tests batch processing of multiple images with shared settings.
 """
+
 from pathlib import Path
 
 import numpy as np

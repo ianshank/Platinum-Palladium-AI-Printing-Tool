@@ -38,8 +38,7 @@ def build_chemistry_tab() -> None:
 
                 gr.Markdown("### Metal Ratio")
                 ratio_slider = gr.Slider(
-                    minimum=0, maximum=100, value=50,
-                    label="← More Palladium | More Platinum →"
+                    minimum=0, maximum=100, value=50, label="← More Palladium | More Platinum →"
                 )
 
                 # Visual indicator
@@ -56,14 +55,22 @@ def build_chemistry_tab() -> None:
 
                 gr.Markdown("### Coating & Contrast")
                 paper_absorbency = gr.Dropdown(
-                    choices=[("Low (Hot Press)", "low"), ("Medium", "medium"), ("High (Cold Press)", "high")],
+                    choices=[
+                        ("Low (Hot Press)", "low"),
+                        ("Medium", "medium"),
+                        ("High (Cold Press)", "high"),
+                    ],
                     value="medium",
-                    label="Paper Absorbency"
+                    label="Paper Absorbency",
                 )
                 coating_method = gr.Dropdown(
-                    choices=[("Brush", "brush"), ("Glass Rod", "rod"), ("Puddle Pusher", "puddle_pusher")],
+                    choices=[
+                        ("Brush", "brush"),
+                        ("Glass Rod", "rod"),
+                        ("Puddle Pusher", "puddle_pusher"),
+                    ],
                     value="brush",
-                    label="Coating Method"
+                    label="Coating Method",
                 )
                 contrast = gr.Slider(0, 100, 0, label="Contrast Boost (FO#2) %")
                 na2 = gr.Slider(0, 50, 25, label="Na2 % (of metal)")
@@ -110,7 +117,15 @@ def build_chemistry_tab() -> None:
 
         ratio_slider.change(update_viz, inputs=[ratio_slider], outputs=[ratio_viz])
 
-        def calculate(w: float, h: float, pt_ratio: float, absorbency: str, method: str, cont: float, na2_val: float) -> tuple[str, str, dict]:
+        def calculate(
+            w: float,
+            h: float,
+            pt_ratio: float,
+            absorbency: str,
+            method: str,
+            cont: float,
+            na2_val: float,
+        ) -> tuple[str, str, dict]:
             try:
                 calculator = ChemistryCalculator()
                 # pt_ratio is 0-100, convert to 0.0-1.0
@@ -146,15 +161,15 @@ def build_chemistry_tab() -> None:
                     """
 
                 if recipe.ferric_oxalate_1 > 0:
-                    html += add_drops("FO#1", recipe.ferric_oxalate_1, "#fbbf24") # Amber
+                    html += add_drops("FO#1", recipe.ferric_oxalate_1, "#fbbf24")  # Amber
                 if recipe.ferric_oxalate_2 > 0:
-                    html += add_drops("FO#2", recipe.ferric_oxalate_2, "#d97706") # Darker Amber
+                    html += add_drops("FO#2", recipe.ferric_oxalate_2, "#d97706")  # Darker Amber
                 if recipe.platinum > 0:
-                    html += add_drops("Pt", recipe.platinum, "#c0c0c0") # Silver
+                    html += add_drops("Pt", recipe.platinum, "#c0c0c0")  # Silver
                 if recipe.palladium > 0:
-                    html += add_drops("Pd", recipe.palladium, "#d4a574") # Gold/Bronze
+                    html += add_drops("Pd", recipe.palladium, "#d4a574")  # Gold/Bronze
                 if recipe.na2 > 0:
-                    html += add_drops("Na2", recipe.na2, "#ef4444") # Red
+                    html += add_drops("Na2", recipe.na2, "#ef4444")  # Red
 
                 html += "</div></div>"
 
@@ -165,12 +180,15 @@ def build_chemistry_tab() -> None:
         calculate_btn.click(
             calculate,
             inputs=[width, height, ratio_slider, paper_absorbency, coating_method, contrast, na2],
-            outputs=[recipe_html, recipe_text, recipe_json]
+            outputs=[recipe_html, recipe_text, recipe_json],
         )
 
         # Copy button (simulated with Javascript)
-        copy_btn.click(None, [recipe_text], None, js="(text) => navigator.clipboard.writeText(text)")
+        copy_btn.click(
+            None, [recipe_text], None, js="(text) => navigator.clipboard.writeText(text)"
+        )
 
         # Log to session (placeholder)
-        log_btn.click(lambda x: gr.Info("Recipe logged to session!"), inputs=[recipe_json], outputs=[])
-
+        log_btn.click(
+            lambda x: gr.Info("Recipe logged to session!"), inputs=[recipe_json], outputs=[]
+        )

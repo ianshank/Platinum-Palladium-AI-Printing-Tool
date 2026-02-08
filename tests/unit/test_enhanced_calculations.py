@@ -9,7 +9,6 @@ Tests:
 - EnvironmentalCompensation: altitude, season, drying time adjustments
 """
 
-
 import pytest
 
 from ptpd_calibration.calculations.enhanced import (
@@ -204,9 +203,7 @@ class TestUVExposureCalculator:
         assert result.confidence_upper_minutes > result.adjusted_exposure_minutes
 
         # Check interval width is correct
-        interval_width = (
-            result.confidence_upper_minutes - result.confidence_lower_minutes
-        )
+        interval_width = result.confidence_upper_minutes - result.confidence_lower_minutes
         expected_width = result.adjusted_exposure_minutes * 0.3  # ±15% = 30% total
         assert interval_width == pytest.approx(expected_width, rel=0.01)
 

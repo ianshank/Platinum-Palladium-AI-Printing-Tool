@@ -1659,11 +1659,7 @@ class TutorialManager:
             Recommended next Tutorial or None
         """
         # Find tutorials that list this one as a prerequisite
-        candidates = [
-            t
-            for t in self.tutorials.values()
-            if completed_tutorial in t.prerequisites
-        ]
+        candidates = [t for t in self.tutorials.values() if completed_tutorial in t.prerequisites]
 
         if candidates:
             # Return the easiest matching tutorial

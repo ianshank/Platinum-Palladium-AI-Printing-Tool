@@ -58,20 +58,20 @@ def get_analysis_prompt(calibration_data: dict) -> str:
     """
     return f"""Please analyze this Pt/Pd calibration result and provide insights:
 
-**Paper:** {calibration_data.get('paper_type', 'Unknown')}
-**Chemistry:** {calibration_data.get('chemistry_type', 'Unknown')}
-**Metal Ratio:** {calibration_data.get('metal_ratio', 0.5):.0%} Pt / {1 - calibration_data.get('metal_ratio', 0.5):.0%} Pd
-**Contrast Agent:** {calibration_data.get('contrast_agent', 'None')} ({calibration_data.get('contrast_amount', 0)} drops)
-**Developer:** {calibration_data.get('developer', 'Unknown')}
-**Exposure Time:** {calibration_data.get('exposure_time', 0):.0f} seconds
+**Paper:** {calibration_data.get("paper_type", "Unknown")}
+**Chemistry:** {calibration_data.get("chemistry_type", "Unknown")}
+**Metal Ratio:** {calibration_data.get("metal_ratio", 0.5):.0%} Pt / {1 - calibration_data.get("metal_ratio", 0.5):.0%} Pd
+**Contrast Agent:** {calibration_data.get("contrast_agent", "None")} ({calibration_data.get("contrast_amount", 0)} drops)
+**Developer:** {calibration_data.get("developer", "Unknown")}
+**Exposure Time:** {calibration_data.get("exposure_time", 0):.0f} seconds
 
 **Measured Densities:**
-- Dmin (paper base): {calibration_data.get('dmin', 0):.2f}
-- Dmax: {calibration_data.get('dmax', 0):.2f}
-- Density Range: {calibration_data.get('density_range', 0):.2f}
+- Dmin (paper base): {calibration_data.get("dmin", 0):.2f}
+- Dmax: {calibration_data.get("dmax", 0):.2f}
+- Density Range: {calibration_data.get("density_range", 0):.2f}
 
 **Additional Observations:**
-{calibration_data.get('notes', 'None provided')}
+{calibration_data.get("notes", "None provided")}
 
 Please provide:
 1. Assessment of the overall calibration quality
@@ -145,20 +145,20 @@ def get_comparison_prompt(record1: dict, record2: dict) -> str:
     return f"""Please compare these two Pt/Pd calibration results:
 
 **Calibration 1:**
-- Paper: {record1.get('paper_type', 'Unknown')}
-- Metal Ratio: {record1.get('metal_ratio', 0.5):.0%} Pt
-- Contrast Agent: {record1.get('contrast_agent', 'None')} ({record1.get('contrast_amount', 0)} drops)
-- Exposure: {record1.get('exposure_time', 0):.0f}s
-- Dmax: {record1.get('dmax', 0):.2f}
-- Density Range: {record1.get('density_range', 0):.2f}
+- Paper: {record1.get("paper_type", "Unknown")}
+- Metal Ratio: {record1.get("metal_ratio", 0.5):.0%} Pt
+- Contrast Agent: {record1.get("contrast_agent", "None")} ({record1.get("contrast_amount", 0)} drops)
+- Exposure: {record1.get("exposure_time", 0):.0f}s
+- Dmax: {record1.get("dmax", 0):.2f}
+- Density Range: {record1.get("density_range", 0):.2f}
 
 **Calibration 2:**
-- Paper: {record2.get('paper_type', 'Unknown')}
-- Metal Ratio: {record2.get('metal_ratio', 0.5):.0%} Pt
-- Contrast Agent: {record2.get('contrast_agent', 'None')} ({record2.get('contrast_amount', 0)} drops)
-- Exposure: {record2.get('exposure_time', 0):.0f}s
-- Dmax: {record2.get('dmax', 0):.2f}
-- Density Range: {record2.get('density_range', 0):.2f}
+- Paper: {record2.get("paper_type", "Unknown")}
+- Metal Ratio: {record2.get("metal_ratio", 0.5):.0%} Pt
+- Contrast Agent: {record2.get("contrast_agent", "None")} ({record2.get("contrast_amount", 0)} drops)
+- Exposure: {record2.get("exposure_time", 0):.0f}s
+- Dmax: {record2.get("dmax", 0):.2f}
+- Density Range: {record2.get("density_range", 0):.2f}
 
 Please provide:
 1. Key differences between the two calibrations
@@ -180,12 +180,12 @@ def get_paper_recommendation_prompt(requirements: dict) -> str:
     return f"""I need help choosing a paper for Pt/Pd printing:
 
 **Requirements:**
-- Budget: {requirements.get('budget', 'Not specified')}
-- Print size: {requirements.get('print_size', 'Not specified')}
-- Desired tone: {requirements.get('tone', 'Not specified')}
-- Experience level: {requirements.get('experience', 'Not specified')}
-- Desired Dmax: {requirements.get('dmax', 'Not specified')}
-- Special requirements: {requirements.get('special', 'None')}
+- Budget: {requirements.get("budget", "Not specified")}
+- Print size: {requirements.get("print_size", "Not specified")}
+- Desired tone: {requirements.get("tone", "Not specified")}
+- Experience level: {requirements.get("experience", "Not specified")}
+- Desired Dmax: {requirements.get("dmax", "Not specified")}
+- Special requirements: {requirements.get("special", "None")}
 
 Please recommend:
 1. Top 3 paper choices with pros and cons

@@ -122,7 +122,7 @@ with contextlib.suppress(ImportError):
 # Platinum/Palladium AI
 with contextlib.suppress(ImportError):
     from ptpd_calibration.ai import (
-        ChemistryRecommendation,
+        ChemistryRecommendation,  # noqa: F401
         DigitalNegativeResult,
         ExposurePrediction,
         PlatinumPalladiumAI,

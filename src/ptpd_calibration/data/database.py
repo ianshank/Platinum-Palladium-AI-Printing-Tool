@@ -148,15 +148,9 @@ class PrintDatabase:
         )
 
         # Create indices for common queries
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_timestamp ON prints(timestamp DESC)"
-        )
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_paper_type ON prints(paper_type)"
-        )
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_recipe_id ON prints(recipe_id)"
-        )
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON prints(timestamp DESC)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_paper_type ON prints(paper_type)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_recipe_id ON prints(recipe_id)")
 
         # Create full-text search virtual table
         self.conn.execute(
@@ -236,9 +230,7 @@ class PrintDatabase:
         Returns:
             PrintRecord if found, None otherwise
         """
-        cursor = self.conn.execute(
-            "SELECT * FROM prints WHERE id = ?", (str(print_id),)
-        )
+        cursor = self.conn.execute("SELECT * FROM prints WHERE id = ?", (str(print_id),))
         row = cursor.fetchone()
 
         if row is None:
@@ -282,9 +274,7 @@ class PrintDatabase:
 
         values.append(str(print_id))
 
-        self.conn.execute(
-            f"UPDATE prints SET {', '.join(set_clauses)} WHERE id = ?", values
-        )
+        self.conn.execute(f"UPDATE prints SET {', '.join(set_clauses)} WHERE id = ?", values)
 
         # Update FTS if relevant fields changed
         if any(k in updates for k in ("name", "paper_type", "notes", "tags")):
@@ -318,12 +308,8 @@ class PrintDatabase:
         Returns:
             True if record was deleted, False if not found
         """
-        cursor = self.conn.execute(
-            "DELETE FROM prints WHERE id = ?", (str(print_id),)
-        )
-        self.conn.execute(
-            "DELETE FROM prints_fts WHERE id = ?", (str(print_id),)
-        )
+        cursor = self.conn.execute("DELETE FROM prints WHERE id = ?", (str(print_id),))
+        self.conn.execute("DELETE FROM prints_fts WHERE id = ?", (str(print_id),))
         self.conn.commit()
         return cursor.rowcount > 0
 
@@ -389,9 +375,7 @@ class PrintDatabase:
 
         return [self._row_to_record(row) for row in cursor.fetchall()]
 
-    def get_prints_by_date_range(
-        self, start: datetime, end: datetime
-    ) -> list[PrintRecord]:
+    def get_prints_by_date_range(self, start: datetime, end: datetime) -> list[PrintRecord]:
         """
         Get prints within a date range.
 
@@ -474,9 +458,7 @@ class PrintDatabase:
             GROUP BY chemistry_type
             """
         )
-        stats["chemistry_types"] = {
-            row["chemistry_type"]: row["count"] for row in cursor
-        }
+        stats["chemistry_types"] = {row["chemistry_type"]: row["count"] for row in cursor}
 
         # Average exposure time
         cursor = self.conn.execute(

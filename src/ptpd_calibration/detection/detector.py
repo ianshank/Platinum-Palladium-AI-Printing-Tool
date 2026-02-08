@@ -118,9 +118,7 @@ class StepTabletDetector:
         # Use Rec. 709 coefficients for better perceptual accuracy
         return np.dot(image[..., :3], [0.2126, 0.7152, 0.0722]).astype(np.uint8)
 
-    def _detect_tablet_region(
-        self, gray: np.ndarray
-    ) -> tuple[tuple[int, int, int, int], str]:
+    def _detect_tablet_region(self, gray: np.ndarray) -> tuple[tuple[int, int, int, int], str]:
         """Detect the main tablet region using edge detection and contours."""
         height, width = gray.shape
 
@@ -280,9 +278,7 @@ class StepTabletDetector:
         x_max, y_max = np.max(contour, axis=0)
         return (int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min))
 
-    def _detect_rotation(
-        self, gray: np.ndarray, bounds: tuple[int, int, int, int]
-    ) -> float:
+    def _detect_rotation(self, gray: np.ndarray, bounds: tuple[int, int, int, int]) -> float:
         """Detect rotation angle of tablet."""
         x, y, w, h = bounds
 
@@ -302,9 +298,7 @@ class StepTabletDetector:
         if np.sum(mask) > 0:
             relevant_angles = angles[mask]
             # Correct angles near ±180
-            relevant_angles = np.where(
-                relevant_angles > 90, relevant_angles - 180, relevant_angles
-            )
+            relevant_angles = np.where(relevant_angles > 90, relevant_angles - 180, relevant_angles)
             relevant_angles = np.where(
                 relevant_angles < -90, relevant_angles + 180, relevant_angles
             )
@@ -312,7 +306,9 @@ class StepTabletDetector:
         else:
             rotation = 0.0
 
-        return np.clip(rotation, -self.settings.max_rotation_angle, self.settings.max_rotation_angle)
+        return np.clip(
+            rotation, -self.settings.max_rotation_angle, self.settings.max_rotation_angle
+        )
 
     def _rotate_image(self, image: np.ndarray, angle: float) -> np.ndarray:
         """Rotate image by angle (degrees)."""
@@ -352,7 +348,9 @@ class StepTabletDetector:
 
         # Create patch bounds from peaks
         patches = []
-        min_width = int((w if orientation == "horizontal" else h) * self.settings.min_patch_width_ratio)
+        min_width = int(
+            (w if orientation == "horizontal" else h) * self.settings.min_patch_width_ratio
+        )
 
         for i in range(len(peaks) - 1):
             start = peaks[i]
@@ -364,7 +362,11 @@ class StepTabletDetector:
                 else:
                     patches.append((x, y + start, w, end - start))
 
-        return patches if patches else self._uniform_segmentation(bounds, num_patches or 21, orientation)
+        return (
+            patches
+            if patches
+            else self._uniform_segmentation(bounds, num_patches or 21, orientation)
+        )
 
     def _find_peaks(self, data: np.ndarray, threshold: float) -> list[int]:
         """Find peaks in 1D data above threshold."""
