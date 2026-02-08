@@ -147,9 +147,8 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
             onClick={toggleSidebar}
-            aria-label="Open sidebar"
+            aria-label="Toggle sidebar"
           >
             <Menu className="h-5 w-5" />
           </Button>

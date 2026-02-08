@@ -51,19 +51,7 @@ describe('CalibrationWizard', () => {
             output_values: [],
         } as any);
 
-        const { store } = renderWithProviders(<CalibrationWizard />);
-
-        // Add mock measurements to the store to enable Generate Curve button logic
-        store.setState((state) => ({
-            ...state,
-            calibration: {
-                ...state.calibration,
-                data: {
-                    ...state.calibration.data,
-                    measurements: [0.1, 0.5, 0.9],
-                },
-            },
-        }));
+        renderWithProviders(<CalibrationWizard />);
 
         // Step 1: Setup
         expect(screen.getByText('Process Setup')).toBeInTheDocument();

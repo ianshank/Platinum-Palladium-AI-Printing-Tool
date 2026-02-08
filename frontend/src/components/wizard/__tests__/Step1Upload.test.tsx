@@ -17,6 +17,11 @@ vi.mock('@/api/hooks', () => ({
 describe('Step1Upload', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(useUploadScan).mockReturnValue({
+            mutate: mockMutate,
+            isPending: false,
+            error: null,
+        } as any);
     });
 
     it('renders upload zone and tablet options', () => {
@@ -58,7 +63,15 @@ describe('Step1Upload', () => {
         });
 
         fireEvent.click(continueBtn);
+
         expect(mockMutate).toHaveBeenCalledTimes(1);
+        expect(mockMutate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                file: expect.any(File),
+                tabletType: 'stouffer_21'
+            }),
+            expect.any(Object)
+        );
     });
 
     it('displays error message when upload fails', async () => {
