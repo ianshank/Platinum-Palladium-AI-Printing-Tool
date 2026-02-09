@@ -7,9 +7,10 @@ All settings can be overridden via environment variables with PTPD_ prefix.
 
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
-from pydantic import Field, field_validator
+from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
@@ -1342,7 +1343,7 @@ class Settings(BaseSettings):
 
     @field_validator("calibrations_dir", "exports_dir", mode="before")
     @classmethod
-    def resolve_paths(cls, v: Path | None, info) -> Path | None:
+    def resolve_paths(cls, v: Path | None, info: ValidationInfo) -> Path | None:
         """Resolve paths relative to data_dir if not absolute."""
         if v is None:
             return None
@@ -1351,7 +1352,7 @@ class Settings(BaseSettings):
             # Get data_dir from values if available
             data = info.data if hasattr(info, "data") else {}
             data_dir = data.get("data_dir", Path.home() / ".ptpd")
-            return data_dir / path
+            return Path(data_dir) / path
         return path
 
     def ensure_directories(self) -> None:
@@ -1379,7 +1380,7 @@ def get_settings() -> Settings:
     return _settings
 
 
-def configure(settings: Settings | None = None, **kwargs) -> Settings:
+def configure(settings: Settings | None = None, **kwargs: Any) -> Settings:
     """
     Configure the global settings.
 

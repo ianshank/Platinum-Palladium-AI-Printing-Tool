@@ -76,8 +76,10 @@ export function ScanUpload({
       } else {
         setError('Upload failed but no error message returned.');
       }
-    } catch (err: any) {
-      setError(err.message || 'Upload failed. Please try again.');
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : 'Upload failed. Please try again.'
+      );
     } finally {
       setIsUploading(false);
     }

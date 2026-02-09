@@ -79,6 +79,7 @@ const mockExportMutate = vi.fn();
 
 // Mock useStore
 vi.mock('@/stores', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock store selector with test state
   useStore: (selector: (state: any) => any) => {
     const state = {
       calibration: {
@@ -91,6 +92,7 @@ vi.mock('@/stores', () => ({
         resetCurve: mockResetCurve,
       },
     };
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return selector(state);
   },
 }));
@@ -136,7 +138,7 @@ vi.mock('@/config/tablet.config', () => ({
   },
 }));
 
-function renderWithTheme(ui: React.ReactElement) {
+function renderWithTheme(ui: React.ReactElement): ReturnType<typeof render> {
   return render(<ThemeProvider theme={theme}>{ui}</ThemeProvider>);
 }
 
@@ -181,6 +183,7 @@ describe('Step5Export', () => {
 
     expect(mockExportMutate).toHaveBeenCalledWith(
       { curveId: 'curve-123', format: 'qtr' },
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.any returns any for type matching
       expect.objectContaining({ onSuccess: expect.any(Function) })
     );
   });

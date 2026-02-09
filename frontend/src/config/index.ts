@@ -52,7 +52,7 @@ interface AppConfig {
  */
 function getEnv(key: string, fallback: string): string {
   // Vite exposes env vars with VITE_ prefix
-  const value = import.meta.env[key];
+  const value = import.meta.env[key] as unknown;
   return typeof value === 'string' && value.length > 0 ? value : fallback;
 }
 
@@ -60,7 +60,7 @@ function getEnv(key: string, fallback: string): string {
  * Parse boolean from environment variable
  */
 function getBoolEnv(key: string, fallback: boolean): boolean {
-  const value = import.meta.env[key];
+  const value = import.meta.env[key] as unknown;
   if (typeof value === 'boolean') return value;
   if (typeof value === 'string') {
     return value.toLowerCase() === 'true' || value === '1';
@@ -72,7 +72,7 @@ function getBoolEnv(key: string, fallback: boolean): boolean {
  * Parse number from environment variable
  */
 function getNumEnv(key: string, fallback: number): number {
-  const value = import.meta.env[key];
+  const value = import.meta.env[key] as unknown;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }

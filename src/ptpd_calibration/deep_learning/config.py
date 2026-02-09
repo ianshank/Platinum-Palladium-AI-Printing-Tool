@@ -6,6 +6,7 @@ No hardcoded values - everything is configurable.
 """
 
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -821,7 +822,7 @@ class PrintComparisonSettings(BaseSettings):
         description="Primary perceptual metric",
     )
     additional_metrics: list[PerceptualMetric] = Field(
-        default_factory=lambda: [PerceptualMetric.SSIM, PerceptualMetric.DISTS],
+        default_factory=lambda: [PerceptualMetric.DISTS],
         description="Additional metrics to compute",
     )
 
@@ -1212,7 +1213,7 @@ def get_deep_learning_settings() -> DeepLearningSettings:
 
 def configure_deep_learning(
     settings: DeepLearningSettings | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> DeepLearningSettings:
     """Configure deep learning settings."""
     global _deep_learning_settings

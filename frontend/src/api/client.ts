@@ -53,7 +53,8 @@ function createApiClient(): AxiosInstance {
   // Request interceptor for logging
   client.interceptors.request.use(
     (requestConfig) => {
-      const { method, url, data } = requestConfig;
+      const { method, url } = requestConfig;
+      const data = requestConfig.data as unknown;
       logger.debug('API Request', {
         method: method?.toUpperCase(),
         url,

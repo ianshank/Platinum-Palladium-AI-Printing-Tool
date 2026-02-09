@@ -88,10 +88,11 @@ export function CalibrationWizard() {
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Process Setup</h2>
             <div>
-              <label className="mb-1 block text-sm font-medium">
+              <label htmlFor="paper-type" className="mb-1 block text-sm font-medium">
                 Paper Type
               </label>
               <Input
+                id="paper-type"
                 value={data.paper_type}
                 onChange={(e) =>
                   setData({ ...data, paper_type: e.target.value })
@@ -100,10 +101,11 @@ export function CalibrationWizard() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">
+              <label htmlFor="exposure-time" className="mb-1 block text-sm font-medium">
                 Exposure Time (s)
               </label>
               <Input
+                id="exposure-time"
                 type="number"
                 value={data.exposure_time}
                 onChange={(e) =>

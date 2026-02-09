@@ -36,7 +36,9 @@ const INITIAL_STATE: DashboardData = {
  * @param autoRefresh - Whether to automatically refresh data on a timer
  * @returns Dashboard data, refresh function, and loading state
  */
-export function useDashboardData(autoRefresh = false) {
+export function useDashboardData(
+  autoRefresh = false
+): DashboardData & { refresh: () => Promise<void> } {
   const [data, setData] = useState<DashboardData>(INITIAL_STATE);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMountedRef = useRef(true);
@@ -88,7 +90,7 @@ export function useDashboardData(autoRefresh = false) {
   // Initial fetch
   useEffect(() => {
     isMountedRef.current = true;
-    fetchDashboardData();
+    void fetchDashboardData();
 
     return () => {
       isMountedRef.current = false;
@@ -103,7 +105,7 @@ export function useDashboardData(autoRefresh = false) {
     logger.debug('Dashboard: Auto-refresh enabled', { intervalMs });
 
     intervalRef.current = setInterval(() => {
-      fetchDashboardData();
+      void fetchDashboardData();
     }, intervalMs);
 
     return () => {

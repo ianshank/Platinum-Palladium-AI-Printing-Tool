@@ -198,7 +198,7 @@ export const ChemistryCalculator: FC<ChemistryCalculatorProps> = ({
         >
           {allPaperSizes.map((s) => (
             <option key={s.name} value={s.name}>
-              {s.name} ({s.widthInches}" × {s.heightInches}")
+              {s.name} ({s.widthInches}&quot; × {s.heightInches}&quot;)
             </option>
           ))}
         </select>

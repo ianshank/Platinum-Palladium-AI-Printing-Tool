@@ -13,6 +13,8 @@ All modules are optional and require PyTorch to be installed:
     pip install ptpd-calibration[deep]
 """
 
+from typing import Any
+
 from ptpd_calibration.ml.deep.exceptions import (
     DeepLearningError,
     ModelNotTrainedError,
@@ -55,7 +57,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 }
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """
     Lazy import of PyTorch-dependent modules.
 

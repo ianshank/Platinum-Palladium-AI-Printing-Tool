@@ -14,7 +14,7 @@ import { api } from '@/api/client';
 import { useSaveCurve } from '@/api/hooks';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { RefreshCw, Redo2, Save, Undo2 } from 'lucide-react';
+import { Redo2, RefreshCw, Save, Undo2 } from 'lucide-react';
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import { logger } from '@/lib/logger';
 import { useUndoRedo } from '@/hooks/useUndoRedo';

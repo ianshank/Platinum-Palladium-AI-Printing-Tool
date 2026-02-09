@@ -42,8 +42,10 @@ describe('ScanUpload', () => {
 
     // Mock upload implementation to simulate progress
     vi.spyOn(api.scan, 'upload').mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/require-await -- mock returns immediately but needs async signature
       async (_file, _type, onProgress) => {
         onProgress?.(100);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- mock response with partial data
         return mockResponse as any;
       }
     );

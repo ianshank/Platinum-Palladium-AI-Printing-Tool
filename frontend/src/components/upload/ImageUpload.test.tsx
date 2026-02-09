@@ -120,6 +120,7 @@ describe('ImageUpload', () => {
         expect(preview).toHaveAttribute('src', 'blob:mock-url');
       });
 
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- testing mock function reference
       expect(global.URL.createObjectURL).toHaveBeenCalledWith(file);
     });
 
@@ -203,11 +204,11 @@ describe('ImageUpload', () => {
 
   describe('Upload Flow', () => {
     it('shows progress bar during upload', async () => {
-      const onUpload = vi.fn((_file, onProgress) => {
+      const onUpload = vi.fn((_file: File, onProgress?: (progress: number) => void) => {
         return new Promise((resolve) => {
-          onProgress(50);
+          onProgress?.(50);
           setTimeout(() => {
-            onProgress(100);
+            onProgress?.(100);
             resolve({ success: true });
           }, 100);
         });
@@ -416,9 +417,9 @@ describe('ImageUpload', () => {
     });
 
     it('has accessible progress bar', async () => {
-      const onUpload = vi.fn((_file, onProgress) => {
+      const onUpload = vi.fn((_file: File, onProgress?: (progress: number) => void) => {
         return new Promise((resolve) => {
-          onProgress(75);
+          onProgress?.(75);
           setTimeout(() => resolve({ success: true }), 100);
         });
       });

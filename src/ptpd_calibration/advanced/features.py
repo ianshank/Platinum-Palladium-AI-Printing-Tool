@@ -173,7 +173,7 @@ class AlternativeProcessSimulator:
     processes with characteristic tone curves and color transformations.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the alternative process simulator."""
         self._process_presets = self._create_process_presets()
 
@@ -295,7 +295,7 @@ class AlternativeProcessSimulator:
                 gamma=0.95,
                 contrast=0.9,
                 shadow_color=pigment_color,
-                midtone_color=tuple(int(c * 1.8) for c in pigment_color),
+                midtone_color=(int(pigment_color[0] * 1.8), int(pigment_color[1] * 1.8), int(pigment_color[2] * 1.8)),
                 highlight_color=(245, 240, 232),
                 dmax=1.4,
                 dmin=0.08,
@@ -560,7 +560,7 @@ class NegativeBlender:
     multi-negative composites and local adjustments.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the negative blender."""
         pass
 
@@ -921,7 +921,7 @@ class QRMetadataGenerator:
     labels suitable for attachment to finished prints.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the QR metadata generator."""
         if not HAS_QRCODE:
             raise ImportError(
@@ -1143,7 +1143,7 @@ class StyleTransfer:
     and historic periods to contemporary images.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the style transfer system."""
         self.styles = self.load_historic_styles()
 
@@ -1153,7 +1153,7 @@ class StyleTransfer:
         Returns:
             Dictionary of style name to parameters
         """
-        styles = {
+        styles: dict[str, StyleParameters] = {
             HistoricStyle.PICTORIALIST_1890S: StyleParameters(
                 name="1890s Pictorialist",
                 description="Soft-focus pictorialist style with gentle tones",
@@ -1293,12 +1293,14 @@ class StyleTransfer:
             highlight_mask = arr > highlight_val - 0.05
 
             if shadow_mask.any():
-                shadow_color = tuple(int(c * 255) for c in rgb_arr[shadow_mask].mean(axis=0))
+                shadow_rgb = rgb_arr[shadow_mask].mean(axis=0)
+                shadow_color = (int(shadow_rgb[0] * 255), int(shadow_rgb[1] * 255), int(shadow_rgb[2] * 255))
             else:
                 shadow_color = (20, 18, 16)
 
             if highlight_mask.any():
-                highlight_color = tuple(int(c * 255) for c in rgb_arr[highlight_mask].mean(axis=0))
+                highlight_rgb = rgb_arr[highlight_mask].mean(axis=0)
+                highlight_color = (int(highlight_rgb[0] * 255), int(highlight_rgb[1] * 255), int(highlight_rgb[2] * 255))
             else:
                 highlight_color = (245, 240, 235)
         else:
@@ -1339,7 +1341,7 @@ class StyleTransfer:
             # Try to find matching style
             style_params = None
             for key, params in self.styles.items():
-                if key == style_name or key.value == style_name:
+                if key == style_name:
                     style_params = params
                     break
             if style_params is None:
@@ -1471,7 +1473,7 @@ class PrintComparison:
     by comparing digital files with scanned prints.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the print comparison system."""
         pass
 

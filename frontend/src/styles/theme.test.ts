@@ -4,25 +4,19 @@ import { theme } from './theme';
 describe('theme', () => {
   describe('Colors', () => {
     it('has complete background color palette', () => {
-      expect(theme.colors.background).toEqual(
-        expect.objectContaining({
-          primary: expect.any(String),
-          secondary: expect.any(String),
-          tertiary: expect.any(String),
-          hover: expect.any(String),
-        })
-      );
+      const bg = theme.colors.background;
+      expect(typeof bg.primary).toBe('string');
+      expect(typeof bg.secondary).toBe('string');
+      expect(typeof bg.tertiary).toBe('string');
+      expect(typeof bg.hover).toBe('string');
     });
 
     it('has complete text color palette', () => {
-      expect(theme.colors.text).toEqual(
-        expect.objectContaining({
-          primary: expect.any(String),
-          secondary: expect.any(String),
-          inverse: expect.any(String),
-          error: expect.any(String),
-        })
-      );
+      const text = theme.colors.text;
+      expect(typeof text.primary).toBe('string');
+      expect(typeof text.secondary).toBe('string');
+      expect(typeof text.inverse).toBe('string');
+      expect(typeof text.error).toBe('string');
     });
 
     it('has border colors', () => {
@@ -37,14 +31,11 @@ describe('theme', () => {
     });
 
     it('has semantic colors', () => {
-      expect(theme.colors.semantic).toEqual(
-        expect.objectContaining({
-          success: expect.any(String),
-          warning: expect.any(String),
-          error: expect.any(String),
-          info: expect.any(String),
-        })
-      );
+      const semantic = theme.colors.semantic;
+      expect(typeof semantic.success).toBe('string');
+      expect(typeof semantic.warning).toBe('string');
+      expect(typeof semantic.error).toBe('string');
+      expect(typeof semantic.info).toBe('string');
     });
   });
 

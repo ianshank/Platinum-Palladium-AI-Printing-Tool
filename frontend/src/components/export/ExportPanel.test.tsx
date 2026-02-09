@@ -159,7 +159,7 @@ describe('ExportPanel', () => {
   });
 
   describe('Export Flow', () => {
-    it('calls onExport with selected format ID when download button is clicked', async () => {
+    it('calls onExport with selected format ID when download button is clicked', () => {
       const mockBlob = new Blob(['test data'], { type: 'text/plain' });
       mockOnExport.mockResolvedValue(mockBlob);
 
@@ -171,7 +171,7 @@ describe('ExportPanel', () => {
         />
       );
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 
@@ -199,8 +199,9 @@ describe('ExportPanel', () => {
       });
 
       // Clean up
-      await act(async () => {
+      await act(() => {
         resolveExport!(new Blob(['data']));
+        return Promise.resolve();
       });
     });
 
@@ -216,7 +217,7 @@ describe('ExportPanel', () => {
         />
       );
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 
@@ -242,7 +243,7 @@ describe('ExportPanel', () => {
         />
       );
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 
@@ -257,7 +258,7 @@ describe('ExportPanel', () => {
 
       render(<ExportPanel formats={testFormats} onExport={mockOnExport} />);
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 
@@ -281,7 +282,7 @@ describe('ExportPanel', () => {
         />
       );
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 
@@ -301,7 +302,7 @@ describe('ExportPanel', () => {
       render(<ExportPanel formats={testFormats} onExport={mockOnExport} />);
 
       // First attempt - should fail
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 
@@ -310,7 +311,7 @@ describe('ExportPanel', () => {
       });
 
       // Click retry
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-retry-button'));
       });
 
@@ -338,7 +339,7 @@ describe('ExportPanel', () => {
         />
       );
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 
@@ -361,7 +362,7 @@ describe('ExportPanel', () => {
         />
       );
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 
@@ -383,7 +384,7 @@ describe('ExportPanel', () => {
         />
       );
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 
@@ -434,8 +435,9 @@ describe('ExportPanel', () => {
       });
 
       // Clean up
-      await act(async () => {
+      await act(() => {
         resolveExport!(new Blob(['data']));
+        return Promise.resolve();
       });
     });
 
@@ -452,7 +454,7 @@ describe('ExportPanel', () => {
         />
       );
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 
@@ -498,7 +500,7 @@ describe('ExportPanel', () => {
 
       render(<ExportPanel formats={testFormats} onExport={mockOnExport} />);
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 
@@ -514,7 +516,7 @@ describe('ExportPanel', () => {
 
       render(<ExportPanel formats={testFormats} onExport={mockOnExport} />);
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(screen.getByTestId('export-button'));
       });
 

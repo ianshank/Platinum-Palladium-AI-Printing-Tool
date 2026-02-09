@@ -34,7 +34,7 @@ describe('Step1Upload', () => {
     const fileInput = screen.getByTestId('dropzone-input');
 
     if (fileInput) {
-      await fireEvent.change(fileInput, { target: { files: [file] } });
+      fireEvent.change(fileInput, { target: { files: [file] } });
 
       await waitFor(() => {
         expect(screen.getByText('test-scan.png')).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe('Step1Upload', () => {
     const file = createMockFile('test-scan.png', 1024, 'image/png');
     const fileInput = screen.getByTestId('dropzone-input');
 
-    await fireEvent.change(fileInput, { target: { files: [file] } });
+    fireEvent.change(fileInput, { target: { files: [file] } });
 
     const continueBtn = screen.getByRole('button', {
       name: /Analyze & Continue/i,
@@ -63,6 +63,7 @@ describe('Step1Upload', () => {
     expect(mockMutate).toHaveBeenCalledTimes(1);
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.any returns any for type matching
         file: expect.any(File),
         tabletType: 'stouffer_21',
       }),
