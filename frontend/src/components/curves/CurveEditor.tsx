@@ -14,9 +14,10 @@ import { api } from '@/api/client';
 import { useSaveCurve } from '@/api/hooks';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { RefreshCw, Save } from 'lucide-react';
+import { RefreshCw, Redo2, Save, Undo2 } from 'lucide-react';
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import { logger } from '@/lib/logger';
+import { useUndoRedo } from '@/hooks/useUndoRedo';
 
 import { cn } from '@/lib/utils';
 
@@ -81,7 +82,17 @@ export function CurveEditor({
   const [inputValues, setInputValues] = useState<number[]>(
     initialCurve?.input_values || Array.from({ length: 256 }, (_, i) => i)
   );
-  const [outputValues, setOutputValues] = useState<number[]>(
+
+  // Output values with undo/redo support
+  const {
+    state: outputValues,
+    setState: setOutputValues,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    reset: resetOutputValues,
+  } = useUndoRedo<number[]>(
     initialCurve?.output_values || Array.from({ length: 256 }, (_, i) => i)
   );
 
@@ -130,12 +141,12 @@ export function CurveEditor({
   const handleReset = () => {
     if (initialCurve) {
       setInputValues(initialCurve.input_values);
-      setOutputValues(initialCurve.output_values);
+      resetOutputValues(initialCurve.output_values);
     } else {
       // Reset to linear
       const linear = Array.from({ length: 256 }, (_, i) => i);
       setInputValues(linear);
-      setOutputValues(linear);
+      resetOutputValues(linear);
     }
     setAmount(0);
   };
@@ -190,6 +201,24 @@ export function CurveEditor({
           />
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={undo}
+            disabled={!canUndo}
+            title="Undo (Ctrl+Z)"
+            aria-label="Undo"
+          >
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            onClick={redo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Shift+Z)"
+            aria-label="Redo"
+          >
+            <Redo2 className="h-4 w-4" />
+          </Button>
           <Button variant="outline" onClick={handleReset} title="Reset">
             <RefreshCw className="mr-2 h-4 w-4" />
             Reset

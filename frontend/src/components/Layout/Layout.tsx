@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useStore } from '@/stores';
 import { Button } from '@/components/ui/Button';
+import { useAppShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { logger } from '@/lib/logger';
 
 interface NavItem {
@@ -60,6 +61,9 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
   const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
   const toggleSidebar = useStore((state) => state.ui.toggleSidebar);
   const isProcessing = useStore((state) => state.ui.isProcessing);
+
+  // Register global keyboard shortcuts (Ctrl+1-5 tab nav, Ctrl+Z undo/redo)
+  useAppShortcuts();
 
   const handleNavClick = (path: string): void => {
     logger.debug('Layout: navigation', { path });

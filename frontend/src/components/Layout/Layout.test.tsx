@@ -32,6 +32,10 @@ vi.mock('@/components/ui/Button', () => ({
   ),
 }));
 
+vi.mock('@/hooks/useKeyboardShortcuts', () => ({
+  useAppShortcuts: vi.fn(),
+}));
+
 let mockSidebarOpen = true;
 let mockIsProcessing = false;
 const mockToggleSidebar = vi.fn();

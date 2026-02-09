@@ -73,11 +73,11 @@
       "priority": "critical",
       "dependencies": ["curve-display"],
       "blockers": [],
-      "testCoverage": 75,
+      "testCoverage": 80,
       "assignedAgent": "ui-migration-agent",
       "startedAt": "2026-01-28T00:00:00Z",
       "completedAt": "2026-02-05T00:00:00Z",
-      "notes": "Interactive editor with drag handlers. Save via useSaveCurve API hook wired (Sprint 0). No undo/redo yet."
+      "notes": "Interactive editor with drag handlers. Save via useSaveCurve API hook. Undo/redo via useUndoRedo hook with UI buttons."
     },
     {
       "id": "step-tablet-analysis",
@@ -259,9 +259,9 @@
   "gaps": [
     {
       "id": "gap-1",
-      "description": "No equivalence tests between Gradio and React implementations",
+      "description": "Equivalence test framework for Gradio vs React parity verification",
       "severity": "medium",
-      "status": "open"
+      "status": "closed"
     },
     {
       "id": "gap-2",
@@ -271,9 +271,9 @@
     },
     {
       "id": "gap-3",
-      "description": "No undo/redo stack for curve editing",
+      "description": "Undo/redo stack for curve editing via useUndoRedo hook",
       "severity": "medium",
-      "status": "open"
+      "status": "closed"
     },
     {
       "id": "gap-4",
@@ -304,6 +304,11 @@
       "date": "2026-02-09",
       "action": "migration-complete",
       "details": "15/15 components migrated. Sprint 0: CurveEditor save wired to useSaveCurve API hook. Sprint 2: ImageUpload (26 tests), ImagePreview (29 tests), ExportPanel (28 tests) extracted as standalone components. 680 total tests passing. 0 TS errors. Build successful. 3 gaps closed (gap-2, gap-4, gap-5). 2 gaps remaining (gap-1: equivalence tests, gap-3: undo/redo)."
+    },
+    {
+      "date": "2026-02-09",
+      "action": "gaps-closed-hardening",
+      "details": "All 5 gaps now closed. gap-1: Equivalence test framework created (CurveEditor + ScanAnalysis equiv tests, shared fixtures, tolerance utilities). gap-3: Undo/redo implemented via useUndoRedo hook with Undo/Redo buttons in CurveEditor. Keyboard shortcuts (Ctrl+1-5 tab nav, Ctrl+Z/Y undo/redo) wired into Layout. Mobile responsive padding added to all 7 pages. 720 total tests passing. 0 TS errors. Build successful."
     }
   ]
 }

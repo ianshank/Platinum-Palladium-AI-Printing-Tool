@@ -1,24 +1,27 @@
 {
-  "last_session_id": "session-sprint02-migration-completion",
-  "last_timestamp": "2026-02-09T01:35:00Z",
-  "active_branch": "claude/investigate-agentic-next-steps-Wr5Rv",
+  "last_session_id": "session-hardening-gaps-closed",
+  "last_timestamp": "2026-02-09T02:35:00Z",
+  "active_branch": "claude/scan-and-implement-Dq1Nl",
   "resume_pointers": {
     "current_task": null,
     "blocked_on": [],
     "next_steps": [
       "Sprint 1: Agent observability (health checks, circuit breakers, metrics)",
-      "Equivalence tests between Gradio and React (gap-1)",
-      "Undo/redo stack for CurveEditor (gap-3)"
+      "Batch processing queue UI",
+      "Offline PWA mode",
+      "i18n internationalization support",
+      "Visual regression tests with Playwright"
     ]
   },
   "context_files": [
     "docs/migration/progress.json",
-    "frontend/src/components/upload/ImageUpload.tsx",
-    "frontend/src/components/preview/ImagePreview.tsx",
-    "frontend/src/components/export/ExportPanel.tsx",
+    "frontend/src/hooks/useUndoRedo.ts",
     "frontend/src/components/curves/CurveEditor.tsx",
-    "frontend/src/api/hooks.ts"
+    "frontend/src/components/Layout/Layout.tsx",
+    "frontend/src/__tests__/equivalence/setup.ts",
+    "frontend/src/__tests__/equivalence/CurveEditor.equiv.test.ts",
+    "frontend/src/__tests__/equivalence/ScanAnalysis.equiv.test.ts"
   ],
-  "implementation_status": "15/15 components migrated, 680 tests passing, 0 TS errors, build successful",
-  "test_status": "680 passed, 0 failed, ~80% coverage"
+  "implementation_status": "15/15 components migrated, all 5 gaps closed, 720 tests passing, 0 TS errors, build successful",
+  "test_status": "720 passed, 0 failed, ~80% coverage"
 }
