@@ -1,4 +1,13 @@
 {
-    "last_session_id": null,
-    "current_focus": null
+  "last_session_id": null,
+  "last_timestamp": null,
+  "active_branch": null,
+  "resume_pointers": {
+    "current_task": null,
+    "blocked_on": [],
+    "next_steps": []
+  },
+  "context_files": [],
+  "tasks_ready_for_dev": [],
+  "tasks_in_progress": []
 }

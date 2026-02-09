@@ -1,5 +1,22 @@
 {
-    "last_session_id": null,
-    "target_branch": "main",
-    "validation_status": "pending"
+  "last_session_id": null,
+  "last_timestamp": null,
+  "active_branch": null,
+  "resume_pointers": {
+    "current_task": null,
+    "blocked_on": [],
+    "next_steps": []
+  },
+  "context_files": [],
+  "pr_readiness": null,
+  "check_results": {
+    "lint": null,
+    "format": null,
+    "types": null,
+    "tests": null,
+    "coverage": null,
+    "security": null,
+    "docs": null,
+    "changelog": null
+  }
 }

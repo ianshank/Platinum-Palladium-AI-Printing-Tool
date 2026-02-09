@@ -4,9 +4,9 @@
 Migration from Gradio Python UI to React 18 + TypeScript + Zustand for a digital negative creation tool used in platinum/palladium alternative photographic printing processes.
 
 ## Migration Status
-- **Current Phase**: Phase 1 - Project Setup
-- **Components Migrated**: 0/15
-- **Test Coverage**: 0% (Target: 80%)
+- **Current Phase**: Phase 3 - Migration Completion & Hardening
+- **Components Migrated**: 12/15
+- **Test Coverage**: ~75% (Target: 80%)
 - **Started**: 2026-01-24
 
 ---
@@ -420,3 +420,74 @@ The migration uses a configuration-driven approach. All dynamic values are loade
 - [ ] Mobile responsive layout
 - [ ] Offline mode (PWA)
 - [ ] i18n support
+
+---
+
+## Knowledge Base Protocol
+
+This project uses a structured knowledge base in `kb/` for session continuity
+across a three-role workflow pipeline: Planning → DEV-SQE → Pre-PR.
+
+### Directory Structure
+
+```
+kb/
+├── handoffs/                  # Immutable cross-role handoff documents
+├── ledger/
+│   └── ledger.jsonl           # Append-only event log (shared across all roles)
+├── sessions/
+│   ├── planning.state.json    # Planning role session state
+│   ├── dev-sqe.state.json     # DEV-SQE role session state
+│   └── pre-pr.state.json      # Pre-PR role session state
+└── summaries/
+    ├── planning.md            # Rolling planning summary
+    ├── dev-sqe.md             # Rolling dev/sqe summary
+    ├── pre-pr.md              # Rolling pre-pr summary
+    └── design-contract-readiness.md
+```
+
+### Workflow Roles
+
+| Role | Purpose | Upstream | Downstream |
+|------|---------|----------|------------|
+| **Planning** | Task breakdown, arch decisions, acceptance criteria | — | DEV-SQE |
+| **DEV-SQE** | Implementation, testing, quality engineering | Planning | Pre-PR |
+| **Pre-PR** | Validation, PR preparation, documentation | DEV-SQE | (PR ready) |
+
+### Handoff Flow
+- Planning → DEV-SQE: `PLANNING-HANDOFF` event + handoff doc
+- DEV-SQE → Pre-PR: `DEV-SQE-HANDOFF` event + handoff doc
+- DEV-SQE → Planning: `DESIGN-GAP` event (feedback loop)
+- Pre-PR → DEV-SQE: `QA-GAP` event (feedback loop)
+- Pre-PR → Planning: `SCOPE-CHANGE` event (feedback loop)
+
+### Handoff Skills
+- Planning: `.claude/skills/planning-handoff/SKILL.md`
+- DEV-SQE: `.claude/skills/dev-sqe-handoff/SKILL.md`
+- Pre-PR: `.claude/skills/pre-pr-handoff/SKILL.md`
+
+### SessionStart Hooks
+- Dispatcher: `.claude/hooks/kb-start.sh` (routes via `$CLAUDE_ROLE` env var)
+- Planning: `.claude/hooks/planning-start.sh`
+- DEV-SQE: `.claude/hooks/dev-sqe-start.sh`
+- Pre-PR: `.claude/hooks/pre-pr-start.sh`
+
+### Configuration (Environment Variables)
+- `CLAUDE_ROLE` — Which role to load context for (planning, dev-sqe, pre-pr, all). Default: all
+- `KB_DIR` — Override KB directory path. Default: `$CLAUDE_PROJECT_DIR/kb`
+- `KB_MAX_SUMMARY_BYTES` — Max bytes per summary. Default: 4000
+- `KB_MAX_CROSS_ROLE_BYTES` — Max bytes for cross-role summaries. Default: 2000
+- `KB_MAX_LEDGER_LINES` — Recent ledger lines to inject. Default: 15-20
+- `KB_MAX_HANDOFFS` — Max handoff docs to load. Default: 3
+- `KB_DEBUG` — Enable debug logging (true/false). Default: false
+
+### Rules
+1. NEVER overwrite or truncate `kb/ledger/ledger.jsonl` — only append
+2. Handoff files in `kb/handoffs/` are immutable once created
+3. Session state files (`kb/sessions/*.state.json`) are the ONLY mutable state per role
+4. Summary files are append-at-top with a cap of 20 entries
+5. All JSONL entries must be valid JSON — validate with `jq` after writing
+6. In Agent Teams, designate ONE teammate as the sole ledger writer to avoid race conditions
+7. When spawning Agent Teams, each teammate should read relevant KB summaries before starting
+8. Every session that does meaningful work MUST run its role's handoff skill before stopping
+9. Cross-role handoffs create BOTH a ledger event AND a handoff doc

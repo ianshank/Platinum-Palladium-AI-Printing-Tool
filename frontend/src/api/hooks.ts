@@ -165,6 +165,39 @@ export function useSmoothCurve(
   });
 }
 
+export function useSaveCurve(
+  options?: UseMutationOptions<
+    CurveModificationResponse,
+    AxiosError<ApiError>,
+    CurveModificationRequest
+  >
+) {
+  const queryClient = useQueryClient();
+  const addToast = useStore((state) => state.ui?.addToast);
+
+  return useMutation({
+    mutationFn: (data: CurveModificationRequest) => api.curves.modify(data),
+    onSuccess: (data) => {
+      logger.info('Curve saved', { curveId: data.curve_id, name: data.name });
+      addToast?.({
+        title: 'Curve Saved',
+        description: `"${data.name}" saved successfully`,
+        variant: 'success',
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
+    },
+    onError: (error) => {
+      logger.error('Curve save failed', { error: error.message });
+      addToast?.({
+        title: 'Save Failed',
+        description: error.response?.data?.message ?? error.message,
+        variant: 'error',
+      });
+    },
+    ...options,
+  });
+}
+
 export function useExportCurve(
   options?: UseMutationOptions<
     Blob,
