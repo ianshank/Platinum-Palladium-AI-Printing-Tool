@@ -84,7 +84,7 @@ describe('ChemistryCalculator', () => {
       render(<ChemistryCalculator />);
       const select: HTMLSelectElement = screen.getByTestId(
         'paper-size-select'
-      ) as HTMLSelectElement;
+      );
       expect(select.value).toBe('8x10');
     });
 
