@@ -8,7 +8,7 @@ ROLE="${CLAUDE_ROLE:-all}"
 DEBUG="${KB_DEBUG:-false}"
 
 # Debug helper
-log_debug() { [ "$DEBUG" = "true" ] && echo "[KB-DEBUG] $*" >&2 || true; }
+log_debug() { [ "$DEBUG" = "true" ] && echo "[KB-DEBUG] $@" >&2 || true; }
 
 # Run a role-specific hook if it exists
 run_hook() {
