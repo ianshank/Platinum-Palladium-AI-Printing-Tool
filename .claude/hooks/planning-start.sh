@@ -11,7 +11,7 @@ MAX_HANDOFFS="${KB_MAX_HANDOFFS:-3}"
 DEBUG="${KB_DEBUG:-false}"
 
 # Debug helper
-log_debug() { [ "$DEBUG" = "true" ] && echo "[KB-DEBUG] $*" >&2 || true; }
+log_debug() { [ "$DEBUG" = "true" ] && echo "[KB-DEBUG] $@" >&2 || true; }
 
 # Safe read helper - outputs content from file up to N bytes, or nothing
 safe_read() {
