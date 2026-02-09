@@ -36,7 +36,7 @@ describe('Equivalence: Scan Quality Grading', () => {
       maxScore: 100,
     },
     {
-      label: 'moderate scan (moderate range, sufficient patches)',
+      label: 'boundary: moderate range penalty still grades excellent',
       input: {
         densities: Array.from({ length: 15 }, (_, i) => 0.1 + (i / 14) * 0.8),
         dmax: 0.9,
@@ -186,7 +186,7 @@ describe('Equivalence: Score Calculation Determinism', () => {
     // Single penalty: low range only
     const lowRange: ScanAnalysisInput = {
       densities: Array.from({ length: 21 }, (_, i) => 0.1 + (i / 20) * 0.3),
-      dmax: 1.0,
+      dmax: 0.4,
       dmin: 0.1,
       range: 0.3,
       num_patches: 21,

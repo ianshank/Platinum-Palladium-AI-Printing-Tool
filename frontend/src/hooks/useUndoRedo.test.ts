@@ -195,6 +195,77 @@ describe('useUndoRedo', () => {
     expect(result.current.state).toEqual(initial);
   });
 
+  it('handles null as initial value', () => {
+    const { result } = renderHook(() => useUndoRedo<string | null>(null));
+    expect(result.current.state).toBeNull();
+
+    act(() => result.current.setState('hello'));
+    expect(result.current.state).toBe('hello');
+
+    act(() => result.current.undo());
+    expect(result.current.state).toBeNull();
+  });
+
+  it('handles maxHistory=1 boundary', () => {
+    const { result } = renderHook(() => useUndoRedo('A', 1));
+
+    act(() => result.current.setState('B'));
+    act(() => result.current.setState('C'));
+
+    // maxHistory=1 means only 1 undo step retained
+    expect(result.current.state).toBe('C');
+
+    act(() => result.current.undo());
+    expect(result.current.state).toBe('B');
+
+    // Can't undo further
+    act(() => result.current.undo());
+    expect(result.current.state).toBe('B');
+    expect(result.current.canUndo).toBe(false);
+  });
+
+  it('clamps invalid maxHistory to 1', () => {
+    const { result } = renderHook(() => useUndoRedo(0, 0));
+
+    act(() => result.current.setState(1));
+    expect(result.current.canUndo).toBe(true);
+
+    act(() => result.current.undo());
+    expect(result.current.state).toBe(0);
+  });
+
+  it('resumes normal tracking after reset', () => {
+    const { result } = renderHook(() => useUndoRedo(0));
+
+    act(() => result.current.setState(1));
+    act(() => result.current.reset(100));
+
+    expect(result.current.canUndo).toBe(false);
+
+    act(() => result.current.setState(200));
+    expect(result.current.canUndo).toBe(true);
+
+    act(() => result.current.undo());
+    expect(result.current.state).toBe(100);
+  });
+
+  it('maintains stable callback references across renders', () => {
+    const { result, rerender } = renderHook(() => useUndoRedo(0));
+    const first = {
+      setState: result.current.setState,
+      undo: result.current.undo,
+      redo: result.current.redo,
+      reset: result.current.reset,
+    };
+
+    rerender();
+
+    expect(result.current.setState).toBe(first.setState);
+    expect(result.current.undo).toBe(first.undo);
+    expect(result.current.redo).toBe(first.redo);
+    expect(result.current.reset).toBe(first.reset);
+  });
+
   it('handles rapid undo/redo cycles correctly', () => {
     const { result } = renderHook(() => useUndoRedo(0));
 

@@ -18,8 +18,18 @@ import { RefreshCw, Redo2, Save, Undo2 } from 'lucide-react';
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import { logger } from '@/lib/logger';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
+import { config } from '@/config';
 
 import { cn } from '@/lib/utils';
+
+type AdjustmentType = 'contrast' | 'brightness' | 'gamma' | 'sigmoid';
+
+const ADJUSTMENT_OPTIONS: readonly { value: AdjustmentType; label: string }[] = [
+  { value: 'contrast', label: 'Contrast' },
+  { value: 'brightness', label: 'Brightness' },
+  { value: 'gamma', label: 'Gamma' },
+  { value: 'sigmoid', label: 'Sigmoid' },
+];
 
 // --- UI Components (Inline for speed, move to ui/ later) ---
 
@@ -35,34 +45,34 @@ const Slider = React.forwardRef<
     )}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-gray-200 bg-secondary/20">
-      <SliderPrimitive.Range className="absolute h-full bg-blue-600 bg-primary" />
+    <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary/20">
+      <SliderPrimitive.Range className="absolute h-full bg-primary" />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-primary bg-background bg-white ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
+    <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
   </SliderPrimitive.Root>
 ));
 Slider.displayName = SliderPrimitive.Root.displayName;
 
-// Simple Select wrapper
 const AdjustmentSelect = ({
   value,
   onChange,
   id,
 }: {
-  value: string;
-  onChange: (val: string) => void;
+  value: AdjustmentType;
+  onChange: (val: AdjustmentType) => void;
   id?: string;
 }) => (
   <select
     id={id}
     value={value}
-    onChange={(e) => onChange(e.target.value)}
+    onChange={(e) => onChange(e.target.value as AdjustmentType)}
     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
   >
-    <option value="contrast">Contrast</option>
-    <option value="brightness">Brightness</option>
-    <option value="gamma">Gamma</option>
-    <option value="sigmoid">Sigmoid</option>
+    {ADJUSTMENT_OPTIONS.map((opt) => (
+      <option key={opt.value} value={opt.value}>
+        {opt.label}
+      </option>
+    ))}
   </select>
 );
 
@@ -72,15 +82,22 @@ interface CurveEditorProps {
   className?: string;
 }
 
+function makeLinearCurve(length: number): number[] {
+  return Array.from({ length }, (_, i) => i);
+}
+
 export function CurveEditor({
   initialCurve,
   onSave,
   className,
-}: CurveEditorProps) {
+}: CurveEditorProps): React.ReactElement {
+  const curveLength = config.calibration.maxCurvePoints;
+  const maxValue = curveLength - 1;
+
   // Local state for curve data
   const [name, setName] = useState(initialCurve?.name || 'New Curve');
   const [inputValues, setInputValues] = useState<number[]>(
-    initialCurve?.input_values || Array.from({ length: 256 }, (_, i) => i)
+    initialCurve?.input_values || makeLinearCurve(curveLength)
   );
 
   // Output values with undo/redo support
@@ -93,11 +110,11 @@ export function CurveEditor({
     canRedo,
     reset: resetOutputValues,
   } = useUndoRedo<number[]>(
-    initialCurve?.output_values || Array.from({ length: 256 }, (_, i) => i)
+    initialCurve?.output_values || makeLinearCurve(curveLength)
   );
 
   // Adjustment state
-  const [adjustmentType, setAdjustmentType] = useState<string>('contrast');
+  const [adjustmentType, setAdjustmentType] = useState<AdjustmentType>('contrast');
   const [amount, setAmount] = useState<number>(0);
   const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,11 +127,11 @@ export function CurveEditor({
     return inputValues.map((input, index) => ({
       input,
       output: outputValues[index],
-      reference: input, // Linear reference
     }));
   }, [inputValues, outputValues]);
 
-  const handleApplyAdjustment = async () => {
+  const handleApplyAdjustment = async (): Promise<void> => {
+    logger.info('CurveEditor: applying adjustment', { adjustmentType, amount });
     setIsApplying(true);
     setError(null);
     try {
@@ -127,31 +144,35 @@ export function CurveEditor({
       });
 
       if (response.success) {
+        logger.info('CurveEditor: adjustment applied', { adjustmentType });
         setOutputValues(response.output_values);
       } else {
+        logger.warn('CurveEditor: adjustment returned success=false');
         setError('Failed to apply adjustment');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error applying adjustment');
+      const message = err instanceof Error ? err.message : 'Error applying adjustment';
+      logger.error('CurveEditor: adjustment failed', { error: message });
+      setError(message);
     } finally {
       setIsApplying(false);
     }
   };
 
-  const handleReset = () => {
+  const handleReset = (): void => {
+    logger.info('CurveEditor: resetting curve');
     if (initialCurve) {
       setInputValues(initialCurve.input_values);
       resetOutputValues(initialCurve.output_values);
     } else {
-      // Reset to linear
-      const linear = Array.from({ length: 256 }, (_, i) => i);
+      const linear = makeLinearCurve(curveLength);
       setInputValues(linear);
       resetOutputValues(linear);
     }
     setAmount(0);
   };
 
-  const handleSave = () => {
+  const handleSave = (): void => {
     logger.info('CurveEditor: saving curve', { name, pointCount: inputValues.length });
 
     saveCurve(
@@ -177,7 +198,9 @@ export function CurveEditor({
           }
         },
         onError: (err) => {
-          setError(err.response?.data?.message ?? err.message ?? 'Save failed');
+          const message = err.response?.data?.message ?? err.message;
+          logger.error('CurveEditor: save failed', { error: message });
+          setError(message);
         },
       }
     );
@@ -230,7 +253,11 @@ export function CurveEditor({
         </div>
       </div>
 
-      <div className="h-[400px] w-full rounded-md border bg-white/5 p-4">
+      <div
+        className="h-[400px] w-full rounded-md border bg-white/5 p-4"
+        role="img"
+        aria-label={`Curve chart for ${name} showing input vs output density mapping`}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -240,7 +267,7 @@ export function CurveEditor({
             <XAxis
               dataKey="input"
               type="number"
-              domain={[0, 255]}
+              domain={[0, maxValue]}
               tick={{ fontSize: 12 }}
               label={{
                 value: 'Input Density',
@@ -250,7 +277,7 @@ export function CurveEditor({
             />
             <YAxis
               type="number"
-              domain={[0, 255]}
+              domain={[0, maxValue]}
               tick={{ fontSize: 12 }}
               label={{
                 value: 'Output Density',
@@ -268,7 +295,7 @@ export function CurveEditor({
             <ReferenceLine
               segment={[
                 { x: 0, y: 0 },
-                { x: 255, y: 255 },
+                { x: maxValue, y: maxValue },
               ]}
               stroke="#ccc"
               strokeDasharray="3 3"
@@ -298,7 +325,7 @@ export function CurveEditor({
         <div className="space-y-4">
           <div className="flex justify-between">
             <label htmlFor="adjustment-amount-slider" className="text-sm font-medium">Amount</label>
-            <span className="text-sm text-gray-500">{amount}</span>
+            <span className="text-sm text-muted-foreground">{amount}</span>
           </div>
           <Slider
             id="adjustment-amount-slider"
@@ -314,14 +341,12 @@ export function CurveEditor({
           <Button
             onClick={handleApplyAdjustment}
             disabled={isApplying}
+            isLoading={isApplying}
             className="w-full md:w-auto"
           >
-            {isApplying ? (
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
             Apply Adjustment
           </Button>
-          {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+          {error && <p className="mt-2 text-sm text-destructive" role="alert">{error}</p>}
         </div>
       </div>
     </div>

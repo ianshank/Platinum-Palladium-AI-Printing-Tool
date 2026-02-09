@@ -22,4 +22,4 @@ export {
 
 export { useChat, type UseChatReturn } from './useChat';
 export { useDashboardData } from './useDashboardData';
-export { useUndoRedo } from './useUndoRedo';
+export { useUndoRedo, type UseUndoRedoReturn } from './useUndoRedo';

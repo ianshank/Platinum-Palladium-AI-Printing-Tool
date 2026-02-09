@@ -8,8 +8,6 @@
  * Python backend (shared) and the React frontend's API layer.
  */
 
-import { api } from '@/api/client';
-
 /**
  * Tolerance for floating-point curve value comparisons.
  * Allows for minor precision differences between implementations.
@@ -20,8 +18,8 @@ export const CURVE_TOLERANCE = 0.001;
  * Compare two arrays of numbers within a given tolerance.
  */
 export function arraysMatchWithTolerance(
-  a: number[],
-  b: number[],
+  a: readonly number[],
+  b: readonly number[],
   tolerance: number = CURVE_TOLERANCE
 ): { match: boolean; maxDiff: number; diffIndex: number } {
   if (a.length !== b.length) {
@@ -34,7 +32,7 @@ export function arraysMatchWithTolerance(
   for (let i = 0; i < a.length; i++) {
     const aVal = a[i] ?? 0;
     const bVal = b[i] ?? 0;
-    const diff = Math.abs(aVal - bVal);
+    const diff = Number.isNaN(aVal) || Number.isNaN(bVal) ? Infinity : Math.abs(aVal - bVal);
     if (diff > maxDiff) {
       maxDiff = diff;
       diffIndex = i;
@@ -97,29 +95,20 @@ export const TEST_FIXTURES = {
 } as const;
 
 /**
- * Helper to call the backend API and validate response shape.
- * Used to compare legacy and new API behavior.
- */
-export async function callCurveModifyEndpoint(params: {
-  name: string;
-  input_values: number[];
-  output_values: number[];
-  adjustment_type: string;
-  amount: number;
-}) {
-  return api.curves.modify(params);
-}
-
-/**
  * Custom matcher: checks if two curve arrays match within tolerance.
  */
 export function expectCurvesMatch(
-  actual: number[],
-  expected: number[],
+  actual: readonly number[],
+  expected: readonly number[],
   tolerance: number = CURVE_TOLERANCE
 ): void {
   const result = arraysMatchWithTolerance(actual, expected, tolerance);
   if (!result.match) {
+    if (result.diffIndex === -1) {
+      throw new Error(
+        `Curve lengths differ: expected ${expected.length} values, got ${actual.length} values`
+      );
+    }
     throw new Error(
       `Curves differ by ${result.maxDiff} at index ${result.diffIndex} (tolerance: ${tolerance}). ` +
       `Expected[${result.diffIndex}]=${expected[result.diffIndex]}, Got[${result.diffIndex}]=${actual[result.diffIndex]}`

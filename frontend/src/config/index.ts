@@ -38,6 +38,7 @@ interface AppConfig {
     animationDuration: number;
     toastDuration: number;
     debounceDelay: number;
+    undoHistoryLimit: number;
   };
   calibration: {
     defaultSteps: number;
@@ -121,6 +122,7 @@ export const config: AppConfig = {
     animationDuration: getNumEnv('VITE_ANIMATION_DURATION', 200),
     toastDuration: getNumEnv('VITE_TOAST_DURATION', 5000),
     debounceDelay: getNumEnv('VITE_DEBOUNCE_DELAY', 300),
+    undoHistoryLimit: getNumEnv('VITE_UNDO_HISTORY_LIMIT', 50),
   },
   calibration: {
     defaultSteps: getNumEnv('VITE_DEFAULT_STEPS', 21),
