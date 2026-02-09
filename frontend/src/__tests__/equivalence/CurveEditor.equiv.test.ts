@@ -66,7 +66,7 @@ describe('Equivalence: Test Fixtures', () => {
     const { input_values, output_values } = TEST_FIXTURES.linear;
     expect(input_values).toHaveLength(256);
     expect(output_values).toHaveLength(256);
-    expectCurvesMatch(input_values as unknown as number[], output_values as unknown as number[]);
+    expectCurvesMatch([...input_values], [...output_values]);
   });
 
   it('typical calibration fixture has 21 step values', () => {
