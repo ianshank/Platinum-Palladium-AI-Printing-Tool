@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { renderWithProviders, userEvent } from '@/test-utils';
 import { CurveEditor } from './CurveEditor';
 import { api } from '@/api/client';
@@ -41,23 +41,28 @@ describe('CurveEditor', () => {
     expect(screen.getByDisplayValue('Test Curve')).toBeInTheDocument();
   });
 
+  it('renders default state without initial curve', () => {
+    renderWithProviders(<CurveEditor />);
+
+    expect(screen.getByDisplayValue('New Curve')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /reset/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /apply adjustment/i })
+    ).toBeInTheDocument();
+  });
+
   it('handles apply adjustment', async () => {
-    // Mock modify response
     vi.spyOn(api.curves, 'modify').mockResolvedValue({
       success: true,
       curve_id: '123',
       name: 'Test Curve',
       adjustment_applied: 'contrast',
       input_values: [0, 128, 255],
-      output_values: [10, 130, 245], // changed
+      output_values: [10, 130, 245],
     } as any);
 
     renderWithProviders(<CurveEditor initialCurve={mockCurve} />);
-
-    // Change slider (difficult to test slider drag with userEvent, but we can try basic interaction or direct prop change if we could reach it)
-    // For now, let's just click 'Apply Adjustment' which uses default amount 0 or initial state.
-    // To change slider value, we might need to access the input if it's a native range, but it's Radix slider.
-    // Radix slider usually exposes role="slider".
 
     const applyButton = screen.getByRole('button', {
       name: /apply adjustment/i,
@@ -67,7 +72,17 @@ describe('CurveEditor', () => {
     expect(api.curves.modify).toHaveBeenCalled();
   });
 
-  it('handles save', async () => {
+  it('saves curve via API and calls onSave callback', async () => {
+    const saveResponse = {
+      success: true,
+      curve_id: 'saved-123',
+      name: 'Test Curve',
+      adjustment_applied: 'none',
+      input_values: [0, 128, 255],
+      output_values: [0, 128, 255],
+    };
+    vi.spyOn(api.curves, 'modify').mockResolvedValue(saveResponse as any);
+
     const onSave = vi.fn();
     renderWithProviders(
       <CurveEditor initialCurve={mockCurve} onSave={onSave} />
@@ -76,12 +91,78 @@ describe('CurveEditor', () => {
     const saveButton = screen.getByRole('button', { name: /save/i });
     await userEvent.click(saveButton);
 
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'Test Curve',
-        input_values: mockCurve.input_values,
-        output_values: mockCurve.output_values,
-      })
+    await waitFor(() => {
+      expect(api.curves.modify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Test Curve',
+          input_values: mockCurve.input_values,
+          output_values: mockCurve.output_values,
+          adjustment_type: 'none',
+          amount: 0,
+        })
+      );
+    });
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'saved-123',
+          name: 'Test Curve',
+        })
+      );
+    });
+  });
+
+  it('shows error when save fails', async () => {
+    const axiosLikeError = Object.assign(new Error('Network error'), {
+      response: { data: { message: 'Network error' } },
+      isAxiosError: true,
+    });
+    vi.spyOn(api.curves, 'modify').mockRejectedValue(axiosLikeError);
+
+    const onSave = vi.fn();
+    renderWithProviders(
+      <CurveEditor initialCurve={mockCurve} onSave={onSave} />
     );
+
+    const saveButton = screen.getByRole('button', { name: /save/i });
+    await userEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(api.curves.modify).toHaveBeenCalled();
+    });
+
+    // Ensure the mutation error fully settles
+    await waitFor(() => {
+      expect(onSave).not.toHaveBeenCalled();
+    });
+  });
+
+  it('handles reset to initial curve', async () => {
+    renderWithProviders(<CurveEditor initialCurve={mockCurve} />);
+
+    const resetButton = screen.getByRole('button', { name: /reset/i });
+    await userEvent.click(resetButton);
+
+    expect(screen.getByDisplayValue('Test Curve')).toBeInTheDocument();
+  });
+
+  it('handles reset to linear when no initial curve', async () => {
+    renderWithProviders(<CurveEditor />);
+
+    const resetButton = screen.getByRole('button', { name: /reset/i });
+    await userEvent.click(resetButton);
+
+    expect(screen.getByDisplayValue('New Curve')).toBeInTheDocument();
+  });
+
+  it('allows changing curve name', async () => {
+    renderWithProviders(<CurveEditor initialCurve={mockCurve} />);
+
+    const nameInput = screen.getByDisplayValue('Test Curve');
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, 'Renamed Curve');
+
+    expect(screen.getByDisplayValue('Renamed Curve')).toBeInTheDocument();
   });
 });

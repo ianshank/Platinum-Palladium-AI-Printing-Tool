@@ -11,10 +11,12 @@ import {
 } from 'recharts';
 import { type CurveData } from '@/types/models';
 import { api } from '@/api/client';
+import { useSaveCurve } from '@/api/hooks';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { RefreshCw, Save } from 'lucide-react';
 import * as SliderPrimitive from '@radix-ui/react-slider';
+import { logger } from '@/lib/logger';
 
 import { cn } from '@/lib/utils';
 
@@ -44,11 +46,14 @@ Slider.displayName = SliderPrimitive.Root.displayName;
 const AdjustmentSelect = ({
   value,
   onChange,
+  id,
 }: {
   value: string;
   onChange: (val: string) => void;
+  id?: string;
 }) => (
   <select
+    id={id}
     value={value}
     onChange={(e) => onChange(e.target.value)}
     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -86,6 +91,9 @@ export function CurveEditor({
   const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Save mutation
+  const { mutate: saveCurve, isPending: isSaving } = useSaveCurve();
+
   // Prepare data for Recharts
   const chartData = useMemo(() => {
     return inputValues.map((input, index) => ({
@@ -112,8 +120,8 @@ export function CurveEditor({
       } else {
         setError('Failed to apply adjustment');
       }
-    } catch (err: any) {
-      setError(err.message || 'Error applying adjustment');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error applying adjustment');
     } finally {
       setIsApplying(false);
     }
@@ -133,18 +141,35 @@ export function CurveEditor({
   };
 
   const handleSave = () => {
-    // TODO: Implement save via API or callback
-    // For now just call callback
-    if (onSave) {
-      onSave({
-        id: initialCurve?.id || 'new', // placeholder
+    logger.info('CurveEditor: saving curve', { name, pointCount: inputValues.length });
+
+    saveCurve(
+      {
         name,
-        created_at: new Date().toISOString(),
-        curve_type: initialCurve?.curve_type || 'custom',
         input_values: inputValues,
         output_values: outputValues,
-      } as CurveData);
-    }
+        adjustment_type: 'none',
+        amount: 0,
+      },
+      {
+        onSuccess: (response) => {
+          logger.info('CurveEditor: curve saved', { curveId: response.curve_id });
+          if (onSave) {
+            onSave({
+              id: response.curve_id,
+              name: response.name,
+              created_at: new Date().toISOString(),
+              curve_type: initialCurve?.curve_type || 'custom',
+              input_values: response.input_values,
+              output_values: response.output_values,
+            } as CurveData);
+          }
+        },
+        onError: (err) => {
+          setError(err.response?.data?.message ?? err.message ?? 'Save failed');
+        },
+      }
+    );
   };
 
   return (
@@ -156,8 +181,9 @@ export function CurveEditor({
     >
       <div className="flex items-center justify-between">
         <div className="max-w-sm flex-1">
-          <label className="mb-1 block text-sm font-medium">Curve Name</label>
+          <label htmlFor="curve-name-input" className="mb-1 block text-sm font-medium">Curve Name</label>
           <Input
+            id="curve-name-input"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Curve Name"
@@ -168,9 +194,9 @@ export function CurveEditor({
             <RefreshCw className="mr-2 h-4 w-4" />
             Reset
           </Button>
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} isLoading={isSaving} disabled={isSaving}>
             <Save className="mr-2 h-4 w-4" />
-            Save
+            {isSaving ? 'Saving...' : 'Save'}
           </Button>
         </div>
       </div>
@@ -232,8 +258,9 @@ export function CurveEditor({
 
       <div className="grid grid-cols-1 gap-6 rounded-md bg-muted/50 p-4 md:grid-cols-2">
         <div className="space-y-4">
-          <label className="text-sm font-medium">Adjustment Type</label>
+          <label htmlFor="adjustment-type-select" className="text-sm font-medium">Adjustment Type</label>
           <AdjustmentSelect
+            id="adjustment-type-select"
             value={adjustmentType}
             onChange={setAdjustmentType}
           />
@@ -241,10 +268,11 @@ export function CurveEditor({
 
         <div className="space-y-4">
           <div className="flex justify-between">
-            <label className="text-sm font-medium">Amount</label>
+            <label htmlFor="adjustment-amount-slider" className="text-sm font-medium">Amount</label>
             <span className="text-sm text-gray-500">{amount}</span>
           </div>
           <Slider
+            id="adjustment-amount-slider"
             value={[amount]}
             min={-100}
             max={100}

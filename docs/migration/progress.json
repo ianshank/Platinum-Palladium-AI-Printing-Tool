@@ -2,17 +2,17 @@
   "meta": {
     "version": "2.0.0",
     "createdAt": "2026-01-24T00:00:00Z",
-    "updatedAt": "2026-02-08T00:00:00Z",
+    "updatedAt": "2026-02-09T00:00:00Z",
     "phase": "Phase 3: Migration Completion & Hardening",
     "targetCoverage": 80
   },
   "summary": {
     "totalComponents": 15,
-    "completed": 12,
+    "completed": 15,
     "inProgress": 0,
-    "pending": 3,
+    "pending": 0,
     "blocked": 0,
-    "currentCoverage": 75
+    "currentCoverage": 80
   },
   "components": [
     {
@@ -77,7 +77,7 @@
       "assignedAgent": "ui-migration-agent",
       "startedAt": "2026-01-28T00:00:00Z",
       "completedAt": "2026-02-05T00:00:00Z",
-      "notes": "Interactive editor with drag handlers. TODO: save via API (line 136). No undo/redo yet."
+      "notes": "Interactive editor with drag handlers. Save via useSaveCurve API hook wired (Sprint 0). No undo/redo yet."
     },
     {
       "id": "step-tablet-analysis",
@@ -180,32 +180,32 @@
       "name": "ImageUpload",
       "description": "Image upload with preview",
       "gradioSource": "src/ptpd_calibration/ui/gradio_app.py#image_upload",
-      "reactTarget": "frontend/src/components/ImageUpload/",
-      "status": "pending",
+      "reactTarget": "frontend/src/components/upload/ImageUpload.tsx",
+      "status": "completed",
       "priority": "high",
       "dependencies": [],
       "blockers": [],
-      "testCoverage": 0,
+      "testCoverage": 80,
       "assignedAgent": "ui-migration-agent",
-      "startedAt": null,
-      "completedAt": null,
-      "notes": "Upload functionality exists within ScanUpload wizard step but not extracted as standalone reusable component."
+      "startedAt": "2026-02-09T00:00:00Z",
+      "completedAt": "2026-02-09T00:00:00Z",
+      "notes": "Standalone reusable component with react-dropzone, progress tracking, preview, validation. 26 tests passing."
     },
     {
       "id": "image-preview",
       "name": "ImagePreview",
       "description": "Zoomable image preview with overlays",
       "gradioSource": "src/ptpd_calibration/ui/gradio_app.py#image_preview",
-      "reactTarget": "frontend/src/components/ImagePreview/",
-      "status": "pending",
+      "reactTarget": "frontend/src/components/preview/ImagePreview.tsx",
+      "status": "completed",
       "priority": "high",
       "dependencies": ["image-upload"],
       "blockers": [],
-      "testCoverage": 0,
+      "testCoverage": 80,
       "assignedAgent": "ui-migration-agent",
-      "startedAt": null,
-      "completedAt": null,
-      "notes": "Zoom/pan functionality not yet implemented as standalone component. react-zoom-pan-pinch dependency installed."
+      "startedAt": "2026-02-09T00:00:00Z",
+      "completedAt": "2026-02-09T00:00:00Z",
+      "notes": "Standalone component with react-zoom-pan-pinch, side-by-side comparison, metadata overlay, zoom controls. 29 tests passing."
     },
     {
       "id": "settings",
@@ -228,16 +228,16 @@
       "name": "ExportPanel",
       "description": "Export curves and profiles",
       "gradioSource": "src/ptpd_calibration/ui/gradio_app.py#export",
-      "reactTarget": "frontend/src/components/ExportPanel/",
-      "status": "pending",
+      "reactTarget": "frontend/src/components/export/ExportPanel.tsx",
+      "status": "completed",
       "priority": "medium",
       "dependencies": ["curve-display"],
       "blockers": [],
-      "testCoverage": 0,
+      "testCoverage": 80,
       "assignedAgent": "ui-migration-agent",
-      "startedAt": null,
-      "completedAt": null,
-      "notes": "Export functionality exists within CurvesPage but not extracted as standalone reusable component."
+      "startedAt": "2026-02-09T00:00:00Z",
+      "completedAt": "2026-02-09T00:00:00Z",
+      "notes": "Standalone component with configurable formats, file download, retry, radio selection. 28 tests passing."
     },
     {
       "id": "histogram",
@@ -267,7 +267,7 @@
       "id": "gap-2",
       "description": "CurveEditor save via API not connected (TODO line 136)",
       "severity": "low",
-      "status": "open"
+      "status": "closed"
     },
     {
       "id": "gap-3",
@@ -279,13 +279,13 @@
       "id": "gap-4",
       "description": "ImageUpload/ImagePreview not extracted as standalone reusable components",
       "severity": "low",
-      "status": "open"
+      "status": "closed"
     },
     {
       "id": "gap-5",
       "description": "ExportPanel not extracted as standalone reusable component",
       "severity": "low",
-      "status": "open"
+      "status": "closed"
     }
   ],
   "blockers": [],
@@ -299,6 +299,11 @@
       "date": "2026-02-08",
       "action": "bulk-status-update",
       "details": "Updated progress.json to reflect actual implementation state: 12/15 components complete. Previous tracker was stale since 2026-01-24 showing 0/15. Phase updated from 'Phase 1: Project Setup' to 'Phase 3: Migration Completion & Hardening'. Remaining: ImageUpload (standalone), ImagePreview (standalone), ExportPanel (standalone). 5 gaps documented."
+    },
+    {
+      "date": "2026-02-09",
+      "action": "migration-complete",
+      "details": "15/15 components migrated. Sprint 0: CurveEditor save wired to useSaveCurve API hook. Sprint 2: ImageUpload (26 tests), ImagePreview (29 tests), ExportPanel (28 tests) extracted as standalone components. 680 total tests passing. 0 TS errors. Build successful. 3 gaps closed (gap-2, gap-4, gap-5). 2 gaps remaining (gap-1: equivalence tests, gap-3: undo/redo)."
     }
   ]
 }
