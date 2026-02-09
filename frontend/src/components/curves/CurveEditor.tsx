@@ -214,7 +214,7 @@ export function CurveEditor({
             variant="outline"
             onClick={redo}
             disabled={!canRedo}
-            title="Redo (Ctrl+Shift+Z)"
+            title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
             aria-label="Redo"
           >
             <Redo2 className="h-4 w-4" />
