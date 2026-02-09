@@ -1,5 +1,34 @@
 # DEV-SQE Summary
 
+## 2026-02-09 | Code Review Hardening
+
+### What was done
+- **Bug fix**: Fixed `ctrlMatch` false-positive in `useKeyboardShortcuts` (Ctrl held incorrectly matching `ctrl:false` shortcuts)
+- **useUndoRedo hardened**: Removed dead `initialRef`, added `logger.debug` tracing, capped redo stack via `capStack()`, config-driven `maxHistory` default from `config.ui.undoHistoryLimit`, validated with `Math.max(1, Math.floor())`
+- **CurveEditor hardened**: Added logging to all handlers, `role="alert"` on errors, `role="img"` with aria-label on chart, typed `AdjustmentType` union, `config.calibration.maxCurvePoints` instead of hard-coded 256, extracted helpers
+- **Keyboard shortcuts**: Added `<select>` exclusion, memoized shortcuts array with `useMemo`
+- **Equivalence tests**: Removed dead `callCurveModifyEndpoint`, `readonly number[]` signatures, NaN handling, removed 5 vacuous tests, fixed misleading fixture labels
+- **New tests**: 12 edge-case tests (ctrl/meta false-positive, select exclusion, contentEditable, Mac Cmd support, case-insensitive keys, null initial value, maxHistory boundary/clamp, reset tracking, stable callback refs)
+
+### Verification
+- **TypeScript**: 0 errors
+- **Tests**: 726 passed, 0 failed (~80% coverage) — 6 net new tests (12 added, 5 vacuous removed, 1 fixture deduplicated)
+- **Build**: Success (bundle ~280KB gzipped)
+
+### Files Changed (10 files, +382 -218)
+- `frontend/src/hooks/useUndoRedo.ts` - Dead code removal, logging, capStack, config-driven default
+- `frontend/src/hooks/useUndoRedo.test.ts` - 5 new edge-case tests
+- `frontend/src/hooks/useKeyboardShortcuts.ts` - ctrlMatch fix, select exclusion, useMemo
+- `frontend/src/hooks/useKeyboardShortcuts.test.ts` - 7 new tests for bugs and exclusions
+- `frontend/src/hooks/index.ts` - Export UseUndoRedoReturn type
+- `frontend/src/components/curves/CurveEditor.tsx` - Logging, a11y, types, config-driven values
+- `frontend/src/__tests__/equivalence/setup.ts` - Dead code removal, readonly sigs, NaN handling
+- `frontend/src/__tests__/equivalence/CurveEditor.equiv.test.ts` - Remove vacuous tests, fix casts
+- `frontend/src/__tests__/equivalence/ScanAnalysis.equiv.test.ts` - Fix misleading labels
+- `frontend/src/config/index.ts` - Added `ui.undoHistoryLimit` config entry
+
+---
+
 ## 2026-02-09 | Hardening: All 5 Gaps Closed
 
 ### What was done
