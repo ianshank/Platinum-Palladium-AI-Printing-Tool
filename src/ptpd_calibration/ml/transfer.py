@@ -113,9 +113,9 @@ class TransferLearner:
             # Adjust for weight if provided
             if paper_weight and known_chars.get("weight_range"):
                 w_min, w_max = known_chars["weight_range"]
-                if w_min <= paper_weight <= w_max:
+                if int(w_min) <= paper_weight <= int(w_max):
                     score += 0.1
-                elif abs(paper_weight - (w_min + w_max) / 2) < 50:
+                elif abs(paper_weight - (int(w_min) + int(w_max)) / 2) < 50:
                     score += 0.05
 
             similarities.append((known_paper, score))
@@ -258,8 +258,8 @@ class TransferLearner:
             "mitsumata": 0.88,
         }
 
-        source_factor = fiber_factors.get(source_fiber, 1.0)
-        target_factor = fiber_factors.get(target_fiber, 1.0)
+        source_factor = fiber_factors.get(str(source_fiber), 1.0)
+        target_factor = fiber_factors.get(str(target_fiber), 1.0)
 
         if source_factor > 0:
             adjustment *= target_factor / source_factor

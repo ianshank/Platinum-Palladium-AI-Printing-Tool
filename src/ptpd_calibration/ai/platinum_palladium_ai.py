@@ -1201,7 +1201,7 @@ class PlatinumPalladiumAI:
 
             # Identify trends
             # Group by paper type
-            paper_groups = {}
+            paper_groups: dict[str, list[Any]] = {}
             for record in successful:
                 if record.paper_type not in paper_groups:
                     paper_groups[record.paper_type] = []

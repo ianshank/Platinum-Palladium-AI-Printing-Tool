@@ -14,6 +14,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from functools import wraps
+from typing import Any
 from uuid import uuid4
 
 from ptpd_calibration.config import get_settings
@@ -273,7 +274,7 @@ class AgentLogger:
         """
         context = self.get_context()
 
-        extra = {
+        extra: dict[str, Any] = {
             "trace_id": context.trace_id,
             "span_id": context.span_id,
             "agent_id": context.agent_id,

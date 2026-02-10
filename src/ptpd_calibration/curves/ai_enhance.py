@@ -7,6 +7,7 @@ automatic enhancements for calibration curves.
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 import numpy as np
 
@@ -60,7 +61,7 @@ class CurveAIEnhancer:
     enhancements based on the specified goal.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the AI enhancer."""
         self.modifier = CurveModifier()
         self.analyzer = CurveAnalyzer()
@@ -316,7 +317,7 @@ Please respond in a structured format that can be parsed."""
         n = len(outputs)
 
         # Basic statistics
-        analysis = {
+        analysis: dict[str, Any] = {
             "num_points": n,
             "min_output": float(np.min(outputs)),
             "max_output": float(np.max(outputs)),

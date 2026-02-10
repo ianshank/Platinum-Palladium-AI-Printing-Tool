@@ -15,10 +15,12 @@ Usage:
     logger.info("Processing started", extra={"record_id": 123})
 """
 
+import contextlib
 import json
 import logging
 import sys
-from contextvars import ContextVar
+from collections.abc import Iterator
+from contextvars import ContextVar, Token
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -222,7 +224,7 @@ class LogContext:
             **context: Key-value pairs to add to log context.
         """
         self.context = context
-        self._token = None
+        self._token: Token[dict[str, Any]] | None = None
 
     def __enter__(self) -> "LogContext":
         """Enter context, adding to context variable."""
@@ -241,7 +243,7 @@ def log_operation(
     logger: logging.Logger,
     operation: str,
     level: int = logging.INFO,
-):
+) -> "contextlib.AbstractContextManager[None]":
     """Context manager for logging operation start/end with timing.
 
     Args:
@@ -257,7 +259,7 @@ def log_operation(
     from contextlib import contextmanager
 
     @contextmanager
-    def _log_op():
+    def _log_op() -> Iterator[None]:
         start = time.perf_counter()
         logger.log(level, f"Starting: {operation}")
         try:

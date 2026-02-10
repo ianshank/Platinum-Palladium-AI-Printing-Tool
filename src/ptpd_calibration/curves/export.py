@@ -286,11 +286,11 @@ def save_curve(curve: CurveData, path: Path, format: str | None = None) -> None:
     format = format.lower()
 
     if format in ("qtr", "quadtone"):
-        exporter = QTRExporter()
+        qtr_exporter = QTRExporter()
         export_format = "quad" if path.suffix.lower() == ".quad" else "curve"
-        exporter.export(curve, path, format=export_format)
+        qtr_exporter.export(curve, path, format=export_format)
     elif format in ("piezography", "pz", "ppt"):
-        exporter = PiezographyExporter()
+        exporter: CurveExporter = PiezographyExporter()
         exporter.export(curve, path)
     elif format == "csv":
         exporter = CSVExporter()

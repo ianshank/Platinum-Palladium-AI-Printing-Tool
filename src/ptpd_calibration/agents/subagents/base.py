@@ -267,6 +267,9 @@ class BaseSubagent(ABC):
         Returns:
             LLM response text.
         """
+        if self.llm_settings is None:
+            raise RuntimeError("LLM settings not configured")
+
         start = time.time()
         self._logger.log_llm_request(
             provider=self.llm_settings.provider.value,

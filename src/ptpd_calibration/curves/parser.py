@@ -141,7 +141,7 @@ class QuadFileParser:
     GENERAL_SECTION = "General"
     CHANNEL_SECTIONS = ["K", "C", "M", "Y", "LC", "LM", "LK", "LLK", "PK", "MK"]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the parser."""
         self._current_section: str | None = None
         self._profile: QuadProfile | None = None
@@ -213,6 +213,7 @@ class QuadFileParser:
 
     def _parse_content(self, content: str) -> None:
         """Parse the file content."""
+        assert self._profile is not None
         lines = content.split("\n")
 
         # Check for simple format (starts with ## QuadToneRIP)
@@ -258,6 +259,7 @@ class QuadFileParser:
 
     def _parse_simple_format(self, lines: list[str]) -> None:
         """Parse the simple list-based QuadToneRIP format."""
+        assert self._profile is not None
         current_channel = None
         value_index = 0
 
@@ -305,6 +307,7 @@ class QuadFileParser:
 
     def _parse_key_value(self, line: str) -> None:
         """Parse a key=value line."""
+        assert self._profile is not None
         # Split on first = only
         parts = line.split("=", 1)
         if len(parts) != 2:
@@ -325,6 +328,7 @@ class QuadFileParser:
 
     def _parse_general_setting(self, key: str, value: str) -> None:
         """Parse a general section setting."""
+        assert self._profile is not None
         key_lower = key.lower()
 
         if key_lower == "profilename":
@@ -349,6 +353,7 @@ class QuadFileParser:
 
     def _parse_channel_value(self, channel: str, key: str, value: str) -> None:
         """Parse a channel curve value."""
+        assert self._profile is not None
         # Check if key is a numeric index
         if key.isdigit():
             try:
@@ -362,6 +367,7 @@ class QuadFileParser:
 
     def _post_process(self) -> None:
         """Post-process the parsed profile."""
+        assert self._profile is not None
         # Ensure all standard channels exist (even if empty)
         for channel_name in ["K", "C", "M", "Y", "LC", "LM", "LK"]:
             if channel_name not in self._profile.channels:

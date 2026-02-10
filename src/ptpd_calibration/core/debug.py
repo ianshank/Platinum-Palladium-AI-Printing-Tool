@@ -166,7 +166,7 @@ def trace(
 
 
 @contextmanager
-def debug_context(name: str, **extra: Any):
+def debug_context(name: str, **extra: Any) -> Any:
     """Context manager for debug logging with timing.
 
     Groups related operations under a named context for easier
@@ -317,7 +317,10 @@ def dump_exception(exc: Exception, include_locals: bool = False) -> str:
                     except Exception:
                         value_str = "<unrepresentable>"
                     lines.append(f"  {key} = {value_str}")
-            frame = frame.f_back
+            next_frame = frame.f_back
+            if next_frame is None:
+                break
+            frame = next_frame
 
     lines.append("=" * 60)
     return "\n".join(lines)
@@ -354,7 +357,7 @@ class MemoryTracker:
         print(tracker.report())
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize memory tracker."""
         self.checkpoints: list[tuple[str, float, float]] = []
         self._enabled = _is_debug_enabled()

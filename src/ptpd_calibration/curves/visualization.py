@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import matplotlib
 import numpy as np
@@ -369,7 +370,7 @@ class CurveVisualizer:
         style: PlotStyle = PlotStyle.LINE,
         color: str | None = None,
         show_stats: bool | None = None,
-    ):
+    ) -> Any:
         """
         Plot a single curve.
 
@@ -427,7 +428,7 @@ class CurveVisualizer:
         colors: list[str] | None = None,
         show_difference: bool | None = None,
         reference_idx: int = 0,
-    ):
+    ) -> Any:
         """
         Plot multiple curves for comparison.
 
@@ -519,7 +520,7 @@ class CurveVisualizer:
         self,
         curves: list[CurveData],
         title: str = "Curve Analysis",
-    ):
+    ) -> Any:
         """
         Plot curves with a statistics panel.
 
@@ -574,7 +575,7 @@ class CurveVisualizer:
         curve: CurveData,
         bins: int = 50,
         title: str | None = None,
-    ):
+    ) -> Any:
         """
         Plot histogram of curve output values.
 
@@ -612,7 +613,7 @@ class CurveVisualizer:
         self,
         curve: CurveData,
         title: str | None = None,
-    ):
+    ) -> Any:
         """
         Plot curve with slope analysis.
 
@@ -663,7 +664,7 @@ class CurveVisualizer:
 
     def _plot_curve_on_axis(
         self,
-        ax,
+        ax: Any,
         curve: CurveData,
         style: PlotStyle,
         color: str,
@@ -700,7 +701,7 @@ class CurveVisualizer:
                 label=label,
             )
 
-    def _configure_axis(self, ax, title: str) -> None:
+    def _configure_axis(self, ax: Any, title: str) -> None:
         """Configure axis with standard settings."""
         ax.set_xlabel(self.config.x_label, fontsize=self.config.label_fontsize, color="#E5E5E5")
         ax.set_ylabel(self.config.y_label, fontsize=self.config.label_fontsize, color="#E5E5E5")
@@ -723,7 +724,7 @@ class CurveVisualizer:
 
         ax.tick_params(labelsize=self.config.tick_fontsize, colors="#A3A3A3")
 
-    def _add_stats_annotation(self, ax, stats_list: list[CurveStatistics]) -> None:
+    def _add_stats_annotation(self, ax: Any, stats_list: list[CurveStatistics]) -> None:
         """Add statistics annotation to axis."""
         text_lines = []
         for stats in stats_list:
@@ -752,7 +753,7 @@ class CurveVisualizer:
 
     def _render_stats_table(
         self,
-        ax,
+        ax: Any,
         stats_list: list[CurveStatistics],
         colors: list[str],
     ) -> None:
@@ -800,7 +801,7 @@ class CurveVisualizer:
 
     def save_figure(
         self,
-        fig,
+        fig: Any,
         path: str | Path,
         format: str | None = None,
     ) -> Path:
@@ -828,7 +829,7 @@ class CurveVisualizer:
 
         return path
 
-    def figure_to_bytes(self, fig, format: str = "png") -> bytes:
+    def figure_to_bytes(self, fig: Any, format: str = "png") -> bytes:
         """
         Convert figure to bytes.
 

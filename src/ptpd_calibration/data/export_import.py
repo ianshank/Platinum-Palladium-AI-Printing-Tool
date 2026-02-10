@@ -75,7 +75,7 @@ class DataExporter:
             ImportError: If PyYAML is not installed
         """
         try:
-            import yaml
+            import yaml  # type: ignore[import-untyped]
         except ImportError as err:
             raise ImportError(
                 "PyYAML is required for YAML export. Install with: pip install pyyaml"
@@ -154,7 +154,7 @@ class DataExporter:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         # Get all unique keys from all records
-        all_keys = set()
+        all_keys: set[str] = set()
         for record in data:
             all_keys.update(record.keys())
 
@@ -380,7 +380,7 @@ class DataImporter:
             ImportError: If PyYAML is not installed
         """
         try:
-            import yaml
+            import yaml  # type: ignore[import-untyped]
         except ImportError as err:
             raise ImportError(
                 "PyYAML is required for YAML import. Install with: pip install pyyaml"
@@ -404,7 +404,7 @@ class DataImporter:
         tree = ET.parse(path)
         root = tree.getroot()
 
-        data = {"metadata": {}, "records": []}
+        data: dict[str, Any] = {"metadata": {}, "records": []}
 
         # Parse metadata
         meta_elem = root.find("metadata")
@@ -509,7 +509,7 @@ class DataImporter:
 
         return stats
 
-    def import_all(self, path: Path) -> dict[str, int]:
+    def import_all(self, path: Path) -> dict[str, Any]:
         """
         Import all data from an export directory.
 
@@ -525,7 +525,7 @@ class DataImporter:
         if self.database is None:
             raise ValueError("Database not set")
 
-        stats = {}
+        stats: dict[str, Any] = {}
 
         # Import prints
         prints_path = path / "prints.json"
@@ -538,7 +538,7 @@ class DataImporter:
 
     def _xml_to_dict(self, element: ET.Element) -> dict[str, Any]:
         """Convert XML element to dictionary recursively."""
-        result = {}
+        result: dict[str, Any] = {}
 
         for child in element:
             # Check if null

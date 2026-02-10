@@ -122,7 +122,7 @@ with suppress(ImportError):
 # Platinum/Palladium AI
 with suppress(ImportError):
     from ptpd_calibration.ai import (
-        ChemistrySuggestion,
+        ChemistryRecommendation,
         DigitalNegativeResult,
         ExposurePrediction,
         PlatinumPalladiumAI,
@@ -285,7 +285,7 @@ __all__ = [
     "PlatinumPalladiumAI",
     "TonalityAnalysisResult",
     "ExposurePrediction",
-    "ChemistrySuggestion",
+    "ChemistryRecommendation",
     "DigitalNegativeResult",
     "PrintQualityAnalysis",
     "WorkflowOptimization",

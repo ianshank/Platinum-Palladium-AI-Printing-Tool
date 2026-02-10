@@ -94,7 +94,7 @@ class PrintDatabase:
             db_path: Path to SQLite database file. If None, uses in-memory database.
         """
         self.db_path = db_path or Path(":memory:")
-        self.conn: sqlite3.Connection | None = None
+        self.conn: sqlite3.Connection = None  # type: ignore[assignment]  # Set by _initialize_db
         self._initialize_db()
 
     def _initialize_db(self) -> None:
@@ -279,6 +279,7 @@ class PrintDatabase:
         # Update FTS if relevant fields changed
         if any(k in updates for k in ("name", "paper_type", "notes", "tags")):
             updated = self.get_print(print_id)
+            assert updated is not None
             self.conn.execute(
                 """
                 UPDATE prints_fts SET

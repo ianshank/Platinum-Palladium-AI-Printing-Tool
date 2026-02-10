@@ -19,6 +19,7 @@ Usage:
             return CurveOutput(curve=generated_curve)
 """
 
+import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -204,17 +205,17 @@ class BaseService(ABC, Generic[TInput, TOutput]):
         )
 
     @property
-    def settings(self):
+    def settings(self) -> Any:
         """Access to full application settings."""
         return self._settings
 
     @property
-    def config(self):
+    def config(self) -> Any:
         """Access to service-specific configuration."""
         return self._config
 
     @property
-    def logger(self):
+    def logger(self) -> logging.Logger:
         """Access to service logger."""
         return self._logger
 
@@ -378,15 +379,15 @@ class AsyncBaseService(ABC, Generic[TInput, TOutput]):
         )
 
     @property
-    def settings(self):
+    def settings(self) -> Any:
         return self._settings
 
     @property
-    def config(self):
+    def config(self) -> Any:
         return self._config
 
     @property
-    def logger(self):
+    def logger(self) -> logging.Logger:
         return self._logger
 
     @abstractmethod

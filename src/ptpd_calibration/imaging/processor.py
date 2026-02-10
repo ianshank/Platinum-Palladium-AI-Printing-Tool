@@ -9,6 +9,7 @@ import io
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from PIL import Image
@@ -93,7 +94,7 @@ class ImageProcessor:
     - Exporting in various formats while preserving quality
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the image processor."""
         self._lut_cache: dict[str, np.ndarray] = {}
 
@@ -575,7 +576,7 @@ class ImageProcessor:
         is_16bit = settings.format in (ImageFormat.TIFF_16BIT, ImageFormat.PNG_16BIT)
 
         # Build save kwargs
-        save_kwargs = {}
+        save_kwargs: dict[str, Any] = {}
 
         # Set DPI
         if settings.preserve_resolution and result.original_dpi:
@@ -657,7 +658,7 @@ class ImageProcessor:
         ext = ext_map.get(fmt, ".png")
 
         # Build save kwargs
-        save_kwargs = {}
+        save_kwargs: dict[str, Any] = {}
 
         if fmt == "JPEG":
             quality = 98 if settings.format == ImageFormat.JPEG_HIGH else settings.jpeg_quality

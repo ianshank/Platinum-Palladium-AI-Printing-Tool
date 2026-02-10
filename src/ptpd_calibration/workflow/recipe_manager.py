@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ptpd_calibration.config import get_settings
@@ -208,7 +208,7 @@ class PrintRecipe(BaseModel):
 
     def to_dict(self) -> dict[str, Any]:
         """Convert recipe to dictionary with JSON-serializable values."""
-        data = self.model_dump(mode="json")
+        data: dict[str, Any] = self.model_dump(mode="json")
         # Convert UUIDs to strings
         for key in ["recipe_id", "paper_profile_id", "curve_id", "parent_recipe_id"]:
             if data.get(key):
@@ -392,7 +392,7 @@ class RecipeManager:
         if format == RecipeFormat.JSON:
             return json.dumps(data, indent=2, default=str)
         elif format == RecipeFormat.YAML:
-            return yaml.dump(data, default_flow_style=False, sort_keys=False)
+            return str(yaml.dump(data, default_flow_style=False, sort_keys=False))
         else:
             raise ValueError(f"Unsupported format: {format}")
 
@@ -483,7 +483,7 @@ class RecipeManager:
             return {}
 
         # Build comparison structure
-        comparison = {
+        comparison: dict[str, Any] = {
             "recipes": [r.to_dict() for r in recipes],
             "differences": {},
             "similarities": {},
@@ -656,7 +656,7 @@ class WorkflowAutomation:
     status monitoring, and result logging.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize workflow automation system."""
         self.jobs: dict[UUID, WorkflowJob] = {}
         self._job_callbacks: dict[UUID, list[Callable]] = {}

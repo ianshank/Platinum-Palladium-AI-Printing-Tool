@@ -70,7 +70,7 @@ class Tool:
         required = []
 
         for param in self.parameters:
-            prop = {"type": param.type, "description": param.description}
+            prop: dict[str, Any] = {"type": param.type, "description": param.description}
             if param.enum:
                 prop["enum"] = param.enum
             properties[param.name] = prop
@@ -572,11 +572,12 @@ def _suggest_parameters(
         suggestions["metal_description"] = "50% Pt / 50% Pd for neutral tones"
 
     # Estimate exposure
-    suggestions["exposure_estimate"] = 180.0  # 3 minutes baseline
+    exposure_estimate = 180.0  # 3 minutes baseline
     if target_dmax > 2.2:
-        suggestions["exposure_estimate"] *= 1.3
+        exposure_estimate *= 1.3
     elif target_dmax < 1.8:
-        suggestions["exposure_estimate"] *= 0.8
+        exposure_estimate *= 0.8
+    suggestions["exposure_estimate"] = exposure_estimate
 
     suggestions["contrast_agent"] = "na2"
     suggestions["contrast_drops"] = 5

@@ -96,13 +96,15 @@ class EventBus:
 
     _instance: "EventBus | None" = None
     _lock = asyncio.Lock()
+    _subscribers: dict[str, list[Handler]]
+    _weak_subscribers: dict[str, list["weakref.ref[Handler]"]]
 
     def __new__(cls) -> "EventBus":
         """Singleton pattern implementation."""
         if cls._instance is None:
             instance = super().__new__(cls)
-            instance._subscribers: dict[str, list[Handler]] = defaultdict(list)
-            instance._weak_subscribers: dict[str, list[weakref.ref]] = defaultdict(list)
+            instance._subscribers = defaultdict(list)
+            instance._weak_subscribers = defaultdict(list)
             cls._instance = instance
         return cls._instance
 
@@ -144,7 +146,7 @@ class EventBus:
             self._weak_subscribers[event_type].append(ref)
             logger.debug(f"Subscribed (weak) to {event_type}: {handler.__name__}")
 
-            def unsubscribe():
+            def unsubscribe() -> None:
                 if ref in self._weak_subscribers[event_type]:
                     self._weak_subscribers[event_type].remove(ref)
 
@@ -153,7 +155,7 @@ class EventBus:
             self._subscribers[event_type].append(handler)
             logger.debug(f"Subscribed to {event_type}: {handler.__name__}")
 
-            def unsubscribe():
+            def unsubscribe() -> None:
                 if handler in self._subscribers[event_type]:
                     self._subscribers[event_type].remove(handler)
 
