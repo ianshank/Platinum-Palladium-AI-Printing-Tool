@@ -198,7 +198,11 @@ export function CurveEditor({
           }
         },
         onError: (err) => {
-          const message = err.response?.data?.message ?? err.message;
+          const rawMessage = err.response?.data?.message ?? err.message;
+          const message =
+            typeof rawMessage === 'string' && rawMessage.trim().length > 0
+              ? rawMessage
+              : 'Failed to save curve. Please try again.';
           logger.error('CurveEditor: save failed', { error: message });
           setError(message);
         },
