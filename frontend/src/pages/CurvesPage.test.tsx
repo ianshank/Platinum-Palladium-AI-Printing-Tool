@@ -4,6 +4,7 @@ import { CurvesPage } from './CurvesPage';
 
 vi.mock('@/components/curves/CurveEditor', () => ({
   CurveEditor: ({ className }: any) => (
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     <div data-testid="curve-editor" className={className}>
       Editor
     </div>

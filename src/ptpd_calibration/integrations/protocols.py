@@ -25,7 +25,7 @@ Usage:
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Generic, Protocol, TypeVar, runtime_checkable
+from typing import Any, Generic, Protocol, TypeVar, runtime_checkable
 
 from pydantic import BaseModel, Field
 
@@ -384,7 +384,7 @@ class DeviceManager(Generic[T]):
             self._connected = self.device.connect()  # type: ignore
         return self
 
-    def __exit__(self, *args) -> None:
+    def __exit__(self, *args: Any) -> None:
         """Exit context - disconnect from device."""
         if hasattr(self.device, "disconnect"):
             self.device.disconnect()  # type: ignore

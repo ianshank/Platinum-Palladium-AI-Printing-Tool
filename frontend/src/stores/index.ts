@@ -9,17 +9,38 @@ import { immer } from 'zustand/middleware/immer';
 
 import { createUISlice, type UISlice } from './slices/uiSlice';
 import {
+  type CalibrationData,
   type CalibrationSlice,
   createCalibrationSlice,
 } from './slices/calibrationSlice';
-import { createCurveSlice, type CurveSlice } from './slices/curveSlice';
 import {
+  createCurveSlice,
+  type CurveData,
+  type CurvePoint,
+  type CurveSlice,
+} from './slices/curveSlice';
+import {
+  type ChemistryRecipe,
   type ChemistrySlice,
   createChemistrySlice,
+  type PaperSize,
 } from './slices/chemistrySlice';
-import { type ChatSlice, createChatSlice } from './slices/chatSlice';
-import { createSessionSlice, type SessionSlice } from './slices/sessionSlice';
-import { createImageSlice, type ImageSlice } from './slices/imageSlice';
+import {
+  type ChatMessage,
+  type ChatSlice,
+  createChatSlice,
+} from './slices/chatSlice';
+import {
+  createSessionSlice,
+  type PrintRecord,
+  type SessionSlice,
+  type SessionStats,
+} from './slices/sessionSlice';
+import {
+  createImageSlice,
+  type ImageData,
+  type ImageSlice,
+} from './slices/imageSlice';
 import { config } from '@/config';
 
 /**
@@ -48,6 +69,7 @@ const storeMiddleware: StoreMiddleware = (f) =>
     subscribeWithSelector(
       persist(
         // @ts-expect-error — Zustand middleware composition has incompatible generic inference
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         immer(f),
         {
           name: 'ptpd-store',
@@ -73,6 +95,7 @@ const storeMiddleware: StoreMiddleware = (f) =>
 /**
  * Main application store
  */
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- Zustand middleware composition requires untyped factory params */
 export const useStore = create<StoreState>()(
   storeMiddleware((set: any, get: any, store: any) => ({
     ui: createUISlice(set, get, store),
@@ -84,6 +107,7 @@ export const useStore = create<StoreState>()(
     image: createImageSlice(set, get, store),
   }))
 );
+/* eslint-enable @typescript-eslint/no-unsafe-argument */
 
 /**
  * Create a store instance for testing
@@ -120,39 +144,39 @@ export const selectIsInitialized = (state: StoreState): boolean =>
   state.ui.isInitialized;
 
 // Calibration Selectors
-export const selectCurrentCalibration = (state: StoreState) =>
+export const selectCurrentCalibration = (state: StoreState): CalibrationData | null =>
   state.calibration.current;
 export const selectCalibrationStep = (state: StoreState): number =>
   state.calibration.currentStep;
-export const selectCalibrationHistory = (state: StoreState) =>
+export const selectCalibrationHistory = (state: StoreState): CalibrationData[] =>
   state.calibration.history;
 
 // Curve Selectors
-export const selectCurrentCurve = (state: StoreState) => state.curve.current;
-export const selectCurvePoints = (state: StoreState) => state.curve.points;
+export const selectCurrentCurve = (state: StoreState): CurveData | null => state.curve.current;
+export const selectCurvePoints = (state: StoreState): CurvePoint[] => state.curve.points;
 export const selectCurveModified = (state: StoreState): boolean =>
   state.curve.isModified;
 
 // Chemistry Selectors
-export const selectChemistryRecipe = (state: StoreState) =>
+export const selectChemistryRecipe = (state: StoreState): ChemistryRecipe | null =>
   state.chemistry.recipe;
-export const selectPaperSize = (state: StoreState) => state.chemistry.paperSize;
+export const selectPaperSize = (state: StoreState): PaperSize => state.chemistry.paperSize;
 export const selectMetalRatio = (state: StoreState): number =>
   state.chemistry.metalRatio;
 
 // Chat Selectors
-export const selectChatMessages = (state: StoreState) => state.chat.messages;
+export const selectChatMessages = (state: StoreState): ChatMessage[] => state.chat.messages;
 export const selectChatLoading = (state: StoreState): boolean =>
   state.chat.isLoading;
 
 // Session Selectors
-export const selectSessionRecords = (state: StoreState) =>
+export const selectSessionRecords = (state: StoreState): PrintRecord[] =>
   state.session.records;
-export const selectSessionStats = (state: StoreState) => state.session.stats;
+export const selectSessionStats = (state: StoreState): SessionStats => state.session.stats;
 
 // Image Selectors
-export const selectCurrentImage = (state: StoreState) => state.image.current;
-export const selectImagePreview = (state: StoreState) => state.image.preview;
+export const selectCurrentImage = (state: StoreState): ImageData | null => state.image.current;
+export const selectImagePreview = (state: StoreState): string | null => state.image.preview;
 export const selectUploadProgress = (state: StoreState): number =>
   state.image.uploadProgress;
 

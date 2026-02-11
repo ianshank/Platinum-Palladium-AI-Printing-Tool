@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from pydantic import BaseModel, Field
@@ -150,7 +150,7 @@ class WeatherProvider(ABC):
         """
         self.api_key = api_key
         self.units = units
-        self._cache: dict[str, tuple[datetime, any]] = {}
+        self._cache: dict[str, tuple[datetime, Any]] = {}
         self._cache_duration = timedelta(minutes=10)
 
     @abstractmethod
@@ -399,10 +399,10 @@ class OpenWeatherMapProvider(WeatherProvider):
         cached = self._get_from_cache(cache_key)
         if cached:
             logger.debug("Returning cached current conditions")
-            return cached
+            return cast(CurrentConditions, cached)
 
         # Build request parameters
-        params = {
+        params: dict[str, Any] = {
             "appid": self.api_key,
             "units": self.units,
         }
@@ -450,10 +450,10 @@ class OpenWeatherMapProvider(WeatherProvider):
         cached = self._get_from_cache(cache_key)
         if cached:
             logger.debug("Returning cached forecast")
-            return cached
+            return cast(list[ForecastPeriod], cached)
 
         # Build request parameters
-        params = {
+        params: dict[str, Any] = {
             "appid": self.api_key,
             "units": self.units,
         }

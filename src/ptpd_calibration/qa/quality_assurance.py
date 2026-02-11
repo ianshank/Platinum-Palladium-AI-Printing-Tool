@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 import numpy as np
@@ -1119,7 +1120,7 @@ class UVLightMeterIntegration:
         hours_readings = [r for r in self.readings if r.bulb_hours is not None]
 
         if hours_readings:
-            latest_hours = hours_readings[-1].bulb_hours
+            latest_hours: float = hours_readings[-1].bulb_hours  # type: ignore[assignment]  # filtered for not-None above
             if latest_hours >= self.settings.bulb_replacement_hours:
                 return f"Replace bulb: {latest_hours:.0f} hours (exceeds {self.settings.bulb_replacement_hours} hour limit)"
             else:
@@ -1185,7 +1186,7 @@ class QualityReport:
         Returns:
             Checklist dictionary
         """
-        checklist = {
+        checklist: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "checks": {},
             "warnings": [],
@@ -1279,7 +1280,7 @@ class QualityReport:
         validator = NegativeDensityValidator(self.settings)
         analysis = validator.validate_density_range(scan)
 
-        report = {
+        report: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "density_analysis": analysis.to_dict(),
             "quality_assessment": {},

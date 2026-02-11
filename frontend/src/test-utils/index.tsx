@@ -158,7 +158,7 @@ export function mockFetchResponse<T>(data: T, status = 200): void {
   global.fetch = vi.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
     status,
-    json: async () => data,
+    json: () => Promise.resolve(data),
   });
 }
 
@@ -169,7 +169,7 @@ export function mockFetchError(message: string, status = 500): void {
   global.fetch = vi.fn().mockResolvedValue({
     ok: false,
     status,
-    json: async () => ({ message }),
+    json: () => Promise.resolve({ message }),
   });
 }
 

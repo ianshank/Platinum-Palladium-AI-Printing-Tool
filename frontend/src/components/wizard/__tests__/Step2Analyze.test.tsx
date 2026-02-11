@@ -11,6 +11,7 @@ import type {
 // Mock Recharts
 vi.mock('recharts', async (importOriginal) => {
   const actual = await importOriginal();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return {
     ...(actual as any),
     ResponsiveContainer: ({ children }: { children: any }) => (

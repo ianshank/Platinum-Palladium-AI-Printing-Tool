@@ -129,6 +129,7 @@ describe('ErrorBoundary', () => {
       expect(onError).toHaveBeenCalledOnce();
       expect(onError).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'Test error from ProblemChild' }),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         expect.objectContaining({ componentStack: expect.any(String) })
       );
     });

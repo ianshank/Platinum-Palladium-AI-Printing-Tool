@@ -31,6 +31,7 @@ const mockMutate = vi.fn();
 vi.mock('@/api/hooks', () => ({
   useSendMessage: (opts: Record<string, unknown>) => {
     // Store options for testing callbacks
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- storing test data in globalThis
     (globalThis as any).__sendMessageOpts = opts;
     return { mutate: mockMutate };
   },
@@ -61,7 +62,9 @@ const mockUIState = {
 };
 
 vi.mock('@/stores', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock store selector with test state
   useStore: (selector: (state: any) => any) =>
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     selector({ chat: mockChatState, ui: mockUIState }),
 }));
 

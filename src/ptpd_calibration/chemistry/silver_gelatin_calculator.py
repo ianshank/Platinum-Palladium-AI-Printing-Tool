@@ -177,7 +177,9 @@ class ProcessingChemistry:
             f"Capacity: ~{self.fixer_capacity_prints} prints",
         ]
 
-        if self.hypo_clear_ml:
+        if self.hypo_clear_ml and self.hypo_clear_time_seconds is not None:
+            minutes = self.hypo_clear_time_seconds // 60
+            seconds = self.hypo_clear_time_seconds % 60
             lines.extend(
                 [
                     "",
@@ -185,7 +187,7 @@ class ProcessingChemistry:
                     "HYPO CLEAR / WASH AID",
                     "-" * 60,
                     f"Volume: {self.hypo_clear_ml:.0f} ml",
-                    f"Time: {self.hypo_clear_time_seconds // 60}:{self.hypo_clear_time_seconds % 60:02d}",
+                    f"Time: {minutes}:{seconds:02d}",
                 ]
             )
 
@@ -291,9 +293,9 @@ class SilverGelatinCalculator:
         width_inches: float,
         height_inches: float,
         paper_base: PaperBase = PaperBase.FIBER,
-        developer: DeveloperType = None,
-        dilution: DilutionRatio = None,
-        temperature_c: float = None,
+        developer: DeveloperType | None = None,
+        dilution: DilutionRatio | None = None,
+        temperature_c: float | None = None,
         fixer: FixerType = FixerType.SODIUM_THIOSULFATE,
         include_hypo_clear: bool = True,
         tray_size: TraySize | None = None,

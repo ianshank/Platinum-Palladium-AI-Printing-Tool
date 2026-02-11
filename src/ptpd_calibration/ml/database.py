@@ -3,6 +3,7 @@ Calibration database for storing and querying historical records.
 """
 
 import json
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID
@@ -20,7 +21,7 @@ class CalibrationDatabase:
     for building ML training datasets.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize empty database."""
         self.records: dict[UUID, CalibrationRecord] = {}
         self._paper_index: dict[str, list[UUID]] = {}
@@ -265,5 +266,5 @@ class CalibrationDatabase:
     def __len__(self) -> int:
         return len(self.records)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[CalibrationRecord]:
         return iter(self.records.values())

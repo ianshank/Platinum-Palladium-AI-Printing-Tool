@@ -39,6 +39,7 @@ const mockSessionState = {
 
 vi.mock('@/stores', () => ({
   useStore: (selector: (s: any) => any) =>
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     selector({ session: mockSessionState }),
 }));
 

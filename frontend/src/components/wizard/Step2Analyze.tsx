@@ -96,7 +96,13 @@ const IssueItem = styled.li<{ $type: 'warning' | 'error' }>`
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
-export function Step2Analyze() {
+interface QualityIssue {
+  type: 'warning' | 'error';
+  message: string;
+  suggestion?: string;
+}
+
+export function Step2Analyze(): JSX.Element {
   const theme = useTheme();
 
   // Store
@@ -228,7 +234,7 @@ export function Step2Analyze() {
         <div>
           <h4>Quality Issues</h4>
           <IssuesList>
-            {qualityAssessment.issues.map((issue: any, idx: number) => (
+            {qualityAssessment.issues.map((issue: QualityIssue, idx: number) => (
               <IssueItem key={idx} $type={issue.type}>
                 <strong>{issue.type.toUpperCase()}:</strong> {issue.message}
                 {issue.suggestion && <span> — {issue.suggestion}</span>}

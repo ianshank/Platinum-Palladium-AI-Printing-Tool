@@ -25,20 +25,40 @@ vi.mock('@/lib/logger', () => ({
 }));
 
 vi.mock('@/components/ui/Button', () => ({
-  Button: ({ children, onClick, ...props }: any) => (
+  Button: ({
+    children,
+    onClick,
+    ...props
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    [key: string]: unknown;
+  }) => (
     <button onClick={onClick} {...props}>
       {children}
     </button>
   ),
 }));
 
+vi.mock('@/hooks/useKeyboardShortcuts', () => ({
+  useAppShortcuts: vi.fn(),
+}));
+
+interface MockState {
+  ui: {
+    sidebarOpen: boolean;
+    toggleSidebar: () => void;
+    isProcessing: boolean;
+  };
+}
+
 let mockSidebarOpen = true;
 let mockIsProcessing = false;
 const mockToggleSidebar = vi.fn();
 
 vi.mock('@/stores', () => ({
-  useStore: (selector: (state: any) => any) => {
-    const state = {
+  useStore: <T,>(selector: (state: MockState) => T): T => {
+    const state: MockState = {
       ui: {
         sidebarOpen: mockSidebarOpen,
         toggleSidebar: mockToggleSidebar,
@@ -49,7 +69,7 @@ vi.mock('@/stores', () => ({
   },
 }));
 
-function renderLayout(route = '/') {
+function renderLayout(route = '/'): ReturnType<typeof render> {
   return render(
     <MemoryRouter initialEntries={[route]}>
       <Layout>

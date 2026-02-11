@@ -55,9 +55,9 @@ class CurveAdjustment:
 
     adjustment_type: AdjustmentType
     amount: float  # -1.0 to 1.0 typically
-    parameters: dict = None
+    parameters: dict | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.parameters is None:
             self.parameters = {}
 
@@ -589,20 +589,21 @@ class CurveModifier:
         result = curve
 
         for adj in adjustments:
+            params = adj.parameters or {}
             if adj.adjustment_type == AdjustmentType.BRIGHTNESS:
-                result = self.adjust_brightness(result, adj.amount, **adj.parameters)
+                result = self.adjust_brightness(result, adj.amount, **params)
             elif adj.adjustment_type == AdjustmentType.CONTRAST:
-                result = self.adjust_contrast(result, adj.amount, **adj.parameters)
+                result = self.adjust_contrast(result, adj.amount, **params)
             elif adj.adjustment_type == AdjustmentType.GAMMA:
                 result = self.adjust_gamma(result, adj.amount)
             elif adj.adjustment_type == AdjustmentType.LEVELS:
-                result = self.adjust_levels(result, **adj.parameters)
+                result = self.adjust_levels(result, **params)
             elif adj.adjustment_type == AdjustmentType.HIGHLIGHT:
-                result = self.adjust_highlights(result, adj.amount, **adj.parameters)
+                result = self.adjust_highlights(result, adj.amount, **params)
             elif adj.adjustment_type == AdjustmentType.SHADOW:
-                result = self.adjust_shadows(result, adj.amount, **adj.parameters)
+                result = self.adjust_shadows(result, adj.amount, **params)
             elif adj.adjustment_type == AdjustmentType.MIDTONE:
-                result = self.adjust_midtones(result, adj.amount, **adj.parameters)
+                result = self.adjust_midtones(result, adj.amount, **params)
 
         return result
 

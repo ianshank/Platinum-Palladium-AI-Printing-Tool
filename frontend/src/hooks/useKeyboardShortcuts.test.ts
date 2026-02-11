@@ -226,4 +226,132 @@ describe('useKeyboardShortcuts', () => {
     expect(action1).toHaveBeenCalledTimes(1);
     expect(action2).toHaveBeenCalledTimes(1);
   });
+
+  it('does not fire non-ctrl shortcut when ctrl is held (ctrlMatch fix)', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutConfig[] = [
+      { key: 'a', action, description: 'Plain A (no ctrl)' },
+    ];
+
+    renderHook(() => useKeyboardShortcuts(shortcuts));
+
+    // Ctrl+A should NOT match a shortcut with ctrl undefined/false
+    const event = new KeyboardEvent('keydown', {
+      key: 'a',
+      ctrlKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(event, 'target', { value: document.body });
+    document.dispatchEvent(event);
+
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it('does not fire non-ctrl shortcut when meta is held (ctrlMatch fix)', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutConfig[] = [
+      { key: 'a', action, description: 'Plain A (no ctrl)' },
+    ];
+
+    renderHook(() => useKeyboardShortcuts(shortcuts));
+
+    // Meta+A should NOT match a shortcut with ctrl undefined/false
+    const event = new KeyboardEvent('keydown', {
+      key: 'a',
+      metaKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(event, 'target', { value: document.body });
+    document.dispatchEvent(event);
+
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it('fires ctrl shortcut when meta is held (Mac support)', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutConfig[] = [
+      { key: 's', ctrl: true, action, description: 'Save' },
+    ];
+
+    renderHook(() => useKeyboardShortcuts(shortcuts));
+
+    // Meta+S should match ctrl:true (Mac Cmd key)
+    const event = new KeyboardEvent('keydown', {
+      key: 's',
+      metaKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(event, 'target', { value: document.body });
+    document.dispatchEvent(event);
+
+    expect(action).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not fire action when a select element is focused', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutConfig[] = [
+      { key: 's', ctrl: true, action, description: 'Save' },
+    ];
+
+    renderHook(() => useKeyboardShortcuts(shortcuts));
+
+    const select = document.createElement('select');
+    document.body.appendChild(select);
+
+    const event = new KeyboardEvent('keydown', {
+      key: 's',
+      ctrlKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(event, 'target', { value: select });
+    document.dispatchEvent(event);
+
+    expect(action).not.toHaveBeenCalled();
+    document.body.removeChild(select);
+  });
+
+  it('does not fire action when a contentEditable element is focused', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutConfig[] = [
+      { key: 's', ctrl: true, action, description: 'Save' },
+    ];
+
+    renderHook(() => useKeyboardShortcuts(shortcuts));
+
+    const div = document.createElement('div');
+    div.contentEditable = 'true';
+    // jsdom doesn't fully implement isContentEditable, so define it
+    Object.defineProperty(div, 'isContentEditable', { value: true });
+    document.body.appendChild(div);
+
+    const event = new KeyboardEvent('keydown', {
+      key: 's',
+      ctrlKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(event, 'target', { value: div });
+    document.dispatchEvent(event);
+
+    expect(action).not.toHaveBeenCalled();
+    document.body.removeChild(div);
+  });
+
+  it('matches keys case-insensitively', () => {
+    const action = vi.fn();
+    const shortcuts: ShortcutConfig[] = [
+      { key: 'S', ctrl: true, action, description: 'Save' },
+    ];
+
+    renderHook(() => useKeyboardShortcuts(shortcuts));
+
+    const event = new KeyboardEvent('keydown', {
+      key: 's',
+      ctrlKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(event, 'target', { value: document.body });
+    document.dispatchEvent(event);
+
+    expect(action).toHaveBeenCalledTimes(1);
+  });
 });

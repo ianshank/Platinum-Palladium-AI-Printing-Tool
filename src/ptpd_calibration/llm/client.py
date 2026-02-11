@@ -35,7 +35,8 @@ class LLMClient(ABC):
         temperature: float | None = None,
     ) -> AsyncIterator[str]:
         """Stream a completion."""
-        pass
+        return
+        yield  # pragma: no cover - makes this an async generator
 
 
 class AnthropicClient(LLMClient):

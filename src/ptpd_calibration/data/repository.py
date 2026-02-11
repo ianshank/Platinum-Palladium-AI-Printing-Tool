@@ -414,8 +414,8 @@ class SQLiteRepository(Repository[T, str], Generic[T]):
             cursor = conn.cursor()
 
             # Build LIKE clauses for each field
-            like_clauses = []
-            values = []
+            like_clauses: list[str] = []
+            values: list[str | int] = []
             pattern = f"%{query}%"
 
             for field in fields:

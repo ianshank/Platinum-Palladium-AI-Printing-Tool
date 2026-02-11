@@ -538,7 +538,7 @@ class SmoothnessConstraint(SymbolicConstraint):
         second_deriv = np.diff(np.diff(values))
         threshold = threshold_factor * np.std(second_deriv)
         rough_mask = np.abs(second_deriv) > threshold
-        return (np.where(rough_mask)[0] + 1).tolist()  # +1 for diff offset
+        return list((np.where(rough_mask)[0] + 1).tolist())  # +1 for diff offset
 
 
 class ConstraintSet:

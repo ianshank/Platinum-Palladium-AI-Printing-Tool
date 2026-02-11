@@ -44,6 +44,7 @@ const mockUIState = {
 };
 
 vi.mock('@/stores', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   useStore: (selector: (s: any) => any) => selector({ ui: mockUIState }),
 }));
 

@@ -38,6 +38,7 @@ interface AppConfig {
     animationDuration: number;
     toastDuration: number;
     debounceDelay: number;
+    undoHistoryLimit: number;
   };
   calibration: {
     defaultSteps: number;
@@ -51,7 +52,7 @@ interface AppConfig {
  */
 function getEnv(key: string, fallback: string): string {
   // Vite exposes env vars with VITE_ prefix
-  const value = import.meta.env[key];
+  const value = import.meta.env[key] as unknown;
   return typeof value === 'string' && value.length > 0 ? value : fallback;
 }
 
@@ -59,7 +60,7 @@ function getEnv(key: string, fallback: string): string {
  * Parse boolean from environment variable
  */
 function getBoolEnv(key: string, fallback: boolean): boolean {
-  const value = import.meta.env[key];
+  const value = import.meta.env[key] as unknown;
   if (typeof value === 'boolean') return value;
   if (typeof value === 'string') {
     return value.toLowerCase() === 'true' || value === '1';
@@ -71,7 +72,7 @@ function getBoolEnv(key: string, fallback: boolean): boolean {
  * Parse number from environment variable
  */
 function getNumEnv(key: string, fallback: number): number {
-  const value = import.meta.env[key];
+  const value = import.meta.env[key] as unknown;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
@@ -121,6 +122,7 @@ export const config: AppConfig = {
     animationDuration: getNumEnv('VITE_ANIMATION_DURATION', 200),
     toastDuration: getNumEnv('VITE_TOAST_DURATION', 5000),
     debounceDelay: getNumEnv('VITE_DEBOUNCE_DELAY', 300),
+    undoHistoryLimit: getNumEnv('VITE_UNDO_HISTORY_LIMIT', 50),
   },
   calibration: {
     defaultSteps: getNumEnv('VITE_DEFAULT_STEPS', 21),

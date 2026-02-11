@@ -48,7 +48,18 @@ const mockChemistryState = {
   resetChemistry: vi.fn(),
 };
 
-function createMockRecipe() {
+function createMockRecipe(): {
+  totalVolume: number;
+  platinumMl: number;
+  palladiumMl: number;
+  ferricOxalateMl: number;
+  contrastAgent: { type: 'na2'; amount: number };
+  developer: {
+    type: 'potassium_oxalate';
+    concentration: number;
+    temperatureC: number;
+  };
+} {
   return {
     totalVolume: 2.8,
     platinumMl: 0.56,
@@ -64,7 +75,9 @@ function createMockRecipe() {
 }
 
 vi.mock('@/stores', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock store selector with test state
   useStore: (selector: (state: any) => any) =>
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     selector({ chemistry: mockChemistryState }),
 }));
 
@@ -307,6 +320,7 @@ describe('ChemistryCalculator', () => {
   describe('Recipe without contrast agent', () => {
     it('hides contrast section when no contrast agent', () => {
       const noContrastRecipe = createMockRecipe();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any -- intentionally removing property for test
       (noContrastRecipe as any).contrastAgent = undefined;
       mockChemistryState.recipe = noContrastRecipe;
       render(<ChemistryCalculator />);

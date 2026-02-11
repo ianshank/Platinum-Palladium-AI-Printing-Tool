@@ -16,12 +16,13 @@ vi.mock('@/api/client', () => ({
 
 // Mock ResizeObserver for Recharts
 global.ResizeObserver = class ResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
 };
 
 describe('CurveEditor', () => {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- partial mock data for testing
   const mockCurve: CurveData = {
     id: '123',
     name: 'Test Curve',
@@ -53,6 +54,7 @@ describe('CurveEditor', () => {
   });
 
   it('handles apply adjustment', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- mock API response with partial data
     vi.spyOn(api.curves, 'modify').mockResolvedValue({
       success: true,
       curve_id: '123',
@@ -81,6 +83,7 @@ describe('CurveEditor', () => {
       input_values: [0, 128, 255],
       output_values: [0, 128, 255],
     };
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- mock API response with partial data
     vi.spyOn(api.curves, 'modify').mockResolvedValue(saveResponse as any);
 
     const onSave = vi.fn();

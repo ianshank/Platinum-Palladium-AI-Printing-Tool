@@ -212,9 +212,7 @@ describe('Logger', () => {
     it('timeAsync() measures and returns result', async () => {
       const logger = new Logger({ level: 'debug', enableConsole: false });
 
-      const result = await logger.timeAsync('async-op', async () => {
-        return 'done';
-      });
+      const result = await logger.timeAsync('async-op', () => Promise.resolve('done'));
 
       expect(result).toBe('done');
       const logs = logger.getRecentLogs();
@@ -226,9 +224,7 @@ describe('Logger', () => {
       const logger = new Logger({ level: 'debug', enableConsole: false });
 
       await expect(
-        logger.timeAsync('failing-op', async () => {
-          throw new Error('boom');
-        })
+        logger.timeAsync('failing-op', () => Promise.reject(new Error('boom')))
       ).rejects.toThrow('boom');
 
       const logs = logger.getRecentLogs();

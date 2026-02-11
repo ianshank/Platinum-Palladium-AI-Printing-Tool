@@ -44,8 +44,8 @@ class PatchData(BaseModel):
     def convert_to_tuple(cls, v: Any) -> tuple[float, float, float]:
         """Convert various inputs to tuple of floats."""
         if isinstance(v, (list, np.ndarray)):
-            return tuple(float(x) for x in v[:3])
-        return v
+            return (float(v[0]), float(v[1]), float(v[2]))
+        return v  # type: ignore[no-any-return]
 
 
 class DensityMeasurement(BaseModel):
@@ -179,7 +179,7 @@ class CurveData(BaseModel):
     def convert_to_list(cls, v: Any) -> list[float]:
         """Convert arrays to lists."""
         if isinstance(v, np.ndarray):
-            return v.tolist()
+            return [float(x) for x in v]
         return list(v)
 
     @model_validator(mode="after")

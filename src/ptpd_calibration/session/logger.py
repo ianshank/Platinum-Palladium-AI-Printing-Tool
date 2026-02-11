@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from typing import Any
 from uuid import UUID, uuid4
 
 
@@ -221,7 +222,7 @@ class PrintSession:
         if not self.records:
             return {"total_prints": 0}
 
-        results_count = {}
+        results_count: dict[str, int] = {}
         for r in self.records:
             results_count[r.result.value] = results_count.get(r.result.value, 0) + 1
 
@@ -307,7 +308,8 @@ class SessionLogger:
         if self._current_session is None:
             self.start_session()
 
-        self._current_session.add_record(record)
+        if self._current_session is not None:
+            self._current_session.add_record(record)
         self._auto_save()
 
     def end_session(self) -> PrintSession | None:
@@ -434,13 +436,13 @@ class SessionLogger:
 
         return records
 
-    def get_paper_statistics(self) -> dict[str, dict]:
+    def get_paper_statistics(self) -> dict[str, dict[str, Any]]:
         """Get statistics grouped by paper type.
 
         Returns:
             Dictionary of paper types with their statistics
         """
-        stats = {}
+        stats: dict[str, dict[str, Any]] = {}
 
         for filepath in self.storage_dir.glob("session_*.json"):
             try:
@@ -458,16 +460,17 @@ class SessionLogger:
                             "avg_exposure": [],
                         }
 
-                    stats[record.paper_type]["total_prints"] += 1
+                    paper_stats = stats[record.paper_type]
+                    paper_stats["total_prints"] += 1
                     if record.result == PrintResult.EXCELLENT:
-                        stats[record.paper_type]["excellent"] += 1
+                        paper_stats["excellent"] += 1
                     elif record.result == PrintResult.GOOD:
-                        stats[record.paper_type]["good"] += 1
+                        paper_stats["good"] += 1
                     elif record.result == PrintResult.FAILED:
-                        stats[record.paper_type]["failed"] += 1
+                        paper_stats["failed"] += 1
 
                     if record.exposure_time_minutes > 0:
-                        stats[record.paper_type]["avg_exposure"].append(
+                        paper_stats["avg_exposure"].append(
                             record.exposure_time_minutes
                         )
             except Exception as e:
@@ -478,7 +481,7 @@ class SessionLogger:
 
         # Calculate averages
         for paper in stats:
-            exposures = stats[paper]["avg_exposure"]
+            exposures: list[float] = stats[paper]["avg_exposure"]
             stats[paper]["avg_exposure"] = sum(exposures) / len(exposures) if exposures else 0
 
         return stats

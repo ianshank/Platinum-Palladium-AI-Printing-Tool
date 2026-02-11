@@ -58,7 +58,7 @@ class LABValue:
 
     def delta_e(self, other: "LABValue") -> float:
         """Calculate Delta E (CIE76) color difference."""
-        return np.sqrt((self.L - other.L) ** 2 + (self.a - other.a) ** 2 + (self.b - other.b) ** 2)
+        return float(np.sqrt((self.L - other.L) ** 2 + (self.a - other.a) ** 2 + (self.b - other.b) ** 2))
 
 
 @dataclass
@@ -361,7 +361,7 @@ class XRiteIntegration(SpectrophotometerInterface):
             density = max(0.0, min(3.0, base_density + noise))
 
             logger.debug(f"Read density for {patch_id}: {density:.3f}")
-            return density
+            return float(density)
 
         # Real device read would go here
         raise NotImplementedError("Real device reading not implemented")
@@ -416,7 +416,7 @@ class XRiteIntegration(SpectrophotometerInterface):
         values = np.convolve(base_curve, kernel, mode="same")
         values = np.clip(values, 0.0, 1.0)
 
-        return SpectralData(wavelengths=wavelengths, values=values.tolist())
+        return SpectralData(wavelengths=[float(w) for w in wavelengths], values=[float(x) for x in values.tolist()])
 
     def read_patch(self, patch_id: str = "patch") -> PatchMeasurement:
         """

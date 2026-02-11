@@ -12,6 +12,8 @@ For deep learning models, see the `deep` submodule:
 - deep.ProcessSimulator: Differentiable process simulation
 """
 
+import types
+
 from ptpd_calibration.ml.active_learning import ActiveLearner
 from ptpd_calibration.ml.database import CalibrationDatabase
 from ptpd_calibration.ml.predictor import CurvePredictor
@@ -26,7 +28,7 @@ __all__ = [
 
 
 # Lazy import for deep learning module
-def __getattr__(name: str):
+def __getattr__(name: str) -> types.ModuleType:
     """Lazy import of deep learning module."""
     if name == "deep":
         from ptpd_calibration.ml import deep

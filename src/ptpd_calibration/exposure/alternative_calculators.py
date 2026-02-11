@@ -206,7 +206,7 @@ class CyanotypeExposureCalculator:
     # Standard density for one stop
     DENSITY_PER_STOP = 0.3
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the cyanotype exposure calculator."""
         # Base exposure in minutes for BL tubes with average negative
         self.base_exposure_minutes = 15.0
@@ -393,7 +393,7 @@ class SilverGelatinExposureCalculator:
     - Reciprocity for long exposures
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize silver gelatin exposure calculator."""
         # Base exposure for 8x10 print at f/8, grade 2, medium paper
         self.base_exposure_seconds = 10.0
@@ -631,7 +631,7 @@ class VanDykeExposureCalculator:
     with similar characteristics to cyanotype but producing brown tones.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Van Dyke exposure calculator."""
         # Base exposure for BL tubes
         self.base_exposure_minutes = 8.0  # Faster than cyanotype
@@ -693,7 +693,7 @@ class KallitypeExposureCalculator:
     solutions to achieve different tones from warm brown to cool neutral.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize kallitype exposure calculator."""
         self.base_exposure_minutes = 6.0  # Relatively fast
         self.base_negative_density = 1.5

@@ -15,11 +15,13 @@ vi.mock('@/api/client', () => ({
 
 // Mock child components
 vi.mock('./ScanUpload', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock component with simplified props
   ScanUpload: ({ onUploadComplete }: any) => (
     <div data-testid="scan-upload-mock">
       <button
-        onClick={() =>
-          onUploadComplete({
+        onClick={
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call -- mock callback with test data
+          () => onUploadComplete({
             success: true,
             extraction_id: 'mock-extraction-id',
             num_patches: 21,
@@ -39,7 +41,9 @@ vi.mock('./ScanUpload', () => ({
 }));
 
 vi.mock('@/components/curves/CurveEditor', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock component with simplified props
   CurveEditor: ({ initialCurve }: any) => (
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- accessing mock prop
     <div data-testid="curve-editor-mock">Curve Editor: {initialCurve.name}</div>
   ),
 }));
@@ -50,6 +54,7 @@ describe('CalibrationWizard', () => {
   });
 
   it('navigates through the wizard', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- mock API response with partial data for testing
     vi.spyOn(api.curves, 'generate').mockResolvedValue({
       success: true,
       curve_id: 'new-curve-id',

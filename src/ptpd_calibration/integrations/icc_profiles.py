@@ -547,7 +547,7 @@ class ICCProfileManager:
                     # Check profile signature at offset 36-40
                     signature = header[36:40]
                     if signature != b"acsp":
-                        errors.append(f"Invalid ICC signature: {signature} (expected 'acsp')")
+                        errors.append(f"Invalid ICC signature: {signature!r} (expected b'acsp')")
 
         except Exception as e:
             errors.append(f"Failed to read file: {e}")

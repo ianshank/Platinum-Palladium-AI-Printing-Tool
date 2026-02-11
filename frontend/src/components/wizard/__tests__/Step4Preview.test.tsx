@@ -8,8 +8,11 @@ import type { DensityMeasurement } from '@/stores/slices/calibrationSlice';
 // Mock Recharts
 vi.mock('recharts', async (importOriginal) => {
   const actual = await importOriginal();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- spreading actual recharts exports
     ...(actual as any),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock component with flexible children
     ResponsiveContainer: ({ children }: { children: any }) => (
       <div style={{ width: 800, height: 600 }}>{children}</div>
     ),
@@ -19,9 +22,9 @@ vi.mock('recharts', async (importOriginal) => {
 // Mock ResizeObserver
 beforeAll(() => {
   global.ResizeObserver = class ResizeObserver {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
   };
 });
 
@@ -77,6 +80,7 @@ describe('Step4Preview', () => {
 
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.any returns any for type matching
         measurements: expect.any(Array),
         name: 'Test Curve',
         curve_type: 'monotonic',

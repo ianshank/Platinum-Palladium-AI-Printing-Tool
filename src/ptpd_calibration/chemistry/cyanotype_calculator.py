@@ -410,7 +410,7 @@ class CyanotypeCalculator:
         # Concentration adjustment
         conc_factor = 1.0 / concentration  # More concentrated = slightly faster
 
-        return base * formula_factor * (paper_factor**0.5) * conc_factor
+        return float(base * formula_factor * (paper_factor**0.5) * conc_factor)
 
     def _get_development_method(self, formula: CyanotypeFormula) -> str:
         """Get recommended development method for formula."""

@@ -1099,7 +1099,7 @@ class SplitGradeSimulator:
         elif is_high_key:
             ratio -= 0.05
 
-        return np.clip(ratio, 0.4, 0.75)
+        return float(np.clip(ratio, 0.4, 0.75))
 
     @staticmethod
     def _soft_light_blend(

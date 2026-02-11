@@ -99,6 +99,7 @@ vi.mock('@/stores', () => ({
         updateMetadata: mockUpdateMetadata,
       },
     };
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return selector(state);
   },
 }));

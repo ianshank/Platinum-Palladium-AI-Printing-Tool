@@ -12,6 +12,7 @@ Provides comprehensive histogram analysis including:
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from PIL import Image
@@ -366,7 +367,7 @@ class HistogramAnalyzer:
         scale: HistogramScale = HistogramScale.LINEAR,
         show_zones: bool = True,
         show_rgb: bool = True,
-    ):
+    ) -> Any:
         """Create a matplotlib figure for the histogram.
 
         Args:
