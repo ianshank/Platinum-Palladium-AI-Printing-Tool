@@ -1,0 +1,86 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+.eggs/
+
+# Build artifacts
+dist/
+frontend/dist/
+build/
+*.so
+*.egg
+*.whl
+
+# IDE & OS
+.git/
+.gitignore
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Test & coverage
+coverage/
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+*.cover
+.hypothesis/
+.tox/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# KB & migration tracking
+kb/
+migration/
+legacy/
+
+# Agent and CI/CD
+.agent/
+.claude/
+.github/
+.husky/
+.gradio/
+
+# Temporary and log files
+*.log
+*.tmp
+tmp/
+temp/
+
+# Frontend specific
+frontend/.turbo/
+frontend/.next/
+frontend/out/
+frontend/playwright-report/
+frontend/test-results/
+frontend/storybook-static/

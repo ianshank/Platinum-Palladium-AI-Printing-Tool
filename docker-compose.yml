@@ -1,0 +1,50 @@
+services:
+  api:
+    build:
+      context: .
+      target: production
+    ports:
+      - "${PTPD_API_PORT:-8000}:8000"
+    environment:
+      - PTPD_API_HOST=0.0.0.0
+      - PTPD_API_PORT=8000
+      - PTPD_LLM_PROVIDER=${PTPD_LLM_PROVIDER:-anthropic}
+      - PTPD_LLM_ANTHROPIC_API_KEY=${PTPD_LLM_ANTHROPIC_API_KEY:-}
+      - PTPD_LLM_OPENAI_API_KEY=${PTPD_LLM_OPENAI_API_KEY:-}
+      - PTPD_DATA_DIR=/app/data
+      - PTPD_LOG_LEVEL=${PTPD_LOG_LEVEL:-INFO}
+    volumes:
+      - ptpd-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend-dev:
+    image: node:20-slim
+    working_dir: /app/frontend
+    command: sh -c "corepack enable && pnpm install && pnpm dev --host 0.0.0.0"
+    ports:
+      - "${VITE_PORT:-5173}:5173"
+    environment:
+      - VITE_API_URL=http://api:8000
+      - VITE_WS_URL=ws://api:8000/ws
+      - VITE_ENABLE_DEVTOOLS=true
+      - VITE_LOG_LEVEL=debug
+    volumes:
+      - ./frontend:/app/frontend
+      - frontend-node-modules:/app/frontend/node_modules
+    depends_on:
+      api:
+        condition: service_healthy
+    profiles:
+      - dev
+
+volumes:
+  ptpd-data:
+    driver: local
+  frontend-node-modules:
+    driver: local

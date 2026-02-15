@@ -2,12 +2,12 @@
  * AIAssistant Component
  *
  * Chat interface for the Pt/Pd printing assistant.
- * Uses the `useChat` hook for API orchestration and Zustand state management.
+ * Uses the `useStreamingChat` hook for real-time SSE streaming.
  *
  * Features:
  * - Message list with user/assistant bubbles
  * - Text input with send on Enter / button click
- * - Streaming indicator while AI responds
+ * - Real-time streaming indicator with cancel button
  * - Error display with retry
  * - New conversation / clear history actions
  * - Empty state with suggestions
@@ -16,7 +16,7 @@
 
 import { type FC, useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useChat } from '@/hooks/useChat';
+import { useStreamingChat } from '@/hooks/useStreamingChat';
 
 export interface AIAssistantProps {
   className?: string;
@@ -47,17 +47,18 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // --- useChat hook (replaces direct api + store wiring) ---
+  // --- useStreamingChat hook (real-time SSE streaming) ---
   const {
     messages,
     isStreaming,
     streamContent,
     error,
     isBusy,
-    sendSuggestion,
+    sendMessage,
+    cancelStream,
     clear,
     newConversation,
-  } = useChat();
+  } = useStreamingChat();
 
   // Auto-scroll
   useEffect(() => {
@@ -67,9 +68,9 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
     if (!trimmed || isBusy) return;
-    sendSuggestion(trimmed);
+    sendMessage(trimmed);
     setInput('');
-  }, [input, isBusy, sendSuggestion]);
+  }, [input, isBusy, sendMessage]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -91,9 +92,9 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
 
   const handleSuggestionClick = useCallback(
     (suggestion: string) => {
-      sendSuggestion(suggestion);
+      sendMessage(suggestion);
     },
-    [sendSuggestion]
+    [sendMessage]
   );
 
   const handleNewConversation = useCallback(() => {
@@ -283,20 +284,37 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
             data-testid="chat-input"
             aria-label="Chat message"
           />
-          <button
-            type="submit"
-            disabled={isBusy || !input.trim()}
-            className={cn(
-              'rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground',
-              'hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-              'disabled:cursor-not-allowed disabled:opacity-50',
-              'transition-colors'
-            )}
-            data-testid="send-btn"
-            aria-label="Send message"
-          >
-            Send
-          </button>
+          {isStreaming ? (
+            <button
+              type="button"
+              onClick={cancelStream}
+              className={cn(
+                'rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive',
+                'hover:bg-destructive hover:text-destructive-foreground',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive',
+                'transition-colors'
+              )}
+              data-testid="cancel-btn"
+              aria-label="Stop streaming"
+            >
+              Stop
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isBusy || !input.trim()}
+              className={cn(
+                'rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground',
+                'hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                'disabled:cursor-not-allowed disabled:opacity-50',
+                'transition-colors'
+              )}
+              data-testid="send-btn"
+              aria-label="Send message"
+            >
+              Send
+            </button>
+          )}
         </div>
       </form>
     </div>

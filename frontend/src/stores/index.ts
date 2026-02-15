@@ -38,8 +38,8 @@ import {
 } from './slices/sessionSlice';
 import {
   createImageSlice,
-  type ImageData,
   type ImageSlice,
+  type ImageData as ImageSliceData,
 } from './slices/imageSlice';
 import { config } from '@/config';
 
@@ -82,6 +82,7 @@ const storeMiddleware: StoreMiddleware = (f) =>
               // Do not persist runtime flags; ensure processing is reset on load
               isProcessing: false,
             },
+            // Calibration workflow persistence is handled by workflowPersistence.ts
           }),
         }
       )
@@ -175,7 +176,8 @@ export const selectSessionRecords = (state: StoreState): PrintRecord[] =>
 export const selectSessionStats = (state: StoreState): SessionStats => state.session.stats;
 
 // Image Selectors
-export const selectCurrentImage = (state: StoreState): ImageData | null => state.image.current;
+export const selectCurrentImage = (state: StoreState): ImageSliceData | null =>
+  state.image.current;
 export const selectImagePreview = (state: StoreState): string | null => state.image.preview;
 export const selectUploadProgress = (state: StoreState): number =>
   state.image.uploadProgress;

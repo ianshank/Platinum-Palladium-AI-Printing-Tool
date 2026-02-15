@@ -5,6 +5,12 @@
 
 import type { StateCreator } from 'zustand';
 import { logger } from '@/lib/logger';
+import {
+  clearCheckpoint,
+  loadCheckpoint,
+  saveCheckpoint,
+  type WorkflowCheckpoint,
+} from '@/lib/workflowPersistence';
 
 export interface DensityMeasurement {
   step: number;
@@ -46,6 +52,16 @@ export interface CalibrationData {
   metadata?: CalibrationMetadata | undefined;
 }
 
+/**
+ * Workflow checkpoint data structure
+ */
+export interface CalibrationWorkflowCheckpoint {
+  current: CalibrationData | null;
+  currentStep: number;
+  measurements: DensityMeasurement[];
+  metadata?: CalibrationMetadata | undefined;
+}
+
 export interface CalibrationSlice {
   // State
   current: CalibrationData | null;
@@ -76,6 +92,9 @@ export interface CalibrationSlice {
   clearCurrent: () => void;
   resetCalibration: () => void;
   updateMetadata: (metadata: CalibrationMetadata) => void;
+  saveWorkflowCheckpoint: () => void;
+  loadWorkflowCheckpoint: () => WorkflowCheckpoint<CalibrationWorkflowCheckpoint> | null;
+  clearWorkflowCheckpoint: () => void;
 }
 
 const WIZARD_STEPS = 5; // Total wizard steps
@@ -299,5 +318,59 @@ export const createCalibrationSlice: StateCreator<
         state.calibration.current.updatedAt = new Date().toISOString();
       }
     });
+  },
+
+  saveWorkflowCheckpoint: () => {
+    const { current, currentStep } = get().calibration;
+    if (!current) {
+      logger.warn('Calibration: saveWorkflowCheckpoint - no current calibration');
+      return;
+    }
+
+    const checkpointData: CalibrationWorkflowCheckpoint = {
+      current,
+      currentStep,
+      measurements: current.measurements,
+      metadata: current.metadata,
+    };
+
+    saveCheckpoint('calibration-wizard', currentStep, checkpointData);
+    logger.info('Calibration: workflow checkpoint saved', {
+      calibrationId: current.id,
+      step: currentStep,
+    });
+  },
+
+  loadWorkflowCheckpoint: () => {
+    const checkpoint = loadCheckpoint<CalibrationWorkflowCheckpoint>(
+      'calibration-wizard'
+    );
+
+    if (!checkpoint) {
+      logger.debug('Calibration: no workflow checkpoint found');
+      return null;
+    }
+
+    logger.info('Calibration: restoring workflow checkpoint', {
+      calibrationId: checkpoint.data.current?.id,
+      step: checkpoint.step,
+    });
+
+    set((state) => {
+      state.calibration.current = checkpoint.data.current;
+      state.calibration.currentStep = checkpoint.step;
+      if (checkpoint.data.current && state.calibration.current) {
+        // Ensure measurements and metadata are restored
+        state.calibration.current.measurements = checkpoint.data.measurements;
+        state.calibration.current.metadata = checkpoint.data.metadata;
+      }
+    });
+
+    return checkpoint;
+  },
+
+  clearWorkflowCheckpoint: () => {
+    clearCheckpoint('calibration-wizard');
+    logger.debug('Calibration: workflow checkpoint cleared');
   },
 });

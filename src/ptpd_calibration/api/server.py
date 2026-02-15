@@ -14,7 +14,7 @@ def create_app():
     try:
         from fastapi import FastAPI, File, Form, HTTPException, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
-        from fastapi.responses import FileResponse
+        from fastapi.responses import FileResponse, StreamingResponse
         from pydantic import BaseModel
     except ImportError as err:
         raise ImportError(
@@ -639,6 +639,45 @@ def create_app():
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e)) from None
 
+    @app.post("/api/chat/stream")
+    async def chat_stream(request: ChatRequest):
+        """Chat with the AI assistant using Server-Sent Events streaming."""
+        import json
+
+        async def generate_sse():
+            """Generate SSE-formatted stream."""
+            try:
+                from ptpd_calibration.llm import create_assistant
+
+                assistant = create_assistant(database=database)
+
+                # Stream response chunks
+                async for chunk in assistant.chat_stream(
+                    request.message,
+                    include_history=request.include_history,
+                ):
+                    event_data = json.dumps({"type": "chunk", "content": chunk})
+                    yield f"data: {event_data}\n\n"
+
+                # Send completion event
+                done_data = json.dumps({"type": "done"})
+                yield f"data: {done_data}\n\n"
+
+            except Exception as e:
+                # Send error event
+                error_data = json.dumps({"type": "error", "message": str(e)})
+                yield f"data: {error_data}\n\n"
+
+        return StreamingResponse(
+            generate_sse(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",  # Disable nginx buffering
+            },
+        )
+
     @app.post("/api/chat/recipe")
     async def suggest_recipe(request: RecipeRequest):
         """Get recipe suggestion."""
@@ -672,6 +711,23 @@ def create_app():
     async def get_statistics():
         """Get database statistics."""
         return database.get_statistics()
+
+    # WebSocket for real-time processing status
+    try:
+        from fastapi import WebSocket as FastAPIWebSocket, WebSocketDisconnect
+
+        @app.websocket("/ws")
+        async def websocket_endpoint(websocket: FastAPIWebSocket):
+            await websocket.accept()
+            try:
+                while True:
+                    data = await websocket.receive_json()
+                    if data.get("type") == "ping":
+                        await websocket.send_json({"type": "pong", "payload": {}})
+            except WebSocketDisconnect:
+                pass
+    except ImportError:
+        pass
 
     return app
 

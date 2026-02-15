@@ -15,8 +15,6 @@ import { logger } from '@/lib/logger';
 import type { CurveData } from '@/types/models';
 import { Activity, BarChart, CheckCircle2, Printer, Scan } from 'lucide-react';
 import { cn } from '@/lib/utils';
-// import { useToast } from '@/components/ui/use-toast'; // Assuming it exists
-
 // Steps definition
 const STEPS = [
   { id: 'setup', title: 'Setup', icon: Activity },

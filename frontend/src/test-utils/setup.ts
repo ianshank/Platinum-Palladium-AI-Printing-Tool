@@ -11,6 +11,8 @@ import { afterEach, beforeAll, vi } from 'vitest';
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  // Clear localStorage to prevent Zustand persist state leakage between tests
+  localStorage.clear();
 });
 
 // Mock window.matchMedia
@@ -60,8 +62,3 @@ beforeAll(() => {
   global.URL.revokeObjectURL = vi.fn();
 });
 
-// Suppress console during tests (optional, uncomment if needed)
-// beforeAll(() => {
-//   vi.spyOn(console, 'log').mockImplementation(() => {});
-//   vi.spyOn(console, 'debug').mockImplementation(() => {});
-// });

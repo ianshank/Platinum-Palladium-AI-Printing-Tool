@@ -3,40 +3,6 @@
  */
 
 // ============================================================================
-// Common Types
-// ============================================================================
-
-/**
- * Generic API response wrapper
- */
-export interface ApiResponse<T> {
-  data: T;
-  message?: string;
-  status: 'success' | 'error';
-}
-
-/**
- * Pagination parameters
- */
-export interface PaginationParams {
-  page: number;
-  limit: number;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-}
-
-/**
- * Paginated response
- */
-export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-// ============================================================================
 // Calibration Types
 // ============================================================================
 
@@ -292,30 +258,3 @@ export interface Toast {
  */
 export type ThemeMode = 'light' | 'dark';
 
-// ============================================================================
-// Utility Types
-// ============================================================================
-
-/**
- * Make all properties optional recursively
- */
-export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
-
-/**
- * Extract value type from object
- */
-export type ValueOf<T> = T[keyof T];
-
-/**
- * Make specific properties required
- */
-export type RequireKeys<T, K extends keyof T> = T & Required<Pick<T, K>>;
-
-/**
- * Async function return type
- */
-export type AsyncReturnType<
-  T extends (...args: unknown[]) => Promise<unknown>,
-> = T extends (...args: unknown[]) => Promise<infer R> ? R : never;

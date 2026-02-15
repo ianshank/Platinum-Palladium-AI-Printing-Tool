@@ -179,13 +179,6 @@ export interface CalibrationRecord {
   tags: string[];
 }
 
-// API Response Wrappers
-export interface ApiSuccessResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-}
-
 export interface CurveGenerationRequest {
   measurements: number[];
   type?: string;
