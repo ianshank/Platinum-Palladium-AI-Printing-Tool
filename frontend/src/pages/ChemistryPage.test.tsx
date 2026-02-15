@@ -4,7 +4,10 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { axe, toHaveNoViolations } from 'jest-axe';
 import { ChemistryPage } from './ChemistryPage';
+
+expect.extend(toHaveNoViolations);
 
 // Mock the ChemistryCalculator to test page isolation
 vi.mock('@/components/chemistry/ChemistryCalculator', () => ({
@@ -32,5 +35,13 @@ describe('ChemistryPage', () => {
   it('renders the ChemistryCalculator component', () => {
     render(<ChemistryPage />);
     expect(screen.getByTestId('mock-chemistry-calculator')).toBeInTheDocument();
+  });
+
+  describe('Accessibility', () => {
+    it('has no accessibility violations', async () => {
+      const { container } = render(<ChemistryPage />);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
   });
 });

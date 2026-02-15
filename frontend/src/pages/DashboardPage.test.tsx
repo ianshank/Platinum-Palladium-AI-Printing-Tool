@@ -7,7 +7,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { axe, toHaveNoViolations } from 'jest-axe';
 import { DashboardPage } from './DashboardPage';
+
+expect.extend(toHaveNoViolations);
 
 // Mock the Dashboard component to test isolation at page level
 vi.mock('@/components/dashboard/Dashboard', () => ({
@@ -60,5 +63,17 @@ describe('DashboardPage', () => {
     );
 
     expect(screen.getByTestId('dashboard-page')).toHaveClass('container');
+  });
+
+  describe('Accessibility', () => {
+    it('has no accessibility violations', async () => {
+      const { container } = render(
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      );
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
   });
 });

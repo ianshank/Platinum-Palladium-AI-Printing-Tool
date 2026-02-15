@@ -140,8 +140,12 @@ export function useModifyCurve(
 
   return useMutation({
     mutationFn: (data: CurveModificationRequest) => api.curves.modify(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      logger.debug('Curve modified', { curveId: data.curve_id });
       void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
+    },
+    onError: (error) => {
+      logger.error('Curve modification failed', { error: error.message });
     },
     ...options,
   });
@@ -159,7 +163,11 @@ export function useSmoothCurve(
   return useMutation({
     mutationFn: (data: CurveSmoothRequest) => api.curves.smooth(data),
     onSuccess: () => {
+      logger.debug('Curve smoothed');
       void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
+    },
+    onError: (error) => {
+      logger.error('Curve smoothing failed', { error: error.message });
     },
     ...options,
   });
@@ -209,7 +217,8 @@ export function useExportCurve(
 
   return useMutation({
     mutationFn: (data) => api.curves.export(data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      logger.info('Curve exported', { curveId: variables.curveId, format: variables.format });
       addToast({
         title: 'Export Complete',
         description: 'Curve exported successfully',
@@ -217,6 +226,7 @@ export function useExportCurve(
       });
     },
     onError: (error) => {
+      logger.error('Curve export failed', { error: error.message });
       addToast({
         title: 'Export Failed',
         description: error.response?.data?.message ?? error.message,
@@ -259,6 +269,7 @@ export function useUploadScan(
       });
     },
     onError: (error) => {
+      logger.error('Scan upload failed', { error: error.message });
       setError(error.response?.data?.message ?? error.message);
       addToast({
         title: 'Upload Failed',
@@ -315,7 +326,8 @@ export function useCreateCalibration(
   return useMutation({
     mutationFn: (data: Omit<CalibrationRecord, 'id' | 'timestamp'>) =>
       api.calibrations.create(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      logger.info('Calibration created', { id: data.id });
       addToast({
         title: 'Calibration Saved',
         variant: 'success',
@@ -325,6 +337,7 @@ export function useCreateCalibration(
       });
     },
     onError: (error) => {
+      logger.error('Calibration creation failed', { error: error.message });
       addToast({
         title: 'Save Failed',
         description: error.response?.data?.message ?? error.message,
@@ -357,8 +370,10 @@ export function useSendMessage(
     },
     onMutate: () => {
       setLoading(true);
+      logger.debug('Sending chat message');
     },
     onSuccess: (data) => {
+      logger.debug('Chat response received', { contextUsed: data.context_used?.length ?? 0 });
       addMessage({
         role: 'assistant',
         content: data.response,
@@ -366,6 +381,7 @@ export function useSendMessage(
       });
     },
     onError: (error) => {
+      logger.error('Chat message failed', { error: error.message });
       setError(error.response?.data?.message ?? error.message);
     },
     onSettled: () => {
