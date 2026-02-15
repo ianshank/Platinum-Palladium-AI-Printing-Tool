@@ -1,13 +1,32 @@
 {
-  "last_session_id": null,
-  "last_timestamp": null,
-  "active_branch": null,
+  "last_session_id": "session-v4-investigation",
+  "last_timestamp": "2026-02-15T00:00:00Z",
+  "active_branch": "claude/investigate-agentic-next-steps-MoPtZ",
   "resume_pointers": {
     "current_task": null,
     "blocked_on": [],
-    "next_steps": []
+    "next_steps": [
+      "Sprint 3: Testing Excellence (E2E, a11y, visual regression) — closes Milestone 3",
+      "Sprint 4: Frontend CI + agent health checks — starts Milestone 4",
+      "Sprint 5: Chat streaming (SSE/WebSocket) — parallel with Sprint 4",
+      "Sprint 6: Observability, workflow persistence, Docker — completes Milestone 4",
+      "Sprint 7+: Batch processing, hardware integration, PWA, i18n"
+    ]
   },
-  "context_files": [],
-  "tasks_ready_for_dev": [],
+  "context_files": [
+    "AGENTIC_NEXT_STEPS_V4.md",
+    "CLAUDE.md",
+    "docs/migration/progress.json",
+    "kb/ledger/ledger.jsonl"
+  ],
+  "implementation_status": "15/15 components migrated, all gaps closed, 726 tests, 0 TS errors. Milestone 3 at 75%, Milestone 4 at 20%.",
+  "test_status": "726 passed, 0 failed, ~80% coverage. E2E ~10%, a11y ~30%, visual regression 0%.",
+  "tasks_ready_for_dev": [
+    "Sprint 3: E2E test expansion with Playwright",
+    "Sprint 3: axe-core accessibility audits on all pages",
+    "Sprint 3: Visual regression baselines for 8 pages",
+    "Sprint 3: tablet.config.ts and client.ts unit tests",
+    "Sprint 4: Frontend CI job in GitHub Actions"
+  ],
   "tasks_in_progress": []
 }
