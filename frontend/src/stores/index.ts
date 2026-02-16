@@ -41,6 +41,10 @@ import {
   type ImageData,
   type ImageSlice,
 } from './slices/imageSlice';
+import {
+  createMCTSSlice,
+  type MCTSSlice,
+} from './slices/mctsSlice';
 import { config } from '@/config';
 
 /**
@@ -54,6 +58,7 @@ export type StoreState = {
   chat: ChatSlice;
   session: SessionSlice;
   image: ImageSlice;
+  mcts: MCTSSlice;
 };
 
 /**
@@ -105,6 +110,7 @@ export const useStore = create<StoreState>()(
     chat: createChatSlice(set, get, store),
     session: createSessionSlice(set, get, store),
     image: createImageSlice(set, get, store),
+    mcts: createMCTSSlice(set, get, store),
   }))
 );
 /* eslint-enable @typescript-eslint/no-unsafe-argument */
@@ -123,6 +129,7 @@ export const createStore = (): typeof useStore => {
       chat: createChatSlice(set, get, store),
       session: createSessionSlice(set, get, store),
       image: createImageSlice(set, get, store),
+      mcts: createMCTSSlice(set, get, store),
     }))
   );
 };
@@ -180,6 +187,12 @@ export const selectImagePreview = (state: StoreState): string | null => state.im
 export const selectUploadProgress = (state: StoreState): number =>
   state.image.uploadProgress;
 
+// MCTS Selectors
+export const selectMCTSStatus = (state: StoreState) => state.mcts.status;
+export const selectMCTSIsSearching = (state: StoreState): boolean => state.mcts.isSearching;
+export const selectMCTSCurrentResult = (state: StoreState) => state.mcts.currentResult;
+export const selectMCTSRecommendations = (state: StoreState) => state.mcts.recommendations;
+
 // Re-export slice types
 export type {
   UISlice,
@@ -189,4 +202,5 @@ export type {
   ChatSlice,
   SessionSlice,
   ImageSlice,
+  MCTSSlice,
 };

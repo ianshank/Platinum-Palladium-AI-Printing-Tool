@@ -70,6 +70,16 @@ def create_app():
         # Deep learning dependencies not available
         pass
 
+    # Include MCTS router
+    try:
+        from ptpd_calibration.api.mcts_router import create_mcts_router
+
+        mcts_router = create_mcts_router()
+        app.include_router(mcts_router)
+    except ImportError:
+        # MCTS dependencies not available
+        pass
+
     # Pydantic models
     class AnalyzeRequest(BaseModel):
         densities: list[float]

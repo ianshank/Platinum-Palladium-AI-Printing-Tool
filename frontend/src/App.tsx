@@ -15,7 +15,7 @@ import { CurvesPage } from '@/pages/CurvesPage';
 import { ChemistryPage } from '@/pages/ChemistryPage';
 
 import { AIAssistantPage } from '@/pages/AIAssistantPage';
-
+import { MCTSPage } from '@/pages/MCTSPage';
 import { SessionLogPage } from '@/pages/SessionLogPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 
@@ -90,6 +90,7 @@ export const App: FC = () => {
             <Route path="/curves" element={<CurvesPage />} />
             <Route path="/chemistry" element={<ChemistryPage />} />
             <Route path="/assistant" element={<AIAssistantPage />} />
+            <Route path="/mcts" element={<MCTSPage />} />
             <Route path="/session" element={<SessionLogPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
