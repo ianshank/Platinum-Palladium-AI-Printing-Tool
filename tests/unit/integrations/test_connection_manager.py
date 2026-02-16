@@ -5,12 +5,14 @@ Tests connection lifecycle management, automatic reconnection,
 health monitoring, and event callbacks.
 """
 
+import pytest
+
+pytest.importorskip("ptpd_calibration.integrations.hardware")
+
 import threading
 import time
 from contextlib import suppress
 from unittest.mock import MagicMock
-
-import pytest
 
 from ptpd_calibration.integrations.hardware.connection_manager import (
     ConnectionManager,

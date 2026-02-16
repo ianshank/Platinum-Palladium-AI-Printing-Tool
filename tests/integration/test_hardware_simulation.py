@@ -8,9 +8,11 @@ Tests realistic usage scenarios including:
 - Multi-device scenarios
 """
 
-import tempfile
-
 import pytest
+
+pytest.importorskip("ptpd_calibration.integrations.hardware")
+
+import tempfile
 
 from ptpd_calibration.integrations.hardware import (
     MeasurementError,

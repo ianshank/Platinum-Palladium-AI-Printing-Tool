@@ -451,7 +451,7 @@ class MCTSTrainer:
         clamped = min(depth, num_params)
         features[depth_offset + clamped] = 1.0
 
-        return features.tolist()
+        return list(map(float, features))
 
     def _create_policy_target(
         self,
@@ -492,12 +492,9 @@ class MCTSTrainer:
 
         # Normalize to probability distribution
         total = target.sum()
-        if total > 0:
-            target = target / total
-        else:
-            target = np.ones(num_bins) / num_bins
+        target = target / total if total > 0 else np.ones(num_bins) / num_bins
 
-        return target.tolist()
+        return list(map(float, target))
 
     def _train_step(self) -> tuple[float, float, float]:
         """Perform one training step on a sampled batch.

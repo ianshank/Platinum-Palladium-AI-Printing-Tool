@@ -8,8 +8,11 @@ Tests cover:
 - Data separation between train/val/test splits
 """
 
-import numpy as np
 import pytest
+
+pytest.importorskip("torch")
+
+import numpy as np
 
 from ptpd_calibration.deep_learning.training.data_generators import (
     CurveDataGenerator,

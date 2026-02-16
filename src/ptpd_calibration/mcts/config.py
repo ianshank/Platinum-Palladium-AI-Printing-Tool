@@ -212,6 +212,32 @@ class MCTSSettings(BaseSettings):
         description="Weight for chemistry cost in quality score",
     )
 
+    # Quality scoring parameters
+    linearity_decay_rate: float = Field(
+        default=5.0,
+        ge=1.0,
+        le=20.0,
+        description="Exponential decay rate for linearity scoring",
+    )
+    dmax_scoring_sigma: float = Field(
+        default=0.5,
+        ge=0.1,
+        le=2.0,
+        description="Gaussian sigma for Dmax target scoring",
+    )
+    smoothness_decay_rate: float = Field(
+        default=20.0,
+        ge=5.0,
+        le=50.0,
+        description="Exponential decay rate for smoothness scoring",
+    )
+    cost_metal_weight: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        description="Weight of metal cost vs coating cost",
+    )
+
     # Neural network architecture
     value_hidden_dims: list[int] = Field(
         default=[256, 256, 128],
@@ -393,9 +419,41 @@ class PhysicsConstants(BaseModel):
         le=1.0,
         description="Base shoulder position (high exposure region)",
     )
+    shoulder_temp_sensitivity: float = Field(
+        default=0.01,
+        ge=0.0,
+        le=0.05,
+        description="Shoulder adjustment per degree C deviation from reference",
+    )
+    shoulder_compression_factor: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Shoulder compression strength multiplier",
+    )
     toe_base: float = Field(
         default=0.15,
         ge=0.0,
         le=0.5,
         description="Base toe position (low exposure region)",
+    )
+    toe_expansion_factor: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Toe expansion strength multiplier",
+    )
+
+    # Contrast clamping
+    contrast_min: float = Field(
+        default=0.5,
+        ge=0.1,
+        le=1.0,
+        description="Minimum contrast value (clamped)",
+    )
+    contrast_max: float = Field(
+        default=2.0,
+        ge=1.0,
+        le=5.0,
+        description="Maximum contrast value (clamped)",
     )

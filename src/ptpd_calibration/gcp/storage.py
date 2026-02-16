@@ -81,10 +81,10 @@ class GCSBackend:
         blob = self.bucket.blob(path.lstrip("/"))
         if not blob.exists():
             raise FileNotFoundError(f"Blob not found: gs://{self.bucket_name}/{path}")
-        return blob.download_as_bytes()
+        return bytes(blob.download_as_bytes())
 
     def exists(self, path: str) -> bool:
-        return self.bucket.blob(path.lstrip("/")).exists()
+        return bool(self.bucket.blob(path.lstrip("/")).exists())
 
 def get_storage_backend(config: GCPConfig) -> StorageBackend:
     """Factory to get the appropriate storage backend."""

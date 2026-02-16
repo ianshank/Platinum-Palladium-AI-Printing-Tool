@@ -336,14 +336,14 @@ class KnowledgeGraph:
         rel1 = {
             (
                 r.relation_type,
-                self.get_entity(r.target_id).name if self.get_entity(r.target_id) else None,
+                (target.name if (target := self.get_entity(r.target_id)) is not None else None),
             )
             for r in self.get_relationships(entity1_id, direction="outgoing")
         }
         rel2 = {
             (
                 r.relation_type,
-                self.get_entity(r.target_id).name if self.get_entity(r.target_id) else None,
+                (target.name if (target := self.get_entity(r.target_id)) is not None else None),
             )
             for r in self.get_relationships(entity2_id, direction="outgoing")
         }

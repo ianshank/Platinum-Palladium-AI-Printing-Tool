@@ -198,7 +198,7 @@ class SyntheticDataConfig:
     # Random seed for reproducibility
     seed: int | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize default papers if not provided."""
         if not self.papers:
             self.papers = get_default_paper_profiles()

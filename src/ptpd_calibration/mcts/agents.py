@@ -291,7 +291,6 @@ class ExposureSubagent(BaseSubagent):
         """
         # Extract chemistry parameters
         coating_weight = chemistry_params.get("coating_weight", 1.5)
-        metal_ratio = chemistry_params.get("metal_ratio", 0.5)
 
         # Base exposure time from coating weight (more coating = more time)
         exposure_range = DEFAULT_PARAMETER_RANGES["exposure_time"]
@@ -325,7 +324,6 @@ class ExposureSubagent(BaseSubagent):
         developer_temp = dev_temp_range.default_value
 
         # Humidity: optimal default
-        humidity_range = DEFAULT_PARAMETER_RANGES["humidity"]
         humidity = self.physics.humidity_optimal
 
         suggested = {

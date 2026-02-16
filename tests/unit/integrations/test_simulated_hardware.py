@@ -3,9 +3,11 @@
 Tests verify the SimulatedSpectrophotometer and SimulatedPrinter functionality.
 """
 
-from pathlib import Path
-
 import pytest
+
+pytest.importorskip("ptpd_calibration.integrations.hardware")
+
+from pathlib import Path
 
 from ptpd_calibration.integrations.hardware.simulated import (
     SimulatedPrinter,

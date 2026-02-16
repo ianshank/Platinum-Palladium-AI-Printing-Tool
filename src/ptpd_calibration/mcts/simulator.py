@@ -139,13 +139,13 @@ class ExtendedProcessSimulator:
         # More FO -> higher contrast (up to a point)
         fo_deviation = ferric_oxalate_pct - self.physics.fo_contrast_center
         contrast_adjustment = 1.0 + self.physics.fo_contrast_slope * fo_deviation
-        contrast = max(0.5, min(2.0, contrast_adjustment))  # Clamp to reasonable range
+        contrast = max(self.physics.contrast_min, min(self.physics.contrast_max, contrast_adjustment))
 
         # 5. Shoulder position: affected by exposure and development
         # Higher exposure -> more defined shoulder
         # Temperature affects development rate, which impacts shoulder
         temp_deviation = developer_temp - self.physics.dev_temp_reference
-        shoulder_adjustment = temp_deviation * 0.01  # Small adjustment
+        shoulder_adjustment = temp_deviation * self.physics.shoulder_temp_sensitivity
         shoulder_position = np.clip(
             self.physics.shoulder_base + shoulder_adjustment,
             0.5,
@@ -348,15 +348,17 @@ class ExtendedProcessSimulator:
         # Apply shoulder compression (high values)
         # Convert shoulder from 0-1 to sigmoid space equivalent
         shoulder_logit = np.log(shoulder / (1.0 - shoulder + 1e-6))
-        shoulder_strength = 1.0 / (1.0 + np.exp(-shoulder_logit)) * 0.5
+        shoulder_strength = 1.0 / (1.0 + np.exp(-shoulder_logit)) * self.physics.shoulder_compression_factor
         response = response - shoulder_strength * np.power(
             np.clip(response - 0.5, 0, 0.5), 2
         )
 
         # Apply toe expansion (low values)
         toe_logit = np.log(toe / (1.0 - toe + 1e-6))
-        toe_strength = 1.0 / (1.0 + np.exp(-toe_logit)) * 0.3
-        response = response + toe_strength * np.power(np.clip(0.3 - response, 0, 0.3), 2)
+        toe_strength = 1.0 / (1.0 + np.exp(-toe_logit)) * self.physics.toe_expansion_factor
+        response = response + toe_strength * np.power(
+            np.clip(self.physics.toe_expansion_factor - response, 0, self.physics.toe_expansion_factor), 2
+        )
 
         # Scale to density range
         density: np.ndarray = dmin + (dmax - dmin) * response

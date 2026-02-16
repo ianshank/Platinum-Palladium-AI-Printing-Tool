@@ -9,6 +9,10 @@ Tests cover:
 - Curve generation for all modes
 """
 
+import pytest
+
+pytest.importorskip("ptpd_calibration.ui")
+
 from unittest.mock import patch
 
 from ptpd_calibration.curves.linearization import LinearizationMethod, TargetResponse

@@ -8,10 +8,12 @@ Tests the hardware abstraction layer including:
 - Protocol compliance
 """
 
+import pytest
+
+pytest.importorskip("ptpd_calibration.integrations.hardware")
+
 from datetime import datetime
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from ptpd_calibration.integrations.hardware import (
     CalibrationError,
@@ -353,12 +355,11 @@ class TestSimulatedSpectrophotometer:
         assert device.status == DeviceStatus.CONNECTED
 
     def test_calibrate_white_not_connected(self):
-        """Test calibration returns False when not connected."""
+        """Test calibration raises when not connected."""
         device = SimulatedSpectrophotometer(simulate_delay=False)
 
-        # Simulated device returns False instead of raising
-        result = device.calibrate_white()
-        assert result is False
+        with pytest.raises(RuntimeError, match="not connected"):
+            device.calibrate_white()
 
     def test_read_density(self):
         """Test reading density measurement."""

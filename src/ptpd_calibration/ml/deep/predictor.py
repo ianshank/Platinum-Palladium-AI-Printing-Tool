@@ -228,6 +228,7 @@ class DeepCurvePredictor:
             )
 
             # Create model
+            assert self.encoder is not None, "Encoder must be initialized"
             model = CurveMLP.from_settings(
                 num_features=self.encoder.num_features,
                 settings=self.settings,
@@ -269,6 +270,9 @@ class DeepCurvePredictor:
         if not self.is_trained:
             raise ModelNotTrainedError("Model must be trained before prediction")
 
+        assert self.encoder is not None, "Encoder must be initialized"
+        assert self.model is not None, "Model must be initialized"
+
         # Encode features
         features = self.encoder.encode(record)
         features_tensor = torch.from_numpy(features).unsqueeze(0).to(self.device)
@@ -293,8 +297,8 @@ class DeepCurvePredictor:
             uncertainty=uncertainty,
             confidence=confidence,
             metadata={
-                "model_type": type(self.model).__name__,
-                "num_features": self.encoder.num_features,
+                "model_type": type(self.model).__name__ if self.model else "unknown",
+                "num_features": self.encoder.num_features if self.encoder else 0,
                 "lut_size": len(curve),
             },
         )
@@ -341,6 +345,9 @@ class DeepCurvePredictor:
         if not self.is_trained:
             raise ModelNotTrainedError("Model must be trained before prediction")
 
+        assert self.encoder is not None, "Encoder must be initialized"
+        assert self.model is not None, "Model must be initialized"
+
         num_samples = num_samples or self.settings.mc_dropout_samples
 
         # Encode features
@@ -370,7 +377,7 @@ class DeepCurvePredictor:
             uncertainty=uncertainty,
             confidence=confidence,
             metadata={
-                "model_type": type(self.model).__name__,
+                "model_type": type(self.model).__name__ if self.model else "unknown",
                 "mc_samples": num_samples,
             },
         )
@@ -421,6 +428,9 @@ class DeepCurvePredictor:
         """
         if not self.is_trained:
             raise ModelNotTrainedError("Cannot save untrained model")
+
+        assert self.encoder is not None, "Encoder must be initialized"
+        assert self.model is not None, "Model must be initialized"
 
         path = Path(path)
         path.mkdir(parents=True, exist_ok=True)

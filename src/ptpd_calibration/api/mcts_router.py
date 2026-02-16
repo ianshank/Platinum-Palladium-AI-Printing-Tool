@@ -35,10 +35,10 @@ except ImportError:
     API_AVAILABLE = False
 
     # Define dummy bases to prevent ImportErrors on module load if dependencies missing
-    class BaseModel:
+    class BaseModel:  # type: ignore[no-redef]
         pass
 
-    def Field(*_args, **_kwargs):
+    def Field(*_args: object, **_kwargs: object) -> None:  # type: ignore[no-redef]
         return None
 
 
@@ -116,7 +116,7 @@ class MCTSStatusResponse(BaseModel):
     engine_ready: bool
     networks_loaded: bool
     torch_available: bool
-    parameter_ranges: dict[str, dict[str, float]]
+    parameter_ranges: dict[str, dict[str, float | str]]
 
 
 class MCTSFeedbackRequest(BaseModel):
@@ -140,7 +140,7 @@ class MCTSRecommendation(BaseModel):
 # =============================================================================
 
 
-def create_mcts_router():
+def create_mcts_router() -> APIRouter:
     """
     Create the MCTS API router.
 
@@ -156,7 +156,7 @@ def create_mcts_router():
     training_sessions: dict[str, dict] = {}
 
     @router.get("/status", response_model=MCTSStatusResponse)
-    async def get_mcts_status():
+    async def get_mcts_status() -> MCTSStatusResponse:
         """Get the status of MCTS capabilities."""
         try:
             from ptpd_calibration.mcts.config import DEFAULT_PARAMETER_RANGES
@@ -187,8 +187,8 @@ def create_mcts_router():
     @router.post("/search", response_model=MCTSSearchResponse)
     async def run_mcts_search(
         request: MCTSSearchRequest,
-        background_tasks: BackgroundTasks,
-    ):
+        background_tasks: BackgroundTasks,  # noqa: ARG001 - reserved for background search
+    ) -> MCTSSearchResponse:
         """
         Run MCTS search for optimal calibration parameters.
 
@@ -257,7 +257,7 @@ def create_mcts_router():
             ) from None
 
     @router.post("/evaluate", response_model=MCTSEvaluateResponse)
-    async def evaluate_parameters(request: MCTSEvaluateRequest):
+    async def evaluate_parameters(request: MCTSEvaluateRequest) -> MCTSEvaluateResponse:
         """
         Evaluate a parameter set against the simulator.
 
@@ -309,7 +309,7 @@ def create_mcts_router():
     async def start_training(
         request: MCTSTrainRequest,
         background_tasks: BackgroundTasks,
-    ):
+    ) -> MCTSTrainResponse:
         """
         Start Expert Iteration training session.
 
@@ -356,7 +356,7 @@ def create_mcts_router():
             ) from None
 
     @router.get("/train/{session_id}/status")
-    async def get_training_status(session_id: str):
+    async def get_training_status(session_id: str) -> dict[str, object]:
         """Get training progress for a session."""
         if session_id not in training_sessions:
             raise HTTPException(
@@ -377,7 +377,7 @@ def create_mcts_router():
     async def export_result(
         parameters: dict[str, float],
         format: str = "json",
-    ):
+    ) -> dict[str, object]:
         """
         Export calibration result as curve or recipe.
 
@@ -433,7 +433,7 @@ def create_mcts_router():
             ) from None
 
     @router.post("/feedback")
-    async def submit_feedback(request: MCTSFeedbackRequest):
+    async def submit_feedback(request: MCTSFeedbackRequest) -> dict[str, object]:
         """
         Submit real measurement data for model improvement.
 
@@ -468,7 +468,7 @@ def create_mcts_router():
     async def get_recommendations(
         paper_type: str | None = None,
         limit: int = 5,
-    ):
+    ) -> dict[str, list[MCTSRecommendation]]:
         """
         Get top-N parameter recommendations.
 
@@ -530,10 +530,10 @@ async def _train_model_task(
 
         # Import training modules (inside function to avoid errors if torch missing)
         from ptpd_calibration.mcts.config import MCTSSettings
-        from ptpd_calibration.mcts.training import ExpertIterationTrainer
+        from ptpd_calibration.mcts.training import MCTSTrainer
 
         settings = MCTSSettings(num_training_episodes=num_episodes)
-        trainer = ExpertIterationTrainer(settings=settings)
+        _trainer = MCTSTrainer(settings=settings)
 
         # Run training with progress updates
         for episode in range(num_episodes):

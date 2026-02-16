@@ -190,7 +190,7 @@ class ProtocolLogger:
         self.max_messages = max_messages
         self.log_raw_bytes = log_raw_bytes
         self._messages: list[ProtocolMessage] = []
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def log_send(
         self,
@@ -394,6 +394,7 @@ class HardwareDebugger:
 
     _instance: HardwareDebugger | None = None
     _lock = threading.Lock()
+    _initialized: bool
 
     def __new__(cls) -> HardwareDebugger:
         """Singleton instance creation."""
@@ -686,15 +687,18 @@ def get_diagnostic_report() -> DiagnosticReport:
     # Try to get device registry info
     try:
         from ptpd_calibration.integrations.hardware.registry import DeviceRegistry
+        from ptpd_calibration.integrations.protocols import DeviceStatus
 
         registry = DeviceRegistry()
         for device_id, device in registry._devices.items():
+            # Use _status attribute instead of is_connected property
+            connected = hasattr(device, '_status') and device._status == DeviceStatus.CONNECTED
             report.devices.append(
                 {
                     "device_id": device_id,
                     "device_type": device.device_type.value,
                     "is_simulated": device.is_simulated,
-                    "connected": device.is_connected,
+                    "connected": connected,
                 }
             )
     except Exception as e:

@@ -1,7 +1,9 @@
+import pytest
+
+pytest.importorskip("ptpd_calibration.ui")
+
 from datetime import datetime
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from ptpd_calibration.session import PrintRecord, PrintResult, PrintSession
 from ptpd_calibration.ui.tabs.dashboard import build_dashboard_tab

@@ -12,6 +12,10 @@ Tests cover:
 - Edge cases (empty metrics, etc.)
 """
 
+import pytest
+
+pytest.importorskip("ptpd_calibration.monitoring")
+
 import concurrent.futures
 import json
 import tempfile
@@ -20,8 +24,6 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
-
-import pytest
 
 from ptpd_calibration.monitoring.performance import (
     APIMetric,

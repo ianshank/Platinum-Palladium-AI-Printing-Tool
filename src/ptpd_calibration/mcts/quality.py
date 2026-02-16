@@ -145,7 +145,7 @@ class QualityScorer:
         # Convert to score: lower RMSE = higher score
         # Use exponential decay: score = exp(-k * rmse)
         # With k=5, rmse=0.2 gives score ~0.37, rmse=0.1 gives ~0.61
-        score = np.exp(-5.0 * normalized_rmse)
+        score = np.exp(-self.settings.linearity_decay_rate * normalized_rmse)
 
         return float(np.clip(score, 0.0, 1.0))
 
@@ -163,7 +163,7 @@ class QualityScorer:
         # Gaussian-shaped score centered on target
         # score = exp(-((dmax - target) / sigma)^2)
         # sigma controls width; use 0.5 so that deviation of ±0.5 gives score ~0.14
-        sigma = 0.5
+        sigma = self.settings.dmax_scoring_sigma
         deviation = abs(dmax - target)
         score = np.exp(-((deviation / sigma) ** 2))
 
@@ -204,7 +204,7 @@ class QualityScorer:
         # Convert to score: lower second derivative = higher score
         # Use exponential decay: score = exp(-k * second_deriv)
         # With k=20, normalized_second_deriv=0.1 gives score ~0.14
-        score = np.exp(-20.0 * normalized_second_deriv)
+        score = np.exp(-self.settings.smoothness_decay_rate * normalized_second_deriv)
 
         return float(np.clip(score, 0.0, 1.0))
 
@@ -240,8 +240,8 @@ class QualityScorer:
         coating_normalized = np.clip(coating_normalized, 0.0, 1.0)
         coating_cost_score = 1.0 - coating_normalized
 
-        # Combine with equal weight
-        # (Could make this configurable if needed)
-        overall_cost_score = 0.6 * metal_cost_score + 0.4 * coating_cost_score
+        # Combine with configurable metal/coating weight balance
+        metal_w = self.settings.cost_metal_weight
+        overall_cost_score = metal_w * metal_cost_score + (1.0 - metal_w) * coating_cost_score
 
         return float(np.clip(overall_cost_score, 0.0, 1.0))

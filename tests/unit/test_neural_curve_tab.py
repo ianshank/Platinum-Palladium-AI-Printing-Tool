@@ -10,6 +10,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+pytest.importorskip("ptpd_calibration.ui.tabs.neural_curve")
+
 # =============================================================================
 # Test Helper Functions
 # =============================================================================

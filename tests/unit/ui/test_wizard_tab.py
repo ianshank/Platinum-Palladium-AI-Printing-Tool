@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("ptpd_calibration.ui")
+
 from unittest.mock import patch
 
 from ptpd_calibration.ui.tabs.calibration_wizard import build_calibration_wizard_tab

@@ -346,7 +346,14 @@ class TrainingPipeline:
 
             # Apply hyperparameters
             for name, value in zip(param_names, combo, strict=True):
-                config_dict[name] = value
+                # Ensure proper type conversion for special fields
+                if name == "hidden_dims" and not isinstance(value, list):
+                    # Convert tuple or single values to list
+                    config_dict[name] = list(value) if hasattr(value, '__iter__') and not isinstance(value, str) else [int(value)]
+                elif name == "output_dir" and value is not None and not isinstance(value, Path):
+                    config_dict[name] = Path(str(value))
+                else:
+                    config_dict[name] = value
 
             config = ExperimentConfig(**config_dict)
 
