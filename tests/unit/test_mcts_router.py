@@ -6,10 +6,8 @@ Tests:
 2. Agent health monitoring system
 """
 
-import asyncio
-import time
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -28,9 +26,9 @@ from ptpd_calibration.agents.health import (
     AgentHealthReport,
     DependencyHealth,
     DependencyType,
+    HealthChecker,
     HealthCheckResult,
     HealthCheckSettings,
-    HealthChecker,
     HealthStatus,
     check_agent_health,
     get_health_checker,
@@ -39,15 +37,6 @@ from ptpd_calibration.agents.health import (
 # Conditionally import MCTS router
 if FASTAPI_AVAILABLE:
     from ptpd_calibration.api.mcts_router import (
-        MCTSEvaluateRequest,
-        MCTSEvaluateResponse,
-        MCTSFeedbackRequest,
-        MCTSRecommendation,
-        MCTSSearchRequest,
-        MCTSSearchResponse,
-        MCTSStatusResponse,
-        MCTSTrainRequest,
-        MCTSTrainResponse,
         create_mcts_router,
     )
 
@@ -216,7 +205,7 @@ class TestMCTSRouter:
         assert isinstance(data["search_id"], str)
         assert isinstance(data["best_parameters"], dict)
         assert isinstance(data["predicted_curve"], list)
-        assert isinstance(data["quality_score"], (int, float))
+        assert isinstance(data["quality_score"], int | float)
         assert isinstance(data["alternatives"], list)
 
     @patch("ptpd_calibration.mcts.agents.CalibrationCoordinatorSubagent")
@@ -243,9 +232,7 @@ class TestMCTSRouter:
         """Test MCTS search with target aesthetics."""
         mock_coord_class.return_value = mock_coordinator
 
-        request_data = {
-            "target_aesthetics": {"contrast": 0.8, "warmth": 0.6, "tonal_range": 0.9}
-        }
+        request_data = {"target_aesthetics": {"contrast": 0.8, "warmth": 0.6, "tonal_range": 0.9}}
         response = mcts_client.post("/api/mcts/search", json=request_data)
 
         assert response.status_code == 200
@@ -492,9 +479,7 @@ class TestMCTSRouter:
     # Feedback Endpoint
     # -------------------------------------------------------------------------
 
-    def test_submit_feedback_success(
-        self, mcts_client, sample_parameters, sample_density_curve
-    ):
+    def test_submit_feedback_success(self, mcts_client, sample_parameters, sample_density_curve):
         """Test submitting feedback successfully."""
         request_data = {
             "parameters": sample_parameters,
@@ -686,9 +671,7 @@ class TestDependencyHealth:
 
     def test_dependency_health_defaults(self):
         """Test dependency health with default values."""
-        dep_health = DependencyHealth(
-            name="test", dependency_type=DependencyType.DATABASE
-        )
+        dep_health = DependencyHealth(name="test", dependency_type=DependencyType.DATABASE)
 
         assert dep_health.status == HealthStatus.UNKNOWN
         assert dep_health.latency_ms is None
@@ -731,9 +714,7 @@ class TestHealthCheckResult:
 
     def test_create_check_result(self):
         """Test creating health check result."""
-        result = HealthCheckResult(
-            name="test_check", healthy=True, latency_ms=25.0, message="OK"
-        )
+        result = HealthCheckResult(name="test_check", healthy=True, latency_ms=25.0, message="OK")
 
         assert result.name == "test_check"
         assert result.healthy is True
@@ -1179,23 +1160,37 @@ class TestHealthChecker:
         checker = HealthChecker(settings=health_settings)
 
         # Mock all checks to return healthy
-        with patch.object(
-            checker, "check_llm_connectivity", return_value=HealthCheckResult("llm_service", True, 10.0)
-        ), patch.object(
-            checker, "check_message_bus", return_value=HealthCheckResult("message_bus", True, 5.0)
-        ), patch.object(
-            checker,
-            "check_memory_system",
-            return_value=HealthCheckResult("memory_system", True, 3.0, metadata={"memory_mb": 50.0}),
-        ), patch.object(
-            checker,
-            "check_tool_registry",
-            return_value=HealthCheckResult("tool_registry", True, 2.0, metadata={"tool_count": 5}),
-        ), patch.object(
-            checker,
-            "check_subagent_registry",
-            return_value=HealthCheckResult(
-                "subagent_registry", True, 2.0, metadata={"subagent_count": 3}
+        with (
+            patch.object(
+                checker,
+                "check_llm_connectivity",
+                return_value=HealthCheckResult("llm_service", True, 10.0),
+            ),
+            patch.object(
+                checker,
+                "check_message_bus",
+                return_value=HealthCheckResult("message_bus", True, 5.0),
+            ),
+            patch.object(
+                checker,
+                "check_memory_system",
+                return_value=HealthCheckResult(
+                    "memory_system", True, 3.0, metadata={"memory_mb": 50.0}
+                ),
+            ),
+            patch.object(
+                checker,
+                "check_tool_registry",
+                return_value=HealthCheckResult(
+                    "tool_registry", True, 2.0, metadata={"tool_count": 5}
+                ),
+            ),
+            patch.object(
+                checker,
+                "check_subagent_registry",
+                return_value=HealthCheckResult(
+                    "subagent_registry", True, 2.0, metadata={"subagent_count": 3}
+                ),
             ),
         ):
             report = await checker.check_health()
@@ -1213,20 +1208,34 @@ class TestHealthChecker:
         checker = HealthChecker()
 
         # Perform multiple health checks
-        with patch.object(
-            checker, "check_llm_connectivity", return_value=HealthCheckResult("llm_service", True, 10.0)
-        ), patch.object(
-            checker, "check_message_bus", return_value=HealthCheckResult("message_bus", True, 5.0)
-        ), patch.object(
-            checker,
-            "check_memory_system",
-            return_value=HealthCheckResult("memory_system", True, 3.0, metadata={"memory_mb": 50.0}),
-        ), patch.object(
-            checker, "check_tool_registry", return_value=HealthCheckResult("tool_registry", True, 2.0)
-        ), patch.object(
-            checker,
-            "check_subagent_registry",
-            return_value=HealthCheckResult("subagent_registry", True, 2.0),
+        with (
+            patch.object(
+                checker,
+                "check_llm_connectivity",
+                return_value=HealthCheckResult("llm_service", True, 10.0),
+            ),
+            patch.object(
+                checker,
+                "check_message_bus",
+                return_value=HealthCheckResult("message_bus", True, 5.0),
+            ),
+            patch.object(
+                checker,
+                "check_memory_system",
+                return_value=HealthCheckResult(
+                    "memory_system", True, 3.0, metadata={"memory_mb": 50.0}
+                ),
+            ),
+            patch.object(
+                checker,
+                "check_tool_registry",
+                return_value=HealthCheckResult("tool_registry", True, 2.0),
+            ),
+            patch.object(
+                checker,
+                "check_subagent_registry",
+                return_value=HealthCheckResult("subagent_registry", True, 2.0),
+            ),
         ):
             await checker.check_health()
             await checker.check_health()
@@ -1240,20 +1249,30 @@ class TestHealthChecker:
         checker = HealthChecker()
 
         # Make one check raise exception
-        with patch.object(
-            checker, "check_llm_connectivity", side_effect=Exception("Test error")
-        ), patch.object(
-            checker, "check_message_bus", return_value=HealthCheckResult("message_bus", True, 5.0)
-        ), patch.object(
-            checker,
-            "check_memory_system",
-            return_value=HealthCheckResult("memory_system", True, 3.0, metadata={"memory_mb": 50.0}),
-        ), patch.object(
-            checker, "check_tool_registry", return_value=HealthCheckResult("tool_registry", True, 2.0)
-        ), patch.object(
-            checker,
-            "check_subagent_registry",
-            return_value=HealthCheckResult("subagent_registry", True, 2.0),
+        with (
+            patch.object(checker, "check_llm_connectivity", side_effect=Exception("Test error")),
+            patch.object(
+                checker,
+                "check_message_bus",
+                return_value=HealthCheckResult("message_bus", True, 5.0),
+            ),
+            patch.object(
+                checker,
+                "check_memory_system",
+                return_value=HealthCheckResult(
+                    "memory_system", True, 3.0, metadata={"memory_mb": 50.0}
+                ),
+            ),
+            patch.object(
+                checker,
+                "check_tool_registry",
+                return_value=HealthCheckResult("tool_registry", True, 2.0),
+            ),
+            patch.object(
+                checker,
+                "check_subagent_registry",
+                return_value=HealthCheckResult("subagent_registry", True, 2.0),
+            ),
         ):
             report = await checker.check_health()
 
@@ -1315,10 +1334,14 @@ class TestHealthCheckerGlobalInstance:
     async def test_check_agent_health_convenience(self):
         """Test check_agent_health convenience function."""
         # Mock all dependencies to avoid import errors
-        with patch("ptpd_calibration.config.get_settings", side_effect=ImportError), patch(
-            "ptpd_calibration.agents.communication.get_message_bus", return_value=None
-        ), patch("ptpd_calibration.agents.tools.ToolRegistry", side_effect=ImportError), patch(
-            "ptpd_calibration.agents.subagents.base.get_subagent_registry", side_effect=ImportError
+        with (
+            patch("ptpd_calibration.config.get_settings", side_effect=ImportError),
+            patch("ptpd_calibration.agents.communication.get_message_bus", return_value=None),
+            patch("ptpd_calibration.agents.tools.ToolRegistry", side_effect=ImportError),
+            patch(
+                "ptpd_calibration.agents.subagents.base.get_subagent_registry",
+                side_effect=ImportError,
+            ),
         ):
             import sys
 
@@ -1346,20 +1369,34 @@ class TestEdgeCases:
         """Test health check when all dependencies fail."""
         checker = HealthChecker(settings=health_settings)
 
-        with patch.object(
-            checker, "check_llm_connectivity", return_value=HealthCheckResult("llm_service", False, 10.0)
-        ), patch.object(
-            checker, "check_message_bus", return_value=HealthCheckResult("message_bus", False, 5.0)
-        ), patch.object(
-            checker,
-            "check_memory_system",
-            return_value=HealthCheckResult("memory_system", False, 3.0, metadata={"memory_mb": 500.0}),
-        ), patch.object(
-            checker, "check_tool_registry", return_value=HealthCheckResult("tool_registry", False, 2.0)
-        ), patch.object(
-            checker,
-            "check_subagent_registry",
-            return_value=HealthCheckResult("subagent_registry", False, 2.0),
+        with (
+            patch.object(
+                checker,
+                "check_llm_connectivity",
+                return_value=HealthCheckResult("llm_service", False, 10.0),
+            ),
+            patch.object(
+                checker,
+                "check_message_bus",
+                return_value=HealthCheckResult("message_bus", False, 5.0),
+            ),
+            patch.object(
+                checker,
+                "check_memory_system",
+                return_value=HealthCheckResult(
+                    "memory_system", False, 3.0, metadata={"memory_mb": 500.0}
+                ),
+            ),
+            patch.object(
+                checker,
+                "check_tool_registry",
+                return_value=HealthCheckResult("tool_registry", False, 2.0),
+            ),
+            patch.object(
+                checker,
+                "check_subagent_registry",
+                return_value=HealthCheckResult("subagent_registry", False, 2.0),
+            ),
         ):
             report = await checker.check_health()
 
@@ -1373,20 +1410,34 @@ class TestEdgeCases:
         checker._max_history = 5
 
         # Mock all checks to run successfully
-        with patch.object(
-            checker, "check_llm_connectivity", return_value=HealthCheckResult("llm_service", True, 10.0)
-        ), patch.object(
-            checker, "check_message_bus", return_value=HealthCheckResult("message_bus", True, 5.0)
-        ), patch.object(
-            checker,
-            "check_memory_system",
-            return_value=HealthCheckResult("memory_system", True, 3.0, metadata={"memory_mb": 50.0}),
-        ), patch.object(
-            checker, "check_tool_registry", return_value=HealthCheckResult("tool_registry", True, 2.0)
-        ), patch.object(
-            checker,
-            "check_subagent_registry",
-            return_value=HealthCheckResult("subagent_registry", True, 2.0),
+        with (
+            patch.object(
+                checker,
+                "check_llm_connectivity",
+                return_value=HealthCheckResult("llm_service", True, 10.0),
+            ),
+            patch.object(
+                checker,
+                "check_message_bus",
+                return_value=HealthCheckResult("message_bus", True, 5.0),
+            ),
+            patch.object(
+                checker,
+                "check_memory_system",
+                return_value=HealthCheckResult(
+                    "memory_system", True, 3.0, metadata={"memory_mb": 50.0}
+                ),
+            ),
+            patch.object(
+                checker,
+                "check_tool_registry",
+                return_value=HealthCheckResult("tool_registry", True, 2.0),
+            ),
+            patch.object(
+                checker,
+                "check_subagent_registry",
+                return_value=HealthCheckResult("subagent_registry", True, 2.0),
+            ),
         ):
             # Run more checks than max history
             for _ in range(10):

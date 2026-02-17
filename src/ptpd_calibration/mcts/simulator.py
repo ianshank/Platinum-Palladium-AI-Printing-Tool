@@ -139,7 +139,9 @@ class ExtendedProcessSimulator:
         # More FO -> higher contrast (up to a point)
         fo_deviation = ferric_oxalate_pct - self.physics.fo_contrast_center
         contrast_adjustment = 1.0 + self.physics.fo_contrast_slope * fo_deviation
-        contrast = max(self.physics.contrast_min, min(self.physics.contrast_max, contrast_adjustment))
+        contrast = max(
+            self.physics.contrast_min, min(self.physics.contrast_max, contrast_adjustment)
+        )
 
         # 5. Shoulder position: affected by exposure and development
         # Higher exposure -> more defined shoulder
@@ -331,6 +333,9 @@ class ExtendedProcessSimulator:
     ) -> np.ndarray:
         """NumPy implementation of CharacteristicCurve.forward logic.
 
+        Replicates the exact math of CharacteristicCurve.forward() including
+        the dmin/dmax property clamping and shoulder/toe sigmoid scaling.
+
         Args:
             exposure: Exposure values (0-1)
             gamma: Gamma value
@@ -342,23 +347,27 @@ class ExtendedProcessSimulator:
         Returns:
             Density values
         """
+        # Apply same dmin/dmax clamping as CharacteristicCurve properties
+        # See CharacteristicCurve.dmin and CharacteristicCurve.dmax properties
+        dmin = float(np.clip(dmin, 0.0, 0.5))
+        dmax = float(np.clip(max(dmax, dmin + 0.5), None, 4.0))
+
         # Apply gamma (power law response)
         response = np.power(np.clip(exposure, 1e-6, 1.0), gamma)
 
         # Apply shoulder compression (high values)
-        # Convert shoulder from 0-1 to sigmoid space equivalent
-        shoulder_logit = np.log(shoulder / (1.0 - shoulder + 1e-6))
-        shoulder_strength = 1.0 / (1.0 + np.exp(-shoulder_logit)) * self.physics.shoulder_compression_factor
-        response = response - shoulder_strength * np.power(
-            np.clip(response - 0.5, 0, 0.5), 2
-        )
+        # PyTorch path: simulate_with_torch fills buffer with logit(shoulder_position),
+        # then forward() computes sigmoid(buffer) * 0.5.
+        # sigmoid(logit(x)) = x, so shoulder_strength = shoulder * 0.5
+        shoulder_raw = np.log(shoulder / (1.0 - shoulder + 1e-6))
+        shoulder_strength = 1.0 / (1.0 + np.exp(-shoulder_raw)) * 0.5
+        response = response - shoulder_strength * np.power(np.clip(response - 0.5, 0, 0.5), 2)
 
         # Apply toe expansion (low values)
-        toe_logit = np.log(toe / (1.0 - toe + 1e-6))
-        toe_strength = 1.0 / (1.0 + np.exp(-toe_logit)) * self.physics.toe_expansion_factor
-        response = response + toe_strength * np.power(
-            np.clip(self.physics.toe_expansion_factor - response, 0, self.physics.toe_expansion_factor), 2
-        )
+        # Same pattern: sigmoid(logit(toe_position)) * 0.3
+        toe_raw = np.log(toe / (1.0 - toe + 1e-6))
+        toe_strength = 1.0 / (1.0 + np.exp(-toe_raw)) * 0.3
+        response = response + toe_strength * np.power(np.clip(0.3 - response, 0, 0.3), 2)
 
         # Scale to density range
         density: np.ndarray = dmin + (dmax - dmin) * response

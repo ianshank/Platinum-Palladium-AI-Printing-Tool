@@ -307,3 +307,44 @@ export interface StatisticsResponse {
 export interface AnalysisResponse {
   analysis: unknown; // Generic for now
 }
+
+// --- Quad / QTR Profile Types ---
+
+export type QuadChannel = 'K' | 'C' | 'M' | 'Y' | 'LC' | 'LM' | 'LK' | 'LLK';
+
+export const QUAD_CHANNELS: readonly QuadChannel[] = [
+  'K',
+  'C',
+  'M',
+  'Y',
+  'LC',
+  'LM',
+  'LK',
+  'LLK',
+];
+
+export interface QuadCurveValues {
+  input_values: number[];
+  output_values: number[];
+}
+
+export interface QuadUploadResponse {
+  success: boolean;
+  profile_name: string;
+  resolution: number;
+  ink_limit: number;
+  media_type: string;
+  all_channels: string[];
+  active_channels: string[];
+  curve_id: string;
+  curve_data: QuadCurveValues;
+  summary: string;
+}
+
+export interface QuadParseResponse {
+  success: boolean;
+  profile_name: string;
+  active_channels: string[];
+  curve_id: string | null;
+  curve_data: QuadCurveValues | null;
+}

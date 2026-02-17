@@ -129,6 +129,7 @@ class MessageBus:
         self._max_history = 1000
         self._running = False
         self._logger = get_agent_logger()
+        self._counter = 0  # Monotonic counter for queue ordering
 
     def register_handler(self, handler: MessageHandler) -> None:
         """
@@ -140,7 +141,10 @@ class MessageBus:
         self._handlers.append(handler)
         self._logger.info(
             f"Registered handler for {handler.agent_type}",
-            data={"agent_id": handler.agent_id, "actions": list(handler.actions) if handler.actions else "all"},
+            data={
+                "agent_id": handler.agent_id,
+                "actions": list(handler.actions) if handler.actions else "all",
+            },
         )
 
     def unregister_handler(self, agent_id: str) -> None:
@@ -159,10 +163,12 @@ class MessageBus:
         Args:
             message: Message to send.
         """
-        # Priority queue uses (priority, counter, item) for ordering
+        # Priority queue uses (priority, counter, timestamp, item) for ordering
         # Negate priority so higher priority comes first
+        # Counter ensures uniqueness and prevents AgentMessage comparison
         priority = -message.priority
-        await self._queue.put((priority, message.timestamp.timestamp(), message))
+        self._counter += 1
+        await self._queue.put((priority, self._counter, message.timestamp.timestamp(), message))
 
         self._logger.log_message_sent(
             from_agent=message.sender_type,
@@ -279,7 +285,7 @@ class MessageBus:
             try:
                 # Get message with timeout to allow stopping
                 try:
-                    _, _, message = await asyncio.wait_for(
+                    _, _, _, message = await asyncio.wait_for(
                         self._queue.get(),
                         timeout=1.0,
                     )

@@ -70,14 +70,15 @@ def client(app) -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture
-def async_client(app):
+async def async_client(app):
     """Create an async test client for async tests."""
     if not FASTAPI_AVAILABLE:
         pytest.skip("FastAPI not installed")
 
     from httpx import ASGITransport, AsyncClient
 
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        yield client
 
 
 @pytest.fixture

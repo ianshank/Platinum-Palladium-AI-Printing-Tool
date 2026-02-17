@@ -95,7 +95,6 @@ export const createMCTSSlice: StateCreator<
     logger.debug('MCTS: removeFixedParameter', { name });
     set((state) => {
       if (state.mcts.searchConfig.fixedParameters) {
-        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
         delete state.mcts.searchConfig.fixedParameters[name];
       }
     });

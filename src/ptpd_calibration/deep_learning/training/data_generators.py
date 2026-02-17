@@ -485,7 +485,7 @@ class CurveDataGenerator(BaseDataGenerator):
         self._sample_count += 1
 
         # Generate random process parameters
-        paper_type = self.rng.choice(list(PaperType))
+        paper_type = PaperType(str(self.rng.choice([p.value for p in PaperType])))
         metal_ratio = self.rng.uniform(0.0, 1.0)  # Pt/(Pt+Pd)
         contrast_amount = self.rng.uniform(0.0, 0.3)
         humidity = self.rng.uniform(*self.config.humidity_range)
@@ -587,6 +587,17 @@ class CurveDataGenerator(BaseDataGenerator):
 
         return y
 
+    def generate_batch(self, batch_size: int) -> list[dict[str, Any]]:
+        """Generate a batch of training samples.
+
+        Args:
+            batch_size: Number of samples to generate
+
+        Returns:
+            List of sample dictionaries
+        """
+        return [self.generate_sample() for _ in range(batch_size)]
+
     def generate_dataset(
         self,
         split: str = "train",
@@ -645,8 +656,8 @@ class ExposureDataGenerator(BaseDataGenerator):
         self._sample_count += 1
 
         # Random parameters
-        paper_type = self.rng.choice(list(PaperType))
-        uv_source = self.rng.choice(list(UVSourceType))
+        paper_type = PaperType(str(self.rng.choice([p.value for p in PaperType])))
+        uv_source = UVSourceType(str(self.rng.choice([u.value for u in UVSourceType])))
         target_density = self.rng.uniform(1.5, 2.3)
         chemistry_ratio = self.rng.uniform(0.0, 1.0)  # Pt ratio
         humidity = self.rng.uniform(*self.config.humidity_range)
@@ -711,6 +722,17 @@ class ExposureDataGenerator(BaseDataGenerator):
             "upper_bound": float(min(1200, upper_bound)),
             "sample_id": str(uuid4()),
         }
+
+    def generate_batch(self, batch_size: int) -> list[dict[str, Any]]:
+        """Generate a batch of training samples.
+
+        Args:
+            batch_size: Number of samples to generate
+
+        Returns:
+            List of sample dictionaries
+        """
+        return [self.generate_sample() for _ in range(batch_size)]
 
     def generate_dataset(
         self,
@@ -785,7 +807,7 @@ class DefectDataGenerator(BaseDataGenerator):
             num_defects = self.rng.integers(1, self.config.max_defects_per_image + 1)
 
             for _ in range(num_defects):
-                defect_type = self.rng.choice(list(DefectType))
+                defect_type = DefectType(str(self.rng.choice([d.value for d in DefectType])))
                 defect_data = self._add_defect(image, mask, defect_type)
                 if defect_data:
                     defect_info.append(defect_data)
@@ -989,6 +1011,17 @@ class DefectDataGenerator(BaseDataGenerator):
             radius = self.rng.integers(size // 4, size // 2)
             self._draw_circle(arr, cx + offset_x, cy + offset_y, radius, value)
 
+    def generate_batch(self, batch_size: int) -> list[dict[str, Any]]:
+        """Generate a batch of training samples.
+
+        Args:
+            batch_size: Number of samples to generate
+
+        Returns:
+            List of sample dictionaries
+        """
+        return [self.generate_sample() for _ in range(batch_size)]
+
     def generate_dataset(
         self,
         split: str = "train",
@@ -1038,7 +1071,7 @@ class RecipeDataGenerator(BaseDataGenerator):
             recipe = {
                 "id": str(uuid4()),
                 "name": f"Recipe_{i}",
-                "paper_type": self.rng.choice(list(PaperType)).value,
+                "paper_type": str(self.rng.choice([p.value for p in PaperType])),
                 "metal_ratio": float(self.rng.uniform(0, 1)),
                 "contrast_amount": float(self.rng.uniform(0, 0.3)),
                 "exposure_time": float(self.rng.uniform(60, 600)),
@@ -1129,6 +1162,17 @@ class RecipeDataGenerator(BaseDataGenerator):
             "target_rating": target_rating,
             "sample_id": str(uuid4()),
         }
+
+    def generate_batch(self, batch_size: int) -> list[dict[str, Any]]:
+        """Generate a batch of training samples.
+
+        Args:
+            batch_size: Number of samples to generate
+
+        Returns:
+            List of sample dictionaries
+        """
+        return [self.generate_sample() for _ in range(batch_size)]
 
     def generate_dataset(
         self,

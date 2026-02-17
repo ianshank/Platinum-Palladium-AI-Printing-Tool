@@ -2223,10 +2223,13 @@ class TestLogging:
 class TestLLMClientProviders:
     """Tests for AnthropicClient, OpenAIClient, and VertexAIClient."""
 
-    def test_anthropic_client_requires_api_key(self):
+    def test_anthropic_client_requires_api_key(self, monkeypatch):
         """AnthropicClient should raise ValueError without API key."""
         from ptpd_calibration.config import LLMProvider, LLMSettings
         from ptpd_calibration.llm.client import AnthropicClient
+
+        monkeypatch.delenv("PTPD_LLM_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("PTPD_LLM_API_KEY", raising=False)
 
         settings = LLMSettings(provider=LLMProvider.ANTHROPIC)
         with pytest.raises(ValueError, match="Anthropic API key required"):
@@ -2244,10 +2247,12 @@ class TestLLMClientProviders:
         client = AnthropicClient(settings)
         assert client.api_key == "sk-test-key-123"
 
-    def test_anthropic_client_fallback_to_generic_key(self):
+    def test_anthropic_client_fallback_to_generic_key(self, monkeypatch):
         """AnthropicClient should fallback to generic api_key."""
         from ptpd_calibration.config import LLMProvider, LLMSettings
         from ptpd_calibration.llm.client import AnthropicClient
+
+        monkeypatch.delenv("PTPD_LLM_ANTHROPIC_API_KEY", raising=False)
 
         settings = LLMSettings(
             provider=LLMProvider.ANTHROPIC,
@@ -2303,10 +2308,13 @@ class TestLLMClientProviders:
             )
             assert result == "Hello from Claude"
 
-    def test_openai_client_requires_api_key(self):
+    def test_openai_client_requires_api_key(self, monkeypatch):
         """OpenAIClient should raise ValueError without API key."""
         from ptpd_calibration.config import LLMProvider, LLMSettings
         from ptpd_calibration.llm.client import OpenAIClient
+
+        monkeypatch.delenv("PTPD_LLM_OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("PTPD_LLM_API_KEY", raising=False)
 
         settings = LLMSettings(provider=LLMProvider.OPENAI)
         with pytest.raises(ValueError, match="OpenAI API key required"):

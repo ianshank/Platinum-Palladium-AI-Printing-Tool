@@ -178,7 +178,9 @@ class WorkflowPersistence:
             with open(temp_path, "w") as f:
                 json.dump(checkpoint.to_dict(), f, indent=2, default=str)
 
-            # Atomic rename
+            # Atomic rename (Windows requires removing target file first)
+            if path.exists():
+                path.unlink()
             temp_path.rename(path)
 
             self._last_checkpoint_time[checkpoint.workflow_id] = time.time()
@@ -310,11 +312,7 @@ class WorkflowPersistence:
             WorkflowState.PAUSED,
         }
 
-        return [
-            cp
-            for cp in self.list_checkpoints()
-            if cp.state in incomplete_states
-        ]
+        return [cp for cp in self.list_checkpoints() if cp.state in incomplete_states]
 
     def update_task_status(
         self,

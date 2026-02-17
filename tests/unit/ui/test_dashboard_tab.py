@@ -72,10 +72,10 @@ def test_dashboard_metrics_calculation(mock_session_logger):
         results = callback()
 
         # Unpack results: recent_records, success_rate, active_curve, total_hours, summary_rows
-        assert results[0] == 1  # 1 recent record in session1 (mocked as now)
-        assert results[1] == "100.0%"  # 1 success / 1 total
-        assert results[2] == "Curve A"
-        assert results[3] == "3.5h"  # 2.0 + 1.5
+        assert "1" in results[0]  # stat-card HTML contains "1"
+        assert "100.0%" in results[1]  # stat-card HTML contains "100.0%"
+        assert "Curve A" in results[2]  # stat-card HTML contains "Curve A"
+        assert "3.5h" in results[3]  # stat-card HTML contains "3.5h"
         assert len(results[4]) == 2  # 2 sessions processed
 
 

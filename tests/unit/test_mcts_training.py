@@ -42,14 +42,14 @@ class TestReplayBuffer:
 
     def test_initialization_with_settings(self):
         """Test ReplayBuffer uses settings for configuration."""
-        settings = MCTSSettings(replay_buffer_size=750)
+        settings = MCTSSettings(replay_buffer_size=1500)
         buffer = ReplayBuffer(settings=settings)
 
-        assert buffer.max_size == 750
+        assert buffer.max_size == 1500
 
     def test_initialization_max_size_overrides_settings(self):
         """Test explicit max_size parameter overrides settings."""
-        settings = MCTSSettings(replay_buffer_size=500)
+        settings = MCTSSettings(replay_buffer_size=2000)
         buffer = ReplayBuffer(max_size=300, settings=settings)
 
         assert buffer.max_size == 300
@@ -386,10 +386,10 @@ class TestMCTSTrainer:
     def trainer(self):
         """Create MCTSTrainer instance with small settings for fast tests."""
         settings = MCTSSettings(
-            replay_buffer_size=100,
-            training_batch_size=8,
+            replay_buffer_size=1000,
+            training_batch_size=32,
             training_epochs_per_episode=2,
-            num_training_episodes=5,
+            num_training_episodes=10,
         )
         from ptpd_calibration.mcts.training import MCTSTrainer
 
@@ -408,14 +408,14 @@ class TestMCTSTrainer:
         from ptpd_calibration.mcts.training import MCTSTrainer
 
         settings = MCTSSettings(
-            replay_buffer_size=500,
-            training_batch_size=16,
+            replay_buffer_size=2000,
+            training_batch_size=64,
         )
 
         trainer = MCTSTrainer(settings=settings)
 
-        assert trainer.replay_buffer.max_size == 500
-        assert trainer.settings.training_batch_size == 16
+        assert trainer.replay_buffer.max_size == 2000
+        assert trainer.settings.training_batch_size == 64
 
     def test_train_episode_increments_episode_count(self, trainer):
         """Test train_episode increments episode count."""
@@ -622,8 +622,8 @@ class TestMCTSTrainer:
 
     def test_train_step_returns_losses(self, trainer):
         """Test _train_step returns loss tuple."""
-        # Fill buffer with enough data
-        for _ in range(2):
+        # Fill buffer with enough data (need >= training_batch_size examples)
+        while trainer.replay_buffer.size < trainer.settings.training_batch_size:
             trainer.train_episode()
 
         total_loss, value_loss, policy_loss = trainer._train_step()

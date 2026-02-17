@@ -21,6 +21,8 @@ import type {
   CurveModificationResponse,
   CurveSmoothingResponse,
   CurveSmoothRequest,
+  QuadParseResponse,
+  QuadUploadResponse,
   ScanUploadResponse,
   StatisticsResponse,
 } from '@/types/models';
@@ -219,6 +221,91 @@ export function useExportCurve(
     onError: (error) => {
       addToast({
         title: 'Export Failed',
+        description: error.response?.data?.message ?? error.message,
+        variant: 'error',
+      });
+    },
+    ...options,
+  });
+}
+
+// ============================================================================
+// Quad File Upload / Parse
+// ============================================================================
+
+export function useUploadQuadFile(
+  options?: UseMutationOptions<
+    QuadUploadResponse,
+    AxiosError<ApiError>,
+    { file: File; channel: string }
+  >
+) {
+  const queryClient = useQueryClient();
+  const addToast = useStore((state) => state.ui.addToast);
+
+  return useMutation({
+    mutationFn: ({ file, channel }: { file: File; channel: string }) =>
+      api.curves.uploadQuad(file, channel),
+    onSuccess: (data) => {
+      logger.info('Quad file uploaded', {
+        profile: data.profile_name,
+        channels: data.active_channels,
+      });
+      addToast({
+        title: 'Profile Loaded',
+        description: `Loaded "${data.profile_name}" with ${data.active_channels.length} channels`,
+        variant: 'success',
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
+    },
+    onError: (error) => {
+      logger.error('Quad file upload failed', { error: error.message });
+      addToast({
+        title: 'Upload Failed',
+        description: error.response?.data?.message ?? error.message,
+        variant: 'error',
+      });
+    },
+    ...options,
+  });
+}
+
+export function useParseQuadContent(
+  options?: UseMutationOptions<
+    QuadParseResponse,
+    AxiosError<ApiError>,
+    { content: string; name?: string; channel: string }
+  >
+) {
+  const queryClient = useQueryClient();
+  const addToast = useStore((state) => state.ui.addToast);
+
+  return useMutation({
+    mutationFn: ({
+      content,
+      name,
+      channel,
+    }: {
+      content: string;
+      name?: string;
+      channel: string;
+    }) => api.curves.parseQuad(content, name ?? 'Uploaded Profile', channel),
+    onSuccess: (data) => {
+      logger.info('Quad content parsed', {
+        profile: data.profile_name,
+        channels: data.active_channels,
+      });
+      addToast({
+        title: 'Content Parsed',
+        description: `Parsed "${data.profile_name}" with ${data.active_channels.length} channels`,
+        variant: 'success',
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
+    },
+    onError: (error) => {
+      logger.error('Quad content parse failed', { error: error.message });
+      addToast({
+        title: 'Parse Failed',
         description: error.response?.data?.message ?? error.message,
         variant: 'error',
       });
