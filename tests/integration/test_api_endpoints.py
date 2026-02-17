@@ -5,6 +5,12 @@ Uses httpx AsyncClient with ASGITransport to test FastAPI endpoints
 without spinning up a live server.
 """
 
+import pytest
+
+pytest.importorskip("fastapi")
+pytest.importorskip("httpx")
+pytest.importorskip("ptpd_calibration.gcp")
+
 import os
 import tempfile
 
@@ -21,7 +27,6 @@ os.environ["PTPD_STAGING_DIR"] = _staging_dir
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-import pytest
 import pytest_asyncio
 
 from ptpd_calibration.api.server import create_app

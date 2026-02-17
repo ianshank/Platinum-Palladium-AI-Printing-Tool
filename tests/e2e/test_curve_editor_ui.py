@@ -23,7 +23,10 @@ import pytest
 @pytest.fixture
 def real_quad_path():
     """Path to the real-world .quad fixture file."""
-    return Path(__file__).parent.parent / "fixtures" / "Platinum_Palladium_V6-CC.quad"
+    path = Path(__file__).parent.parent / "fixtures" / "Platinum_Palladium_V6-CC.quad"
+    if not path.exists():
+        pytest.skip(f"Fixture file not found: {path}")
+    return path
 
 
 @pytest.fixture

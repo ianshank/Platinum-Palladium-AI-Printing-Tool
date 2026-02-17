@@ -228,6 +228,8 @@ class DeepCurvePredictor:
             )
 
             # Create model
+            if self.encoder is None:
+                raise RuntimeError("Encoder must be initialized before creating ensemble models")
             model = CurveMLP.from_settings(
                 num_features=self.encoder.num_features,
                 settings=self.settings,
@@ -268,6 +270,11 @@ class DeepCurvePredictor:
         """
         if not self.is_trained:
             raise ModelNotTrainedError("Model must be trained before prediction")
+
+        if self.encoder is None:
+            raise RuntimeError("Encoder must be initialized before prediction")
+        if self.model is None:
+            raise RuntimeError("Model must be initialized before prediction")
 
         # Encode features
         features = self.encoder.encode(record)
@@ -341,6 +348,11 @@ class DeepCurvePredictor:
         if not self.is_trained:
             raise ModelNotTrainedError("Model must be trained before prediction")
 
+        if self.encoder is None:
+            raise RuntimeError("Encoder must be initialized for MC dropout prediction")
+        if self.model is None:
+            raise RuntimeError("Model must be initialized for MC dropout prediction")
+
         num_samples = num_samples or self.settings.mc_dropout_samples
 
         # Encode features
@@ -370,7 +382,7 @@ class DeepCurvePredictor:
             uncertainty=uncertainty,
             confidence=confidence,
             metadata={
-                "model_type": type(self.model).__name__,
+                "model_type": type(self.model).__name__ if self.model else "unknown",
                 "mc_samples": num_samples,
             },
         )
@@ -421,6 +433,11 @@ class DeepCurvePredictor:
         """
         if not self.is_trained:
             raise ModelNotTrainedError("Cannot save untrained model")
+
+        if self.encoder is None:
+            raise RuntimeError("Encoder must be initialized before saving")
+        if self.model is None:
+            raise RuntimeError("Model must be initialized before saving")
 
         path = Path(path)
         path.mkdir(parents=True, exist_ok=True)

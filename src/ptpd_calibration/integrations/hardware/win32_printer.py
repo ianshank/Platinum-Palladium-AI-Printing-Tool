@@ -459,7 +459,8 @@ class Win32PrinterDriver(HardwareDeviceBase):
         """
         try:
             win32print, _, _ = _import_win32()
-            return win32print.GetDefaultPrinter()
+            result = win32print.GetDefaultPrinter()
+            return str(result) if result is not None else None
         except Exception:
             return None
 

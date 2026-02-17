@@ -5,10 +5,12 @@ Tests USB device discovery, CUPS printer discovery,
 Windows printer discovery, and simulated device discovery.
 """
 
+import pytest
+
+pytest.importorskip("ptpd_calibration.integrations.hardware")
+
 import platform
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from ptpd_calibration.integrations.hardware.discovery import (
     CUPSPrinterDiscovery,
@@ -48,6 +50,10 @@ class TestUSBDeviceDiscovery:
             result = USBDeviceDiscovery.discover()
             assert isinstance(result, list)
 
+    @pytest.mark.skipif(
+        not USBDeviceDiscovery.is_available(),
+        reason="pyserial not installed",
+    )
     @patch("serial.tools.list_ports.comports")
     def test_discover_with_known_device(self, mock_comports):
         """Test discovery with a known X-Rite device."""
@@ -69,6 +75,10 @@ class TestUSBDeviceDiscovery:
             assert result[0].device_info.model == "i1Pro"
             assert result[0].connection_params["port"] == "/dev/ttyUSB0"
 
+    @pytest.mark.skipif(
+        not USBDeviceDiscovery.is_available(),
+        reason="pyserial not installed",
+    )
     @patch("serial.tools.list_ports.comports")
     def test_discover_with_unknown_device(self, mock_comports):
         """Test discovery ignores unknown devices."""

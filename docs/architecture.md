@@ -125,18 +125,115 @@ C4Component
 
 ### Agent System Summary
 
-| Component | Lines of Code | Purpose |
-|-----------|---------------|---------|
-| **OrchestratorAgent** | 572 | Multi-agent workflow coordination |
-| **CalibrationAgent** | 383 | ReAct reasoning with tools |
-| **PlannerAgent** | 403 | C4-aligned planning |
-| **SQEAgent** | 503 | Test generation |
-| **CoderAgent** | 518 | Code implementation |
-| **ReviewerAgent** | 555 | Code review |
-| **MessageBus** | 473 | Inter-agent communication |
-| **BaseSubagent** | 528 | Subagent infrastructure |
-| **StructuredLogger** | 543 | JSON logging |
-| **AgentMemory** | 315 | Tiered memory system |
-| **PlanEngine** | 273 | Task planning |
-| **ToolRegistry** | 627 | Tool management |
-| **Total** | **6,155** | Production-ready agent system |
+| Component             | Lines of Code | Purpose                           |
+| --------------------- | ------------- | --------------------------------- |
+| **OrchestratorAgent** | 572           | Multi-agent workflow coordination |
+| **CalibrationAgent**  | 383           | ReAct reasoning with tools        |
+| **PlannerAgent**      | 403           | C4-aligned planning               |
+| **SQEAgent**          | 503           | Test generation                   |
+| **CoderAgent**        | 518           | Code implementation               |
+| **ReviewerAgent**     | 555           | Code review                       |
+| **MessageBus**        | 473           | Inter-agent communication         |
+| **BaseSubagent**      | 528           | Subagent infrastructure           |
+| **StructuredLogger**  | 543           | JSON logging                      |
+| **AgentMemory**       | 315           | Tiered memory system              |
+| **PlanEngine**        | 273           | Task planning                     |
+| **ToolRegistry**      | 627           | Tool management                   |
+| **Total**             | **6,155**     | Production-ready agent system     |
+
+---
+
+## Level 4: MCTS Calibration Engine (Code)
+
+This diagram details the AlphaZero-style Monte Carlo Tree Search engine for automated calibration optimization.
+
+```mermaid
+C4Component
+  title MCTS Calibration Engine Component Diagram (Level 4)
+
+  Container_Boundary(mcts, "MCTS Engine (src/ptpd_calibration/mcts/)") {
+    Component(engine, "MCTSEngine", "engine.py (552 LOC)", "Core MCTS search with UCB1 exploration, parallel leaf evaluation, configurable search budget")
+    Component(tree, "TreeNode", "tree.py (242 LOC)", "Search tree nodes with visit counts, value estimates, prior probabilities, PUCT selection")
+
+    Component_Boundary(nn, "Neural Networks (requires PyTorch)") {
+      Component(dual, "DualNetwork", "networks.py (459 LOC)", "Policy + value head CNN for state evaluation and action priors")
+      Component(trainer, "MCTSTrainer", "training.py (563 LOC)", "Expert Iteration self-play training with ReplayBuffer and prioritized sampling")
+    }
+
+    Component_Boundary(domain, "Domain Model") {
+      Component(sim, "ExtendedProcessSimulator", "simulator.py (377 LOC)", "Physics-based Pt/Pd model: sensitizer diffusion, UV exposure curves, humidity effects")
+      Component(quality, "QualityScorer", "quality.py (247 LOC)", "Multi-metric scoring: Dmax, tonal range, linearity, smoothness, overall quality grade")
+      Component(constraints, "ConstraintChecker + ActionPruner", "constraints.py (1056 LOC)", "Photochemistry-safe parameter bounds, action space pruning, validation")
+    }
+
+    Component_Boundary(io, "I/O and Config") {
+      Component(config, "MCTSSettings", "config.py (459 LOC)", "Pydantic settings: parameter ranges, physics constants, search hyperparameters")
+      Component(types, "CalibrationState/Action", "types.py (186 LOC)", "Immutable state representation, action encoding, search results")
+      Component(export, "MCTSResultExporter", "export.py (491 LOC)", "Export to JSON, CSV, QTR-compatible .quad format")
+    }
+
+    Component_Boundary(agents_mcts, "Domain Subagents") {
+      Component(chem_agent, "ChemistrySubagent", "agents.py", "Validates chemistry parameters against safety bounds")
+      Component(expo_agent, "ExposureSubagent", "agents.py", "Optimizes UV exposure time and intensity")
+      Component(coord_agent, "CalibrationCoordinatorSubagent", "agents.py (487 LOC total)", "Coordinates multi-step calibration optimization")
+    }
+
+    Rel(engine, tree, "Expands/selects nodes")
+    Rel(engine, dual, "Evaluates leaf states")
+    Rel(engine, sim, "Simulates actions")
+    Rel(engine, quality, "Scores simulation results")
+    Rel(engine, constraints, "Prunes illegal actions")
+
+    Rel(trainer, engine, "Runs self-play episodes")
+    Rel(trainer, dual, "Trains network weights")
+
+    Rel(coord_agent, engine, "Runs MCTS search")
+    Rel(coord_agent, chem_agent, "Delegates chemistry checks")
+    Rel(coord_agent, expo_agent, "Delegates exposure optimization")
+    Rel(coord_agent, export, "Exports optimal parameters")
+  }
+```
+
+### MCTS Engine Summary
+
+| Component                    | Lines of Code | Purpose                              |
+| ---------------------------- | ------------- | ------------------------------------ |
+| **MCTSEngine**               | 552           | Core search algorithm with UCB1/PUCT |
+| **TreeNode**                 | 242           | Search tree with statistics          |
+| **DualNetwork**              | 459           | Policy + value neural network        |
+| **MCTSTrainer**              | 563           | Self-play training pipeline          |
+| **ExtendedProcessSimulator** | 377           | Physics-based process model          |
+| **QualityScorer**            | 247           | Multi-metric quality evaluation      |
+| **ConstraintChecker**        | 1,056         | Photochemistry validation            |
+| **MCTSSettings**             | 459           | Configuration and constants          |
+| **Types**                    | 186           | State/action data structures         |
+| **MCTSResultExporter**       | 491           | Multi-format export                  |
+| **Domain Subagents**         | 487           | Chemistry/exposure/coordination      |
+| **Total**                    | **5,181**     | Full MCTS calibration system         |
+
+---
+
+## Cross-Cutting: Frontend Architecture
+
+The React frontend connects to the FastAPI backend and provides the user interface.
+
+```mermaid
+C4Component
+  title Frontend Architecture (Level 3)
+
+  Container_Boundary(fe, "React Frontend (frontend/src/)") {
+    Component(pages, "Pages", "pages/", "Route-level components: CurvesPage, DashboardPage, etc.")
+    Component(components, "UI Components", "components/", "Reusable: CurveUpload, ChemistryCalculator, ErrorBoundary")
+    Component(stores, "Zustand Store", "stores/", "Slices: curve, image, chat, ui, mcts with immer + devtools")
+    Component(hooks, "TanStack Query Hooks", "api/hooks.ts", "Cached data fetching: useGenerateCurve, useUploadQuadFile, useSendMessage")
+    Component(client, "API Client", "api/client.ts", "Axios instance with interceptors, typed endpoints")
+
+    Rel(pages, components, "Renders")
+    Rel(pages, stores, "Reads/writes state")
+    Rel(components, hooks, "Fetches data")
+    Rel(hooks, client, "HTTP requests")
+  }
+
+  System_Ext(api, "FastAPI Backend", "/api/* endpoints")
+  Rel(client, api, "REST calls", "JSON/HTTPS")
+```

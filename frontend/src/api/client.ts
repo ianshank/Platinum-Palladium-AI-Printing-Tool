@@ -25,6 +25,8 @@ import type {
   CurveSmoothingResponse,
   CurveSmoothRequest,
   EnforceMonotonicityResponse,
+  QuadParseResponse,
+  QuadUploadResponse,
   ScanUploadResponse,
   StatisticsResponse,
 } from '@/types/models';
@@ -192,6 +194,26 @@ export const api = {
         url: '/api/curves/export',
         data,
         responseType: 'blob',
+      }),
+
+    uploadQuad: (file: File, channel: string) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('channel', channel);
+
+      return apiRequest<QuadUploadResponse>({
+        method: 'POST',
+        url: '/api/curves/upload-quad',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    },
+
+    parseQuad: (content: string, name: string, channel: string) =>
+      apiRequest<QuadParseResponse>({
+        method: 'POST',
+        url: '/api/curves/parse-quad',
+        data: { content, name, channel },
       }),
   },
 

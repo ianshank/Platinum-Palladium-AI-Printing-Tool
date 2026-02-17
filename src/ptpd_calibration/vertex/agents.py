@@ -81,7 +81,7 @@ def analyze_step_tablet_scan(
         extractor = DensityExtractor()
 
         detection = detector.detect(image_path)
-        result = extractor.extract(detection)
+        result = extractor.extract(image_path, detection)
 
         response = {
             "status": "success",

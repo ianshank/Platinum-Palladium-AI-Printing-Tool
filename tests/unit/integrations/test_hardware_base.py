@@ -3,6 +3,10 @@
 Tests verify the base class and utility functions work correctly.
 """
 
+import pytest
+
+pytest.importorskip("ptpd_calibration.integrations.hardware")
+
 from typing import Any
 
 from ptpd_calibration.integrations.hardware.base import (

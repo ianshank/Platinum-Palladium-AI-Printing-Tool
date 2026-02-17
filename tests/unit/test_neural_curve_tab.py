@@ -10,6 +10,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+pytest.importorskip("ptpd_calibration.ui.tabs.neural_curve")
+
 # =============================================================================
 # Test Helper Functions
 # =============================================================================
@@ -375,8 +377,8 @@ class TestCustomDataLoading:
 
         # Create test JSON file
         test_data = [
-            {"input": [0, 0.5, 1], "output": [0, 0.4, 0.9]},
-            {"input": [0, 0.5, 1], "output": [0, 0.5, 1]},
+            {"input_densities": [0, 0.5, 1], "output_densities": [0, 0.4, 0.9]},
+            {"input_densities": [0, 0.5, 1], "output_densities": [0, 0.5, 1]},
         ]
 
         json_path = tmp_path / "test_data.json"
@@ -386,7 +388,7 @@ class TestCustomDataLoading:
         data = _load_custom_data(str(json_path))
 
         assert len(data) == 2
-        assert data[0]["input"] == [0, 0.5, 1]
+        assert data[0]["input_densities"] == [0, 0.5, 1]
 
     def test_load_custom_data_csv(self, tmp_path):
         """Test loading custom data from CSV."""

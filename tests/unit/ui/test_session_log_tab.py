@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("ptpd_calibration.ui")
+
 from unittest.mock import MagicMock, patch
 
 from ptpd_calibration.ui.tabs.session_log import build_session_log_tab

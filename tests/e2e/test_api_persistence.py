@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("fastapi")
+pytest.importorskip("ptpd_calibration.gcp")
 
 import json
 import os
@@ -6,7 +10,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 from fastapi.testclient import TestClient
 
 import ptpd_calibration.config

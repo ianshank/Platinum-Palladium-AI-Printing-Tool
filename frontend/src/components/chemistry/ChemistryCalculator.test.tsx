@@ -59,6 +59,7 @@ function createMockRecipe(): {
     concentration: number;
     temperatureC: number;
   };
+  isStale?: boolean;
 } {
   return {
     totalVolume: 2.8,
@@ -95,9 +96,7 @@ describe('ChemistryCalculator', () => {
 
     it('renders paper size select with current selection', () => {
       render(<ChemistryCalculator />);
-      const select: HTMLSelectElement = screen.getByTestId(
-        'paper-size-select'
-      );
+      const select: HTMLSelectElement = screen.getByTestId('paper-size-select');
       expect(select.value).toBe('8x10');
     });
 
@@ -233,6 +232,60 @@ describe('ChemistryCalculator', () => {
       });
     });
 
+    it('shows validation error when temperature is below minimum', () => {
+      render(<ChemistryCalculator />);
+      fireEvent.change(screen.getByTestId('developer-temp-input'), {
+        target: { value: '10' },
+      });
+      expect(screen.getByTestId('temp-error-message')).toBeInTheDocument();
+      expect(screen.getByTestId('temp-error-message')).toHaveTextContent(
+        'Temperature must be between 15°C and 50°C'
+      );
+    });
+
+    it('shows validation error when temperature is above maximum', () => {
+      render(<ChemistryCalculator />);
+      fireEvent.change(screen.getByTestId('developer-temp-input'), {
+        target: { value: '100' },
+      });
+      expect(screen.getByTestId('temp-error-message')).toBeInTheDocument();
+      expect(screen.getByTestId('temp-error-message')).toHaveTextContent(
+        'Temperature must be between 15°C and 50°C'
+      );
+    });
+
+    it('clears validation error when valid temperature is entered', () => {
+      render(<ChemistryCalculator />);
+      // First, set invalid temperature
+      fireEvent.change(screen.getByTestId('developer-temp-input'), {
+        target: { value: '100' },
+      });
+      expect(screen.getByTestId('temp-error-message')).toBeInTheDocument();
+
+      // Then, set valid temperature
+      fireEvent.change(screen.getByTestId('developer-temp-input'), {
+        target: { value: '25' },
+      });
+      expect(
+        screen.queryByTestId('temp-error-message')
+      ).not.toBeInTheDocument();
+    });
+
+    it('clears temperature error on reset', () => {
+      render(<ChemistryCalculator />);
+      // Set invalid temperature
+      fireEvent.change(screen.getByTestId('developer-temp-input'), {
+        target: { value: '100' },
+      });
+      expect(screen.getByTestId('temp-error-message')).toBeInTheDocument();
+
+      // Reset
+      fireEvent.click(screen.getByTestId('reset-btn'));
+      expect(
+        screen.queryByTestId('temp-error-message')
+      ).not.toBeInTheDocument();
+    });
+
     it('calls calculateRecipe when calculate button clicked', () => {
       render(<ChemistryCalculator />);
       fireEvent.click(screen.getByTestId('calculate-btn'));
@@ -325,6 +378,44 @@ describe('ChemistryCalculator', () => {
       mockChemistryState.recipe = noContrastRecipe;
       render(<ChemistryCalculator />);
       expect(screen.queryByTestId('recipe-contrast')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Stale Recipe Indicator', () => {
+    beforeEach(() => {
+      mockChemistryState.recipe = createMockRecipe();
+    });
+
+    it('does not show stale badge when recipe is fresh', () => {
+      mockChemistryState.recipe!.isStale = false;
+      render(<ChemistryCalculator />);
+      expect(
+        screen.queryByTestId('recipe-stale-badge')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('recipe-stale-warning')
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows stale badge when recipe is outdated', () => {
+      mockChemistryState.recipe!.isStale = true;
+      render(<ChemistryCalculator />);
+      expect(screen.getByTestId('recipe-stale-badge')).toBeInTheDocument();
+      expect(screen.getByTestId('recipe-stale-badge')).toHaveTextContent(
+        'Outdated'
+      );
+    });
+
+    it('shows stale warning message when recipe is outdated', () => {
+      mockChemistryState.recipe!.isStale = true;
+      render(<ChemistryCalculator />);
+      expect(screen.getByTestId('recipe-stale-warning')).toBeInTheDocument();
+      expect(screen.getByTestId('recipe-stale-warning')).toHaveTextContent(
+        'Recipe is outdated'
+      );
+      expect(screen.getByTestId('recipe-stale-warning')).toHaveTextContent(
+        'click Calculate to update'
+      );
     });
   });
 

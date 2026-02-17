@@ -157,8 +157,11 @@ known-first-party = ["ptpd_calibration"]
 branch = true
 source = ["src/ptpd_calibration"]
 omit = [
-    "*/ui/*",           # UI modules require integration tests
-    "*/api/server.py",  # API server requires integration tests
+    "*/ui/*",              # UI modules require integration tests
+    "*/api/server.py",     # API server requires integration tests
+    "*/deep_learning/*",   # Requires PyTorch (optional dependency)
+    "*/ml/deep/*",         # Requires PyTorch (optional dependency)
+    "*/mcts/networks.py",  # Requires PyTorch (optional dependency)
 ]
 
 [tool.coverage.report]

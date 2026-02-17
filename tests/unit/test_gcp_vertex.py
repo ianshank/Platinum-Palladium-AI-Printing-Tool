@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytest.importorskip("google.cloud.aiplatform")
+
 from ptpd_calibration.gcp.config import GCPConfig
 
 

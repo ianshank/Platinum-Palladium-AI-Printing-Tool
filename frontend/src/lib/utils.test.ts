@@ -9,6 +9,7 @@ import {
   formatDate,
   formatNumber,
   formatPercent,
+  formatSnakeCaseToTitle,
   generateId,
   isEmpty,
   lerp,
@@ -356,6 +357,43 @@ describe('utils', () => {
     it('handles emit on non-existent event gracefully', () => {
       const emitter = createEventEmitter<{ test: string }>();
       expect(() => emitter.emit('test', 'hello')).not.toThrow();
+    });
+  });
+
+  describe('formatSnakeCaseToTitle', () => {
+    it('converts basic snake_case to Title Case', () => {
+      expect(formatSnakeCaseToTitle('pure_platinum')).toBe('Pure Platinum');
+      expect(formatSnakeCaseToTitle('pure_palladium')).toBe('Pure Palladium');
+    });
+
+    it('preserves known acronyms in uppercase', () => {
+      expect(formatSnakeCaseToTitle('na2_process')).toBe('NA2 Process');
+      expect(formatSnakeCaseToTitle('pt_pd_mix')).toBe('PT PD Mix');
+      expect(formatSnakeCaseToTitle('rgb_values')).toBe('RGB Values');
+      expect(formatSnakeCaseToTitle('lab_color')).toBe('LAB Color');
+      expect(formatSnakeCaseToTitle('uv_exposure')).toBe('UV Exposure');
+    });
+
+    it('handles single words', () => {
+      expect(formatSnakeCaseToTitle('platinum')).toBe('Platinum');
+      expect(formatSnakeCaseToTitle('chemistry')).toBe('Chemistry');
+    });
+
+    it('handles empty strings', () => {
+      expect(formatSnakeCaseToTitle('')).toBe('');
+    });
+
+    it('handles multiple underscores', () => {
+      expect(formatSnakeCaseToTitle('very_long_chemistry_type_name')).toBe(
+        'Very Long Chemistry Type Name'
+      );
+    });
+
+    it('handles platinum_palladium variants', () => {
+      expect(formatSnakeCaseToTitle('platinum_palladium')).toBe(
+        'Platinum Palladium'
+      );
+      expect(formatSnakeCaseToTitle('ziatype')).toBe('Ziatype');
     });
   });
 });

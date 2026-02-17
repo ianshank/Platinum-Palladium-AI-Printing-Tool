@@ -4,8 +4,10 @@ E2E test for Curve Display and File Loading.
 Verifies that curve files (.quad) can be loaded, displayed, and statistics generated.
 """
 
-
 import pytest
+
+pytest.importorskip("playwright")
+
 from playwright.sync_api import Page, expect
 
 # UTF-8 .quad content

@@ -183,7 +183,7 @@ class NeuroSymbolicCurveGenerator:
 
         # Step 3: Enforce symbolic constraints
         constraint_report = ""
-        violations = []
+        violations: list[str] = []
 
         if enforce_constraints:
             reasoning_steps.append("Evaluating physics constraints")
@@ -301,7 +301,7 @@ class NeuroSymbolicCurveGenerator:
         name: str = "Neuro-Symbolic Calibration Curve",
         paper_type: str | None = None,
         chemistry: str | None = None,
-        **kwargs,
+        **kwargs: object,
     ) -> CurveGenerationResult:
         """Generate curve from extraction result.
 

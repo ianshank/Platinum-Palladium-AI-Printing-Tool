@@ -97,8 +97,8 @@ export const config: AppConfig = {
     environment: getEnvironment(),
   },
   api: {
-    baseUrl: getEnv('VITE_API_URL', 'http://localhost:8000'),
-    wsUrl: getEnv('VITE_WS_URL', 'ws://localhost:8000/ws'),
+    baseUrl: getEnv('VITE_API_URL', 'http://127.0.0.1:8000'),
+    wsUrl: getEnv('VITE_WS_URL', 'ws://127.0.0.1:8000/ws'),
     timeout: getNumEnv('VITE_API_TIMEOUT', 30000),
     retryAttempts: getNumEnv('VITE_API_RETRY_ATTEMPTS', 3),
     retryDelay: getNumEnv('VITE_API_RETRY_DELAY', 1000),

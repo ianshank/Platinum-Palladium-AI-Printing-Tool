@@ -5,6 +5,10 @@ Tests verify that constants are properly defined and have valid values.
 
 import re
 
+import pytest
+
+pytest.importorskip("ptpd_calibration.integrations.hardware.constants")
+
 
 class TestPrinterConstants:
     """Test printer-related constants."""

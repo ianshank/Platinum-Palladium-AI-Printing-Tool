@@ -15,7 +15,7 @@ import { CurvesPage } from '@/pages/CurvesPage';
 import { ChemistryPage } from '@/pages/ChemistryPage';
 
 import { AIAssistantPage } from '@/pages/AIAssistantPage';
-
+import { MCTSPage } from '@/pages/MCTSPage';
 import { SessionLogPage } from '@/pages/SessionLogPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 
@@ -43,21 +43,8 @@ const LoadingScreen: FC = () => (
         </p>
       </div>
 
-      {/* Animated dots */}
-      <div className="flex gap-1.5">
-        <div
-          className="h-2 w-2 animate-bounce rounded-full bg-primary"
-          style={{ animationDelay: '0ms' }}
-        />
-        <div
-          className="h-2 w-2 animate-bounce rounded-full bg-primary"
-          style={{ animationDelay: '150ms' }}
-        />
-        <div
-          className="h-2 w-2 animate-bounce rounded-full bg-primary"
-          style={{ animationDelay: '300ms' }}
-        />
-      </div>
+      {/* Spinner */}
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />
     </div>
   </div>
 );
@@ -90,6 +77,7 @@ export const App: FC = () => {
             <Route path="/curves" element={<CurvesPage />} />
             <Route path="/chemistry" element={<ChemistryPage />} />
             <Route path="/assistant" element={<AIAssistantPage />} />
+            <Route path="/mcts" element={<MCTSPage />} />
             <Route path="/session" element={<SessionLogPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>

@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytest.importorskip("google.cloud.storage")
+
 from ptpd_calibration.gcp.config import GCPConfig
 from ptpd_calibration.gcp.storage import (
     LocalBackend,

@@ -5,6 +5,8 @@ Uses pydantic-settings for environment-based configuration with validation.
 All settings can be overridden via environment variables with PTPD_ prefix.
 """
 
+from __future__ import annotations
+
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -1340,6 +1342,24 @@ class Settings(BaseSettings):
     # Alternative process settings
     cyanotype: CyanotypeSettings = Field(default_factory=CyanotypeSettings)
     silver_gelatin: SilverGelatinSettings = Field(default_factory=SilverGelatinSettings)
+
+    # MCTS calibration search (lazy import to avoid circular dependency)
+    # Typed as Any because MCTSSettings is lazily imported to prevent circular imports.
+    # The field_validator below ensures the value is always MCTSSettings | None at runtime.
+    mcts: Any = Field(default=None)
+
+    @field_validator("mcts", mode="before")
+    @classmethod
+    def _build_mcts_settings(cls, v: Any) -> Any:
+        """Lazy-load MCTSSettings to avoid circular imports."""
+        if v is None:
+            try:
+                from ptpd_calibration.mcts.config import MCTSSettings
+
+                return MCTSSettings()
+            except ImportError:
+                return None
+        return v
 
     @field_validator("calibrations_dir", "exports_dir", mode="before")
     @classmethod

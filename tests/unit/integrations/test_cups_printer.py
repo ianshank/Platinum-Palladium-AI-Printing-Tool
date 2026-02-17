@@ -3,10 +3,12 @@
 Tests verify the CUPSPrinterDriver functionality with mocked CUPS connection.
 """
 
+import pytest
+
+pytest.importorskip("ptpd_calibration.integrations.hardware")
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from ptpd_calibration.integrations.hardware.cups_printer import CUPSPrinterDriver
 from ptpd_calibration.integrations.hardware.exceptions import (

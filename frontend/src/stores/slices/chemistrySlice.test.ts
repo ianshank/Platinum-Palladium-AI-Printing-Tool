@@ -22,14 +22,16 @@ describe('chemistrySlice', () => {
   });
 
   describe('Paper Size Management', () => {
-    it('setPaperSize changes paper and clears recipe', () => {
+    it('setPaperSize changes paper and marks recipe as stale', () => {
       store.getState().chemistry.calculateRecipe();
       expect(store.getState().chemistry.recipe).not.toBeNull();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(false);
 
       store.getState().chemistry.setPaperSize(STANDARD_PAPER_SIZES[0]!);
 
       expect(store.getState().chemistry.paperSize.name).toBe('4x5');
-      expect(store.getState().chemistry.recipe).toBeNull();
+      expect(store.getState().chemistry.recipe).not.toBeNull();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(true);
     });
 
     it('addCustomSize adds a custom paper size', () => {
@@ -58,12 +60,15 @@ describe('chemistrySlice', () => {
   });
 
   describe('Metal Ratio', () => {
-    it('setMetalRatio updates ratio and clears recipe', () => {
+    it('setMetalRatio updates ratio and marks recipe as stale', () => {
       store.getState().chemistry.calculateRecipe();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(false);
+
       store.getState().chemistry.setMetalRatio(0.8);
 
       expect(store.getState().chemistry.metalRatio).toBe(0.8);
-      expect(store.getState().chemistry.recipe).toBeNull();
+      expect(store.getState().chemistry.recipe).not.toBeNull();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(true);
     });
 
     it('setMetalRatio clamps to 0-1 range', () => {
@@ -76,22 +81,28 @@ describe('chemistrySlice', () => {
   });
 
   describe('Coating Method', () => {
-    it('setCoatingMethod updates method and clears recipe', () => {
+    it('setCoatingMethod updates method and marks recipe as stale', () => {
       store.getState().chemistry.calculateRecipe();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(false);
+
       store.getState().chemistry.setCoatingMethod('rod');
 
       expect(store.getState().chemistry.coatingMethod).toBe('rod');
-      expect(store.getState().chemistry.recipe).toBeNull();
+      expect(store.getState().chemistry.recipe).not.toBeNull();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(true);
     });
   });
 
   describe('Contrast Level', () => {
-    it('setContrastLevel updates level and clears recipe', () => {
+    it('setContrastLevel updates level and marks recipe as stale', () => {
       store.getState().chemistry.calculateRecipe();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(false);
+
       store.getState().chemistry.setContrastLevel(4);
 
       expect(store.getState().chemistry.contrastLevel).toBe(4);
-      expect(store.getState().chemistry.recipe).toBeNull();
+      expect(store.getState().chemistry.recipe).not.toBeNull();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(true);
     });
 
     it('setContrastLevel clamps to 0-5 range', () => {
@@ -110,6 +121,45 @@ describe('chemistrySlice', () => {
       const dev = store.getState().chemistry.developer;
       expect(dev.temperatureC).toBe(25);
       expect(dev.type).toBe('potassium_oxalate'); // Unchanged
+    });
+
+    it('setDeveloper clamps temperature to minimum', () => {
+      store.getState().chemistry.setDeveloper({ temperatureC: 10 });
+
+      const dev = store.getState().chemistry.developer;
+      expect(dev.temperatureC).toBe(15); // Clamped to TEMPERATURE_MIN
+    });
+
+    it('setDeveloper clamps temperature to maximum', () => {
+      store.getState().chemistry.setDeveloper({ temperatureC: 100 });
+
+      const dev = store.getState().chemistry.developer;
+      expect(dev.temperatureC).toBe(50); // Clamped to TEMPERATURE_MAX
+    });
+
+    it('setDeveloper accepts valid temperature in range', () => {
+      store.getState().chemistry.setDeveloper({ temperatureC: 30 });
+
+      const dev = store.getState().chemistry.developer;
+      expect(dev.temperatureC).toBe(30); // Not clamped
+    });
+
+    it('setDeveloper accepts boundary temperatures', () => {
+      store.getState().chemistry.setDeveloper({ temperatureC: 15 });
+      expect(store.getState().chemistry.developer.temperatureC).toBe(15);
+
+      store.getState().chemistry.setDeveloper({ temperatureC: 50 });
+      expect(store.getState().chemistry.developer.temperatureC).toBe(50);
+    });
+
+    it('setDeveloper marks recipe as stale', () => {
+      store.getState().chemistry.calculateRecipe();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(false);
+
+      store.getState().chemistry.setDeveloper({ temperatureC: 25 });
+
+      expect(store.getState().chemistry.recipe).not.toBeNull();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(true);
     });
   });
 
@@ -156,6 +206,28 @@ describe('chemistrySlice', () => {
       store.getState().chemistry.calculateRecipe();
 
       expect(store.getState().chemistry.recipe!.contrastAgent).toBeUndefined();
+    });
+
+    it('calculateRecipe sets isStale to false', () => {
+      store.getState().chemistry.calculateRecipe();
+
+      const recipe = store.getState().chemistry.recipe;
+      expect(recipe).not.toBeNull();
+      expect(recipe!.isStale).toBe(false);
+    });
+
+    it('calculateRecipe refreshes stale recipe', () => {
+      // First calculation
+      store.getState().chemistry.calculateRecipe();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(false);
+
+      // Change input
+      store.getState().chemistry.setMetalRatio(0.75);
+      expect(store.getState().chemistry.recipe!.isStale).toBe(true);
+
+      // Recalculate
+      store.getState().chemistry.calculateRecipe();
+      expect(store.getState().chemistry.recipe!.isStale).toBe(false);
     });
 
     it('clearRecipe sets recipe to null', () => {

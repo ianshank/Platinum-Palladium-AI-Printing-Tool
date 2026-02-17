@@ -314,7 +314,7 @@ class SymbolicExpression(BaseModel):
     mse: float = Field(default=float("inf"))
     description: str = ""
 
-    def __init__(self, **data):
+    def __init__(self, **data: object) -> None:
         super().__init__(**data)
         self.complexity = self.root.size()
 
@@ -538,7 +538,7 @@ class DifferentiableSymbolicRegressor:
         x: NDArray[np.float64],
         y: NDArray[np.float64],
         initial_expressions: list[ExpressionNode] | None = None,
-    ) -> SymbolicExpression:
+    ) -> SymbolicExpression | None:
         """Fit symbolic expression to data.
 
         Args:
@@ -568,7 +568,6 @@ class DifferentiableSymbolicRegressor:
                 self._best_expression is None
                 or self._population[0].fitness < self._best_expression.fitness
             ):
-                self._best_expression = self._population[0].root.copy()
                 self._best_expression = SymbolicExpression(
                     root=self._population[0].root.copy(),
                     fitness=self._population[0].fitness,
@@ -686,7 +685,7 @@ class DifferentiableSymbolicRegressor:
 
     def _evolve_population(self, x: NDArray[np.float64], y: NDArray[np.float64]) -> None:
         """Evolve population through selection and genetic operators."""
-        new_population = []
+        new_population: list[SymbolicExpression] = []
 
         # Elitism: keep best expressions
         elite_size = max(1, self.settings.sr_population_size // 10)
@@ -1016,5 +1015,5 @@ class CurveFormulaDiscovery:
             )
 
         # Sort by AIC (lower is better)
-        results.sort(key=lambda r: r["aic"])
+        results.sort(key=lambda r: float(r["aic"]))
         return results

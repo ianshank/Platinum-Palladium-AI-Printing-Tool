@@ -4,12 +4,14 @@ Unit tests for hardware debugging infrastructure.
 Tests ProtocolLogger, HardwareDebugger, and diagnostic utilities.
 """
 
+import pytest
+
+pytest.importorskip("ptpd_calibration.integrations.hardware")
+
 import json
 import tempfile
 import time
 from pathlib import Path
-
-import pytest
 
 from ptpd_calibration.integrations.hardware.debug import (
     DebugLevel,

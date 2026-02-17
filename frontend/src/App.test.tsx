@@ -50,6 +50,10 @@ vi.mock('@/pages/SettingsPage', () => ({
   SettingsPage: () => <div data-testid="settings-page">Settings</div>,
 }));
 
+vi.mock('@/pages/MCTSPage', () => ({
+  MCTSPage: () => <div data-testid="mcts-page">MCTS Calibration</div>,
+}));
+
 vi.mock('@/lib/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));

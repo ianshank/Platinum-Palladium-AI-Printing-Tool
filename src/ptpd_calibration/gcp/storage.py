@@ -1,12 +1,14 @@
 """
 Storage abstractions for Google Cloud Storage and local file system.
 """
+
 import logging
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 try:
     from google.cloud import storage
+
     GOOGLE_CLOUD_AVAILABLE = True
 except ImportError:
     GOOGLE_CLOUD_AVAILABLE = False
@@ -14,6 +16,7 @@ except ImportError:
 from ptpd_calibration.gcp.config import GCPConfig
 
 logger = logging.getLogger(__name__)
+
 
 @runtime_checkable
 class StorageBackend(Protocol):
@@ -30,6 +33,7 @@ class StorageBackend(Protocol):
     def exists(self, path: str) -> bool:
         """Check if a file exists at the specified path."""
         ...
+
 
 class LocalBackend:
     """Storage backend for local file system."""
@@ -61,6 +65,7 @@ class LocalBackend:
     def exists(self, path: str) -> bool:
         return self._resolve_path(path).exists()
 
+
 class GCSBackend:
     """Storage backend for Google Cloud Storage."""
 
@@ -85,6 +90,7 @@ class GCSBackend:
 
     def exists(self, path: str) -> bool:
         return self.bucket.blob(path.lstrip("/")).exists()
+
 
 def get_storage_backend(config: GCPConfig) -> StorageBackend:
     """Factory to get the appropriate storage backend."""

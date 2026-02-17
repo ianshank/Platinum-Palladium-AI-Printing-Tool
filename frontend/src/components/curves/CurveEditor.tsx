@@ -24,12 +24,13 @@ import { cn } from '@/lib/utils';
 
 type AdjustmentType = 'contrast' | 'brightness' | 'gamma' | 'sigmoid';
 
-const ADJUSTMENT_OPTIONS: readonly { value: AdjustmentType; label: string }[] = [
-  { value: 'contrast', label: 'Contrast' },
-  { value: 'brightness', label: 'Brightness' },
-  { value: 'gamma', label: 'Gamma' },
-  { value: 'sigmoid', label: 'Sigmoid' },
-];
+const ADJUSTMENT_OPTIONS: readonly { value: AdjustmentType; label: string }[] =
+  [
+    { value: 'contrast', label: 'Contrast' },
+    { value: 'brightness', label: 'Brightness' },
+    { value: 'gamma', label: 'Gamma' },
+    { value: 'sigmoid', label: 'Sigmoid' },
+  ];
 
 // --- UI Components (Inline for speed, move to ui/ later) ---
 
@@ -114,7 +115,8 @@ export function CurveEditor({
   );
 
   // Adjustment state
-  const [adjustmentType, setAdjustmentType] = useState<AdjustmentType>('contrast');
+  const [adjustmentType, setAdjustmentType] =
+    useState<AdjustmentType>('contrast');
   const [amount, setAmount] = useState<number>(0);
   const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,6 +131,85 @@ export function CurveEditor({
       output: outputValues[index],
     }));
   }, [inputValues, outputValues]);
+
+  // Ref for the chart container to calculate coordinates
+  const chartContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Handle chart container click to add control points
+  const handleChartClick = (e: React.MouseEvent<HTMLDivElement>): void => {
+    const container = chartContainerRef.current;
+    if (!container) return;
+
+    // Get click position relative to container
+    const rect = container.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    // Account for chart margins (from LineChart margin prop)
+    const marginLeft = 0;
+    const marginTop = 5;
+    const marginRight = 20;
+    const marginBottom = 5;
+
+    // Calculate the actual chart area dimensions
+    const chartWidth = rect.width - marginLeft - marginRight;
+    const chartHeight = rect.height - marginTop - marginBottom;
+
+    // Adjust click position for margins
+    const adjustedX = clickX - marginLeft;
+    const adjustedY = clickY - marginTop;
+
+    // Check if click is within chart area
+    if (
+      adjustedX < 0 ||
+      adjustedX > chartWidth ||
+      adjustedY < 0 ||
+      adjustedY > chartHeight
+    ) {
+      logger.debug('CurveEditor: click outside chart area');
+      return;
+    }
+
+    // Convert pixel coordinates to data coordinates
+    // X-axis: linear mapping from 0 to maxValue
+    const inputValue = (adjustedX / chartWidth) * maxValue;
+
+    // Y-axis: inverted because SVG/canvas Y goes top-to-bottom
+    // Top of chart (adjustedY = 0) should be maxValue (255)
+    // Bottom of chart (adjustedY = chartHeight) should be 0
+    const outputValue = maxValue - (adjustedY / chartHeight) * maxValue;
+
+    // Clamp values to valid range
+    const clampedInput = Math.max(
+      0,
+      Math.min(maxValue, Math.round(inputValue))
+    );
+    const clampedOutput = Math.max(
+      0,
+      Math.min(maxValue, Math.round(outputValue))
+    );
+
+    logger.info('CurveEditor: adding control point', {
+      input: clampedInput,
+      output: clampedOutput,
+      clickPos: { x: clickX, y: clickY },
+      chartArea: { width: chartWidth, height: chartHeight },
+    });
+
+    // Modify the output value at the clicked input position
+    // This creates a "control point" effect by setting outputValues[clampedInput] = clampedOutput
+    const newOutputValues = [...outputValues];
+    newOutputValues[clampedInput] = clampedOutput;
+
+    // Apply the change through undo/redo system
+    setOutputValues(newOutputValues);
+
+    logger.debug('CurveEditor: control point added', {
+      index: clampedInput,
+      oldValue: outputValues[clampedInput],
+      newValue: clampedOutput,
+    });
+  };
 
   const handleApplyAdjustment = async (): Promise<void> => {
     logger.info('CurveEditor: applying adjustment', { adjustmentType, amount });
@@ -151,7 +232,8 @@ export function CurveEditor({
         setError('Failed to apply adjustment');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error applying adjustment';
+      const message =
+        err instanceof Error ? err.message : 'Error applying adjustment';
       logger.error('CurveEditor: adjustment failed', { error: message });
       setError(message);
     } finally {
@@ -173,7 +255,10 @@ export function CurveEditor({
   };
 
   const handleSave = (): void => {
-    logger.info('CurveEditor: saving curve', { name, pointCount: inputValues.length });
+    logger.info('CurveEditor: saving curve', {
+      name,
+      pointCount: inputValues.length,
+    });
 
     saveCurve(
       {
@@ -185,7 +270,9 @@ export function CurveEditor({
       },
       {
         onSuccess: (response) => {
-          logger.info('CurveEditor: curve saved', { curveId: response.curve_id });
+          logger.info('CurveEditor: curve saved', {
+            curveId: response.curve_id,
+          });
           if (onSave) {
             onSave({
               id: response.curve_id,
@@ -219,7 +306,12 @@ export function CurveEditor({
     >
       <div className="flex items-center justify-between">
         <div className="max-w-sm flex-1">
-          <label htmlFor="curve-name-input" className="mb-1 block text-sm font-medium">Curve Name</label>
+          <label
+            htmlFor="curve-name-input"
+            className="mb-1 block text-sm font-medium"
+          >
+            Curve Name
+          </label>
           <Input
             id="curve-name-input"
             value={name}
@@ -257,10 +349,14 @@ export function CurveEditor({
         </div>
       </div>
 
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- Interactive chart canvas for point placement via mouse */}
       <div
-        className="h-[400px] w-full rounded-md border bg-white/5 p-4"
+        ref={chartContainerRef}
+        onClick={handleChartClick}
+        className="h-[400px] w-full cursor-crosshair rounded-md border bg-white/5 p-4"
         role="img"
-        aria-label={`Curve chart for ${name} showing input vs output density mapping`}
+        aria-label={`Curve chart for ${name} showing input vs output density mapping. Click to add control points (experimental).`}
+        title="Click on the chart to add a control point"
       >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
@@ -318,7 +414,12 @@ export function CurveEditor({
 
       <div className="grid grid-cols-1 gap-6 rounded-md bg-muted/50 p-4 md:grid-cols-2">
         <div className="space-y-4">
-          <label htmlFor="adjustment-type-select" className="text-sm font-medium">Adjustment Type</label>
+          <label
+            htmlFor="adjustment-type-select"
+            className="text-sm font-medium"
+          >
+            Adjustment Type
+          </label>
           <AdjustmentSelect
             id="adjustment-type-select"
             value={adjustmentType}
@@ -328,7 +429,12 @@ export function CurveEditor({
 
         <div className="space-y-4">
           <div className="flex justify-between">
-            <label htmlFor="adjustment-amount-slider" className="text-sm font-medium">Amount</label>
+            <label
+              htmlFor="adjustment-amount-slider"
+              className="text-sm font-medium"
+            >
+              Amount
+            </label>
             <span className="text-sm text-muted-foreground">{amount}</span>
           </div>
           <Slider
@@ -350,7 +456,11 @@ export function CurveEditor({
           >
             Apply Adjustment
           </Button>
-          {error && <p className="mt-2 text-sm text-destructive" role="alert">{error}</p>}
+          {error && (
+            <p className="mt-2 text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
         </div>
       </div>
     </div>

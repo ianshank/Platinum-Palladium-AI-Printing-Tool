@@ -7,6 +7,8 @@ discovery handler management, and device lifecycle.
 
 import pytest
 
+pytest.importorskip("ptpd_calibration.integrations.hardware")
+
 from ptpd_calibration.integrations.hardware.registry import (
     DeviceRegistry,
     DeviceType,
