@@ -41,10 +41,7 @@ import {
   type ImageData,
   type ImageSlice,
 } from './slices/imageSlice';
-import {
-  createMCTSSlice,
-  type MCTSSlice,
-} from './slices/mctsSlice';
+import { createMCTSSlice, type MCTSSlice } from './slices/mctsSlice';
 import { config } from '@/config';
 
 /**
@@ -88,6 +85,19 @@ const storeMiddleware: StoreMiddleware = (f) =>
               isProcessing: false,
             },
           }),
+          // Custom merge to ensure actions are not overwritten by persisted data
+          // recursive shallow merge for the 'ui' slice
+          merge: (persistedState: unknown, currentState: StoreState) => {
+            const persisted = persistedState as Partial<StoreState>;
+            return {
+              ...currentState,
+              ...persisted,
+              ui: {
+                ...currentState.ui,
+                ...(persisted.ui || {}),
+              },
+            };
+          },
         }
       )
     ),
@@ -100,7 +110,7 @@ const storeMiddleware: StoreMiddleware = (f) =>
 /**
  * Main application store
  */
-/* eslint-disable @typescript-eslint/no-unsafe-argument -- Zustand middleware composition requires untyped factory params */
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- Zustand middleware composition requires untyped factory params */
 export const useStore = create<StoreState>()(
   storeMiddleware((set: any, get: any, store: any) => ({
     ui: createUISlice(set, get, store),
@@ -113,7 +123,7 @@ export const useStore = create<StoreState>()(
     mcts: createMCTSSlice(set, get, store),
   }))
 );
-/* eslint-enable @typescript-eslint/no-unsafe-argument */
+/* eslint-enable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any */
 
 /**
  * Create a store instance for testing
@@ -151,47 +161,60 @@ export const selectIsInitialized = (state: StoreState): boolean =>
   state.ui.isInitialized;
 
 // Calibration Selectors
-export const selectCurrentCalibration = (state: StoreState): CalibrationData | null =>
-  state.calibration.current;
+export const selectCurrentCalibration = (
+  state: StoreState
+): CalibrationData | null => state.calibration.current;
 export const selectCalibrationStep = (state: StoreState): number =>
   state.calibration.currentStep;
-export const selectCalibrationHistory = (state: StoreState): CalibrationData[] =>
-  state.calibration.history;
+export const selectCalibrationHistory = (
+  state: StoreState
+): CalibrationData[] => state.calibration.history;
 
 // Curve Selectors
-export const selectCurrentCurve = (state: StoreState): CurveData | null => state.curve.current;
-export const selectCurvePoints = (state: StoreState): CurvePoint[] => state.curve.points;
+export const selectCurrentCurve = (state: StoreState): CurveData | null =>
+  state.curve.current;
+export const selectCurvePoints = (state: StoreState): CurvePoint[] =>
+  state.curve.points;
 export const selectCurveModified = (state: StoreState): boolean =>
   state.curve.isModified;
 
 // Chemistry Selectors
-export const selectChemistryRecipe = (state: StoreState): ChemistryRecipe | null =>
-  state.chemistry.recipe;
-export const selectPaperSize = (state: StoreState): PaperSize => state.chemistry.paperSize;
+export const selectChemistryRecipe = (
+  state: StoreState
+): ChemistryRecipe | null => state.chemistry.recipe;
+export const selectPaperSize = (state: StoreState): PaperSize =>
+  state.chemistry.paperSize;
 export const selectMetalRatio = (state: StoreState): number =>
   state.chemistry.metalRatio;
 
 // Chat Selectors
-export const selectChatMessages = (state: StoreState): ChatMessage[] => state.chat.messages;
+export const selectChatMessages = (state: StoreState): ChatMessage[] =>
+  state.chat.messages;
 export const selectChatLoading = (state: StoreState): boolean =>
   state.chat.isLoading;
 
 // Session Selectors
 export const selectSessionRecords = (state: StoreState): PrintRecord[] =>
   state.session.records;
-export const selectSessionStats = (state: StoreState): SessionStats => state.session.stats;
+export const selectSessionStats = (state: StoreState): SessionStats =>
+  state.session.stats;
 
 // Image Selectors
-export const selectCurrentImage = (state: StoreState): ImageData | null => state.image.current;
-export const selectImagePreview = (state: StoreState): string | null => state.image.preview;
+export const selectCurrentImage = (state: StoreState): ImageData | null =>
+  state.image.current;
+export const selectImagePreview = (state: StoreState): string | null =>
+  state.image.preview;
 export const selectUploadProgress = (state: StoreState): number =>
   state.image.uploadProgress;
 
 // MCTS Selectors
 export const selectMCTSStatus = (state: StoreState) => state.mcts.status;
-export const selectMCTSIsSearching = (state: StoreState): boolean => state.mcts.isSearching;
-export const selectMCTSCurrentResult = (state: StoreState) => state.mcts.currentResult;
-export const selectMCTSRecommendations = (state: StoreState) => state.mcts.recommendations;
+export const selectMCTSIsSearching = (state: StoreState): boolean =>
+  state.mcts.isSearching;
+export const selectMCTSCurrentResult = (state: StoreState) =>
+  state.mcts.currentResult;
+export const selectMCTSRecommendations = (state: StoreState) =>
+  state.mcts.recommendations;
 
 // Re-export slice types
 export type {

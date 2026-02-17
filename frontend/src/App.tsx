@@ -43,21 +43,8 @@ const LoadingScreen: FC = () => (
         </p>
       </div>
 
-      {/* Animated dots */}
-      <div className="flex gap-1.5">
-        <div
-          className="h-2 w-2 animate-bounce rounded-full bg-primary"
-          style={{ animationDelay: '0ms' }}
-        />
-        <div
-          className="h-2 w-2 animate-bounce rounded-full bg-primary"
-          style={{ animationDelay: '150ms' }}
-        />
-        <div
-          className="h-2 w-2 animate-bounce rounded-full bg-primary"
-          style={{ animationDelay: '300ms' }}
-        />
-      </div>
+      {/* Spinner */}
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />
     </div>
   </div>
 );

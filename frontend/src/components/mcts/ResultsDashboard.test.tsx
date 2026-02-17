@@ -9,8 +9,14 @@ import { ResultsDashboard } from './ResultsDashboard';
 import { useMCTSCalibration } from '@/hooks/useMCTSCalibration';
 import type { MCTSEvaluateResponse, MCTSSearchResponse } from '@/types/mcts';
 
-// Mock the hook
+// Mock the hooks
 vi.mock('@/hooks/useMCTSCalibration');
+vi.mock('@/api/mctsHooks', () => ({
+  useMCTSExport: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+}));
 
 // Mock Plotly
 vi.mock('react-plotly.js', () => ({
@@ -35,7 +41,7 @@ describe('ResultsDashboard', () => {
     densityCurve: [0, 0.2, 0.4, 0.6, 0.8, 1.0],
     dmin: 0.05,
     dmax: 1.85,
-    densityRange: 1.80,
+    densityRange: 1.8,
     gamma: 2.2,
     qualityScore: 0.9,
   };
@@ -141,6 +147,8 @@ describe('ResultsDashboard', () => {
 
     render(<ResultsDashboard />);
 
-    expect(screen.getByRole('button', { name: /Export Results/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Export Results/i })
+    ).toBeInTheDocument();
   });
 });

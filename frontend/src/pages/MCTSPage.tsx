@@ -11,6 +11,16 @@ import { RecommendationCard } from '@/components/mcts/RecommendationCard';
 import { logger } from '@/lib/logger';
 
 /**
+ * Generate a stable key from recommendation parameters
+ */
+function generateRecommendationKey(parameters: Record<string, number>): string {
+  const sortedEntries = Object.entries(parameters).sort(([a], [b]) =>
+    a.localeCompare(b)
+  );
+  return sortedEntries.map(([key, value]) => `${key}:${value}`).join('|');
+}
+
+/**
  * MCTS calibration search page
  */
 export const MCTSPage: FC = () => {
@@ -26,7 +36,9 @@ export const MCTSPage: FC = () => {
     logger.debug('MCTSPage: mounted');
   }, []);
 
-  const handleUseRecommendation = async (parameters: Record<string, number>): Promise<void> => {
+  const handleUseRecommendation = async (
+    parameters: Record<string, number>
+  ): Promise<void> => {
     try {
       await evaluateParameters(parameters);
     } catch (error) {
@@ -38,10 +50,12 @@ export const MCTSPage: FC = () => {
     <div className="flex flex-col gap-6 p-6" data-testid="mcts-page">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">MCTS Calibration Search</h1>
+        <h1 className="text-2xl font-semibold text-foreground">
+          MCTS Calibration Search
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Use Monte Carlo Tree Search to find optimal calibration parameters based on your
-          paper type, UV source, and target aesthetics.
+          Use Monte Carlo Tree Search to find optimal calibration parameters
+          based on your paper type, UV source, and target aesthetics.
         </p>
       </div>
 
@@ -63,7 +77,9 @@ export const MCTSPage: FC = () => {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Recommendations</h2>
+              <h2 className="text-lg font-semibold text-foreground">
+                Recommendations
+              </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Pre-computed parameter sets for common scenarios
               </p>
@@ -78,9 +94,9 @@ export const MCTSPage: FC = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {recommendations.map((rec, index) => (
+            {recommendations.map((rec) => (
               <RecommendationCard
-                key={index}
+                key={generateRecommendationKey(rec.parameters)}
                 recommendation={rec}
                 onUse={handleUseRecommendation}
               />

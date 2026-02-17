@@ -16,7 +16,7 @@
  * No hardcoded values — all options come from the store constants.
  */
 
-import { type FC, useCallback, useMemo } from 'react';
+import { type FC, useCallback, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 import { useStore } from '@/stores';
@@ -24,6 +24,8 @@ import {
   type ChemistryRecipe,
   type PaperSize,
   STANDARD_PAPER_SIZES,
+  TEMPERATURE_MAX,
+  TEMPERATURE_MIN,
 } from '@/stores/slices/chemistrySlice';
 
 export interface ChemistryCalculatorProps {
@@ -54,7 +56,42 @@ const RecipeOutput: FC<{ recipe: ChemistryRecipe }> = ({ recipe }) => (
     className="space-y-4 rounded-lg border bg-card p-5"
     data-testid="recipe-output"
   >
-    <h3 className="text-lg font-semibold">Calculated Recipe</h3>
+    <div className="flex items-start justify-between gap-3">
+      <h3 className="text-lg font-semibold">Calculated Recipe</h3>
+      {recipe.isStale && (
+        <div
+          className="flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
+          data-testid="recipe-stale-badge"
+        >
+          <svg
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          Outdated
+        </div>
+      )}
+    </div>
+    {recipe.isStale && (
+      <div
+        className="rounded-md border-l-4 border-amber-400 bg-amber-50 p-3 dark:bg-amber-900/20"
+        data-testid="recipe-stale-warning"
+      >
+        <p className="text-sm text-amber-800 dark:text-amber-300">
+          Recipe is outdated. Input parameters have changed — click Calculate to
+          update.
+        </p>
+      </div>
+    )}
 
     <div className="grid gap-3 sm:grid-cols-2">
       <RecipeRow
@@ -131,6 +168,9 @@ RecipeRow.displayName = 'RecipeRow';
 export const ChemistryCalculator: FC<ChemistryCalculatorProps> = ({
   className,
 }) => {
+  // --- Local state for validation ---
+  const [temperatureError, setTemperatureError] = useState<string | null>(null);
+
   // --- Store selectors ---
   const paperSize = useStore((s) => s.chemistry.paperSize);
   const customSizes = useStore((s) => s.chemistry.customSizes);
@@ -176,7 +216,27 @@ export const ChemistryCalculator: FC<ChemistryCalculatorProps> = ({
   const handleReset = useCallback(() => {
     logger.debug('ChemistryCalculator: Reset pressed');
     resetChemistry();
+    setTemperatureError(null);
   }, [resetChemistry]);
+
+  const handleTemperatureChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = Number(e.target.value);
+
+      // Validate temperature range
+      if (value < TEMPERATURE_MIN || value > TEMPERATURE_MAX) {
+        setTemperatureError(
+          `Temperature must be between ${TEMPERATURE_MIN}°C and ${TEMPERATURE_MAX}°C`
+        );
+      } else {
+        setTemperatureError(null);
+      }
+
+      // Update store (store will clamp the value)
+      setDeveloper({ temperatureC: value });
+    },
+    [setDeveloper]
+  );
 
   const ptPercent = Math.round(metalRatio * 100);
   const pdPercent = 100 - ptPercent;
@@ -320,15 +380,29 @@ export const ChemistryCalculator: FC<ChemistryCalculatorProps> = ({
             <input
               id="dev-temp"
               type="number"
-              min={15}
-              max={50}
+              min={TEMPERATURE_MIN}
+              max={TEMPERATURE_MAX}
               value={developer.temperatureC}
-              onChange={(e) =>
-                setDeveloper({ temperatureC: Number(e.target.value) })
-              }
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              onChange={handleTemperatureChange}
+              className={cn(
+                'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2',
+                temperatureError
+                  ? 'border-destructive focus:ring-destructive'
+                  : 'focus:ring-primary'
+              )}
               data-testid="developer-temp-input"
+              aria-invalid={temperatureError ? true : false}
+              aria-describedby={temperatureError ? 'temp-error' : undefined}
             />
+            {temperatureError && (
+              <p
+                id="temp-error"
+                className="mt-1 text-xs text-destructive"
+                data-testid="temp-error-message"
+              >
+                {temperatureError}
+              </p>
+            )}
           </div>
         </div>
       </fieldset>

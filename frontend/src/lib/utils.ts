@@ -287,3 +287,27 @@ export function createEventEmitter<Events extends Record<string, unknown>>(): {
     },
   };
 }
+
+/**
+ * Convert snake_case to Title Case
+ * Useful for converting enum values to human-readable labels
+ *
+ * @example
+ * formatSnakeCaseToTitle('pure_platinum') // 'Pure Platinum'
+ * formatSnakeCaseToTitle('pt_pd_mix') // 'Pt Pd Mix'
+ * formatSnakeCaseToTitle('na2_process') // 'Na2 Process'
+ */
+export function formatSnakeCaseToTitle(value: string): string {
+  return value
+    .split('_')
+    .map((word) => {
+      // Preserve known acronyms in uppercase
+      const uppercased = word.toUpperCase();
+      if (['NA2', 'UV', 'RGB', 'LAB', 'PT', 'PD'].includes(uppercased)) {
+        return uppercased;
+      }
+      // Title case for regular words
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}

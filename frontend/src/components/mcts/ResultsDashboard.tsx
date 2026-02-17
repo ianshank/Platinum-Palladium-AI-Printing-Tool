@@ -7,6 +7,7 @@ import { type FC } from 'react';
 import Plot from 'react-plotly.js';
 import { cn } from '@/lib/utils';
 import { useMCTSCalibration } from '@/hooks/useMCTSCalibration';
+import { useMCTSExport } from '@/api/mctsHooks';
 import { Button } from '@/components/ui/Button';
 
 export interface ResultsDashboardProps {
@@ -18,6 +19,7 @@ export interface ResultsDashboardProps {
  */
 export const ResultsDashboard: FC<ResultsDashboardProps> = ({ className }) => {
   const { currentResult, evaluateResult } = useMCTSCalibration();
+  const exportMutation = useMCTSExport();
 
   const result = currentResult ?? null;
   const evaluation = evaluateResult ?? null;
@@ -32,7 +34,9 @@ export const ResultsDashboard: FC<ResultsDashboardProps> = ({ className }) => {
         data-testid="results-placeholder"
       >
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-muted-foreground">No Results Yet</h3>
+          <h3 className="text-lg font-semibold text-muted-foreground">
+            No Results Yet
+          </h3>
           <p className="mt-2 text-sm text-muted-foreground">
             Configure parameters and run a search to see results
           </p>
@@ -50,12 +54,17 @@ export const ResultsDashboard: FC<ResultsDashboardProps> = ({ className }) => {
 
   return (
     <div
-      className={cn('flex flex-col gap-6 rounded-lg border border-border bg-card p-6', className)}
+      className={cn(
+        'flex flex-col gap-6 rounded-lg border border-border bg-card p-6',
+        className
+      )}
       data-testid="results-dashboard"
     >
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Search Results</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            Search Results
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Optimal parameters and predicted density curve
           </p>
@@ -73,7 +82,9 @@ export const ResultsDashboard: FC<ResultsDashboardProps> = ({ className }) => {
       {/* Quality Score Gauge */}
       <div className="flex flex-col gap-2 rounded-md bg-muted/50 p-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-foreground">Quality Score</span>
+          <span className="text-sm font-medium text-foreground">
+            Quality Score
+          </span>
           <span className="text-2xl font-bold text-foreground">
             {(qualityScore * 100).toFixed(1)}%
           </span>
@@ -88,7 +99,9 @@ export const ResultsDashboard: FC<ResultsDashboardProps> = ({ className }) => {
 
       {/* Predicted Density Curve */}
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium text-foreground">Predicted Density Curve</h3>
+        <h3 className="text-sm font-medium text-foreground">
+          Predicted Density Curve
+        </h3>
         <div className="rounded-md border border-border">
           <Plot
             data={[
@@ -132,13 +145,19 @@ export const ResultsDashboard: FC<ResultsDashboardProps> = ({ className }) => {
       {/* Optimal Parameters Table */}
       {Object.keys(parameters).length > 0 && (
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium text-foreground">Optimal Parameters</h3>
+          <h3 className="text-sm font-medium text-foreground">
+            Optimal Parameters
+          </h3>
           <div className="overflow-hidden rounded-md border border-border">
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium text-foreground">Parameter</th>
-                  <th className="px-4 py-2 text-right font-medium text-foreground">Value</th>
+                  <th className="px-4 py-2 text-left font-medium text-foreground">
+                    Parameter
+                  </th>
+                  <th className="px-4 py-2 text-right font-medium text-foreground">
+                    Value
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -207,8 +226,21 @@ export const ResultsDashboard: FC<ResultsDashboardProps> = ({ className }) => {
       )}
 
       {/* Export Button */}
-      <Button variant="outline" className="w-full">
-        Export Results
+      <Button
+        variant="outline"
+        className="w-full"
+        onClick={() => {
+          if (parameters && Object.keys(parameters).length > 0) {
+            exportMutation.mutate({ parameters, format: 'json' });
+          }
+        }}
+        disabled={
+          !parameters ||
+          Object.keys(parameters).length === 0 ||
+          exportMutation.isPending
+        }
+      >
+        {exportMutation.isPending ? 'Exporting...' : 'Export Results'}
       </Button>
     </div>
   );

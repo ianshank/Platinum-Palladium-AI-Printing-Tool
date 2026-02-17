@@ -3,6 +3,7 @@
  * Combines store state with API operations for easy component integration
  */
 
+import { useEffect } from 'react';
 import { useStore } from '@/stores';
 import {
   useMCTSEvaluate,
@@ -19,10 +20,13 @@ import { logger } from '@/lib/logger';
  * Provides unified interface for MCTS search, evaluation, and training
  */
 export function useMCTSCalibration() {
-  // Store state
+  // Store state and actions
   const store = useStore((state) => state.mcts);
   const setSearchConfig = useStore((state) => state.mcts.setSearchConfig);
   const resetSearch = useStore((state) => state.mcts.resetSearch);
+  const setStatus = useStore((state) => state.mcts.setStatus);
+  const setError = useStore((state) => state.mcts.setError);
+  const setRecommendations = useStore((state) => state.mcts.setRecommendations);
 
   // API hooks
   const searchMutation = useMCTSSearch();
@@ -35,10 +39,37 @@ export function useMCTSCalibration() {
     { enabled: false } // Only fetch when explicitly requested
   );
 
+  // Sync query data to store
+  useEffect(() => {
+    if (statusQuery.data) {
+      setStatus(statusQuery.data);
+      setError(null);
+    }
+  }, [statusQuery.data, setStatus, setError]);
+
+  useEffect(() => {
+    if (statusQuery.error) {
+      logger.error('Failed to get MCTS status', {
+        error: statusQuery.error.message,
+      });
+      setError(
+        statusQuery.error.response?.data?.message ?? statusQuery.error.message
+      );
+    }
+  }, [statusQuery.error, setError]);
+
+  useEffect(() => {
+    if (recommendationsQuery.data) {
+      setRecommendations(recommendationsQuery.data);
+    }
+  }, [recommendationsQuery.data, setRecommendations]);
+
   /**
    * Run MCTS search with current or provided configuration
    */
-  const runSearch = async (config?: Partial<MCTSSearchRequest>): Promise<void> => {
+  const runSearch = async (
+    config?: Partial<MCTSSearchRequest>
+  ): Promise<void> => {
     try {
       const searchConfig = config
         ? { ...store.searchConfig, ...config }
@@ -98,6 +129,7 @@ export function useMCTSCalibration() {
   return {
     // State
     ...store,
+    recommendations: recommendationsQuery.data ?? [],
     engineStatus: statusQuery.data ?? null,
     isEngineReady: statusQuery.data?.engineReady ?? false,
     isTorchAvailable: statusQuery.data?.torchAvailable ?? false,

@@ -30,7 +30,6 @@ class TreeNode:
         "visit_count",
         "value_sum",
         "prior",
-        "_is_expanded",
     )
 
     def __init__(
@@ -55,7 +54,6 @@ class TreeNode:
         self.visit_count = 0
         self.value_sum = 0.0
         self.prior = prior
-        self._is_expanded = False
 
     @property
     def is_leaf(self) -> bool:

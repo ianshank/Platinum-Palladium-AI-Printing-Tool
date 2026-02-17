@@ -35,8 +35,8 @@ import { logger } from '@/lib/logger';
 export const mctsQueryKeys = {
   all: ['mcts'] as const,
   status: () => [...mctsQueryKeys.all, 'status'] as const,
-  recommendations: (paperType?: string) =>
-    [...mctsQueryKeys.all, 'recommendations', paperType] as const,
+  recommendations: (paperType?: string, limit?: number) =>
+    [...mctsQueryKeys.all, 'recommendations', paperType, limit] as const,
   search: (id: string) => [...mctsQueryKeys.all, 'search', id] as const,
   trainingStatus: (sessionId: string) =>
     [...mctsQueryKeys.all, 'training', sessionId] as const,
@@ -51,24 +51,9 @@ export function useMCTSStatus(
     'queryKey' | 'queryFn'
   >
 ): ReturnType<typeof useQuery<MCTSStatusResponse, AxiosError<ApiError>>> {
-  const setStatus = useStore((state) => state.mcts.setStatus);
-  const setError = useStore((state) => state.mcts.setError);
-
   return useQuery({
     queryKey: mctsQueryKeys.status(),
-    queryFn: async () => {
-      try {
-        const data = await mctsApi.getStatus();
-        setStatus(data);
-        setError(null);
-        return data;
-      } catch (error) {
-        const axiosError = error as AxiosError<ApiError>;
-        logger.error('Failed to get MCTS status', { error: axiosError.message });
-        setError(axiosError.response?.data?.message ?? axiosError.message);
-        throw error;
-      }
-    },
+    queryFn: () => mctsApi.getStatus(),
     staleTime: 60000, // 1 minute
     ...options,
   });
@@ -188,15 +173,9 @@ export function useMCTSRecommendations(
     'queryKey' | 'queryFn'
   >
 ) {
-  const setRecommendations = useStore((state) => state.mcts.setRecommendations);
-
   return useQuery({
-    queryKey: mctsQueryKeys.recommendations(paperType),
-    queryFn: async () => {
-      const data = await mctsApi.getRecommendations(paperType, limit);
-      setRecommendations(data);
-      return data;
-    },
+    queryKey: mctsQueryKeys.recommendations(paperType, limit),
+    queryFn: () => mctsApi.getRecommendations(paperType, limit),
     staleTime: 300000, // 5 minutes
     ...options,
   });
@@ -295,7 +274,8 @@ export function useMCTSFeedback(
   const addToast = useStore((state) => state.ui.addToast);
 
   return useMutation({
-    mutationFn: (feedback: MCTSFeedbackRequest) => mctsApi.submitFeedback(feedback),
+    mutationFn: (feedback: MCTSFeedbackRequest) =>
+      mctsApi.submitFeedback(feedback),
     onSuccess: (data) => {
       logger.info('Feedback submitted successfully');
       addToast({

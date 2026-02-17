@@ -14,7 +14,7 @@ import {
 import { logger } from '@/lib/logger';
 import type { CurveData } from '@/types/models';
 import { Activity, BarChart, CheckCircle2, Printer, Scan } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatSnakeCaseToTitle } from '@/lib/utils';
 // import { useToast } from '@/components/ui/use-toast'; // Assuming it exists
 
 // Steps definition
@@ -88,7 +88,10 @@ export function CalibrationWizard() {
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Process Setup</h2>
             <div>
-              <label htmlFor="paper-type" className="mb-1 block text-sm font-medium">
+              <label
+                htmlFor="paper-type"
+                className="mb-1 block text-sm font-medium"
+              >
                 Paper Type
               </label>
               <Input
@@ -101,7 +104,10 @@ export function CalibrationWizard() {
               />
             </div>
             <div>
-              <label htmlFor="exposure-time" className="mb-1 block text-sm font-medium">
+              <label
+                htmlFor="exposure-time"
+                className="mb-1 block text-sm font-medium"
+              >
                 Exposure Time (s)
               </label>
               <Input
@@ -122,15 +128,109 @@ export function CalibrationWizard() {
         );
       case 1: // Print
         return (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Print Target</h2>
-            <p>
-              Please print the standard 21-step Stouffer wedge on your
-              sensitized paper.
-            </p>
-            <p>1. Coat paper with {data.chemistry_type || 'chemistry'}.</p>
-            <p>2. Expose for {data.exposure_time} seconds.</p>
-            <p>3. Develop and dry.</p>
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold">Print Target</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Follow these steps to create a calibration print for analysis.
+              </p>
+            </div>
+
+            <div className="rounded-lg border bg-muted/30 p-6">
+              <h3 className="mb-4 text-base font-medium">Target Information</h3>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                    1
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">Download or prepare target</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Use a standard 21-step Stouffer wedge or similar
+                      calibration target. Print this on transparency film to
+                      create your digital negative.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                    2
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">Coat your paper</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Coat {data.paper_type || 'your paper'} with{' '}
+                      {data.chemistry_type
+                        ? formatSnakeCaseToTitle(data.chemistry_type)
+                        : 'your chosen chemistry'}
+                      . Allow to dry in darkness.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                    3
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">Expose</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Place the calibration target on the coated paper and
+                      expose for{' '}
+                      <span className="font-semibold">
+                        {data.exposure_time} seconds
+                      </span>
+                      {data.exposure_time === 0 && (
+                        <span className="text-amber-600">
+                          {' '}
+                          (recommended: 180-300 seconds)
+                        </span>
+                      )}
+                      .
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                    4
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">Develop and dry</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Develop the print according to your standard process.
+                      Allow the print to fully dry before scanning.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4 dark:bg-blue-900/20">
+              <h4 className="mb-1 flex items-center gap-2 text-sm font-semibold text-blue-900 dark:text-blue-300">
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Important Notes
+              </h4>
+              <ul className="mt-2 space-y-1 text-sm text-blue-800 dark:text-blue-200">
+                <li>
+                  • Maintain consistent coating, exposure, and development
+                  processes
+                </li>
+                <li>• Record all parameters for future reference</li>
+                <li>• Ensure the print is completely dry before proceeding</li>
+              </ul>
+            </div>
+
             <div className="flex justify-between">
               <Button variant="outline" onClick={handleBack}>
                 Back

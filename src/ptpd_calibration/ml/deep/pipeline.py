@@ -348,8 +348,11 @@ class TrainingPipeline:
             for name, value in zip(param_names, combo, strict=True):
                 # Ensure proper type conversion for special fields
                 if name == "hidden_dims" and not isinstance(value, list):
-                    # Convert tuple or single values to list
-                    config_dict[name] = list(value) if hasattr(value, '__iter__') and not isinstance(value, str) else [int(value)]
+                    # Convert tuple or single values to list with proper int coercion
+                    if hasattr(value, "__iter__") and not isinstance(value, str):
+                        config_dict[name] = [int(x) for x in value]
+                    else:
+                        config_dict[name] = [int(value)]
                 elif name == "output_dir" and value is not None and not isinstance(value, Path):
                     config_dict[name] = Path(str(value))
                 else:

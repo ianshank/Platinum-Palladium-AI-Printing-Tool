@@ -193,12 +193,13 @@ export const mctsApi = {
     parameters: Record<string, number>,
     format: MCTSExportFormat = 'json'
   ): Promise<unknown> => {
-    const response = await apiClient.post<unknown>('/api/mcts/export', null, {
-      params: {
-        parameters: JSON.stringify(parameters),
-        format,
-      },
-    });
+    const response = await apiClient.post<unknown>(
+      '/api/mcts/export',
+      parameters,
+      {
+        params: { format },
+      }
+    );
 
     return response.data;
   },
