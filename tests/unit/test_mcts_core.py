@@ -16,28 +16,6 @@ from ptpd_calibration.mcts.config import (
     PhysicsConstants,
 )
 
-# Types imports
-from ptpd_calibration.mcts.types import (
-    CalibrationAction,
-    CalibrationState,
-    SearchResult,
-    SimulationResult,
-    TrainingExample,
-    TrainingMetrics,
-)
-
-# Simulator imports
-from ptpd_calibration.mcts.simulator import ExtendedProcessSimulator, ProcessParameters
-
-# Quality scorer imports
-from ptpd_calibration.mcts.quality import QualityScorer
-
-# Tree imports
-from ptpd_calibration.mcts.tree import TreeNode
-
-# Engine imports
-from ptpd_calibration.mcts.engine import MCTSEngine
-
 # Constraints imports
 from ptpd_calibration.mcts.constraints import (
     ActionPruner,
@@ -49,9 +27,30 @@ from ptpd_calibration.mcts.constraints import (
     ParameterBoundsConstraint,
 )
 
+# Engine imports
+from ptpd_calibration.mcts.engine import MCTSEngine
+
 # Export imports
 from ptpd_calibration.mcts.export import MCTSResultExporter
 
+# Quality scorer imports
+from ptpd_calibration.mcts.quality import QualityScorer
+
+# Simulator imports
+from ptpd_calibration.mcts.simulator import ExtendedProcessSimulator, ProcessParameters
+
+# Tree imports
+from ptpd_calibration.mcts.tree import TreeNode
+
+# Types imports
+from ptpd_calibration.mcts.types import (
+    CalibrationAction,
+    CalibrationState,
+    SearchResult,
+    SimulationResult,
+    TrainingExample,
+    TrainingMetrics,
+)
 
 # =============================================================================
 # 1. Config Tests
@@ -315,7 +314,7 @@ class TestCalibrationState:
         assert len(state.decided_parameters) == 0
 
     def test_apply_action_to_terminal(self):
-        """Test applying action to terminal state returns same state."""
+        """Test applying action to terminal state raises ValueError."""
         state = CalibrationState(
             decided_parameters={"metal_ratio": 0.5},
             remaining_dimensions=[],
@@ -326,11 +325,11 @@ class TestCalibrationState:
             value=1.5,
             bin_index=5,
         )
-        new_state = state.apply_action(action)
-        assert new_state is state
+        with pytest.raises(ValueError, match="terminal"):
+            state.apply_action(action)
 
     def test_apply_invalid_action(self):
-        """Test applying action with dimension not in remaining_dimensions."""
+        """Test applying action with dimension not in remaining_dimensions raises ValueError."""
         state = CalibrationState(
             decided_parameters={},
             remaining_dimensions=["metal_ratio"],
@@ -341,8 +340,8 @@ class TestCalibrationState:
             value=1.5,
             bin_index=5,
         )
-        new_state = state.apply_action(action)
-        assert new_state is state
+        with pytest.raises(ValueError, match="Invalid action dimension"):
+            state.apply_action(action)
 
 
 class TestSimulationResult:
@@ -1194,8 +1193,12 @@ class TestActionPruner:
         # Create actions, some invalid
         actions = [
             CalibrationAction(dimension="metal_ratio", value=0.5, bin_index=10),  # Valid
-            CalibrationAction(dimension="metal_ratio", value=-0.5, bin_index=0),  # Invalid (below min)
-            CalibrationAction(dimension="metal_ratio", value=1.5, bin_index=20),  # Invalid (above max)
+            CalibrationAction(
+                dimension="metal_ratio", value=-0.5, bin_index=0
+            ),  # Invalid (below min)
+            CalibrationAction(
+                dimension="metal_ratio", value=1.5, bin_index=20
+            ),  # Invalid (above max)
         ]
 
         pruned = pruner.prune_actions(state, actions)

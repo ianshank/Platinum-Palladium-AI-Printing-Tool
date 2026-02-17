@@ -145,29 +145,24 @@ class TestCalibrationState:
         assert len(new_state.remaining_dimensions) == 2
 
     def test_apply_action_to_terminal_state(self) -> None:
-        """Test applying an action to a terminal state returns same state."""
+        """Test applying an action to a terminal state raises ValueError."""
         state = CalibrationState(
             decided_parameters={"metal_ratio": 0.5},
             remaining_dimensions=[],
             depth=1,
         )
         action = CalibrationAction(dimension="exposure_time", value=180.0, bin_index=5)
-        new_state = state.apply_action(action)
 
-        # Should return original state since it's terminal
-        assert new_state.is_terminal
-        assert new_state.depth == state.depth
+        with pytest.raises(ValueError, match="terminal"):
+            state.apply_action(action)
 
     def test_apply_action_invalid_dimension(self) -> None:
-        """Test applying an action for dimension not in remaining list."""
-        state = CalibrationState(
-            remaining_dimensions=["metal_ratio", "coating_weight"]
-        )
+        """Test applying an action for dimension not in remaining list raises ValueError."""
+        state = CalibrationState(remaining_dimensions=["metal_ratio", "coating_weight"])
         action = CalibrationAction(dimension="exposure_time", value=180.0, bin_index=5)
-        new_state = state.apply_action(action)
 
-        # Should return original state
-        assert "exposure_time" not in new_state.decided_parameters
+        with pytest.raises(ValueError, match="Invalid action dimension"):
+            state.apply_action(action)
 
     def test_state_preserves_metadata(self) -> None:
         """Test that paper_type and uv_source are preserved across actions."""

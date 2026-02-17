@@ -54,21 +54,23 @@ class CalibrationState(BaseModel):
         """Create new state by applying an action.
 
         Args:
-            action: The action to apply
+            action: The action to apply.
 
         Returns:
-            New CalibrationState with action applied
+            New CalibrationState with action applied.
+
+        Raises:
+            ValueError: If the state is terminal or the action dimension is invalid
+                for the current state.
         """
         if self.is_terminal:
-            logger.warning("Attempting to apply action to terminal state")
-            return self
+            raise ValueError("Cannot apply action to terminal CalibrationState.")
 
         if action.dimension not in self.remaining_dimensions:
-            logger.warning(
-                f"Action dimension '{action.dimension}' not in remaining dimensions: "
-                f"{self.remaining_dimensions}"
+            raise ValueError(
+                f"Invalid action dimension '{action.dimension}' for current "
+                f"CalibrationState. Remaining: {self.remaining_dimensions}"
             )
-            return self
 
         new_decided = {**self.decided_parameters, action.dimension: action.value}
         new_remaining = [d for d in self.remaining_dimensions if d != action.dimension]
@@ -112,7 +114,9 @@ class SimulationResult(BaseModel):
 
     def __repr__(self) -> str:
         """String representation of simulation result."""
-        violations_str = f", {len(self.constraint_violations)} violations" if self.constraint_violations else ""
+        violations_str = (
+            f", {len(self.constraint_violations)} violations" if self.constraint_violations else ""
+        )
         return (
             f"SimulationResult(quality={self.quality_score:.3f}, "
             f"dmax={self.dmax:.2f}, gamma={self.gamma:.2f}{violations_str})"

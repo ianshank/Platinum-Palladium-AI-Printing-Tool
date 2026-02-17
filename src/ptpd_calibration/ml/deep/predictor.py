@@ -300,8 +300,8 @@ class DeepCurvePredictor:
             uncertainty=uncertainty,
             confidence=confidence,
             metadata={
-                "model_type": type(self.model).__name__ if self.model else "unknown",
-                "num_features": self.encoder.num_features if self.encoder else 0,
+                "model_type": type(self.model).__name__,
+                "num_features": self.encoder.num_features,
                 "lut_size": len(curve),
             },
         )
