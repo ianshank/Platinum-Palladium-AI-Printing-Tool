@@ -130,10 +130,7 @@ class StateEncoder(nn.Module):
         self._depth_dim = self._num_params + 1
         self.feature_dim = self._continuous_dim + self._mask_dim + self._depth_dim
 
-        logger.debug(
-            f"StateEncoder: {self._num_params} params, "
-            f"feature_dim={self.feature_dim}"
-        )
+        logger.debug(f"StateEncoder: {self._num_params} params, " f"feature_dim={self.feature_dim}")
 
     @property
     def output_dim(self) -> int:
@@ -192,9 +189,7 @@ class StateEncoder(nn.Module):
         Returns:
             Feature tensor of shape (batch_size, feature_dim)
         """
-        encoded = [
-            self.encode_state(params, depth) for params, depth in states
-        ]
+        encoded = [self.encode_state(params, depth) for params, depth in states]
         return torch.stack(encoded)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -243,10 +238,7 @@ class ValueNetwork(nn.Module):
             final_activation="sigmoid",
         )
 
-        logger.debug(
-            f"ValueNetwork: input={input_dim}, "
-            f"hidden={dims}, output=1"
-        )
+        logger.debug(f"ValueNetwork: input={input_dim}, " f"hidden={dims}, output=1")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Predict value for state features.
@@ -299,8 +291,7 @@ class PolicyNetwork(nn.Module):
         )
 
         logger.debug(
-            f"PolicyNetwork: input={input_dim}, "
-            f"hidden={dims}, actions={self.num_actions}"
+            f"PolicyNetwork: input={input_dim}, " f"hidden={dims}, actions={self.num_actions}"
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -451,7 +442,7 @@ class DualNetwork(nn.Module):
         l2_reg = torch.tensor(0.0, device=state_features.device)
         if wd > 0:
             for param in self.parameters():
-                l2_reg = l2_reg + torch.sum(param ** 2)
+                l2_reg = l2_reg + torch.sum(param**2)
             l2_reg = wd * l2_reg
 
         total_loss = value_loss + policy_loss + l2_reg

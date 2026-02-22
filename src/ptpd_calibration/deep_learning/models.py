@@ -73,7 +73,7 @@ class DetectedPatch(BaseModel):
     @classmethod
     def validate_bbox(cls, v: Any) -> tuple[int, int, int, int]:
         """Validate and convert bounding box."""
-        if isinstance(v, (list, np.ndarray)):
+        if isinstance(v, list | np.ndarray):
             return tuple(int(x) for x in v[:4])
         return v
 

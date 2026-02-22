@@ -110,7 +110,7 @@ class ImageProcessor:
         Returns:
             ProcessingResult with loaded image and metadata
         """
-        if isinstance(source, (str, Path)):
+        if isinstance(source, str | Path):
             img = Image.open(source)
             original_format = img.format
         elif isinstance(source, bytes):

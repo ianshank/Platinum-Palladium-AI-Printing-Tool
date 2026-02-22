@@ -76,7 +76,7 @@ function createMockRecipe(): {
 }
 
 vi.mock('@/stores', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock store selector with test state
+   
   useStore: (selector: (state: any) => any) =>
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     selector({ chemistry: mockChemistryState }),
@@ -373,7 +373,7 @@ describe('ChemistryCalculator', () => {
   describe('Recipe without contrast agent', () => {
     it('hides contrast section when no contrast agent', () => {
       const noContrastRecipe = createMockRecipe();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any -- intentionally removing property for test
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- intentionally removing property for test
       (noContrastRecipe as any).contrastAgent = undefined;
       mockChemistryState.recipe = noContrastRecipe;
       render(<ChemistryCalculator />);

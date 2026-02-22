@@ -86,18 +86,21 @@ uvicorn src.ptpd_calibration.api.server:app --reload
 
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ### Tests
 
 ```bash
-# Backend
-pytest tests/unit/ tests/sanity/ --timeout=15 -q
+# Backend (API tests — fast, no optional deps required)
+pytest tests/api/ -q
+
+# Full backend suite
+pytest tests/ -q
 
 # Frontend
-cd frontend && npm test
+cd frontend && pnpm test
 ```
 
 ## Project Structure
@@ -128,12 +131,25 @@ cd frontend && npm test
 
 ## Next Steps
 
+### Done ✅
+- [x] React 18 + TypeScript + Zustand frontend (15/15 components migrated)
+- [x] Playwright e2e tests (9/9), vitest (726 passing), pytest API (104 passing)
+- [x] AlphaZero-style MCTS calibration engine (5,181 LOC)
+- [x] Multi-agent AI orchestration system (6,155 LOC)
+- [x] Code review hardening — 84% backend test coverage, 726 frontend tests
+- [x] Keyboard shortcuts (Ctrl+1-5 navigation, Ctrl+Z/Y undo/redo)
+- [x] Undo/redo stack for curve editing
+- [x] Equivalence tests between legacy Gradio and React
+- [x] Mobile responsive layout
+
+### In Progress / Upcoming
 - [ ] MCTS API endpoints (search, training status, result retrieval)
 - [ ] Frontend MCTS dashboard with live search visualization
 - [ ] Batch processing queue with Celery + Redis
-- [ ] Visual regression tests with Playwright
+- [ ] Visual regression tests with Playwright snapshots
 - [ ] PWA offline mode
-- [ ] i18n support
+- [ ] i18n internationalization support
+- [ ] Agent observability: health checks, circuit breakers, metrics dashboard
 
 ## Requirements
 

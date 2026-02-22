@@ -470,9 +470,7 @@ class SessionLogger:
                         paper_stats["failed"] += 1
 
                     if record.exposure_time_minutes > 0:
-                        paper_stats["avg_exposure"].append(
-                            record.exposure_time_minutes
-                        )
+                        paper_stats["avg_exposure"].append(record.exposure_time_minutes)
             except Exception as e:
                 import logging
 

@@ -79,7 +79,7 @@ const mockExportMutate = vi.fn();
 
 // Mock useStore
 vi.mock('@/stores', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock store selector with test state
+   
   useStore: (selector: (state: any) => any) => {
     const state = {
       calibration: {

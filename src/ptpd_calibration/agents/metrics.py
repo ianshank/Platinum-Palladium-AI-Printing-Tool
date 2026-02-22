@@ -47,9 +47,7 @@ class MetricsSettings(BaseSettings):
     )
 
     # Export settings
-    export_format: str = Field(
-        default="prometheus", description="Export format (prometheus, json)"
-    )
+    export_format: str = Field(default="prometheus", description="Export format (prometheus, json)")
     include_timestamps: bool = Field(default=True, description="Include timestamps in export")
 
 
@@ -500,25 +498,18 @@ class MetricsRegistry:
         return {
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "counters": {
-                name: [
-                    {"value": s.value, "labels": s.labels}
-                    for s in counter.collect()
-                ]
+                name: [{"value": s.value, "labels": s.labels} for s in counter.collect()]
                 for name, counter in self._counters.items()
             },
             "gauges": {
-                name: [
-                    {"value": s.value, "labels": s.labels}
-                    for s in gauge.collect()
-                ]
+                name: [{"value": s.value, "labels": s.labels} for s in gauge.collect()]
                 for name, gauge in self._gauges.items()
             },
             "histograms": {
                 name: {
                     "buckets": histogram.buckets,
                     "samples": [
-                        {"value": s.value, "labels": s.labels}
-                        for s in histogram.collect()
+                        {"value": s.value, "labels": s.labels} for s in histogram.collect()
                     ],
                 }
                 for name, histogram in self._histograms.items()

@@ -4,7 +4,6 @@ Software Quality Engineering (SQE) subagent for test generation and validation.
 Creates test plans, generates test cases, and validates implementations.
 """
 
-
 from pydantic import BaseModel, Field
 
 from ptpd_calibration.agents.subagents.base import (

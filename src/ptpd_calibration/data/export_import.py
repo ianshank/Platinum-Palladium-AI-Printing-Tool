@@ -171,9 +171,9 @@ class DataExporter:
                     value = record.get(key)
                     if value is None:
                         row[key] = ""
-                    elif isinstance(value, (list, dict)):
+                    elif isinstance(value, list | dict):
                         row[key] = json.dumps(value)
-                    elif isinstance(value, (datetime, UUID)):
+                    elif isinstance(value, datetime | UUID):
                         row[key] = str(value)
                     else:
                         row[key] = value
@@ -308,7 +308,7 @@ class DataExporter:
         """Custom JSON serializer for non-standard types."""
         if isinstance(obj, datetime):
             return obj.isoformat()
-        elif isinstance(obj, (UUID, Path)):
+        elif isinstance(obj, UUID | Path):
             return str(obj)
         elif hasattr(obj, "model_dump"):
             return obj.model_dump()

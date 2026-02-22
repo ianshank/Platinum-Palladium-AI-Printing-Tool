@@ -4,7 +4,6 @@ Planner subagent for task decomposition and architecture planning.
 Generates C4-aligned plans with epics, stories, and acceptance criteria.
 """
 
-
 from pydantic import BaseModel, Field
 
 from ptpd_calibration.agents.subagents.base import (
@@ -168,9 +167,7 @@ class PlannerAgent(BaseSubagent):
                 metadata={
                     "num_milestones": len(plan.milestones),
                     "num_epics": sum(len(m.epics) for m in plan.milestones),
-                    "num_stories": sum(
-                        len(e.stories) for m in plan.milestones for e in m.epics
-                    ),
+                    "num_stories": sum(len(e.stories) for m in plan.milestones for e in m.epics),
                 },
                 artifacts=[
                     {

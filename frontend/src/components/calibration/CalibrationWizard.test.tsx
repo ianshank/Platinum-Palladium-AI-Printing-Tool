@@ -15,7 +15,7 @@ vi.mock('@/api/client', () => ({
 
 // Mock child components
 vi.mock('./ScanUpload', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock component with simplified props
+   
   ScanUpload: ({ onUploadComplete }: any) => (
     <div data-testid="scan-upload-mock">
       <button
@@ -41,7 +41,7 @@ vi.mock('./ScanUpload', () => ({
 }));
 
 vi.mock('@/components/curves/CurveEditor', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock component with simplified props
+   
   CurveEditor: ({ initialCurve }: any) => (
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- accessing mock prop
     <div data-testid="curve-editor-mock">Curve Editor: {initialCurve.name}</div>

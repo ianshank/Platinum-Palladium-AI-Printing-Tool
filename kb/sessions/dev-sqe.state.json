@@ -1,26 +1,47 @@
 {
-  "last_session_id": "session-code-review-hardening",
-  "last_timestamp": "2026-02-09T20:38:00Z",
-  "active_branch": "claude/scan-and-implement-Dq1Nl",
+  "last_session_id": "1771779535-039824300",
+  "last_timestamp": "2026-02-22T16:58:54.000Z",
+  "active_branch": "claude/compassionate-pike",
+  "git_commit": "5ac3a6e",
   "resume_pointers": {
-    "current_task": null,
-    "blocked_on": [],
-    "next_steps": [
-      "Sprint 1: Agent observability (health checks, circuit breakers, metrics)",
-      "Batch processing queue UI",
-      "Offline PWA mode",
-      "i18n internationalization support",
-      "Visual regression tests with Playwright"
+    "last_file_modified": "src/ptpd_calibration/api/server.py",
+    "last_test_file": "frontend/e2e/app.spec.ts",
+    "context_files": [
+      "src/ptpd_calibration/api/server.py",
+      "src/ptpd_calibration/core/types.py",
+      "src/ptpd_calibration/curves/parser.py",
+      "frontend/src/components/curves/CurveEditor.tsx",
+      "frontend/src/stores/slices/uiSlice.ts",
+      "frontend/e2e/app.spec.ts"
     ]
   },
-  "context_files": [
-    "frontend/src/hooks/useUndoRedo.ts",
-    "frontend/src/hooks/useKeyboardShortcuts.ts",
-    "frontend/src/components/curves/CurveEditor.tsx",
-    "frontend/src/__tests__/equivalence/setup.ts",
-    "frontend/src/__tests__/equivalence/CurveEditor.equiv.test.ts",
-    "frontend/src/config/index.ts"
-  ],
-  "implementation_status": "15/15 components migrated, all 5 gaps closed, code review hardening complete, 726 tests passing, 0 TS errors, build successful",
-  "test_status": "726 passed, 0 failed, ~80% coverage"
+  "implementation_status": {
+    "completed": [
+      "Fix CurveEditor adjustment_type 'none' -> 'brightness' (P0 HTTP-400 bug)",
+      "Fix uiSlice sidebarOpen default true -> false",
+      "Fix e2e test selectors (duplicate h1 scoped to main, focus-visible)",
+      "Backend Fix 1: analyze_densities empty densities guard -> HTTP 422",
+      "Backend Fix 2: create_calibration pydantic.ValidationError -> HTTP 422",
+      "Backend Fix 3: get_calibration UUID ValueError -> HTTP 422",
+      "Backend Fix 4: smooth_curve preserve_endpoints moved to __init__",
+      "Backend Fix 5: parse_quad_content raw_sections + active_channels validation",
+      "Backend Fix 6: CurveType enum SPLINE + POLYNOMIAL values added"
+    ],
+    "in_progress": [],
+    "blocked": [],
+    "ready_for_pr": ["claude/compassionate-pike"]
+  },
+  "test_status": {
+    "playwright_e2e": "9/9 passed",
+    "backend_pytest": "104 passed, 13 skipped, 0 failed",
+    "frontend_vitest": "726 passed, 0 failed",
+    "typecheck_errors": 0,
+    "lint_errors": 0,
+    "last_test_run": "2026-02-22T16:58:54.000Z"
+  },
+  "quality_checks": {
+    "lint": "pass",
+    "typecheck": "pass",
+    "format": "pass"
+  }
 }

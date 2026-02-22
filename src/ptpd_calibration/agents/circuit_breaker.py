@@ -320,9 +320,8 @@ class CircuitBreaker:
 
         # Check circuit state
         if self._state.state == CircuitState.OPEN:
-            retry_after = (
-                self.settings.cooldown_seconds
-                - (time.time() - self._state.last_failure_time)
+            retry_after = self.settings.cooldown_seconds - (
+                time.time() - self._state.last_failure_time
             )
 
             # Try fallback

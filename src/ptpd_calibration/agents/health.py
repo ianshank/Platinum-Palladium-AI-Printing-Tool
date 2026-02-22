@@ -512,9 +512,7 @@ class HealthChecker:
                 dependencies.append(
                     DependencyHealth(
                         name=result.name,
-                        dependency_type=type_mapping.get(
-                            result.name, DependencyType.DATABASE
-                        ),
+                        dependency_type=type_mapping.get(result.name, DependencyType.DATABASE),
                         status=HealthStatus.HEALTHY if result.healthy else HealthStatus.UNHEALTHY,
                         latency_ms=result.latency_ms,
                         message=result.message,
@@ -550,15 +548,9 @@ class HealthChecker:
         report = AgentHealthReport(
             status=status,
             timestamp=datetime.utcnow(),
-            llm_connected=any(
-                r.healthy for r in check_results if r.name == "llm_service"
-            ),
-            message_bus_active=any(
-                r.healthy for r in check_results if r.name == "message_bus"
-            ),
-            memory_system_active=any(
-                r.healthy for r in check_results if r.name == "memory_system"
-            ),
+            llm_connected=any(r.healthy for r in check_results if r.name == "llm_service"),
+            message_bus_active=any(r.healthy for r in check_results if r.name == "message_bus"),
+            memory_system_active=any(r.healthy for r in check_results if r.name == "memory_system"),
             memory_usage_mb=memory_mb,
             active_workflows=0,  # Would need orchestrator integration
             message_queue_depth=queue_depth,
