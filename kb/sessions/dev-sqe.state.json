@@ -3,6 +3,14 @@
   "last_timestamp": "2026-02-22T16:58:54.000Z",
   "active_branch": "claude/compassionate-pike",
   "git_commit": "5ac3a6e",
+  "context_files": [
+    "src/ptpd_calibration/api/server.py",
+    "src/ptpd_calibration/core/types.py",
+    "src/ptpd_calibration/curves/parser.py",
+    "frontend/src/components/curves/CurveEditor.tsx",
+    "frontend/src/stores/slices/uiSlice.ts",
+    "frontend/e2e/app.spec.ts"
+  ],
   "resume_pointers": {
     "last_file_modified": "src/ptpd_calibration/api/server.py",
     "last_test_file": "frontend/e2e/app.spec.ts",

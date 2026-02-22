@@ -3,6 +3,14 @@
   "last_timestamp": "2026-02-22T12:29:48.346Z",
   "active_branch": "claude/compassionate-pike",
   "git_commit": "5ac3a6e",
+  "context_files": [
+    "CHANGELOG.md",
+    "README.md",
+    "docs/architecture.md",
+    "frontend/package.json",
+    "frontend/.eslintrc.cjs",
+    "kb/handoffs/20260222-122948_pr-description.md"
+  ],
   "resume_pointers": {
     "last_check_run": "2026-02-22T12:29:48.346Z",
     "context_files": [
