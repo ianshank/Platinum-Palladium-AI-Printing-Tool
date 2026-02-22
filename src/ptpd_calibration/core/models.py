@@ -43,7 +43,7 @@ class PatchData(BaseModel):
     @classmethod
     def convert_to_tuple(cls, v: Any) -> tuple[float, float, float]:
         """Convert various inputs to tuple of floats."""
-        if isinstance(v, (list, np.ndarray)):
+        if isinstance(v, list | np.ndarray):
             return (float(v[0]), float(v[1]), float(v[2]))
         return v  # type: ignore[no-any-return]
 
