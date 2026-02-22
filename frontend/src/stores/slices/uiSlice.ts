@@ -50,7 +50,7 @@ export interface UISlice {
 
 const initialState = {
   activeTab: config.ui.defaultTab,
-  sidebarOpen: true,
+  sidebarOpen: false,
   isProcessing: false,
   isInitialized: false,
   theme: 'dark' as const,

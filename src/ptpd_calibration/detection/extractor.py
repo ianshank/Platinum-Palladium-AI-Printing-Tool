@@ -86,7 +86,7 @@ class DensityExtractor:
 
         # Get image info
         height, width = img_array.shape[:2]
-        source_path = image if isinstance(image, (Path, str)) else None
+        source_path = image if isinstance(image, Path | str) else None
         if isinstance(source_path, str):
             source_path = Path(source_path)
 
@@ -110,7 +110,7 @@ class DensityExtractor:
             return image
         if isinstance(image, Image.Image):
             return np.array(image)
-        if isinstance(image, (Path, str)):
+        if isinstance(image, Path | str):
             pil_img = Image.open(image)
             return np.array(pil_img)
         raise TypeError(f"Unsupported image type: {type(image)}")

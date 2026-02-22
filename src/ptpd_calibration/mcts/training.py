@@ -116,9 +116,7 @@ class ReplayBuffer:
             ValueError: If batch_size > buffer size
         """
         if batch_size > self.size:
-            raise ValueError(
-                f"Requested batch_size={batch_size} exceeds buffer size={self.size}"
-            )
+            raise ValueError(f"Requested batch_size={batch_size} exceeds buffer size={self.size}")
 
         return random.sample(list(self._buffer), batch_size)
 
@@ -272,8 +270,7 @@ class MCTSTrainer:
         if episode_quality > self._best_quality:
             self._best_quality = episode_quality
             logger.info(
-                f"New best quality: {self._best_quality:.4f} "
-                f"(episode {self._episode_count})"
+                f"New best quality: {self._best_quality:.4f} " f"(episode {self._episode_count})"
             )
 
         metrics = TrainingMetrics(
@@ -328,8 +325,7 @@ class MCTSTrainer:
                 callback(i, metrics)
 
         logger.info(
-            f"Training complete: {episodes} episodes, "
-            f"best_quality={self._best_quality:.4f}"
+            f"Training complete: {episodes} episodes, " f"best_quality={self._best_quality:.4f}"
         )
 
         return all_metrics
@@ -394,9 +390,9 @@ class MCTSTrainer:
         for name, param_range in DEFAULT_PARAMETER_RANGES.items():
             if param_range.step is not None:
                 # Discrete: sample from step grid
-                num_steps = int(
-                    (param_range.max_value - param_range.min_value) / param_range.step
-                ) + 1
+                num_steps = (
+                    int((param_range.max_value - param_range.min_value) / param_range.step) + 1
+                )
                 idx = random.randint(0, num_steps - 1)
                 params[name] = param_range.min_value + idx * param_range.step
             else:
@@ -510,7 +506,9 @@ class MCTSTrainer:
         self.optimizer.zero_grad()
 
         total_loss, value_loss, policy_loss = self.network.compute_loss(
-            features, values, policies,
+            features,
+            values,
+            policies,
         )
 
         total_loss.backward()

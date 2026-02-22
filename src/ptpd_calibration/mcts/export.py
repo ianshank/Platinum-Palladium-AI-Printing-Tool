@@ -121,9 +121,7 @@ class MCTSResultExporter:
             )
         except ImportError as e:
             logger.error("Failed to import CalibrationRecord - core.models not available")
-            raise ImportError(
-                "CalibrationRecord requires ptpd_calibration.core.models"
-            ) from e
+            raise ImportError("CalibrationRecord requires ptpd_calibration.core.models") from e
 
         logger.debug(f"Converting SearchResult {result.id} to CalibrationRecord")
 
@@ -153,9 +151,7 @@ class MCTSResultExporter:
             chemistry_type = ChemistryType.PLATINUM_PALLADIUM
 
         # Generate measured densities from predicted curve
-        measured_densities = self._generate_density_measurements(
-            result.predicted_curve
-        )
+        measured_densities = self._generate_density_measurements(result.predicted_curve)
 
         record = CalibrationRecord(
             id=result.id,

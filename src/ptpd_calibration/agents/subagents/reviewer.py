@@ -178,7 +178,9 @@ class ReviewerAgent(BaseSubagent):
                 metadata={
                     "overall_score": review.overall_score,
                     "num_issues": len(review.issues),
-                    "critical_issues": len([i for i in review.issues if i.severity == IssueSeverity.CRITICAL]),
+                    "critical_issues": len(
+                        [i for i in review.issues if i.severity == IssueSeverity.CRITICAL]
+                    ),
                     "approved": review.approved,
                 },
                 artifacts=[
@@ -518,7 +520,9 @@ Output as JSON array of strings:
             overall_score=score,
             scores=[
                 ReviewScore(dimension="Security", score=score, notes="Basic check performed"),
-                ReviewScore(dimension="Maintainability", score=score, notes="Basic check performed"),
+                ReviewScore(
+                    dimension="Maintainability", score=score, notes="Basic check performed"
+                ),
             ],
             issues=issues,
             strengths=["Code submitted for review"],

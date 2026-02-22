@@ -277,7 +277,7 @@ class StepWedgeAnalyzer:
         )
 
         # Handle path input
-        if isinstance(image, (str, Path)):
+        if isinstance(image, str | Path):
             result.source_path = Path(image)
 
         # Step 1: Detection and extraction

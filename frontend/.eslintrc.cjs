@@ -107,6 +107,23 @@ module.exports = {
     ],
   },
   overrides: [
+    // Playwright e2e tests — not included in tsconfig, disable typed linting
+    {
+      files: ['e2e/**/*.ts', 'e2e/**/*.spec.ts'],
+      extends: ['plugin:@typescript-eslint/disable-type-checked'],
+      parserOptions: {
+        project: null,
+      },
+      rules: {
+        '@typescript-eslint/no-floating-promises': 'off',
+        '@typescript-eslint/await-thenable': 'off',
+        '@typescript-eslint/no-misused-promises': 'off',
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
+      },
+    },
     // Test files
     {
       files: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx'],

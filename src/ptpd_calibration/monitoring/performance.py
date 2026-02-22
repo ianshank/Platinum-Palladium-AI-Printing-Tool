@@ -429,7 +429,9 @@ class ImageProcessingProfiler:
         self._lock = threading.RLock()
         logger.info("ImageProcessingProfiler initialized")
 
-    def profile_operation(self, func: Callable, *args: Any, **kwargs: Any) -> tuple[Any, dict[str, Any]]:
+    def profile_operation(
+        self, func: Callable, *args: Any, **kwargs: Any
+    ) -> tuple[Any, dict[str, Any]]:
         """
         Profile any operation and return result with profiling data.
 

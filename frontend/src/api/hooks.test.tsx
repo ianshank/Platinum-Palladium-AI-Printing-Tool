@@ -93,7 +93,7 @@ vi.mock('./client', () => ({
 }));
 
 vi.mock('@/stores', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock store selector with test state
+   
   useStore: (selector: (state: any) => any) =>
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     selector({
@@ -306,7 +306,7 @@ describe('API Hooks', () => {
         wrapper: createWrapper(),
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- test purposely sends partial data to verify hook behavior
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- test purposely sends partial data to verify hook behavior
       result.current.mutate({ name: 'Test Cal' } as any);
 
       await waitFor(() => {
@@ -332,7 +332,7 @@ describe('API Hooks', () => {
         wrapper: createWrapper(),
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       result.current.mutate({ name: 'Dup' } as any);
 
       await waitFor(() => {

@@ -93,9 +93,7 @@ class Workflow(BaseModel):
 
     def get_ready_tasks(self) -> list[WorkflowTask]:
         """Get tasks that are ready to execute (dependencies satisfied)."""
-        completed_ids = {
-            t.id for t in self.tasks if t.status == TaskStatus.COMPLETED
-        }
+        completed_ids = {t.id for t in self.tasks if t.status == TaskStatus.COMPLETED}
         return [
             t
             for t in self.tasks
@@ -113,18 +111,12 @@ class Workflow(BaseModel):
     @property
     def is_complete(self) -> bool:
         """Check if workflow is complete."""
-        return all(
-            t.status in (TaskStatus.COMPLETED, TaskStatus.SKIPPED)
-            for t in self.tasks
-        )
+        return all(t.status in (TaskStatus.COMPLETED, TaskStatus.SKIPPED) for t in self.tasks)
 
     @property
     def has_failed(self) -> bool:
         """Check if workflow has failed."""
-        return any(
-            t.status == TaskStatus.FAILED and t.retries >= t.max_retries
-            for t in self.tasks
-        )
+        return any(t.status == TaskStatus.FAILED and t.retries >= t.max_retries for t in self.tasks)
 
 
 class OrchestratorConfig(BaseModel):
@@ -267,7 +259,11 @@ class OrchestratorAgent:
 
         finally:
             workflow.completed_at = datetime.now()
-            self.status = SubagentStatus.COMPLETED if workflow.status == WorkflowStatus.COMPLETED else SubagentStatus.FAILED
+            self.status = (
+                SubagentStatus.COMPLETED
+                if workflow.status == WorkflowStatus.COMPLETED
+                else SubagentStatus.FAILED
+            )
 
         duration_ms = (workflow.completed_at - workflow.started_at).total_seconds() * 1000
 

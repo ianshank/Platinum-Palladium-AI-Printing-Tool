@@ -187,3 +187,4 @@ node_modules/.vite/
 
 # Claude Code backup files
 .claude/settings.local.json.bak
+.claude/launch.json

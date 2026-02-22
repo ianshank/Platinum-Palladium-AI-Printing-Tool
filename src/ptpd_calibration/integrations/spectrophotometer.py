@@ -58,7 +58,9 @@ class LABValue:
 
     def delta_e(self, other: "LABValue") -> float:
         """Calculate Delta E (CIE76) color difference."""
-        return float(np.sqrt((self.L - other.L) ** 2 + (self.a - other.a) ** 2 + (self.b - other.b) ** 2))
+        return float(
+            np.sqrt((self.L - other.L) ** 2 + (self.a - other.a) ** 2 + (self.b - other.b) ** 2)
+        )
 
 
 @dataclass
@@ -416,7 +418,9 @@ class XRiteIntegration(SpectrophotometerInterface):
         values = np.convolve(base_curve, kernel, mode="same")
         values = np.clip(values, 0.0, 1.0)
 
-        return SpectralData(wavelengths=[float(w) for w in wavelengths], values=[float(x) for x in values.tolist()])
+        return SpectralData(
+            wavelengths=[float(w) for w in wavelengths], values=[float(x) for x in values.tolist()]
+        )
 
     def read_patch(self, patch_id: str = "patch") -> PatchMeasurement:
         """

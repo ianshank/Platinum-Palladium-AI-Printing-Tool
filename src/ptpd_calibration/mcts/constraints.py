@@ -105,9 +105,7 @@ class ParameterBoundsConstraint(SymbolicConstraint):
             ConstraintResult with hard bounds check
         """
         if len(values) != 1:
-            logger.warning(
-                f"Expected single value for parameter constraint, got {len(values)}"
-            )
+            logger.warning(f"Expected single value for parameter constraint, got {len(values)}")
             return ConstraintResult(
                 is_satisfied=False,
                 loss_value=1000.0,
@@ -479,7 +477,9 @@ class ExposureTimeConstraint(SymbolicConstraint):
         violations = []
         if not is_satisfied:
             if exposure_time < self.practical_min:
-                description = f"Exposure {exposure_time:.0f}s may not reach full Dmax (short for UV sources)"
+                description = (
+                    f"Exposure {exposure_time:.0f}s may not reach full Dmax (short for UV sources)"
+                )
             else:
                 description = f"Exposure {exposure_time:.0f}s has diminishing returns (long wait for small density gain)"
 
@@ -707,7 +707,9 @@ class CoatingWeightConstraint(SymbolicConstraint):
             if weight < self.hard_range.min_value:
                 description = f"Coating weight {weight:.2f} {self.hard_range.unit} insufficient for full coverage"
             else:
-                description = f"Coating weight {weight:.2f} {self.hard_range.unit} excessive (pooling risk)"
+                description = (
+                    f"Coating weight {weight:.2f} {self.hard_range.unit} excessive (pooling risk)"
+                )
 
             violations.append(
                 ConstraintViolation(
@@ -1040,9 +1042,7 @@ class ActionPruner:
         # Normalize by total weight
         score = weighted_satisfaction / total_weight if total_weight > 0 else 1.0
 
-        logger.debug(
-            f"Action {action.dimension}={action.value:.3f} score: {score:.3f}"
-        )
+        logger.debug(f"Action {action.dimension}={action.value:.3f} score: {score:.3f}")
 
         return float(np.clip(score, 0.0, 1.0))
 
