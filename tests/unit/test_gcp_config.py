@@ -1,7 +1,6 @@
 """
 Unit tests for GCP configuration management.
 """
-
 import os
 from pathlib import Path
 from unittest.mock import patch

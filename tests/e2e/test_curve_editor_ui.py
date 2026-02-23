@@ -11,12 +11,22 @@ Tests cover:
 """
 
 import re
+from pathlib import Path
 
 import pytest
 
 # ============================================================================
 # Test Fixtures
 # ============================================================================
+
+
+@pytest.fixture
+def real_quad_path():
+    """Path to the real-world .quad fixture file."""
+    path = Path(__file__).parent.parent / "fixtures" / "Platinum_Palladium_V6-CC.quad"
+    if not path.exists():
+        pytest.skip(f"Fixture file not found: {path}")
+    return path
 
 
 @pytest.fixture
@@ -33,17 +43,17 @@ def simple_quad_content():
 
     # C channel - 256 zeros
     lines.append("# C Curve")
-    for i in range(256):
+    for _ in range(256):
         lines.append("0")
 
     # M channel - 256 zeros
     lines.append("# M Curve")
-    for i in range(256):
+    for _ in range(256):
         lines.append("0")
 
     # Y channel - 256 zeros
     lines.append("# Y Curve")
-    for i in range(256):
+    for _ in range(256):
         lines.append("0")
 
     return "\n".join(lines)
@@ -265,11 +275,11 @@ class TestQTRFormatCompliance:
             if line.startswith("#"):
                 break  # Next channel
             if line:
-                try:
+                import contextlib
+
+                with contextlib.suppress(ValueError):
                     values.append(int(line))
-                except ValueError:
                     # Skip non-integer lines (comments, blank lines)
-                    pass
 
         assert len(values) == 256, f"Expected 256 values, got {len(values)}"
 
@@ -625,7 +635,7 @@ class TestQTRExporterClass:
 
         # Values should be plain integers
         lines = content.split("\n")
-        value_lines = [l for l in lines if l.strip() and not l.startswith("#")]
+        value_lines = [line for line in lines if line.strip() and not line.startswith("#")]
         for line in value_lines:
             assert "=" not in line, f"Found = in value line: {line}"
 
@@ -695,7 +705,7 @@ def _export_multi_channel_quad_test(
                     lines.append(str(qtr_output))
             else:
                 # Empty channel - 256 zeros
-                for i in range(256):
+                for _ in range(256):
                     lines.append("0")
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -709,13 +719,11 @@ def _export_multi_channel_quad_test(
 
 
 @pytest.mark.browser
-@pytest.mark.skip(
-    reason="Legacy Gradio tests; pending Load Quad feature implementation in React Curve Editor"
-)
+@pytest.mark.skip(reason="Playwright selectors pending update for hierarchical navigation")
 class TestCurveEditorBrowser:
     """Browser-based E2E tests for Curve Editor tab."""
 
-    def test_load_quad_file(self, page, app_url, real_quad_path, ensure_app_running):
+    def test_load_quad_file(self, page, app_url, real_quad_path, ensure_app_running):  # noqa: ARG002
         """Test loading a .quad file in the Curve Editor."""
         from playwright.sync_api import expect
 
@@ -738,7 +746,7 @@ class TestCurveEditorBrowser:
         # Verify curve is loaded (check for profile name in info)
         expect(page.get_by_text("Platinum_Palladium_V6-CC")).to_be_visible(timeout=5000)
 
-    def test_channel_dropdown_has_all(self, page, app_url, real_quad_path, ensure_app_running):
+    def test_channel_dropdown_has_all(self, page, app_url, real_quad_path, ensure_app_running):  # noqa: ARG002
         """Test that channel dropdown includes ALL option."""
         from playwright.sync_api import expect
 
@@ -760,7 +768,12 @@ class TestCurveEditorBrowser:
         expect(page.get_by_role("option", name="ALL")).to_be_visible()
 
     def test_export_creates_valid_quad_file(
-        self, page, app_url, real_quad_path, ensure_app_running, tmp_path
+        self,
+        page,
+        app_url,
+        real_quad_path,
+        ensure_app_running,
+        tmp_path,  # noqa: ARG002
     ):
         """Test that export creates a valid .quad file in QTR format."""
 

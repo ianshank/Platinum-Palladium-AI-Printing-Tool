@@ -600,10 +600,10 @@ class PlatinumPalladiumAI:
 
         # Calculate bounds using error propagation
         # Density affects exposure exponentially (2^(Δd/0.3))
-        2 ** (
+        _density_factor_low = 2 ** (
             (negative_density - density_uncertainty - exposure_settings.base_negative_density) / 0.3
         )
-        2 ** (
+        _density_factor_high = 2 ** (
             (negative_density + density_uncertainty - exposure_settings.base_negative_density) / 0.3
         )
 
@@ -1201,7 +1201,7 @@ class PlatinumPalladiumAI:
 
             # Identify trends
             # Group by paper type
-            paper_groups = {}
+            paper_groups: dict[str, list[Any]] = {}
             for record in successful:
                 if record.paper_type not in paper_groups:
                     paper_groups[record.paper_type] = []
@@ -1209,7 +1209,6 @@ class PlatinumPalladiumAI:
 
             # Analyze most successful paper
             if paper_groups:
-                paper_groups: dict[str, list[CalibrationRecord]] = paper_groups
                 best_paper = max(paper_groups.keys(), key=lambda k: len(paper_groups[k]))
                 trends["most_successful_paper"] = best_paper
                 insights.append(

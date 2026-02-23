@@ -657,10 +657,10 @@ class CostCalculator:
             width = float(dimensions[0])
             height = float(dimensions[1])
             paper_area = width * height
-        except (ValueError, IndexError):
+        except (ValueError, IndexError) as err:
             raise ValueError(
                 f"Invalid paper size format: {paper_size}. Use format like '8x10' or '11x14'"
-            )
+            ) from err
 
         # Chemistry costs
         ferric_cost = (
@@ -965,7 +965,7 @@ class DilutionCalculator:
         water_ml = volume - concentrate_ml
 
         # Express as ratio
-        # Normalize to smallest whole numbers
+        # Normalize to smallest whole numbers (concentrate part is always 1)
         ratio_parts_water = round((water_ml / concentrate_ml), 1)
 
         if ratio_parts_water == int(ratio_parts_water):
@@ -1188,9 +1188,6 @@ class EnvironmentalCompensation:
             adjustment_factor=adjustment_factor,
             adjustment_type=f"altitude_{value_type}",
             altitude_feet=altitude,
-            month=None,
-            humidity_percent=None,
-            temperature_fahrenheit=None,
             notes=notes,
         )
 
@@ -1257,9 +1254,6 @@ class EnvironmentalCompensation:
             adjustment_factor=adjustment_factor,
             adjustment_type=f"season_{value_type}",
             month=month,
-            altitude_feet=None,
-            humidity_percent=None,
-            temperature_fahrenheit=None,
             notes=notes,
         )
 

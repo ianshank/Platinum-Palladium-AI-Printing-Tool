@@ -17,8 +17,6 @@
 import { type FC, useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useChat } from '@/hooks/useChat';
-import { useStore } from '@/stores';
-import { useRecipeSuggestion, useTroubleshootRequest } from '@/api/hooks';
 
 export interface AIAssistantProps {
   className?: string;
@@ -49,29 +47,17 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // --- Store selectors for chemistry context ---
-  const paperSize = useStore((s) => s.chemistry.paperSize);
-  const metalRatio = useStore((s) => s.chemistry.metalRatio);
-  const calibHistory = useStore((s) => s.calibration.history);
-
   // --- useChat hook (replaces direct api + store wiring) ---
   const {
     messages,
     isStreaming,
     streamContent,
     error,
-    isBusy: isChatBusy,
+    isBusy,
     sendSuggestion,
     clear,
     newConversation,
   } = useChat();
-
-  // --- AI quick-action hooks ---
-  const { mutate: requestRecipe, isPending: isRecipePending } = useRecipeSuggestion();
-  const { mutate: requestTroubleshoot, isPending: isTroubleshootPending } =
-    useTroubleshootRequest();
-
-  const isBusy = isChatBusy || isRecipePending || isTroubleshootPending;
 
   // Auto-scroll
   useEffect(() => {
@@ -114,20 +100,6 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
     newConversation();
   }, [newConversation]);
 
-  const handleGetRecipe = useCallback((): void => {
-    requestRecipe({
-      paper_type: paperSize.name,
-      characteristics: `${(metalRatio * 100).toFixed(0)}% Pt / ${((1 - metalRatio) * 100).toFixed(0)}% Pd`,
-    });
-  }, [paperSize, metalRatio, requestRecipe]);
-
-  const handleTroubleshoot = useCallback((): void => {
-    const problem = input.trim();
-    if (!problem) return;
-    requestTroubleshoot({ problem });
-    setInput('');
-  }, [input, requestTroubleshoot]);
-
   const hasMessages = messages.length > 0;
 
   return (
@@ -167,23 +139,6 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
           </button>
         </div>
       </div>
-
-      {/* Context Panel */}
-      <details className="mx-4 mt-2 rounded-md border text-xs" data-testid="context-panel">
-        <summary className="cursor-pointer px-3 py-1.5 font-medium text-muted-foreground hover:bg-muted/50">
-          Context shared with AI
-        </summary>
-        <div className="space-y-0.5 px-3 pb-2 pt-1 text-muted-foreground">
-          <p data-testid="context-paper">Paper: {paperSize.name}</p>
-          <p data-testid="context-ratio">
-            Ratio: {(metalRatio * 100).toFixed(0)}% Pt /{' '}
-            {((1 - metalRatio) * 100).toFixed(0)}% Pd
-          </p>
-          <p data-testid="context-calibrations">
-            Calibration records: {calibHistory.length}
-          </p>
-        </div>
-      </details>
 
       {/* Messages Area */}
       <div
@@ -341,26 +296,6 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
             aria-label="Send message"
           >
             Send
-          </button>
-        </div>
-        <div className="flex gap-2 pt-2">
-          <button
-            type="button"
-            onClick={handleGetRecipe}
-            disabled={isBusy}
-            data-testid="recipe-btn"
-            className="rounded-full border px-2.5 py-1 text-xs hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Get Recipe
-          </button>
-          <button
-            type="button"
-            onClick={handleTroubleshoot}
-            disabled={isBusy || !input.trim()}
-            data-testid="troubleshoot-btn"
-            className="rounded-full border px-2.5 py-1 text-xs hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Troubleshoot
           </button>
         </div>
       </form>

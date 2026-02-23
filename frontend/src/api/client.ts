@@ -9,7 +9,7 @@ import axios, {
   type AxiosRequestConfig,
   type AxiosResponse,
 } from 'axios';
-import { config, isDev } from '@/config';
+import { config } from '@/config';
 import { logger } from '@/lib/logger';
 import type {
   AnalysisResponse,
@@ -45,7 +45,7 @@ export interface ApiError {
  */
 function createApiClient(): AxiosInstance {
   const client = axios.create({
-    baseURL: isDev ? '' : config.api.baseUrl,
+    baseURL: config.api.baseUrl,
     timeout: config.api.timeout,
     headers: {
       'Content-Type': 'application/json',
@@ -191,8 +191,8 @@ export const api = {
     export: (data: { curveId: string; format: string }) =>
       apiRequest<Blob>({
         method: 'POST',
-        url: `/api/curves/${data.curveId}/export`,
-        params: { format: data.format },
+        url: '/api/curves/export',
+        data,
         responseType: 'blob',
       }),
 
@@ -274,7 +274,7 @@ export const api = {
         data,
       }),
 
-    recipe: (data: { paper_type: string; characteristics: string }) =>
+    recipe: (data: { paper_type: string; characteristics: string[] }) =>
       apiRequest<ChatResponse>({
         method: 'POST',
         url: '/api/chat/recipe',

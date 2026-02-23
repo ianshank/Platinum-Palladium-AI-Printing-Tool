@@ -11,7 +11,7 @@ C4Context
   title System Context Diagram for Pt/Pd Calibration Studio
 
   Person(user, "Photographer/Print-Maker", "A user who wants to calibrate their printing process.")
-  System(app, "Pt/Pd Calibration Studio", "A React + FastAPI web application for generating, editing, and exporting platinum/palladium printing calibration curves with AI assistance.")
+  System(app, "Pt/Pd Calibration Studio", "A Gradio-based web application for generating and analyzing platinum/palladium printing curves.")
 
   System_Ext(llm, "External LLM Service", "Provides AI-powered analysis and chat capabilities (e.g., OpenAI, Anthropic).")
   System_Ext(fs, "File System", "Stores user-provided scans, exported curves, and machine learning data.")
@@ -233,32 +233,15 @@ C4Component
   title Frontend Architecture (Level 3)
 
   Container_Boundary(fe, "React Frontend (frontend/src/)") {
-    Component_Boundary(page_layer, "Pages (pages/)") {
-      Component(curves_page, "CurvesPage", "CurvesPage.tsx", "3-tab Radix UI structure: Upload .quad → Edit Curve (AI Enhance) → Export (QTR/CSV/JSON)")
-      Component(ai_page, "AIAssistantPage", "AIAssistantPage.tsx", "Chat interface with context panel (paper/ratio/calibrations) + recipe/troubleshoot quick actions")
-      Component(other_pages, "Other Pages", "Dashboard, Calibration, Chemistry, MCTS, Settings, SessionLog", "Domain-specific route-level pages")
-    }
+    Component(pages, "Pages", "pages/", "Route-level components: CurvesPage, DashboardPage, etc.")
+    Component(components, "UI Components", "components/", "Reusable: CurveUpload, ChemistryCalculator, ErrorBoundary")
+    Component(stores, "Zustand Store", "stores/", "Slices: curve, image, chat, ui, mcts with immer + devtools")
+    Component(hooks, "TanStack Query Hooks", "api/hooks.ts", "Cached data fetching: useGenerateCurve, useUploadQuadFile, useSendMessage")
+    Component(client, "API Client", "api/client.ts", "Axios instance with interceptors, typed endpoints")
 
-    Component_Boundary(comp_layer, "UI Components (components/)") {
-      Component(curve_upload, "CurveUpload", "curves/CurveUpload.tsx", "Drag-and-drop .quad upload with paste mode, calls onLoadCurve(data, id, name)")
-      Component(curve_editor, "CurveEditor", "curves/CurveEditor.tsx", "Recharts curve visualization, adjustments, AI Enhance with 7 goals, undo/redo")
-      Component(export_panel, "ExportPanel", "export/ExportPanel.tsx", "Format selector (QTR/Piezography/CSV/JSON) + download via useExportCurve")
-      Component(ai_assistant, "AIAssistant", "assistant/AIAssistant.tsx", "Streaming chat with context panel, useChat hook, recipe/troubleshoot mutations")
-      Component(other_comps, "Other Components", "calibration/, chemistry/, preview/, ui/", "Reusable domain components")
-    }
-
-    Component(stores, "Zustand Store", "stores/", "Slices: chemistry, calibration, chat, curve, image, ui, mcts — immer + devtools middleware")
-    Component(hooks, "TanStack Query Hooks", "api/hooks.ts", "useEnhanceCurve, useExportCurve, useRecipeSuggestion, useTroubleshootRequest, useChat, etc.")
-    Component(client, "API Client", "api/client.ts", "Axios instance: api.curves.export → POST /{curveId}/export?format=, typed endpoints")
-
-    Rel(curves_page, curve_upload, "Renders in Upload tab")
-    Rel(curves_page, curve_editor, "Renders in Edit tab")
-    Rel(curves_page, export_panel, "Renders in Export tab")
-    Rel(ai_page, ai_assistant, "Renders")
-    Rel(curve_editor, hooks, "useEnhanceCurve")
-    Rel(ai_assistant, hooks, "useRecipeSuggestion, useTroubleshootRequest")
-    Rel(ai_assistant, stores, "chemistry.paperSize, chemistry.metalRatio, calibration.history")
-    Rel(export_panel, hooks, "useExportCurve")
+    Rel(pages, components, "Renders")
+    Rel(pages, stores, "Reads/writes state")
+    Rel(components, hooks, "Fetches data")
     Rel(hooks, client, "HTTP requests")
   }
 

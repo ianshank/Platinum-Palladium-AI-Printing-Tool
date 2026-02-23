@@ -2,7 +2,6 @@ import { type FC, useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { Layout } from '@/components/Layout';
-import { useAppShortcuts } from '@/hooks';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { useStore } from '@/stores';
 import { logger } from '@/lib/logger';
@@ -52,11 +51,6 @@ const LoadingScreen: FC = () => (
 
 LoadingScreen.displayName = 'LoadingScreen';
 
-const ShortcutHandler: FC = () => {
-  useAppShortcuts();
-  return null;
-};
-
 /**
  * Main application component
  */
@@ -76,7 +70,6 @@ export const App: FC = () => {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <ShortcutHandler />
         <Layout>
           <Routes>
             <Route path="/" element={<DashboardPage />} />

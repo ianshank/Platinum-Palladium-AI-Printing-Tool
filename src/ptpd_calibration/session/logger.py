@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 from uuid import UUID, uuid4
 
 
@@ -305,9 +305,11 @@ class SessionLogger:
         Args:
             record: Print record to log
         """
-        if not self._current_session:
+        if self._current_session is None:
             self.start_session()
-        self._current_session.add_record(record)
+
+        if self._current_session is not None:
+            self._current_session.add_record(record)
         self._auto_save()
 
     def end_session(self) -> PrintSession | None:
@@ -434,7 +436,7 @@ class SessionLogger:
 
         return records
 
-    def get_paper_statistics(self) -> dict[str, dict]:
+    def get_paper_statistics(self) -> dict[str, dict[str, Any]]:
         """Get statistics grouped by paper type.
 
         Returns:
@@ -458,13 +460,14 @@ class SessionLogger:
                             "avg_exposure": [],
                         }
 
-                    stats[record.paper_type]["total_prints"] += 1
+                    paper_stats = stats[record.paper_type]
+                    paper_stats["total_prints"] += 1
                     if record.result == PrintResult.EXCELLENT:
-                        stats[record.paper_type]["excellent"] += 1
+                        paper_stats["excellent"] += 1
                     elif record.result == PrintResult.GOOD:
-                        stats[record.paper_type]["good"] += 1
+                        paper_stats["good"] += 1
                     elif record.result == PrintResult.FAILED:
-                        stats[record.paper_type]["failed"] += 1
+                        paper_stats["failed"] += 1
 
                     if record.exposure_time_minutes > 0:
                         paper_stats["avg_exposure"].append(record.exposure_time_minutes)
@@ -476,10 +479,8 @@ class SessionLogger:
 
         # Calculate averages
         for paper in stats:
-            exposures_list = cast(list[float], stats[paper]["avg_exposure"])
-            stats[paper]["avg_exposure"] = (
-                sum(exposures_list) / len(exposures_list) if exposures_list else 0
-            )
+            exposures: list[float] = stats[paper]["avg_exposure"]
+            stats[paper]["avg_exposure"] = sum(exposures) / len(exposures) if exposures else 0
 
         return stats
 

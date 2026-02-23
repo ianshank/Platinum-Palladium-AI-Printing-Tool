@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("ptpd_calibration.ui")
+
 from unittest.mock import patch
 
 from ptpd_calibration.ui.tabs.calibration_wizard import build_calibration_wizard_tab
@@ -54,26 +58,26 @@ def test_wizard_analyze_callback(MockAnalyzer):
 
 
 def test_wizard_structure_exists():
-    with patch("gradio.Blocks"):
-        # We mock everything
-        with (
-            patch("gradio.TabItem"),
-            patch("gradio.Markdown"),
-            patch("gradio.State"),
-            patch("gradio.Group"),
-            patch("gradio.Row"),
-            patch("gradio.Column"),
-            patch("gradio.Image"),
-            patch("gradio.Dropdown"),
-            patch("gradio.Slider"),
-            patch("gradio.Checkbox"),
-            patch("gradio.Button"),
-            patch("gradio.Plot"),
-            patch("gradio.Dataframe"),
-            patch("gradio.Textbox"),
-            patch("gradio.Number"),
-            patch("gradio.Radio"),
-            patch("gradio.File"),
-        ):
-            build_calibration_wizard_tab()
-            # Pass if no exceptions
+    # We mock everything
+    with (
+        patch("gradio.Blocks"),
+        patch("gradio.TabItem"),
+        patch("gradio.Markdown"),
+        patch("gradio.State"),
+        patch("gradio.Group"),
+        patch("gradio.Row"),
+        patch("gradio.Column"),
+        patch("gradio.Image"),
+        patch("gradio.Dropdown"),
+        patch("gradio.Slider"),
+        patch("gradio.Checkbox"),
+        patch("gradio.Button"),
+        patch("gradio.Plot"),
+        patch("gradio.Dataframe"),
+        patch("gradio.Textbox"),
+        patch("gradio.Number"),
+        patch("gradio.Radio"),
+        patch("gradio.File"),
+    ):
+        build_calibration_wizard_tab()
+        # Pass if no exceptions

@@ -122,7 +122,7 @@ with suppress(ImportError):
 # Platinum/Palladium AI
 with suppress(ImportError):
     from ptpd_calibration.ai import (
-        ChemistryRecommendation,  # noqa: F401
+        ChemistryRecommendation,
         DigitalNegativeResult,
         ExposurePrediction,
         PlatinumPalladiumAI,

@@ -27,27 +27,6 @@ from ptpd_calibration.agents.tools import (
     create_calibration_tools,
 )
 from ptpd_calibration.config import AgentSettings, LLMSettings
-from ptpd_calibration.core.models import CalibrationRecord
-from ptpd_calibration.ml.database import CalibrationDatabase
-
-# =============================================================================
-# Shared fixtures
-# =============================================================================
-
-
-@pytest.fixture()
-def populated_database() -> CalibrationDatabase:
-    """Return a CalibrationDatabase pre-loaded with one record."""
-    db = CalibrationDatabase()
-    record = CalibrationRecord(
-        paper_type="Arches Platine",
-        exposure_time=120.0,
-        metal_ratio=0.6,
-        measured_densities=[0.1, 0.4, 0.8, 1.2, 1.6, 1.9],
-    )
-    db.add_record(record)
-    return db
-
 
 # =============================================================================
 # ToolResult Tests

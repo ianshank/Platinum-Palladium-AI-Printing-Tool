@@ -1,7 +1,6 @@
 """
 End-to-end tests for GCP integration.
 """
-
 import os
 from unittest.mock import MagicMock, patch
 
@@ -11,7 +10,6 @@ from ptpd_calibration.gcp.storage import GCSBackend, LocalBackend
 from ptpd_calibration.gcp.vertex import VertexClient
 
 # --- LOCAL BACKEND TESTS ---
-
 
 def test_local_backend(tmp_path):
     """Test LocalBackend operations."""
@@ -34,7 +32,6 @@ def test_local_backend(tmp_path):
 
 
 # --- GCS MOCK TESTS ---
-
 
 @patch("ptpd_calibration.gcp.storage.storage.Client")
 def test_gcs_backend_mock(mock_client_cls, gcp_config):
@@ -77,16 +74,18 @@ def test_vertex_client_mock(mock_aiplatform, gcp_config):
     mock_aiplatform.init.assert_called_once_with(
         project=gcp_config.project_id,
         location=gcp_config.region,
-        staging_bucket=gcp_config.storage_bucket_uri,
+        staging_bucket=gcp_config.storage_bucket_uri
     )
 
     # Test Get Model
     client.get_model("ptpd-model-v1")
-    mock_aiplatform.Model.assert_called_with(model_name="ptpd-model-v1", version=None)
+    mock_aiplatform.Model.assert_called_with(
+        model_name="ptpd-model-v1",
+        version=None
+    )
 
 
 # --- INTEGRATION TESTS (SKIPPED BY DEFAULT) ---
-
 
 def has_gcp_credentials():
     """Check if GCP credentials are available."""
@@ -94,7 +93,6 @@ def has_gcp_credentials():
     # Or strict check: GOOGLE_APPLICATION_CREDENTIALS set.
     # For safe CI, we check for a specific env var.
     return os.getenv("PTPD_RUN_GCP_INTEGRATION") == "1"
-
 
 @pytest.mark.skipif(not has_gcp_credentials(), reason="Requires PTPD_RUN_GCP_INTEGRATION=1")
 def test_gcs_integration(gcp_config):
@@ -108,14 +106,13 @@ def test_gcs_integration(gcp_config):
     try:
         backend.save(path, test_content)
         assert backend.exists(path)
-        loaded = backend.load(path).decode("utf-8")
+        loaded = backend.load(path).decode('utf-8')
         assert loaded == test_content
     finally:
         # Cleanup if possible (backend doesn't expose delete, requires raw client)
         blob = backend.bucket.blob(path)
         if blob.exists():
             blob.delete()
-
 
 @pytest.mark.skipif(not has_gcp_credentials(), reason="Requires PTPD_RUN_GCP_INTEGRATION=1")
 def test_vertex_integration(gcp_config):

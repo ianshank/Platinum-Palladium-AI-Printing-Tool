@@ -11,7 +11,6 @@ try:
 
     GOOGLE_CLOUD_AVAILABLE = True
 except ImportError:
-    storage = None  # type: ignore[assignment]
     GOOGLE_CLOUD_AVAILABLE = False
 
 from ptpd_calibration.gcp.config import GCPConfig

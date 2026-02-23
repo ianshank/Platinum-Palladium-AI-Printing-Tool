@@ -162,7 +162,7 @@ class ICCProfileManager:
             return profile
 
         except Exception as e:
-            raise ValueError(f"Failed to load profile {path}: {e}")
+            raise ValueError(f"Failed to load profile {path}: {e}") from e
 
     def apply_profile(
         self,
@@ -259,6 +259,11 @@ class ICCProfileManager:
 
             # Simplified approach: create a basic profile
             # In production, use Argyll CMS or similar
+
+            # Create a basic sRGB profile as template
+            _profile = ImageCms.createProfile("sRGB")  # Template for future customization
+
+            # Save with custom description
             # Note: PIL doesn't provide full ICC profile creation,
             # so this is a placeholder for the concept
 
@@ -384,7 +389,7 @@ class ICCProfileManager:
             )
 
         except Exception as e:
-            raise ValueError(f"Failed to read profile info: {e}")
+            raise ValueError(f"Failed to read profile info: {e}") from e
 
     def _read_profile_class_from_header(self, path: Path) -> ProfileClass | None:
         """
@@ -542,14 +547,14 @@ class ICCProfileManager:
                     # Check profile signature at offset 36-40
                     signature = header[36:40]
                     if signature != b"acsp":
-                        errors.append(f"Invalid ICC signature: {signature} (expected 'acsp')")
+                        errors.append(f"Invalid ICC signature: {signature!r} (expected b'acsp')")
 
         except Exception as e:
             errors.append(f"Failed to read file: {e}")
 
         # Try to load with PIL
         try:
-            self.load_profile(profile_path)
+            _profile = self.load_profile(profile_path)  # Validates profile can be loaded
             info = self._get_profile_info(profile_path)
 
             # Additional validation
