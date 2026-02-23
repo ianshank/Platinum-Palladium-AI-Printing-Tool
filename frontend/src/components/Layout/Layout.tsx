@@ -14,7 +14,6 @@ import {
 import { cn } from '@/lib/utils';
 import { useStore } from '@/stores';
 import { Button } from '@/components/ui/Button';
-import { useAppShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { logger } from '@/lib/logger';
 
 interface NavItem {
@@ -26,25 +25,10 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard, shortcut: 'Ctrl+1' },
-  {
-    path: '/calibration',
-    label: 'Calibration',
-    icon: SlidersHorizontal,
-    shortcut: 'Ctrl+2',
-  },
+  { path: '/calibration', label: 'Calibration', icon: SlidersHorizontal, shortcut: 'Ctrl+2' },
   { path: '/curves', label: 'Curves', icon: LineChart, shortcut: 'Ctrl+3' },
-  {
-    path: '/chemistry',
-    label: 'Chemistry',
-    icon: FlaskConical,
-    shortcut: 'Ctrl+4',
-  },
-  {
-    path: '/assistant',
-    label: 'AI Assistant',
-    icon: MessageSquare,
-    shortcut: 'Ctrl+5',
-  },
+  { path: '/chemistry', label: 'Chemistry', icon: FlaskConical, shortcut: 'Ctrl+4' },
+  { path: '/assistant', label: 'AI Assistant', icon: MessageSquare, shortcut: 'Ctrl+5' },
   { path: '/session', label: 'Session Log', icon: History },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -61,9 +45,6 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
   const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
   const toggleSidebar = useStore((state) => state.ui.toggleSidebar);
   const isProcessing = useStore((state) => state.ui.isProcessing);
-
-  // Register global keyboard shortcuts (Ctrl+1-5 tab nav, Ctrl+Z undo/redo)
-  useAppShortcuts();
 
   const handleNavClick = (path: string): void => {
     logger.debug('Layout: navigation', { path });
@@ -83,9 +64,7 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
         <div className="flex h-16 items-center justify-between border-b px-4">
           <Link to="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-              <span className="text-lg font-bold text-primary-foreground">
-                Pt
-              </span>
+              <span className="text-lg font-bold text-primary-foreground">Pt</span>
             </div>
             <span className="text-lg font-semibold">Pt/Pd Tool</span>
           </Link>
@@ -160,28 +139,24 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* Main content */}
-      <div
-        className={cn(
-          'flex flex-1 flex-col overflow-hidden transition-all duration-200',
-          sidebarOpen ? '' : 'lg:ml-0'
-        )}
-      >
+      <div className={cn(
+        'flex flex-1 flex-col overflow-hidden transition-all duration-200',
+        sidebarOpen && 'lg:pl-64'
+      )}>
         {/* Top bar */}
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6">
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
             onClick={toggleSidebar}
-            aria-label="Open sidebar"
+            aria-label="Toggle sidebar"
           >
             <Menu className="h-5 w-5" />
           </Button>
 
           {/* Page title */}
           <h1 className="text-lg font-semibold">
-            {NAV_ITEMS.find((item) => item.path === location.pathname)?.label ??
-              'Dashboard'}
+            {NAV_ITEMS.find((item) => item.path === location.pathname)?.label ?? 'Dashboard'}
           </h1>
 
           {/* Spacer */}
@@ -192,7 +167,9 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
       </div>
     </div>
   );

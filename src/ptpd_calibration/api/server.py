@@ -2,17 +2,20 @@
 FastAPI server for PTPD Calibration System.
 """
 
+import logging
 import tempfile
 from pathlib import Path
 from uuid import UUID
 
 from ptpd_calibration.config import get_settings
 
+_log = logging.getLogger(__name__)
+
 
 def create_app():
     """Create the FastAPI application."""
     try:
-        from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+        from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import FileResponse
         from pydantic import BaseModel
@@ -47,9 +50,15 @@ def create_app():
     )
 
     # CORS
+    cors_origins_set = set(settings.api.cors_origins)
+    # Allow localhost:3000 only in reload (development) mode
+    if settings.api.reload:
+        cors_origins_set.add("http://localhost:3000")
+    cors_origins = list(cors_origins_set)
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.api.cors_origins,
+        allow_origins=cors_origins,
         allow_credentials=settings.api.cors_allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -151,8 +160,35 @@ def create_app():
         paper_type: str | None = None
         additional_context: str | None = None
 
-    # Curve storage for session (in production, use database)
+    # Curve storage — write-through cache backed by JSON files on disk
+    curves_dir = upload_dir.parent / "curves"
+    curves_dir.mkdir(parents=True, exist_ok=True)
     curve_storage: dict[str, CurveData] = {}
+
+    def _store_curve(curve: CurveData) -> None:
+        """Cache curve in memory and persist to disk."""
+        curve_storage[str(curve.id)] = curve
+        try:
+            (curves_dir / f"{curve.id}.json").write_text(
+                curve.model_dump_json(), encoding="utf-8"
+            )
+        except Exception:
+            _log.warning("Failed to persist curve %s to disk", curve.id, exc_info=True)
+
+    def _get_curve(curve_id: str) -> CurveData | None:
+        """Return curve from memory cache, falling back to disk."""
+        if curve_id in curve_storage:
+            return curve_storage[curve_id]
+        path = curves_dir / f"{curve_id}.json"
+        if path.exists():
+            try:
+                loaded = CurveData.model_validate_json(path.read_text(encoding="utf-8"))
+                curve_storage[curve_id] = loaded
+                return loaded
+            except Exception:
+                _log.warning("Failed to load curve %s from disk", curve_id, exc_info=True)
+                return None
+        return None
 
     # Routes
     @app.get("/")
@@ -184,17 +220,69 @@ def create_app():
             "suggestions": suggestions,
         }
 
+    # Allowlisted scan file extensions (case-insensitive)
+    _ALLOWED_SCAN_EXTENSIONS = frozenset({".tif", ".tiff", ".png", ".jpg", ".jpeg", ".bmp"})
+
     @app.post("/api/scan/upload")
     async def upload_scan(
         file: UploadFile = File(...),
         tablet_type: str = Form("stouffer_21"),
     ):
         """Upload and process a step tablet scan."""
-        # Save uploaded file
-        file_path = upload_dir / file.filename
-        with open(file_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
+        import logging
+        from uuid import uuid4
+
+        logger = logging.getLogger(__name__)
+
+        # ── Sanitise client-supplied filename ──────────────────────────
+        original_filename = file.filename or "unknown"
+        # Extract extension safely (only basename, no path separators)
+        safe_basename = Path(original_filename).name  # strips ../ segments
+        suffix = Path(safe_basename).suffix.lower()
+
+        if suffix not in _ALLOWED_SCAN_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type '{suffix}'. "
+                f"Allowed: {', '.join(sorted(_ALLOWED_SCAN_EXTENSIONS))}",
+            )
+
+        # Server-generated unique key — never trust client filename for paths
+        scan_id = uuid4().hex
+        safe_name = f"{scan_id}{suffix}"
+        file_path = upload_dir / safe_name
+
+        logger.debug("Scan upload: original=%s safe=%s", original_filename, safe_name)
+
+        # ── Stream upload to disk with size enforcement ─────────────
+        max_bytes = settings.api.max_upload_size_mb * 1024 * 1024
+        bytes_written = 0
+        _CHUNK_SIZE = 64 * 1024  # 64 KB chunks
+
+        try:
+            with open(file_path, "wb") as f:
+                while True:
+                    chunk = await file.read(_CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    bytes_written += len(chunk)
+                    if bytes_written > max_bytes:
+                        # Clean up partial file before rejecting
+                        f.close()
+                        if file_path.exists():
+                            file_path.unlink()
+                        raise HTTPException(
+                            status_code=413,
+                            detail=f"Upload exceeds maximum size of "
+                            f"{settings.api.max_upload_size_mb} MB",
+                        )
+                    f.write(chunk)
+        except HTTPException:
+            raise  # Re-raise 413 without catching it below
+        except OSError as exc:
+            if file_path.exists():
+                file_path.unlink()
+            raise HTTPException(status_code=500, detail=f"Failed to save upload: {exc}")
 
         try:
             # Process scan
@@ -204,6 +292,7 @@ def create_app():
             return {
                 "success": True,
                 "extraction_id": str(result.extraction.id),
+                "original_filename": original_filename,
                 "num_patches": result.extraction.num_patches,
                 "densities": result.extraction.get_densities(),
                 "dmin": result.extraction.dmin,
@@ -215,7 +304,7 @@ def create_app():
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e)) from None
         finally:
-            # Cleanup
+            # Cleanup temp file
             if file_path.exists():
                 file_path.unlink()
 
@@ -267,6 +356,26 @@ def create_app():
             filename=f"{name}{ext}",
         )
 
+    @app.post("/api/curves/{curve_id}/export")
+    async def export_stored_curve(
+        curve_id: str,
+        format: str = Query("qtr"),
+    ):
+        """Export a previously stored curve by ID."""
+        curve = _get_curve(curve_id)
+        if not curve:
+            raise HTTPException(status_code=404, detail="Curve not found")
+        ext_map = {"qtr": ".txt", "piezography": ".ppt", "csv": ".csv", "json": ".json"}
+        ext = ext_map.get(format, ".txt")
+        safe_name = "".join(c if c.isalnum() or c in "-_." else "_" for c in curve.name)
+        output_path = upload_dir / f"{safe_name}{ext}"
+        save_curve(curve, output_path, format=format)
+        return FileResponse(
+            output_path,
+            media_type="application/octet-stream",
+            filename=f"{safe_name}{ext}",
+        )
+
     @app.post("/api/curves/upload-quad")
     async def upload_quad_file(
         file: UploadFile = File(...),
@@ -290,7 +399,7 @@ def create_app():
             # Convert requested channel to CurveData and store
             if channel.upper() in profile.channels:
                 curve_data = profile.to_curve_data(channel.upper())
-                curve_storage[str(curve_data.id)] = curve_data
+                _store_curve(curve_data)
             else:
                 curve_data = None
 
@@ -343,7 +452,7 @@ def create_app():
             # Convert requested channel to CurveData and store
             if channel.upper() in profile.channels:
                 curve_data = profile.to_curve_data(channel.upper())
-                curve_storage[str(curve_data.id)] = curve_data
+                _store_curve(curve_data)
             else:
                 curve_data = None
 
@@ -404,7 +513,7 @@ def create_app():
                 raise ValueError(f"Unknown adjustment type: {adjustment_type}")
 
             # Store the modified curve
-            curve_storage[str(modified.id)] = modified
+            _store_curve(modified)
 
             return {
                 "success": True,
@@ -441,7 +550,7 @@ def create_app():
             )
 
             # Store the smoothed curve
-            curve_storage[str(smoothed.id)] = smoothed
+            _store_curve(smoothed)
 
             return {
                 "success": True,
@@ -485,7 +594,7 @@ def create_app():
             blended.name = request.name
 
             # Store the blended curve
-            curve_storage[str(blended.id)] = blended
+            _store_curve(blended)
 
             return {
                 "success": True,
@@ -525,6 +634,7 @@ def create_app():
                     additional_context=request.additional_context,
                 )
             except Exception:
+                _log.info("LLM enhancement unavailable, falling back to algorithmic", exc_info=True)
                 # Fall back to algorithmic enhancement
                 result = await enhancer.analyze_and_enhance(
                     curve,
@@ -532,7 +642,7 @@ def create_app():
                 )
 
             # Store the enhanced curve
-            curve_storage[str(result.enhanced_curve.id)] = result.enhanced_curve
+            _store_curve(result.enhanced_curve)
 
             return {
                 "success": True,
@@ -551,7 +661,7 @@ def create_app():
     @app.get("/api/curves/{curve_id}")
     async def get_stored_curve(curve_id: str):
         """Get a stored curve by ID."""
-        curve = curve_storage.get(curve_id)
+        curve = _get_curve(curve_id)
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
 
@@ -571,14 +681,14 @@ def create_app():
         direction: str = "increasing",
     ):
         """Enforce monotonicity on a stored curve."""
-        curve = curve_storage.get(curve_id)
+        curve = _get_curve(curve_id)
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
 
         try:
             modifier = CurveModifier()
             modified = modifier.enforce_monotonicity(curve, direction=direction)
-            curve_storage[str(modified.id)] = modified
+            _store_curve(modified)
 
             return {
                 "success": True,

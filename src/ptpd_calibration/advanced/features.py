@@ -12,17 +12,15 @@ Provides sophisticated tools for:
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 try:
     import qrcode
-    from qrcode.image.pil import PilImage as _PilImage  # noqa: F401
 
     HAS_QRCODE = True
-    del _PilImage  # Only used to test availability
 except ImportError:
     HAS_QRCODE = False
 
@@ -173,7 +171,7 @@ class AlternativeProcessSimulator:
     processes with characteristic tone curves and color transformations.
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         """Initialize the alternative process simulator."""
         self._process_presets = self._create_process_presets()
 
@@ -339,6 +337,93 @@ class AlternativeProcessSimulator:
 
         return self._apply_process_simulation(image, params, "Salt Print")
 
+    def simulate_silver_gelatin(
+        self,
+        image: Image.Image | np.ndarray,
+        tone: str = "neutral",
+        params: AlternativeProcessParams | None = None,
+    ) -> Image.Image:
+        """Simulate silver gelatin print.
+
+        Silver gelatin prints are the classic black-and-white photographic
+        print. Tone can be neutral, warm, or cool depending on chemistry.
+
+        Args:
+            image: Input image to simulate
+            tone: Tone variant — "neutral", "warm", or "cool"
+            params: Optional custom parameters
+
+        Returns:
+            Simulated silver gelatin image
+        """
+        if params is None:
+            if tone == "warm":
+                params = AlternativeProcessParams(
+                    gamma=1.0,
+                    contrast=1.1,
+                    shadow_color=(10, 8, 6),
+                    midtone_color=(100, 95, 88),
+                    highlight_color=(248, 245, 240),
+                    dmax=2.2,
+                    dmin=0.06,
+                    stain_level=0.02,
+                )
+            elif tone == "cool":
+                params = AlternativeProcessParams(
+                    gamma=1.0,
+                    contrast=1.1,
+                    shadow_color=(5, 6, 10),
+                    midtone_color=(88, 92, 100),
+                    highlight_color=(240, 242, 248),
+                    dmax=2.2,
+                    dmin=0.05,
+                    stain_level=0.01,
+                )
+            else:  # neutral
+                params = AlternativeProcessParams(
+                    gamma=1.0,
+                    contrast=1.1,
+                    shadow_color=(8, 8, 8),
+                    midtone_color=(95, 95, 95),
+                    highlight_color=(245, 245, 245),
+                    dmax=2.2,
+                    dmin=0.05,
+                    stain_level=0.01,
+                )
+
+        return self._apply_process_simulation(image, params, "Silver Gelatin")
+
+    def simulate_argyrotype(
+        self,
+        image: Image.Image | np.ndarray,
+        params: AlternativeProcessParams | None = None,
+    ) -> Image.Image:
+        """Simulate argyrotype print (silver-based alternative process).
+
+        Argyrotypes produce warm brown-gray tones similar to Van Dyke but
+        with finer grain and better archival stability.
+
+        Args:
+            image: Input image to simulate
+            params: Optional custom parameters
+
+        Returns:
+            Simulated argyrotype image
+        """
+        if params is None:
+            params = AlternativeProcessParams(
+                gamma=1.05,
+                contrast=1.0,
+                shadow_color=(20, 16, 12),
+                midtone_color=(130, 110, 90),
+                highlight_color=(235, 225, 210),
+                dmax=1.75,
+                dmin=0.14,
+                stain_level=0.06,
+            )
+
+        return self._apply_process_simulation(image, params, "Argyrotype")
+
     def _apply_process_simulation(
         self,
         image: Image.Image | np.ndarray,
@@ -420,55 +505,6 @@ class AlternativeProcessSimulator:
 
         return result
 
-    def simulate_silver_gelatin(
-        self,
-        image: Image.Image | np.ndarray,
-        tone: str = "neutral",
-        params: AlternativeProcessParams | None = None,
-    ) -> Image.Image:
-        """Simulate silver gelatin (traditional darkroom) print.
-
-        Silver gelatin prints can range from cool neutral blacks to warm
-        brown-blacks depending on paper and developer choice.
-
-        Args:
-            image: Input image to simulate
-            tone: Tone color ("neutral", "warm", "cold", "sepia")
-            params: Optional custom parameters
-
-        Returns:
-            Simulated silver gelatin print image
-        """
-        if params is None:
-            preset_key = f"silver_gelatin_{tone}"
-            params = self._process_presets.get(
-                preset_key, self._process_presets["silver_gelatin_neutral"]
-            )
-
-        return self._apply_process_simulation(image, params, f"Silver Gelatin ({tone})")
-
-    def simulate_argyrotype(
-        self,
-        image: Image.Image | np.ndarray,
-        params: AlternativeProcessParams | None = None,
-    ) -> Image.Image:
-        """Simulate argyrotype print.
-
-        Argyrotype is a silver-iron printing process that produces
-        beautiful brown to purple-brown tones.
-
-        Args:
-            image: Input image to simulate
-            params: Optional custom parameters
-
-        Returns:
-            Simulated argyrotype image
-        """
-        if params is None:
-            params = self._process_presets["argyrotype"]
-
-        return self._apply_process_simulation(image, params, "Argyrotype")
-
     def _create_process_presets(self) -> dict[str, AlternativeProcessParams]:
         """Create preset parameters for various processes."""
         return {
@@ -476,83 +512,13 @@ class AlternativeProcessSimulator:
                 gamma=1.2,
                 contrast=1.15,
                 shadow_color=(0, 20, 60),
-                midtone_color=(40, 100, 160),
                 highlight_color=(160, 200, 240),
-                dmax=1.9,
-                dmin=0.12,
             ),
             "vandyke": AlternativeProcessParams(
                 gamma=1.1,
                 contrast=1.05,
                 shadow_color=(25, 15, 8),
-                midtone_color=(120, 80, 50),
                 highlight_color=(230, 210, 180),
-                dmax=1.8,
-                dmin=0.15,
-            ),
-            "kallitype": AlternativeProcessParams(
-                gamma=1.15,
-                contrast=1.1,
-                shadow_color=(20, 18, 15),
-                midtone_color=(110, 95, 80),
-                highlight_color=(240, 230, 215),
-                dmax=1.85,
-                dmin=0.1,
-            ),
-            "silver_gelatin_neutral": AlternativeProcessParams(
-                gamma=1.0,
-                contrast=1.0,
-                shadow_color=(15, 15, 15),
-                midtone_color=(100, 100, 100),
-                highlight_color=(250, 250, 250),
-                dmax=2.1,
-                dmin=0.04,
-            ),
-            "silver_gelatin_warm": AlternativeProcessParams(
-                gamma=1.0,
-                contrast=1.0,
-                shadow_color=(20, 15, 10),
-                midtone_color=(110, 95, 85),
-                highlight_color=(255, 250, 240),
-                dmax=2.0,
-                dmin=0.05,
-            ),
-            "silver_gelatin_cold": AlternativeProcessParams(
-                gamma=1.05,
-                contrast=1.05,
-                shadow_color=(10, 12, 15),
-                midtone_color=(90, 95, 100),
-                highlight_color=(248, 250, 255),
-                dmax=2.15,
-                dmin=0.03,
-            ),
-            "silver_gelatin_sepia": AlternativeProcessParams(
-                gamma=0.95,
-                contrast=0.95,
-                shadow_color=(35, 25, 15),
-                midtone_color=(130, 100, 70),
-                highlight_color=(255, 245, 225),
-                dmax=1.8,
-                dmin=0.08,
-                stain_level=0.05,
-            ),
-            "salt_print": AlternativeProcessParams(
-                gamma=0.9,
-                contrast=0.85,
-                shadow_color=(40, 30, 20),
-                midtone_color=(140, 120, 95),
-                highlight_color=(240, 230, 210),
-                dmax=1.3,
-                dmin=0.18,
-            ),
-            "argyrotype": AlternativeProcessParams(
-                gamma=1.15,
-                contrast=1.1,
-                shadow_color=(30, 20, 25),
-                midtone_color=(130, 100, 110),
-                highlight_color=(245, 235, 225),
-                dmax=1.8,
-                dmin=0.12,
             ),
         }
 
@@ -564,7 +530,7 @@ class NegativeBlender:
     multi-negative composites and local adjustments.
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         """Initialize the negative blender."""
         pass
 
@@ -814,7 +780,7 @@ class NegativeBlender:
 
             # Burning: move toward 0 (black)
             burn_effect = result * (1 - burn_amount)
-            result = result * (1 - burn_arr) + burn_effect * burn_arr
+            result = cast(np.ndarray, result * (1 - burn_arr) + burn_effect * burn_arr)
 
         # Convert back to image
         result = np.clip(result * 255, 0, 255).astype(np.uint8)
@@ -901,19 +867,19 @@ class NegativeBlender:
             result = np.zeros_like(base)
             result[mask] = 2 * base[mask] * blend[mask]
             result[~mask] = 1 - 2 * (1 - base[~mask]) * (1 - blend[~mask])
-            return result
+            return cast(np.ndarray, result)
         elif mode == BlendMode.SOFT_LIGHT:
-            return (1 - 2 * blend) * base**2 + 2 * blend * base
+            return cast(np.ndarray, (1 - 2 * blend) * base**2 + 2 * blend * base)
         elif mode == BlendMode.HARD_LIGHT:
             mask = blend < 0.5
             result = np.zeros_like(base)
             result[mask] = 2 * base[mask] * blend[mask]
             result[~mask] = 1 - 2 * (1 - base[~mask]) * (1 - blend[~mask])
-            return result
+            return cast(np.ndarray, result)
         elif mode == BlendMode.LINEAR_DODGE:
-            return np.clip(base + blend, 0, 1)
+            return cast(np.ndarray, np.clip(base + blend, 0, 1))
         elif mode == BlendMode.LINEAR_BURN:
-            return np.clip(base + blend - 1, 0, 1)
+            return cast(np.ndarray, np.clip(base + blend - 1, 0, 1))
         else:
             return blend
 
@@ -1022,10 +988,10 @@ class QRMetadataGenerator:
         """
         try:
             from pyzbar.pyzbar import decode as decode_qr
-        except ImportError as err:
+        except ImportError:
             raise ImportError(
                 "pyzbar library is required for QR decoding. Install with: pip install pyzbar"
-            ) from err
+            )
 
         # Load image if path
         if isinstance(qr_image, str | Path):
@@ -1151,13 +1117,13 @@ class StyleTransfer:
         """Initialize the style transfer system."""
         self.styles = self.load_historic_styles()
 
-    def load_historic_styles(self) -> dict[str, StyleParameters]:
+    def load_historic_styles(self) -> dict[HistoricStyle | str, StyleParameters]:
         """Load database of historic Pt/Pd print styles.
 
         Returns:
             Dictionary of style name to parameters
         """
-        styles: dict[str, StyleParameters] = {
+        styles: dict[HistoricStyle | str, StyleParameters] = {
             HistoricStyle.PICTORIALIST_1890S: StyleParameters(
                 name="1890s Pictorialist",
                 description="Soft-focus pictorialist style with gentle tones",
@@ -1326,8 +1292,12 @@ class StyleTransfer:
             contrast=float(contrast),
             toe_contrast=1.0,
             shoulder_contrast=1.0,
-            shadow_tone=shadow_color,
-            highlight_tone=highlight_color,
+            shadow_tone=(int(shadow_color[0]), int(shadow_color[1]), int(shadow_color[2])),
+            highlight_tone=(
+                int(highlight_color[0]),
+                int(highlight_color[1]),
+                int(highlight_color[2]),
+            ),
             dmax=float(2.0 - shadow_val * 0.5),
             dmin=float(0.05 + highlight_val * 0.1),
             paper_warmth=0.5,
@@ -1353,7 +1323,7 @@ class StyleTransfer:
             # Try to find matching style
             style_params = None
             for key, params in self.styles.items():
-                if key == style_name:
+                if key == style_name or key.value == style_name:
                     style_params = params
                     break
             if style_params is None:
@@ -1698,7 +1668,7 @@ class PrintComparison:
             raise ValueError(f"Reference key {reference_key} not in images")
 
         reference = images[reference_key]
-        _ = self._to_gray_array(reference)  # Validate reference can be converted
+        self._to_gray_array(reference)
 
         # Compare all images to reference
         comparisons = {}

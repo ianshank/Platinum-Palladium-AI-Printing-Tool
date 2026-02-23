@@ -9,9 +9,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { type CurveData } from '@/types/models';
+import { type CurveData, type CurveEnhanceResponse } from '@/types/models';
 import { api } from '@/api/client';
-import { useSaveCurve } from '@/api/hooks';
+import { useEnhanceCurve, useSaveCurve } from '@/api/hooks';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Redo2, RefreshCw, Save, Undo2 } from 'lucide-react';
@@ -31,6 +31,25 @@ const ADJUSTMENT_OPTIONS: readonly { value: AdjustmentType; label: string }[] =
     { value: 'gamma', label: 'Gamma' },
     { value: 'sigmoid', label: 'Sigmoid' },
   ];
+
+type EnhancementGoal =
+  | 'linearization'
+  | 'maximize_range'
+  | 'smooth_gradation'
+  | 'highlight_detail'
+  | 'shadow_detail'
+  | 'neutral_midtones'
+  | 'print_stability';
+
+const ENHANCEMENT_GOALS: readonly { value: EnhancementGoal; label: string }[] = [
+  { value: 'linearization',    label: 'Linearization' },
+  { value: 'maximize_range',   label: 'Maximize Range' },
+  { value: 'smooth_gradation', label: 'Smooth Gradation' },
+  { value: 'highlight_detail', label: 'Highlight Detail' },
+  { value: 'shadow_detail',    label: 'Shadow Detail' },
+  { value: 'neutral_midtones', label: 'Neutral Midtones' },
+  { value: 'print_stability',  label: 'Print Stability' },
+] as const;
 
 // --- UI Components (Inline for speed, move to ui/ later) ---
 
@@ -121,8 +140,16 @@ export function CurveEditor({
   const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // AI Enhancement state
+  const [enhancementGoal, setEnhancementGoal] = useState<EnhancementGoal>('linearization');
+  const [enhanceResult, setEnhanceResult] = useState<CurveEnhanceResponse | null>(null);
+  const [showEnhancePanel, setShowEnhancePanel] = useState(false);
+
   // Save mutation
   const { mutate: saveCurve, isPending: isSaving } = useSaveCurve();
+
+  // AI enhance mutation
+  const { mutate: enhanceCurve, isPending: isEnhancing } = useEnhanceCurve();
 
   // Prepare data for Recharts
   const chartData = useMemo(() => {
@@ -297,6 +324,35 @@ export function CurveEditor({
     );
   };
 
+  const handleAIEnhance = (): void => {
+    logger.info('CurveEditor: requesting AI enhancement', {
+      goal: enhancementGoal,
+      name,
+    });
+    setError(null);
+    enhanceCurve(
+      {
+        name,
+        input_values: inputValues,
+        output_values: outputValues,
+        goal: enhancementGoal,
+      },
+      {
+        onSuccess: (data) => {
+          if (data.success) {
+            setOutputValues(data.output_values);
+            setEnhanceResult(data);
+            setShowEnhancePanel(true);
+          }
+        },
+        onError: (err) => {
+          const rawMessage = err.response?.data?.message ?? err.message;
+          setError(rawMessage || 'AI enhancement failed');
+        },
+      }
+    );
+  };
+
   return (
     <div
       className={cn(
@@ -387,9 +443,10 @@ export function CurveEditor({
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                backgroundColor: 'hsl(var(--card))',
                 borderRadius: '4px',
-                border: '1px solid #ccc',
+                border: '1px solid hsl(var(--border))',
+                color: 'hsl(var(--card-foreground))',
               }}
             />
             <ReferenceLine
@@ -460,6 +517,73 @@ export function CurveEditor({
             <p className="mt-2 text-sm text-destructive" role="alert">
               {error}
             </p>
+          )}
+        </div>
+
+        {/* AI Enhancement */}
+        <div className="mt-2 border-t pt-4 md:col-span-2">
+          <p className="mb-2 text-sm font-medium text-foreground">
+            AI Enhancement
+          </p>
+          <div className="flex gap-2">
+            <select
+              value={enhancementGoal}
+              onChange={(e) =>
+                setEnhancementGoal(e.target.value as EnhancementGoal)
+              }
+              aria-label="Enhancement goal"
+              data-testid="enhancement-goal-select"
+              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {ENHANCEMENT_GOALS.map((g) => (
+                <option key={g.value} value={g.value}>
+                  {g.label}
+                </option>
+              ))}
+            </select>
+            <Button
+              onClick={handleAIEnhance}
+              isLoading={isEnhancing}
+              loadingText="Enhancing..."
+              disabled={isEnhancing}
+              data-testid="ai-enhance-btn"
+              className="shrink-0"
+            >
+              AI Enhance
+            </Button>
+          </div>
+
+          {showEnhancePanel && enhanceResult && (
+            <div
+              className="mt-3 rounded-md border bg-muted/30 p-3 text-sm"
+              data-testid="enhance-result"
+              role="alert"
+              aria-live="polite"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-medium">
+                  Confidence: {Math.round(enhanceResult.confidence * 100)}%
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowEnhancePanel(false)}
+                  data-testid="enhance-dismiss-btn"
+                >
+                  Dismiss
+                </Button>
+              </div>
+              <p className="mt-1 text-muted-foreground">
+                {enhanceResult.analysis}
+              </p>
+              {enhanceResult.changes_made.length > 0 && (
+                <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
+                  {enhanceResult.changes_made.map((change, i) => (
+                    <li key={i}>{change}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
       </div>

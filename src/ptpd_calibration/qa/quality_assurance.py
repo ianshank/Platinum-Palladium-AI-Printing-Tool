@@ -16,7 +16,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any
 from uuid import uuid4
 
 import numpy as np
@@ -176,9 +175,11 @@ class HumidityReading:
         return {
             "timestamp": self.timestamp.isoformat(),
             "humidity_percent": round(self.humidity_percent, 1),
-            "temperature_celsius": round(self.temperature_celsius, 1)
-            if self.temperature_celsius
-            else None,
+            "temperature_celsius": (
+                round(self.temperature_celsius, 1)
+                if self.temperature_celsius is not None
+                else None
+            ),
             "paper_type": self.paper_type,
             "notes": self.notes,
         }
@@ -199,8 +200,12 @@ class UVReading:
         return {
             "timestamp": self.timestamp.isoformat(),
             "intensity": round(self.intensity, 2),
-            "wavelength": round(self.wavelength, 1) if self.wavelength else None,
-            "bulb_hours": round(self.bulb_hours, 1) if self.bulb_hours else None,
+            "wavelength": (
+                round(self.wavelength, 1) if self.wavelength is not None else None
+            ),
+            "bulb_hours": (
+                round(self.bulb_hours, 1) if self.bulb_hours is not None else None
+            ),
             "notes": self.notes,
         }
 
@@ -970,11 +975,12 @@ class UVLightMeterIntegration:
         """
         self.calibration_date = datetime.now()
 
-        if reference_intensity is not None and self.readings:
+        if reference_intensity is not None:
             # If we have recent readings, calculate calibration factor
-            latest = self.readings[-1]
-            if latest.intensity > 0:
-                self.calibration_factor = reference_intensity / latest.intensity
+            if self.readings:
+                latest = self.readings[-1]
+                if latest.intensity > 0:
+                    self.calibration_factor = reference_intensity / latest.intensity
 
         return f"Meter calibrated at {self.calibration_date.strftime('%Y-%m-%d %H:%M')}"
 
@@ -1120,7 +1126,7 @@ class UVLightMeterIntegration:
         hours_readings = [r for r in self.readings if r.bulb_hours is not None]
 
         if hours_readings:
-            latest_hours: float = hours_readings[-1].bulb_hours  # type: ignore[assignment]  # filtered for not-None above
+            latest_hours = hours_readings[-1].bulb_hours
             if latest_hours >= self.settings.bulb_replacement_hours:
                 return f"Replace bulb: {latest_hours:.0f} hours (exceeds {self.settings.bulb_replacement_hours} hour limit)"
             else:
@@ -1186,7 +1192,7 @@ class QualityReport:
         Returns:
             Checklist dictionary
         """
-        checklist: dict[str, Any] = {
+        checklist = {
             "timestamp": datetime.now().isoformat(),
             "checks": {},
             "warnings": [],
@@ -1280,7 +1286,7 @@ class QualityReport:
         validator = NegativeDensityValidator(self.settings)
         analysis = validator.validate_density_range(scan)
 
-        report: dict[str, Any] = {
+        report = {
             "timestamp": datetime.now().isoformat(),
             "density_analysis": analysis.to_dict(),
             "quality_assessment": {},

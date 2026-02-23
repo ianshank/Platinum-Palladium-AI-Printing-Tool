@@ -363,7 +363,7 @@ class XRiteIntegration(SpectrophotometerInterface):
             density = max(0.0, min(3.0, base_density + noise))
 
             logger.debug(f"Read density for {patch_id}: {density:.3f}")
-            return float(density)
+            return density
 
         # Real device read would go here
         raise NotImplementedError("Real device reading not implemented")

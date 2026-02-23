@@ -16,6 +16,7 @@ import type {
   CalibrationListResponse,
   CalibrationRecord,
   ChatResponse,
+  CurveEnhanceResponse,
   CurveGenerationResponse,
   CurveModificationRequest,
   CurveModificationResponse,
@@ -162,6 +163,46 @@ export function useSmoothCurve(
     mutationFn: (data: CurveSmoothRequest) => api.curves.smooth(data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
+    },
+    ...options,
+  });
+}
+
+export function useEnhanceCurve(
+  options?: UseMutationOptions<
+    CurveEnhanceResponse,
+    AxiosError<ApiError>,
+    {
+      name: string;
+      input_values: number[];
+      output_values: number[];
+      goal: string;
+      additional_context?: string;
+      paper_type?: string;
+    }
+  >
+) {
+  const queryClient = useQueryClient();
+  const addToast = useStore((state) => state.ui.addToast);
+
+  return useMutation({
+    mutationFn: (data) => api.curves.enhance(data),
+    onSuccess: (data) => {
+      logger.info('Curve enhanced', { curveId: data.curve_id, goal: data.goal });
+      addToast({
+        title: 'AI Enhancement Applied',
+        description: `Goal: ${data.goal} — Confidence: ${Math.round(data.confidence * 100)}%`,
+        variant: 'success',
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
+    },
+    onError: (error) => {
+      logger.error('Curve enhance failed', { error: error.message });
+      addToast({
+        title: 'Enhancement Failed',
+        description: error.response?.data?.message ?? error.message,
+        variant: 'error',
+      });
     },
     ...options,
   });
@@ -457,6 +498,67 @@ export function useSendMessage(
     },
     onSettled: () => {
       setLoading(false);
+    },
+    ...options,
+  });
+}
+
+export function useRecipeSuggestion(
+  options?: UseMutationOptions<
+    ChatResponse,
+    AxiosError<ApiError>,
+    { paper_type: string; characteristics: string }
+  >
+) {
+  const addMessage = useStore((state) => state.chat.addMessage);
+  const addToast = useStore((state) => state.ui.addToast);
+
+  return useMutation({
+    mutationFn: (data) => {
+      addMessage({
+        role: 'user',
+        content: `Recipe for ${data.paper_type}: ${data.characteristics}`,
+      });
+      return api.chat.recipe(data);
+    },
+    onSuccess: (data) => {
+      addMessage({ role: 'assistant', content: data.response });
+    },
+    onError: (error) => {
+      addToast({
+        title: 'Recipe Request Failed',
+        description: error.response?.data?.message ?? error.message,
+        variant: 'error',
+      });
+    },
+    ...options,
+  });
+}
+
+export function useTroubleshootRequest(
+  options?: UseMutationOptions<
+    ChatResponse,
+    AxiosError<ApiError>,
+    { problem: string }
+  >
+) {
+  const addMessage = useStore((state) => state.chat.addMessage);
+  const addToast = useStore((state) => state.ui.addToast);
+
+  return useMutation({
+    mutationFn: (data) => {
+      addMessage({ role: 'user', content: `Troubleshoot: ${data.problem}` });
+      return api.chat.troubleshoot(data);
+    },
+    onSuccess: (data) => {
+      addMessage({ role: 'assistant', content: data.response });
+    },
+    onError: (error) => {
+      addToast({
+        title: 'Troubleshoot Failed',
+        description: error.response?.data?.message ?? error.message,
+        variant: 'error',
+      });
     },
     ...options,
   });

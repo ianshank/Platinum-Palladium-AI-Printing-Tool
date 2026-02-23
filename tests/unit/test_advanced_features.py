@@ -340,7 +340,6 @@ class TestNegativeBlender:
         neg2 = Image.new("L", (100, 100), color=200)
 
         # Create gradient mask
-        mask = Image.new("L", (100, 100))
         mask_arr = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
         mask = Image.fromarray(mask_arr, mode="L")
 

@@ -12,7 +12,8 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { renderWithProviders, userEvent } from '@/test-utils';
 import { AIAssistant } from './AIAssistant';
 
 // Mock logger
@@ -47,6 +48,15 @@ vi.mock('@/hooks/useChat', () => ({
   useChat: () => mockUseChat,
 }));
 
+// --- Mock API hooks (useRecipeSuggestion, useTroubleshootRequest) ---
+const mockRequestRecipe = vi.fn();
+const mockRequestTroubleshoot = vi.fn();
+
+vi.mock('@/api/hooks', () => ({
+  useRecipeSuggestion: () => ({ mutate: mockRequestRecipe, isPending: false }),
+  useTroubleshootRequest: () => ({ mutate: mockRequestTroubleshoot, isPending: false }),
+}));
+
 describe('AIAssistant', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -58,25 +68,29 @@ describe('AIAssistant', () => {
     mockUseChat.isBusy = false;
   });
 
+  // Helper: use renderWithProviders so Zustand store and QueryClient are available
+  const renderAssistant = (props?: Partial<{ className: string }>) =>
+    renderWithProviders(<AIAssistant {...props} />);
+
   describe('Empty State', () => {
     it('renders the assistant container', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('ai-assistant')).toBeInTheDocument();
     });
 
     it('shows empty state when no messages', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('empty-chat')).toBeInTheDocument();
     });
 
     it('displays suggestion buttons', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       const suggestions = screen.getAllByTestId('suggestion-btn');
       expect(suggestions.length).toBe(4);
     });
 
     it('shows greeting text', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByText('How can I help?')).toBeInTheDocument();
     });
   });
@@ -92,7 +106,7 @@ describe('AIAssistant', () => {
         },
       ];
 
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('message-msg-1')).toBeInTheDocument();
       expect(screen.getByText('Hello')).toBeInTheDocument();
     });
@@ -107,7 +121,7 @@ describe('AIAssistant', () => {
         },
       ];
 
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('message-msg-2')).toBeInTheDocument();
       expect(screen.getByText('Hi! How can I help?')).toBeInTheDocument();
     });
@@ -122,7 +136,7 @@ describe('AIAssistant', () => {
         },
       ];
 
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.queryByTestId('empty-chat')).not.toBeInTheDocument();
     });
 
@@ -148,7 +162,7 @@ describe('AIAssistant', () => {
         },
       ];
 
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('message-msg-1')).toBeInTheDocument();
       expect(screen.getByTestId('message-msg-2')).toBeInTheDocument();
       expect(screen.getByTestId('message-msg-3')).toBeInTheDocument();
@@ -157,22 +171,22 @@ describe('AIAssistant', () => {
 
   describe('Input & Send', () => {
     it('renders chat input', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('chat-input')).toBeInTheDocument();
     });
 
     it('renders send button', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('send-btn')).toBeInTheDocument();
     });
 
     it('send button is disabled when input is empty', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('send-btn')).toBeDisabled();
     });
 
     it('send button is enabled when input has text', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       fireEvent.change(screen.getByTestId('chat-input'), {
         target: { value: 'Test message' },
       });
@@ -180,7 +194,7 @@ describe('AIAssistant', () => {
     });
 
     it('calls sendSuggestion on form submit', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       fireEvent.change(screen.getByTestId('chat-input'), {
         target: { value: 'Test message' },
       });
@@ -189,7 +203,7 @@ describe('AIAssistant', () => {
     });
 
     it('clears input after send', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       const input = screen.getByTestId('chat-input');
       fireEvent.change(input, { target: { value: 'Test message' } });
       fireEvent.submit(screen.getByTestId('chat-form'));
@@ -198,18 +212,18 @@ describe('AIAssistant', () => {
 
     it('disables input while busy', () => {
       mockUseChat.isBusy = true;
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('chat-input')).toBeDisabled();
     });
 
     it('disables send button while busy', () => {
       mockUseChat.isBusy = true;
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('send-btn')).toBeDisabled();
     });
 
     it('sends on Enter key', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       const input = screen.getByTestId('chat-input');
       fireEvent.change(input, { target: { value: 'Enter test' } });
       fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
@@ -217,7 +231,7 @@ describe('AIAssistant', () => {
     });
 
     it('does not send on Shift+Enter', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       const input = screen.getByTestId('chat-input');
       fireEvent.change(input, { target: { value: 'Shift test' } });
       fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
@@ -225,14 +239,14 @@ describe('AIAssistant', () => {
     });
 
     it('does not send empty input', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       fireEvent.submit(screen.getByTestId('chat-form'));
       expect(mockUseChat.sendSuggestion).not.toHaveBeenCalled();
     });
 
     it('does not send while busy', () => {
       mockUseChat.isBusy = true;
-      render(<AIAssistant />);
+      renderAssistant();
       fireEvent.change(screen.getByTestId('chat-input'), {
         target: { value: 'Busy test' },
       });
@@ -243,7 +257,7 @@ describe('AIAssistant', () => {
 
   describe('Suggestions', () => {
     it('calls sendSuggestion when clicking a suggestion', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       const suggestions = screen.getAllByTestId('suggestion-btn');
       fireEvent.click(suggestions[0]!);
       expect(mockUseChat.sendSuggestion).toHaveBeenCalledWith(
@@ -255,14 +269,14 @@ describe('AIAssistant', () => {
   describe('Loading & Streaming', () => {
     it('shows loading indicator when busy without stream content', () => {
       mockUseChat.isBusy = true;
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
     });
 
     it('shows streaming message with content', () => {
       mockUseChat.isStreaming = true;
       mockUseChat.streamContent = 'Typing...';
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('streaming-message')).toBeInTheDocument();
       expect(screen.getByText('Typing...')).toBeInTheDocument();
     });
@@ -271,13 +285,13 @@ describe('AIAssistant', () => {
       mockUseChat.isStreaming = true;
       mockUseChat.isBusy = true;
       mockUseChat.streamContent = 'Typing...';
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.queryByTestId('loading-indicator')).not.toBeInTheDocument();
     });
 
     it('hides empty state when busy', () => {
       mockUseChat.isBusy = true;
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.queryByTestId('empty-chat')).not.toBeInTheDocument();
     });
   });
@@ -285,19 +299,19 @@ describe('AIAssistant', () => {
   describe('Error State', () => {
     it('shows error message', () => {
       mockUseChat.error = 'Something went wrong';
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('chat-error')).toBeInTheDocument();
       expect(screen.getByText('Something went wrong')).toBeInTheDocument();
     });
 
     it('error has alert role for accessibility', () => {
       mockUseChat.error = 'Error!';
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
 
     it('does not show error when null', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.queryByTestId('chat-error')).not.toBeInTheDocument();
     });
   });
@@ -312,12 +326,12 @@ describe('AIAssistant', () => {
           timestamp: '2026-02-07T10:00:00Z',
         },
       ];
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('clear-chat-btn')).toBeInTheDocument();
     });
 
     it('hides clear button when no messages', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.queryByTestId('clear-chat-btn')).not.toBeInTheDocument();
     });
 
@@ -330,18 +344,18 @@ describe('AIAssistant', () => {
           timestamp: '2026-02-07T10:00:00Z',
         },
       ];
-      render(<AIAssistant />);
+      renderAssistant();
       fireEvent.click(screen.getByTestId('clear-chat-btn'));
       expect(mockUseChat.clear).toHaveBeenCalledTimes(1);
     });
 
     it('shows new conversation button', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('new-conversation-btn')).toBeInTheDocument();
     });
 
     it('calls newConversation on new chat click', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       fireEvent.click(screen.getByTestId('new-conversation-btn'));
       expect(mockUseChat.newConversation).toHaveBeenCalledTimes(1);
     });
@@ -349,12 +363,12 @@ describe('AIAssistant', () => {
 
   describe('Accessibility', () => {
     it('messages area has log role', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByRole('log')).toBeInTheDocument();
     });
 
     it('messages area has aria-label', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('messages-area')).toHaveAttribute(
         'aria-label',
         'Chat messages'
@@ -362,7 +376,7 @@ describe('AIAssistant', () => {
     });
 
     it('chat input has aria-label', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('chat-input')).toHaveAttribute(
         'aria-label',
         'Chat message'
@@ -370,7 +384,7 @@ describe('AIAssistant', () => {
     });
 
     it('send button has aria-label', () => {
-      render(<AIAssistant />);
+      renderAssistant();
       expect(screen.getByTestId('send-btn')).toHaveAttribute(
         'aria-label',
         'Send message'
@@ -380,8 +394,47 @@ describe('AIAssistant', () => {
 
   describe('Customization', () => {
     it('applies custom className', () => {
-      render(<AIAssistant className="my-custom-class" />);
+      renderAssistant({ className: 'my-custom-class' });
       expect(screen.getByTestId('ai-assistant')).toHaveClass('my-custom-class');
+    });
+  });
+
+  describe('AI Quick Actions', () => {
+    it('renders context panel with chemistry state values', () => {
+      renderAssistant();
+      expect(screen.getByTestId('context-panel')).toBeInTheDocument();
+      // Default paper size from store (first standard size: 4x5) and default metalRatio (0.5)
+      expect(screen.getByTestId('context-paper')).toBeInTheDocument();
+      expect(screen.getByTestId('context-ratio')).toBeInTheDocument();
+      expect(screen.getByTestId('context-calibrations')).toBeInTheDocument();
+    });
+
+    it('renders Get Recipe and Troubleshoot buttons', () => {
+      renderAssistant();
+      expect(screen.getByTestId('recipe-btn')).toBeInTheDocument();
+      expect(screen.getByTestId('troubleshoot-btn')).toBeInTheDocument();
+    });
+
+    it('calls useRecipeSuggestion when Get Recipe is clicked', async () => {
+      renderAssistant();
+      await userEvent.click(screen.getByTestId('recipe-btn'));
+      expect(mockRequestRecipe).toHaveBeenCalledTimes(1);
+      const callArg = mockRequestRecipe.mock.calls[0]?.[0] as {
+        paper_type: string;
+        characteristics: string;
+      };
+      expect(typeof callArg.paper_type).toBe('string');
+      expect(callArg.characteristics).toMatch(/Pt \/ \d+% Pd/);
+    });
+
+    it('calls useTroubleshootRequest when Troubleshoot is clicked with input text', async () => {
+      renderAssistant();
+      const input = screen.getByTestId('chat-input');
+      await userEvent.type(input, 'Highlights are too bright');
+      await userEvent.click(screen.getByTestId('troubleshoot-btn'));
+      expect(mockRequestTroubleshoot).toHaveBeenCalledWith({
+        problem: 'Highlights are too bright',
+      });
     });
   });
 });

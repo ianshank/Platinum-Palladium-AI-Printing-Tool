@@ -1,6 +1,7 @@
 """
 Unit tests for LLM prompt generators.
 """
+
 from ptpd_calibration.llm.prompts import (
     SYSTEM_PROMPT,
     get_analysis_prompt,
