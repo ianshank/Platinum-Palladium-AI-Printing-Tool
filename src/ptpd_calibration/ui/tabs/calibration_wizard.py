@@ -287,6 +287,8 @@ def build_calibration_wizard_tab() -> None:
         wizard_step_state = gr.State(1)
         wizard_analysis_state = gr.State(None)
         wizard_curve_state = gr.State(None)
+        wizard_mode_state = gr.State(None)
+        wizard_config_valid_state = gr.State(False)
         step_titles = [
             "Scan your step tablet",
             "Review detection results",
@@ -364,20 +366,37 @@ def build_calibration_wizard_tab() -> None:
 
         with gr.Group(visible=False) as wizard_step_three:
             gr.Markdown("#### Step 3: Choose linearization method")
-            wizard_method = gr.Radio(
-                [
-                    "Spline (Smooth transitions)",
-                    "Polynomial",
-                    "Iterative (Best fit)",
-                ],
-                value="Spline (Smooth transitions)",
-                label="Method",
+            wizard_linearization_mode = gr.Dropdown(
+                choices=get_linearization_mode_choices(),
+                value=get_linearization_mode_choices()[0],
+                label="Linearization Mode",
+            )
+            wizard_target = gr.Dropdown(
+                choices=get_target_labels(),
+                value=get_target_labels()[0],
+                label="Target Response",
+            )
+            wizard_strategy = gr.Dropdown(
+                choices=get_strategy_labels(),
+                value=get_strategy_labels()[0],
+                label="Strategy",
+            )
+            wizard_paper_preset = gr.Dropdown(
+                choices=get_paper_preset_choices(),
+                value=get_paper_preset_choices()[0],
+                label="Paper",
+            )
+            wizard_existing_profile = gr.Dropdown(
+                choices=["No curves available"],
+                value="No curves available",
+                label="Existing Profile",
+                visible=False,
             )
             wizard_curve_name = gr.Textbox(label="Curve Name", value="Wizard Curve")
-            wizard_paper = gr.Textbox(label="Paper", value="Arches Platine")
             wizard_chemistry = gr.Textbox(
                 label="Chemistry Notes",
                 placeholder="e.g., 50/50 Pt/Pd, 5 drops Na2",
+                visible=False,
             )
             wizard_generate_curve = gr.Button("Generate Curve →", variant="primary")
 
