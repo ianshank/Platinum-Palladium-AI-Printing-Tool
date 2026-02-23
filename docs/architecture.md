@@ -11,7 +11,7 @@ C4Context
   title System Context Diagram for Pt/Pd Calibration Studio
 
   Person(user, "Photographer/Print-Maker", "A user who wants to calibrate their printing process.")
-  System(app, "Pt/Pd Calibration Studio", "A Gradio-based web application for generating and analyzing platinum/palladium printing curves.")
+  System(app, "Pt/Pd Calibration Studio", "A React + FastAPI web application for generating, editing, and exporting platinum/palladium printing calibration curves with AI assistance.")
 
   System_Ext(llm, "External LLM Service", "Provides AI-powered analysis and chat capabilities (e.g., OpenAI, Anthropic).")
   System_Ext(fs, "File System", "Stores user-provided scans, exported curves, and machine learning data.")
@@ -32,15 +32,19 @@ C4Container
   Person(user, "Photographer/Print-Maker", "A user who wants to calibrate their printing process.")
 
   System_Boundary(c1, "Pt/Pd Calibration Studio") {
-    Container(web_app, "Web Application", "Python, Gradio", "The single, monolithic application process that provides all functionality via a web interface.")
+    Container(frontend, "React Frontend", "React 18, TypeScript, Zustand, TanStack Query, Vite", "SPA providing curve editing, AI assistant, calibration wizard, and MCTS dashboard.")
+    Container(api, "FastAPI Backend", "Python 3.10+, FastAPI, Pydantic", "REST API for curves, scans, calibrations, chat, and MCTS endpoints.")
+    Container(mcts, "MCTS Engine", "PyTorch, NumPy, scikit-learn", "AlphaZero-style calibration optimizer with physics simulation.")
+    ContainerDb(fs, "File Storage", "JSON files", "Curve data (data/curves/*.json), scans, exports, ML checkpoints.")
   }
 
-  System_Ext(llm, "External LLM Service", "Provides AI-powered analysis and chat capabilities (e.g., OpenAI, Anthropic).")
-  System_Ext(fs, "File System", "Stores user-provided scans, exported curves, and machine learning data.")
+  System_Ext(llm, "External LLM Service", "Provides AI-powered analysis and chat capabilities (Anthropic Claude, OpenAI).")
 
-  Rel(user, web_app, "Interacts with", "HTTPS")
-  Rel(web_app, fs, "Reads/Writes data")
-  Rel(web_app, llm, "Sends prompts, receives completions", "JSON/HTTPS")
+  Rel(user, frontend, "Interacts with", "HTTPS/Browser")
+  Rel(frontend, api, "REST calls", "JSON/HTTPS")
+  Rel(api, mcts, "Delegates search", "Python")
+  Rel(api, fs, "Reads/Writes", "JSON")
+  Rel(api, llm, "Sends prompts, receives completions", "JSON/HTTPS")
 ```
 
 ## Level 3: Components
@@ -51,28 +55,26 @@ This diagram breaks down the "Web Application" container into its major internal
 C4Component
   title Component Diagram for Pt/Pd Calibration Studio Web App
 
-  Container_Boundary(c1, "Web Application") {
-    Component(ui, "Gradio UI", "gradio_app.py", "Main entrypoint. Orchestrates all user interactions and backend calls.")
-    Component(analyzer, "Scan Analyzer", "detection/", "Reads step tablet scans and extracts density data.")
-    Component(curves, "Curve Tools", "curves/", "Core logic for parsing, generating, and modifying calibration curves.")
-    Component(enhancer, "AI Curve Enhancer", "ai_enhance.py", "Hybrid rule-based & LLM system to intelligently improve curves.")
-    Component(assistant, "LLM Assistant", "llm/assistant.py", "High-level facade for RAG-powered chat and recipe suggestions.")
-    Component(llm_client, "LLM Client", "llm/client.py", "Low-level client for making API calls to the configured LLM provider.")
-    Component(predictor, "ML Predictor", "ml/predictor.py", "Scikit-learn model to predict density curves (not currently used by UI).")
-    Component(db, "ML Database", "ml/database.py", "In-memory, file-backed DB for ML training data (CalibrationRecords).")
+  Container_Boundary(c1, "FastAPI Backend") {
+    Component(api_server, "API Server", "api/server.py", "FastAPI app with routes: /api/curves, /api/scan, /api/calibrations, /api/chat, /api/mcts")
+    Component(analyzer, "Scan Analyzer", "detection/", "Reads step tablet scans and extracts density data from patches.")
+    Component(curves, "Curve Tools", "curves/", "Parsing, generating, modifying, smoothing, blending, and exporting calibration curves.")
+    Component(enhancer, "AI Curve Enhancer", "ai_enhance.py", "Hybrid rule-based & LLM system for intelligent curve improvement with configurable goals.")
+    Component(assistant, "LLM Assistant", "llm/assistant.py", "RAG-powered chat, recipe suggestions, and troubleshooting via Anthropic/OpenAI.")
+    Component(llm_client, "LLM Client", "llm/client.py", "Low-level client for LLM API calls with provider abstraction.")
+    Component(persistence, "Curve Persistence", "api/server.py (_store_curve/_get_curve)", "Write-through cache: runtime dict + data/curves/*.json files for durability.")
 
-    Rel(ui, analyzer, "Uses", "To analyze scans")
-    Rel(ui, curves, "Uses", "To generate/modify curves")
-    Rel(ui, enhancer, "Uses", "To apply AI enhancement")
-    Rel(ui, assistant, "Uses", "For chat and suggestions")
+    Rel(api_server, analyzer, "Uses", "Scan analysis")
+    Rel(api_server, curves, "Uses", "Curve CRUD + export")
+    Rel(api_server, enhancer, "Uses", "AI enhance endpoint")
+    Rel(api_server, assistant, "Uses", "Chat endpoints")
+    Rel(api_server, persistence, "Uses", "Store/retrieve curves by ID")
 
     Rel(enhancer, llm_client, "Uses")
     Rel(assistant, llm_client, "Uses")
-    Rel(assistant, db, "Gets context from", "RAG")
-    Rel(predictor, db, "Gets training data from")
   }
 
-  System_Ext(llm_ext, "External LLM Service", "LLM API")
+  System_Ext(llm_ext, "External LLM Service", "LLM API (Anthropic/OpenAI)")
   Rel(llm_client, llm_ext, "Makes API calls to", "HTTPS")
 ```
 
@@ -222,15 +224,32 @@ C4Component
   title Frontend Architecture (Level 3)
 
   Container_Boundary(fe, "React Frontend (frontend/src/)") {
-    Component(pages, "Pages", "pages/", "Route-level components: CurvesPage, DashboardPage, etc.")
-    Component(components, "UI Components", "components/", "Reusable: CurveUpload, ChemistryCalculator, ErrorBoundary")
-    Component(stores, "Zustand Store", "stores/", "Slices: curve, image, chat, ui, mcts with immer + devtools")
-    Component(hooks, "TanStack Query Hooks", "api/hooks.ts", "Cached data fetching: useGenerateCurve, useUploadQuadFile, useSendMessage")
-    Component(client, "API Client", "api/client.ts", "Axios instance with interceptors, typed endpoints")
+    Component_Boundary(page_layer, "Pages (pages/)") {
+      Component(curves_page, "CurvesPage", "CurvesPage.tsx", "3-tab Radix UI structure: Upload .quad → Edit Curve (AI Enhance) → Export (QTR/CSV/JSON)")
+      Component(ai_page, "AIAssistantPage", "AIAssistantPage.tsx", "Chat interface with context panel (paper/ratio/calibrations) + recipe/troubleshoot quick actions")
+      Component(other_pages, "Other Pages", "Dashboard, Calibration, Chemistry, MCTS, Settings, SessionLog", "Domain-specific route-level pages")
+    }
 
-    Rel(pages, components, "Renders")
-    Rel(pages, stores, "Reads/writes state")
-    Rel(components, hooks, "Fetches data")
+    Component_Boundary(comp_layer, "UI Components (components/)") {
+      Component(curve_upload, "CurveUpload", "curves/CurveUpload.tsx", "Drag-and-drop .quad upload with paste mode, calls onLoadCurve(data, id, name)")
+      Component(curve_editor, "CurveEditor", "curves/CurveEditor.tsx", "Recharts curve visualization, adjustments, AI Enhance with 7 goals, undo/redo")
+      Component(export_panel, "ExportPanel", "export/ExportPanel.tsx", "Format selector (QTR/Piezography/CSV/JSON) + download via useExportCurve")
+      Component(ai_assistant, "AIAssistant", "assistant/AIAssistant.tsx", "Streaming chat with context panel, useChat hook, recipe/troubleshoot mutations")
+      Component(other_comps, "Other Components", "calibration/, chemistry/, preview/, ui/", "Reusable domain components")
+    }
+
+    Component(stores, "Zustand Store", "stores/", "Slices: chemistry, calibration, chat, curve, image, ui, mcts — immer + devtools middleware")
+    Component(hooks, "TanStack Query Hooks", "api/hooks.ts", "useEnhanceCurve, useExportCurve, useRecipeSuggestion, useTroubleshootRequest, useChat, etc.")
+    Component(client, "API Client", "api/client.ts", "Axios instance: api.curves.export → POST /{curveId}/export?format=, typed endpoints")
+
+    Rel(curves_page, curve_upload, "Renders in Upload tab")
+    Rel(curves_page, curve_editor, "Renders in Edit tab")
+    Rel(curves_page, export_panel, "Renders in Export tab")
+    Rel(ai_page, ai_assistant, "Renders")
+    Rel(curve_editor, hooks, "useEnhanceCurve")
+    Rel(ai_assistant, hooks, "useRecipeSuggestion, useTroubleshootRequest")
+    Rel(ai_assistant, stores, "chemistry.paperSize, chemistry.metalRatio, calibration.history")
+    Rel(export_panel, hooks, "useExportCurve")
     Rel(hooks, client, "HTTP requests")
   }
 

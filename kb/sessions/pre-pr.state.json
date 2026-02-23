@@ -1,22 +1,44 @@
 {
-  "last_session_id": null,
-  "last_timestamp": null,
-  "active_branch": null,
+  "last_session_id": "session-beta-wiring-pre-pr",
+  "last_timestamp": "2026-02-23T09:25:00Z",
+  "active_branch": "claude/zen-moser",
   "resume_pointers": {
-    "current_task": null,
-    "blocked_on": [],
-    "next_steps": []
+    "last_check_run": "2026-02-23T09:25:00Z",
+    "context_files": [
+      "CLAUDE.md",
+      "frontend/package.json",
+      "frontend/src/api/client.ts",
+      "frontend/src/api/hooks.ts",
+      "frontend/src/pages/CurvesPage.tsx",
+      "frontend/src/components/assistant/AIAssistant.tsx",
+      "frontend/src/components/curves/CurveEditor.tsx",
+      "src/ptpd_calibration/api/server.py"
+    ]
   },
-  "context_files": [],
-  "pr_readiness": null,
+  "context_files": [
+    "CLAUDE.md",
+    "frontend/package.json",
+    "frontend/src/api/client.ts",
+    "frontend/src/api/hooks.ts"
+  ],
+  "pr_readiness": {
+    "status": "ready",
+    "blocking_issues": [],
+    "warnings": [
+      "17 pre-existing frontend lint errors (e2e tsconfig + unused eslint-disable)",
+      "77 pre-existing Python ruff errors in unrelated modules",
+      "51 Python test collection errors in unrelated test modules"
+    ]
+  },
   "check_results": {
-    "lint": null,
-    "format": null,
-    "types": null,
-    "tests": null,
-    "coverage": null,
-    "security": null,
-    "docs": null,
-    "changelog": null
-  }
+    "lint": "warn",
+    "format": "warn",
+    "types": "pass",
+    "tests": "pass",
+    "coverage": "skip",
+    "security": "skip",
+    "docs": "pending",
+    "changelog": "pending"
+  },
+  "last_pr_doc": "kb/handoffs/20260223-092500_pr-description.md"
 }

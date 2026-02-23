@@ -12,7 +12,7 @@ from ptpd_calibration.config import get_settings
 def create_app():
     """Create the FastAPI application."""
     try:
-        from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+        from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import FileResponse
         from pydantic import BaseModel
@@ -151,8 +151,34 @@ def create_app():
         paper_type: str | None = None
         additional_context: str | None = None
 
-    # Curve storage for session (in production, use database)
+    # Curve storage — write-through cache backed by JSON files on disk
+    curves_dir = upload_dir.parent / "curves"
+    curves_dir.mkdir(parents=True, exist_ok=True)
     curve_storage: dict[str, CurveData] = {}
+
+    def _store_curve(curve: CurveData) -> None:
+        """Cache curve in memory and persist to disk."""
+        curve_storage[str(curve.id)] = curve
+        try:
+            (curves_dir / f"{curve.id}.json").write_text(
+                curve.model_dump_json(), encoding="utf-8"
+            )
+        except Exception:
+            pass  # persistence is best-effort for beta
+
+    def _get_curve(curve_id: str) -> CurveData | None:
+        """Return curve from memory cache, falling back to disk."""
+        if curve_id in curve_storage:
+            return curve_storage[curve_id]
+        path = curves_dir / f"{curve_id}.json"
+        if path.exists():
+            try:
+                loaded = CurveData.model_validate_json(path.read_text(encoding="utf-8"))
+                curve_storage[curve_id] = loaded
+                return loaded
+            except Exception:
+                return None
+        return None
 
     # Routes
     @app.get("/")
@@ -264,6 +290,26 @@ def create_app():
             filename=f"{name}{ext}",
         )
 
+    @app.post("/api/curves/{curve_id}/export")
+    async def export_stored_curve(
+        curve_id: str,
+        format: str = Query("qtr"),
+    ):
+        """Export a previously stored curve by ID."""
+        curve = _get_curve(curve_id)
+        if not curve:
+            raise HTTPException(status_code=404, detail="Curve not found")
+        ext_map = {"qtr": ".txt", "piezography": ".ppt", "csv": ".csv", "json": ".json"}
+        ext = ext_map.get(format, ".txt")
+        safe_name = "".join(c if c.isalnum() or c in "-_." else "_" for c in curve.name)
+        output_path = upload_dir / f"{safe_name}{ext}"
+        save_curve(curve, output_path, format=format)
+        return FileResponse(
+            output_path,
+            media_type="application/octet-stream",
+            filename=f"{safe_name}{ext}",
+        )
+
     @app.post("/api/curves/upload-quad")
     async def upload_quad_file(
         file: UploadFile = File(...),
@@ -287,7 +333,7 @@ def create_app():
             # Convert requested channel to CurveData and store
             if channel.upper() in profile.channels:
                 curve_data = profile.to_curve_data(channel.upper())
-                curve_storage[str(curve_data.id)] = curve_data
+                _store_curve(curve_data)
             else:
                 curve_data = None
 
@@ -330,7 +376,7 @@ def create_app():
             # Convert requested channel to CurveData and store
             if channel.upper() in profile.channels:
                 curve_data = profile.to_curve_data(channel.upper())
-                curve_storage[str(curve_data.id)] = curve_data
+                _store_curve(curve_data)
             else:
                 curve_data = None
 
@@ -391,7 +437,7 @@ def create_app():
                 raise ValueError(f"Unknown adjustment type: {adjustment_type}")
 
             # Store the modified curve
-            curve_storage[str(modified.id)] = modified
+            _store_curve(modified)
 
             return {
                 "success": True,
@@ -429,7 +475,7 @@ def create_app():
             )
 
             # Store the smoothed curve
-            curve_storage[str(smoothed.id)] = smoothed
+            _store_curve(smoothed)
 
             return {
                 "success": True,
@@ -473,7 +519,7 @@ def create_app():
             blended.name = request.name
 
             # Store the blended curve
-            curve_storage[str(blended.id)] = blended
+            _store_curve(blended)
 
             return {
                 "success": True,
@@ -520,7 +566,7 @@ def create_app():
                 )
 
             # Store the enhanced curve
-            curve_storage[str(result.enhanced_curve.id)] = result.enhanced_curve
+            _store_curve(result.enhanced_curve)
 
             return {
                 "success": True,
@@ -539,7 +585,7 @@ def create_app():
     @app.get("/api/curves/{curve_id}")
     async def get_stored_curve(curve_id: str):
         """Get a stored curve by ID."""
-        curve = curve_storage.get(curve_id)
+        curve = _get_curve(curve_id)
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
 
@@ -559,14 +605,14 @@ def create_app():
         direction: str = "increasing",
     ):
         """Enforce monotonicity on a stored curve."""
-        curve = curve_storage.get(curve_id)
+        curve = _get_curve(curve_id)
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
 
         try:
             modifier = CurveModifier()
             modified = modifier.enforce_monotonicity(curve, direction=direction)
-            curve_storage[str(modified.id)] = modified
+            _store_curve(modified)
 
             return {
                 "success": True,

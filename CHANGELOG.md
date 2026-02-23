@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-02-23
+
+### Added
+
+- **Beta Working State: Curves, AI Enhancement & Export** (5 implementation rounds)
+  - **Round 1 — Backend Persistence + Export Endpoint**
+    - File-based curve persistence: `_store_curve`/`_get_curve` helpers write `data/curves/*.json` (survives server restart)
+    - New `POST /api/curves/{curve_id}/export?format=` endpoint that loads stored curves by ID
+    - Fixed frontend `api.curves.export` URL from `/api/curves/export` (wrong, took form-data) to `/{curveId}/export?format=` (correct, sends `{curveId, format}` JSON)
+  - **Round 2 — New API Hooks** (`frontend/src/api/hooks.ts`)
+    - `useEnhanceCurve`: calls `api.curves.enhance`, toasts on success/failure, invalidates curve query cache
+    - `useRecipeSuggestion`: calls `api.chat.recipe`, adds user + assistant messages to chat store
+    - `useTroubleshootRequest`: calls `api.chat.troubleshoot`, adds user + assistant messages to chat store
+  - **Round 3 — CurveEditor AI Enhance Section** (`frontend/src/components/curves/CurveEditor.tsx`)
+    - Goal selector with 7 enhancement goals: Linearization, Maximize Range, Smooth Gradation, Highlight Detail, Shadow Detail, Neutral Midtones, Print Stability
+    - `handleAIEnhance` calls `useEnhanceCurve`, updates output values on success
+    - Results panel shows confidence %, analysis text, and list of changes made
+    - Dismiss button hides results panel
+    - 14 new tests covering: render, all 7 goals, API call args, results display, value update, dismiss
+  - **Round 4 — CurvesPage Three-Tab Structure** (`frontend/src/pages/CurvesPage.tsx`)
+    - Radix UI `<Tabs.Root>` with Upload .quad / Edit Curve / Export tabs
+    - Upload tab: `<CurveUpload onLoadCurve>` — auto-switches to Edit tab on load
+    - Edit tab: `<CurveEditor>` with `initialCurve` built from loaded `QuadCurveValues`
+    - Export tab: `<ExportPanel>` with all 4 formats (QTR, Piezography, CSV, JSON)
+    - Edit and Export tabs disabled until a curve is loaded
+    - 6 new tests: heading, tab rendering, upload default, disabled states, load flow, export state
+  - **AIAssistant Context Panel + Quick Actions** (`frontend/src/components/assistant/AIAssistant.tsx`)
+    - `<details>` context panel showing current paper type, metal ratio, and calibration record count
+    - "Get Recipe" button: calls `useRecipeSuggestion` with paper type and metal ratio from store
+    - "Troubleshoot" button: calls `useTroubleshootRequest` with text from input field
+    - Both buttons reflect `isBusy` state; Troubleshoot disabled when input is empty
+    - 4 new tests: context panel render, both buttons render, recipe call args, troubleshoot call args
+
+### Fixed
+
+- **CurveEditor `initialCurve` prop**: Used `exactOptionalPropertyTypes`-safe conditional spread `{...(initialCurve ? { initialCurve } : {})}` to avoid TypeScript strict-mode assignment error
+
+---
+
 ## [Unreleased] — 2026-02-16
 
 ### Added

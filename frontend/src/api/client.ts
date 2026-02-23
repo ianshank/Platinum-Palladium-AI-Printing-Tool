@@ -191,8 +191,8 @@ export const api = {
     export: (data: { curveId: string; format: string }) =>
       apiRequest<Blob>({
         method: 'POST',
-        url: '/api/curves/export',
-        data,
+        url: `/api/curves/${data.curveId}/export`,
+        params: { format: data.format },
         responseType: 'blob',
       }),
 
@@ -274,7 +274,7 @@ export const api = {
         data,
       }),
 
-    recipe: (data: { paper_type: string; characteristics: string[] }) =>
+    recipe: (data: { paper_type: string; characteristics: string }) =>
       apiRequest<ChatResponse>({
         method: 'POST',
         url: '/api/chat/recipe',
