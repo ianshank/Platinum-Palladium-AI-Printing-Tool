@@ -692,7 +692,7 @@ def get_diagnostic_report() -> DiagnosticReport:
         registry = DeviceRegistry()
         for device_id, device in registry._devices.items():
             # Use _status attribute instead of is_connected property
-            connected = hasattr(device, '_status') and device._status == DeviceStatus.CONNECTED
+            connected = hasattr(device, "_status") and device._status == DeviceStatus.CONNECTED
             report.devices.append(
                 {
                     "device_id": device_id,

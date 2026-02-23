@@ -5,42 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — 2026-02-23
+## [Unreleased] — 2026-02-22
 
-### Added
+### Fixed (Bug-Fix Sprint)
 
-- **Beta Working State: Curves, AI Enhancement & Export** (5 implementation rounds)
-  - **Round 1 — Backend Persistence + Export Endpoint**
-    - File-based curve persistence: `_store_curve`/`_get_curve` helpers write `data/curves/*.json` (survives server restart)
-    - New `POST /api/curves/{curve_id}/export?format=` endpoint that loads stored curves by ID
-    - Fixed frontend `api.curves.export` URL from `/api/curves/export` (wrong, took form-data) to `/{curveId}/export?format=` (correct, sends `{curveId, format}` JSON)
-  - **Round 2 — New API Hooks** (`frontend/src/api/hooks.ts`)
-    - `useEnhanceCurve`: calls `api.curves.enhance`, toasts on success/failure, invalidates curve query cache
-    - `useRecipeSuggestion`: calls `api.chat.recipe`, adds user + assistant messages to chat store
-    - `useTroubleshootRequest`: calls `api.chat.troubleshoot`, adds user + assistant messages to chat store
-  - **Round 3 — CurveEditor AI Enhance Section** (`frontend/src/components/curves/CurveEditor.tsx`)
-    - Goal selector with 7 enhancement goals: Linearization, Maximize Range, Smooth Gradation, Highlight Detail, Shadow Detail, Neutral Midtones, Print Stability
-    - `handleAIEnhance` calls `useEnhanceCurve`, updates output values on success
-    - Results panel shows confidence %, analysis text, and list of changes made
-    - Dismiss button hides results panel
-    - 14 new tests covering: render, all 7 goals, API call args, results display, value update, dismiss
-  - **Round 4 — CurvesPage Three-Tab Structure** (`frontend/src/pages/CurvesPage.tsx`)
-    - Radix UI `<Tabs.Root>` with Upload .quad / Edit Curve / Export tabs
-    - Upload tab: `<CurveUpload onLoadCurve>` — auto-switches to Edit tab on load
-    - Edit tab: `<CurveEditor>` with `initialCurve` built from loaded `QuadCurveValues`
-    - Export tab: `<ExportPanel>` with all 4 formats (QTR, Piezography, CSV, JSON)
-    - Edit and Export tabs disabled until a curve is loaded
-    - 6 new tests: heading, tab rendering, upload default, disabled states, load flow, export state
-  - **AIAssistant Context Panel + Quick Actions** (`frontend/src/components/assistant/AIAssistant.tsx`)
-    - `<details>` context panel showing current paper type, metal ratio, and calibration record count
-    - "Get Recipe" button: calls `useRecipeSuggestion` with paper type and metal ratio from store
-    - "Troubleshoot" button: calls `useTroubleshootRequest` with text from input field
-    - Both buttons reflect `isBusy` state; Troubleshoot disabled when input is empty
-    - 4 new tests: context panel render, both buttons render, recipe call args, troubleshoot call args
+- **P0 — CurveEditor HTTP 400**: `adjustment_type` was `'none'` on every curve-modify call; changed to `'brightness'` so the API accepts the request
+- **Sidebar flash on first load**: `uiSlice` `sidebarOpen` default was `true`; changed to `false` so the sidebar starts closed on mobile
+- **E2E test — duplicate `h1`**: Dashboard heading check scoped to `<main>` to avoid matching the duplicate heading in the Layout header
+- **E2E test — focus ring detection**: Added `body.click()` to establish page focus before `Tab`; switched selector to `:focus-visible` for spec-correct matching
+- **Backend `analyze_densities` crash**: Added empty-list guard before `np.array([]).max()` — now returns HTTP 422 instead of 500
+- **Backend `create_calibration` 500**: Wrapped `CalibrationRecord(...)` construction in `try/except pydantic.ValidationError` — now returns HTTP 422
+- **Backend `get_calibration` 500**: `UUID(calibration_id)` `ValueError` now caught and returned as HTTP 422 with descriptive message
+- **Backend `smooth_curve` 400**: `CurveModifier.smooth()` does not accept `preserve_endpoints` as a kwarg — moved to `CurveModifier.__init__()`
+- **Backend quad validation false-positive**: `parse_quad_content` now checks `not profile.raw_sections and not profile.active_channels`; previous check on `profile.channels` was always `False` because `_post_process()` unconditionally injects 7 default disabled channels
+- **`CurveType` enum missing values**: Added `SPLINE = "spline"` and `POLYNOMIAL = "polynomial"` to resolve `ValueError` in callers using those strings
 
-### Fixed
+### Test Results (2026-02-22)
 
-- **CurveEditor `initialCurve` prop**: Used `exactOptionalPropertyTypes`-safe conditional spread `{...(initialCurve ? { initialCurve } : {})}` to avoid TypeScript strict-mode assignment error
+- **Frontend Playwright e2e**: 9/9 passed ✅
+- **Backend pytest (`tests/api/`)**: 104 passed, 13 skipped, 0 failed ✅
+- **Frontend vitest**: 726 passed, 0 failed ✅
+- **TypeScript**: 0 errors ✅
 
 ---
 

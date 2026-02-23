@@ -1,5 +1,35 @@
 # DEV-SQE Summary
 
+## 2026-02-22 | Bug-Fix Sprint: Frontend + Backend Test Failures
+
+### What was done
+- **P0 frontend fix**: `CurveEditor` — `adjustment_type: 'none'` → `'brightness'`; caused HTTP 400 on every curve modify call
+- **UI fix**: `uiSlice` — `sidebarOpen` default `true` → `false`; sidebar was open on first render
+- **E2E test fixes**: Dashboard `h1` scoped to `main` (avoid Layout header duplicate); focus ring test gets `body.click()` anchor before Tab + uses `:focus-visible`
+- **Backend: 6 root-cause fixes covering 10 failing pytest tests**:
+  - Empty `densities` guard → HTTP 422 (was unhandled `ValueError` in numpy)
+  - `pydantic.ValidationError` in `create_calibration` → HTTP 422 (was 500)
+  - `UUID()` `ValueError` in `get_calibration` → HTTP 422 (was 500)
+  - `CurveModifier.smooth()` `preserve_endpoints` moved to `__init__` (was incorrectly passed as kwarg → `TypeError` → 400)
+  - `parse_quad_content` validation: `not raw_sections and not active_channels` (parser always injects 7 default disabled channels, making `not channels` check wrong)
+  - `CurveType` enum: added `SPLINE` and `POLYNOMIAL` values
+
+### Verification
+- **Playwright e2e**: 9/9 passed ✅
+- **Backend pytest (tests/api/)**: 104 passed, 13 skipped, 0 failed ✅
+- **Frontend vitest**: 726 passed, 0 failed ✅
+- **TypeScript**: 0 errors
+
+### Files Changed (6 files)
+- `frontend/e2e/app.spec.ts` — h1 scope fix, focus test fix
+- `frontend/src/components/Layout/Layout.tsx` — `lg:translate-x-0` sidebar class
+- `frontend/src/components/curves/CurveEditor.tsx` — `adjustment_type: 'brightness'`
+- `frontend/src/stores/slices/uiSlice.ts` — `sidebarOpen: false`
+- `src/ptpd_calibration/api/server.py` — 5 backend fixes
+- `src/ptpd_calibration/core/types.py` — SPLINE/POLYNOMIAL in CurveType
+
+---
+
 ## 2026-02-09 | Code Review Hardening
 
 ### What was done

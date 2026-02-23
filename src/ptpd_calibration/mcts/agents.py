@@ -135,9 +135,7 @@ class ChemistrySubagent(BaseSubagent):
         if contrast_pref < 0.5:
             fo_pct = fo_range.min_value + (contrast_pref / 0.5) * (fo_center - fo_range.min_value)
         else:
-            fo_pct = fo_center + ((contrast_pref - 0.5) / 0.5) * (
-                fo_range.max_value - fo_center
-            )
+            fo_pct = fo_center + ((contrast_pref - 0.5) / 0.5) * (fo_range.max_value - fo_center)
 
         # Tonal range: Higher range -> more coating weight
         coating_range = DEFAULT_PARAMETER_RANGES["coating_weight"]
@@ -295,15 +293,14 @@ class ExposureSubagent(BaseSubagent):
         # Base exposure time from coating weight (more coating = more time)
         exposure_range = DEFAULT_PARAMETER_RANGES["exposure_time"]
         # Heavier coating needs longer exposure
-        coating_factor = (
-            coating_weight - DEFAULT_PARAMETER_RANGES["coating_weight"].min_value
-        ) / (
+        coating_factor = (coating_weight - DEFAULT_PARAMETER_RANGES["coating_weight"].min_value) / (
             DEFAULT_PARAMETER_RANGES["coating_weight"].max_value
             - DEFAULT_PARAMETER_RANGES["coating_weight"].min_value
         )
-        base_exposure = exposure_range.default_value + coating_factor * (
-            exposure_range.max_value - exposure_range.default_value
-        ) * 0.5
+        base_exposure = (
+            exposure_range.default_value
+            + coating_factor * (exposure_range.max_value - exposure_range.default_value) * 0.5
+        )
 
         # Adjust for UV source intensity
         uv_multipliers = {
@@ -315,9 +312,7 @@ class ExposureSubagent(BaseSubagent):
         exposure_time = base_exposure * uv_multiplier
 
         # Ensure within bounds
-        exposure_time = max(
-            exposure_range.min_value, min(exposure_range.max_value, exposure_time)
-        )
+        exposure_time = max(exposure_range.min_value, min(exposure_range.max_value, exposure_time))
 
         # Developer temp: standard default
         dev_temp_range = DEFAULT_PARAMETER_RANGES["developer_temp"]

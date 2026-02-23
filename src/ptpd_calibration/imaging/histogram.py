@@ -147,7 +147,7 @@ class HistogramAnalyzer:
             HistogramResult with complete analysis
         """
         # Load image
-        if isinstance(image, (str, Path)):
+        if isinstance(image, str | Path):
             img = Image.open(image)
         elif isinstance(image, np.ndarray):
             if image.ndim == 2:

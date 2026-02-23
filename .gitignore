@@ -187,9 +187,4 @@ node_modules/.vite/
 
 # Claude Code backup files
 .claude/settings.local.json.bak
-
-# Security scan reports (generated locally, not committed)
-bandit-report.json
-
-# Curve persistence data (server-generated, not committed)
-data/curves/
+.claude/launch.json

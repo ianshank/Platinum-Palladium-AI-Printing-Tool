@@ -100,6 +100,8 @@ class CurveType(str, Enum):
     AESTHETIC = "aesthetic"
     CUSTOM = "custom"
     MCTS_OPTIMIZED = "mcts_optimized"
+    SPLINE = "spline"
+    POLYNOMIAL = "polynomial"
 
 
 class MeasurementUnit(str, Enum):

@@ -80,7 +80,7 @@ describe('App', () => {
 
   describe('Loading state', () => {
     it('shows LoadingScreen when not initialized', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock selector with test state
+       
       mockUseStore.mockImplementation((selector: any) =>
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- calling mock selector
         selector({
@@ -99,7 +99,7 @@ describe('App', () => {
     });
 
     it('shows the Pt logo badge in loading screen', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock selector with test state
+       
       mockUseStore.mockImplementation((selector: any) =>
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- calling mock selector
         selector({
@@ -116,7 +116,7 @@ describe('App', () => {
     });
 
     it('calls initializeApp on mount', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock selector with test state
+       
       mockUseStore.mockImplementation((selector: any) =>
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- calling mock selector
         selector({
@@ -135,7 +135,7 @@ describe('App', () => {
 
   describe('Initialized state', () => {
     beforeEach(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock selector with test state
+       
       mockUseStore.mockImplementation((selector: any) =>
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- calling mock selector
         selector({

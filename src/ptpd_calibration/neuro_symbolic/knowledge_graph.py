@@ -94,7 +94,7 @@ class Entity(BaseModel):
         features = []
         for key in sorted(self.properties.keys()):
             value = self.properties[key]
-            if isinstance(value, (int, float)):
+            if isinstance(value, int | float):
                 features.append(float(value))
             elif isinstance(value, bool):
                 features.append(1.0 if value else 0.0)

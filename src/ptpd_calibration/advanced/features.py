@@ -293,8 +293,10 @@ class AlternativeProcessSimulator:
                 gamma=0.95,
                 contrast=0.9,
                 shadow_color=pigment_color,
-                midtone_color=cast(
-                    tuple[int, int, int], tuple(int(c * 1.8) for c in pigment_color)
+                midtone_color=(
+                    int(pigment_color[0] * 1.8),
+                    int(pigment_color[1] * 1.8),
+                    int(pigment_color[2] * 1.8),
                 ),
                 highlight_color=(245, 240, 232),
                 dmax=1.4,
@@ -992,7 +994,7 @@ class QRMetadataGenerator:
             )
 
         # Load image if path
-        if isinstance(qr_image, (str, Path)):
+        if isinstance(qr_image, str | Path):
             qr_image = Image.open(qr_image)
 
         # Decode QR code
@@ -1261,12 +1263,22 @@ class StyleTransfer:
             highlight_mask = arr > highlight_val - 0.05
 
             if shadow_mask.any():
-                shadow_color = tuple(int(c * 255) for c in rgb_arr[shadow_mask].mean(axis=0))
+                shadow_rgb = rgb_arr[shadow_mask].mean(axis=0)
+                shadow_color = (
+                    int(shadow_rgb[0] * 255),
+                    int(shadow_rgb[1] * 255),
+                    int(shadow_rgb[2] * 255),
+                )
             else:
                 shadow_color = (20, 18, 16)
 
             if highlight_mask.any():
-                highlight_color = tuple(int(c * 255) for c in rgb_arr[highlight_mask].mean(axis=0))
+                highlight_rgb = rgb_arr[highlight_mask].mean(axis=0)
+                highlight_color = (
+                    int(highlight_rgb[0] * 255),
+                    int(highlight_rgb[1] * 255),
+                    int(highlight_rgb[2] * 255),
+                )
             else:
                 highlight_color = (245, 240, 235)
         else:

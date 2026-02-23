@@ -23,58 +23,67 @@ C4Context
 
 ## Level 2: Containers
 
-This diagram zooms into the system to show the main containers. In this case, the application is a single monolithic process.
+This diagram shows the three-tier architecture after the React migration. The former Gradio monolith has been split into a React SPA frontend and a FastAPI REST backend, with an optional PyTorch-based MCTS engine for AI-guided calibration optimization.
 
 ```mermaid
 C4Container
-  title Container Diagram for Pt/Pd Calibration Studio
+  title Container Diagram for Pt/Pd Calibration Studio (React Migration)
 
   Person(user, "Photographer/Print-Maker", "A user who wants to calibrate their printing process.")
 
   System_Boundary(c1, "Pt/Pd Calibration Studio") {
-    Container(frontend, "React Frontend", "React 18, TypeScript, Zustand, TanStack Query, Vite", "SPA providing curve editing, AI assistant, calibration wizard, and MCTS dashboard.")
-    Container(api, "FastAPI Backend", "Python 3.10+, FastAPI, Pydantic", "REST API for curves, scans, calibrations, chat, and MCTS endpoints.")
-    Container(mcts, "MCTS Engine", "PyTorch, NumPy, scikit-learn", "AlphaZero-style calibration optimizer with physics simulation.")
-    ContainerDb(fs, "File Storage", "JSON files", "Curve data (data/curves/*.json), scans, exports, ML checkpoints.")
+    Container(frontend, "React SPA", "React 18 + TypeScript + Vite + Zustand", "Single-page application: curve editor, calibration wizard, chemistry calculator, AI chat, image preview. Served on port 3000.")
+    Container(backend, "FastAPI Backend", "Python 3.10 + FastAPI + Pydantic", "REST API on port 8000: curves, scan upload, calibrations, MCTS, chat, export. Celery + Redis for heavy async tasks.")
+    Container(mcts, "MCTS Engine", "Python + PyTorch (optional)", "AlphaZero-style Monte Carlo Tree Search + physics simulator for automated Pt/Pd parameter optimization.")
+    Container(db, "ML Database", "In-memory + JSON files", "Calibration records, curve storage, agent memory. Backed by local filesystem.")
   }
 
-  System_Ext(llm, "External LLM Service", "Provides AI-powered analysis and chat capabilities (Anthropic Claude, OpenAI).")
+  System_Ext(llm, "External LLM Service", "Anthropic Claude / OpenAI GPT for RAG-powered chat, recipe suggestions, and AI curve enhancement.")
+  System_Ext(fs, "File System", "Stores step tablet scans, exported curves (.quad, .csv, .json), and ML training data.")
 
-  Rel(user, frontend, "Interacts with", "HTTPS/Browser")
-  Rel(frontend, api, "REST calls", "JSON/HTTPS")
-  Rel(api, mcts, "Delegates search", "Python")
-  Rel(api, fs, "Reads/Writes", "JSON")
-  Rel(api, llm, "Sends prompts, receives completions", "JSON/HTTPS")
+  Rel(user, frontend, "Uses", "HTTPS")
+  Rel(frontend, backend, "REST calls", "JSON / HTTPS :8000")
+  Rel(backend, mcts, "Triggers search", "In-process Python call")
+  Rel(backend, db, "Reads/Writes calibration records")
+  Rel(backend, fs, "Reads/Writes scan + curve files")
+  Rel(backend, llm, "Sends prompts, receives completions", "JSON/HTTPS")
 ```
 
-## Level 3: Components
+## Level 3: Backend Components
 
-This diagram breaks down the "Web Application" container into its major internal components and shows how they interact.
+This diagram breaks down the FastAPI Backend container into its major internal components.
 
 ```mermaid
 C4Component
-  title Component Diagram for Pt/Pd Calibration Studio Web App
+  title Component Diagram for FastAPI Backend (src/ptpd_calibration/)
 
-  Container_Boundary(c1, "FastAPI Backend") {
-    Component(api_server, "API Server", "api/server.py", "FastAPI app with routes: /api/curves, /api/scan, /api/calibrations, /api/chat, /api/mcts")
-    Component(analyzer, "Scan Analyzer", "detection/", "Reads step tablet scans and extracts density data from patches.")
-    Component(curves, "Curve Tools", "curves/", "Parsing, generating, modifying, smoothing, blending, and exporting calibration curves.")
-    Component(enhancer, "AI Curve Enhancer", "ai_enhance.py", "Hybrid rule-based & LLM system for intelligent curve improvement with configurable goals.")
-    Component(assistant, "LLM Assistant", "llm/assistant.py", "RAG-powered chat, recipe suggestions, and troubleshooting via Anthropic/OpenAI.")
-    Component(llm_client, "LLM Client", "llm/client.py", "Low-level client for LLM API calls with provider abstraction.")
-    Component(persistence, "Curve Persistence", "api/server.py (_store_curve/_get_curve)", "Write-through cache: runtime dict + data/curves/*.json files for durability.")
+  Container_Boundary(be, "FastAPI Backend") {
+    Component(api, "API Server", "api/server.py", "FastAPI app: 20+ REST endpoints for curves, scans, calibrations, MCTS, chat, and export.")
+    Component(analyzer, "Scan Analyzer", "detection/", "Reads step tablet scans, extracts density patches from TIFF/PNG via OpenCV.")
+    Component(curves, "Curve Tools", "curves/", "Curve generation, linearization, smoothing, blending, .quad parsing/export.")
+    Component(enhancer, "AI Curve Enhancer", "ai_enhance.py", "Hybrid rule-based & LLM system to intelligently improve curves.")
+    Component(assistant, "LLM Assistant", "llm/assistant.py", "RAG-powered chat facade: recipe suggestions, troubleshooting, Q&A.")
+    Component(llm_client, "LLM Client", "llm/client.py", "Low-level client for Anthropic Claude / OpenAI API calls.")
+    Component(mcts_comp, "MCTS Engine", "mcts/", "AlphaZero-style search + physics simulator (see Level 4 MCTS diagram).")
+    Component(agents_comp, "Agent System", "agents/", "Multi-agent orchestration (see Level 4 Agent diagram).")
+    Component(predictor, "ML Predictor", "ml/predictor.py", "scikit-learn model for density curve prediction.")
+    Component(db_comp, "ML Database", "ml/database.py", "In-memory, file-backed store for CalibrationRecords.")
 
-    Rel(api_server, analyzer, "Uses", "Scan analysis")
-    Rel(api_server, curves, "Uses", "Curve CRUD + export")
-    Rel(api_server, enhancer, "Uses", "AI enhance endpoint")
-    Rel(api_server, assistant, "Uses", "Chat endpoints")
-    Rel(api_server, persistence, "Uses", "Store/retrieve curves by ID")
+    Rel(api, analyzer, "Calls", "scan upload/analysis")
+    Rel(api, curves, "Calls", "generate/modify/export")
+    Rel(api, enhancer, "Calls", "AI curve enhancement")
+    Rel(api, assistant, "Calls", "chat, recipe, troubleshoot")
+    Rel(api, mcts_comp, "Calls", "MCTS search endpoints")
+    Rel(api, agents_comp, "Calls", "multi-agent workflows")
+    Rel(api, db_comp, "Reads/Writes", "calibration CRUD")
 
     Rel(enhancer, llm_client, "Uses")
     Rel(assistant, llm_client, "Uses")
+    Rel(assistant, db_comp, "Gets context from", "RAG")
+    Rel(predictor, db_comp, "Gets training data from")
   }
 
-  System_Ext(llm_ext, "External LLM Service", "LLM API (Anthropic/OpenAI)")
+  System_Ext(llm_ext, "External LLM Service", "Anthropic / OpenAI")
   Rel(llm_client, llm_ext, "Makes API calls to", "HTTPS")
 ```
 

@@ -4,7 +4,6 @@ Coder subagent for code generation and implementation.
 Generates Python code following project conventions and best practices.
 """
 
-
 from pydantic import BaseModel, Field
 
 from ptpd_calibration.agents.subagents.base import (
@@ -349,8 +348,7 @@ Output the complete modified code.
             Generated function code.
         """
         params_text = "\n".join(
-            f"    - {p['name']} ({p['type']}): {p.get('description', '')}"
-            for p in parameters
+            f"    - {p['name']} ({p['type']}): {p.get('description', '')}" for p in parameters
         )
         examples_text = "\n".join(f">>> {e}" for e in (examples or []))
 
@@ -400,8 +398,7 @@ Output only the function code (no class wrapper).
             Generated class code.
         """
         attrs_text = "\n".join(
-            f"    - {a['name']} ({a['type']}): {a.get('description', '')}"
-            for a in attributes
+            f"    - {a['name']} ({a['type']}): {a.get('description', '')}" for a in attributes
         )
         methods_text = "\n".join(
             f"    - {m['name']}({', '.join(m.get('params', []))}): {m.get('description', '')}"

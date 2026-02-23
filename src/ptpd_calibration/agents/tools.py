@@ -49,7 +49,7 @@ class ToolResult:
         if not self.success:
             return f"Error: {self.error}"
 
-        if isinstance(self.data, (dict, list)):
+        if isinstance(self.data, dict | list):
             return json.dumps(self.data, indent=2, default=str)
         return str(self.data)
 

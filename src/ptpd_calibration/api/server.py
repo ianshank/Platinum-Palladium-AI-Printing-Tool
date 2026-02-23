@@ -202,6 +202,9 @@ def create_app():
     @app.post("/api/analyze")
     async def analyze_densities(request: AnalyzeRequest):
         """Analyze density measurements."""
+        if not request.densities:
+            raise HTTPException(status_code=422, detail="Densities list cannot be empty")
+
         from ptpd_calibration.curves.analysis import CurveAnalyzer
 
         analysis = CurveAnalyzer.analyze_linearity(request.densities)
@@ -436,6 +439,16 @@ def create_app():
         try:
             profile = load_quad_string(content, name)
 
+            # Validate the parsed profile has recognizable .quad content.
+            # _post_process() always adds default disabled channels, so we check
+            # raw_sections (INI-style sections found) OR active_channels (channels
+            # with non-zero curve data) to distinguish real .quad from random text.
+            if not profile.raw_sections and not profile.active_channels:
+                raise ValueError(
+                    "Content does not appear to be valid .quad format: "
+                    "no sections or channel curves found"
+                )
+
             # Convert requested channel to CurveData and store
             if channel.upper() in profile.channels:
                 curve_data = profile.to_curve_data(channel.upper())
@@ -528,13 +541,12 @@ def create_app():
                 output_values=request.output_values,
             )
 
-            modifier = CurveModifier()
+            modifier = CurveModifier(preserve_endpoints=request.preserve_endpoints)
             method = SmoothingMethod(request.method.lower())
             smoothed = modifier.smooth(
                 curve,
                 method=method,
                 strength=request.strength,
-                preserve_endpoints=request.preserve_endpoints,
             )
 
             # Store the smoothed curve
@@ -714,17 +726,22 @@ def create_app():
     @app.post("/api/calibrations")
     async def create_calibration(request: CalibrationRequest):
         """Create a new calibration record."""
-        record = CalibrationRecord(
-            paper_type=request.paper_type,
-            exposure_time=request.exposure_time,
-            metal_ratio=request.metal_ratio,
-            contrast_agent=ContrastAgent(request.contrast_agent),
-            contrast_amount=request.contrast_amount,
-            developer=DeveloperType(request.developer),
-            chemistry_type=ChemistryType(request.chemistry_type),
-            measured_densities=request.densities,
-            notes=request.notes,
-        )
+        from pydantic import ValidationError
+
+        try:
+            record = CalibrationRecord(
+                paper_type=request.paper_type,
+                exposure_time=request.exposure_time,
+                metal_ratio=request.metal_ratio,
+                contrast_agent=ContrastAgent(request.contrast_agent),
+                contrast_amount=request.contrast_amount,
+                developer=DeveloperType(request.developer),
+                chemistry_type=ChemistryType(request.chemistry_type),
+                measured_densities=request.densities,
+                notes=request.notes,
+            )
+        except ValidationError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from None
 
         database.add_record(record)
 
@@ -737,7 +754,11 @@ def create_app():
     @app.get("/api/calibrations/{calibration_id}")
     async def get_calibration(calibration_id: str):
         """Get a specific calibration record."""
-        record = database.get_record(UUID(calibration_id))
+        try:
+            uid = UUID(calibration_id)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid calibration ID format") from None
+        record = database.get_record(uid)
         if not record:
             raise HTTPException(status_code=404, detail="Calibration not found")
 

@@ -200,9 +200,7 @@ class AgentLogger:
                 handler.setFormatter(JSONFormatter())
             else:
                 handler.setFormatter(
-                    logging.Formatter(
-                        "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-                    )
+                    logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
                 )
             self.logger.addHandler(handler)
 
@@ -282,7 +280,9 @@ class AgentLogger:
         }
 
         if event_type:
-            extra["event_type"] = event_type.value if isinstance(event_type, EventType) else event_type
+            extra["event_type"] = (
+                event_type.value if isinstance(event_type, EventType) else event_type
+            )
         if duration_ms is not None:
             extra["duration_ms"] = duration_ms
         if data:
@@ -433,7 +433,12 @@ class AgentLogger:
             f"LLM response: {provider}/{model}",
             event_type=EventType.LLM_RESPONSE,
             duration_ms=duration_ms,
-            data={"provider": provider, "model": model, "completion_tokens": completion_tokens, **kwargs},
+            data={
+                "provider": provider,
+                "model": model,
+                "completion_tokens": completion_tokens,
+                **kwargs,
+            },
         )
 
     def log_message_sent(
@@ -447,7 +452,12 @@ class AgentLogger:
         self.debug(
             f"Message: {from_agent} -> {to_agent}",
             event_type=EventType.MESSAGE_SENT,
-            data={"from_agent": from_agent, "to_agent": to_agent, "message_type": message_type, **kwargs},
+            data={
+                "from_agent": from_agent,
+                "to_agent": to_agent,
+                "message_type": message_type,
+                **kwargs,
+            },
         )
 
 
@@ -506,6 +516,7 @@ def timed_operation(logger: AgentLogger, event_type: EventType | None = None):
                 raise
 
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper

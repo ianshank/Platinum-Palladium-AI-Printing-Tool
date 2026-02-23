@@ -292,7 +292,7 @@ export function CurveEditor({
         name,
         input_values: inputValues,
         output_values: outputValues,
-        adjustment_type: 'none',
+        adjustment_type: 'brightness',
         amount: 0,
       },
       {
