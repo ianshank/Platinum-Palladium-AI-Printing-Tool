@@ -1,4 +1,6 @@
 import tempfile
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +12,264 @@ from ptpd_calibration.analysis import StepWedgeAnalyzer, WedgeAnalysisConfig
 from ptpd_calibration.config import TabletType
 from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.curves import save_curve
+from ptpd_calibration.curves.linearization import LinearizationMethod, TargetResponse
+from ptpd_calibration.papers import PaperDatabase
+
+# ---------------------------------------------------------------------------
+# Linearization mode configuration (Step 3 of calibration wizard)
+# ---------------------------------------------------------------------------
+
+
+class WizardLinearizationMode(str, Enum):
+    """Linearization modes available in the calibration wizard."""
+
+    SINGLE_CURVE = "single_curve"
+    MULTI_CURVE = "multi_curve"
+    USE_EXISTING = "use_existing"
+    NO_LINEARIZATION = "no_linearization"
+
+
+@dataclass
+class LinearizationModeConfig:
+    """Configuration for a single linearization mode."""
+
+    value: str
+    label: str
+    requires_target: bool = True
+    requires_strategy: bool = True
+    requires_paper_preset: bool = True
+    requires_existing_profile: bool = False
+    advanced: bool = False
+
+
+LINEARIZATION_MODES: dict[str, LinearizationModeConfig] = {
+    "single_curve": LinearizationModeConfig(
+        value="single_curve",
+        label="Single-curve linearization (recommended)",
+        requires_target=True,
+        requires_strategy=True,
+        requires_paper_preset=True,
+        requires_existing_profile=False,
+        advanced=False,
+    ),
+    "multi_curve": LinearizationModeConfig(
+        value="multi_curve",
+        label="Multi-curve / split-tone (advanced)",
+        requires_target=True,
+        requires_strategy=True,
+        requires_paper_preset=True,
+        requires_existing_profile=False,
+        advanced=True,
+    ),
+    "use_existing": LinearizationModeConfig(
+        value="use_existing",
+        label="Use existing profile",
+        requires_target=False,
+        requires_strategy=False,
+        requires_paper_preset=False,
+        requires_existing_profile=True,
+        advanced=False,
+    ),
+    "no_linearization": LinearizationModeConfig(
+        value="no_linearization",
+        label="No linearization (straight curve)",
+        requires_target=False,
+        requires_strategy=False,
+        requires_paper_preset=True,
+        requires_existing_profile=False,
+        advanced=False,
+    ),
+}
+
+_STRATEGY_CHOICES: list[tuple[str, str]] = [
+    ("Smooth spline (recommended)", LinearizationMethod.SPLINE_FIT.value),
+    ("Polynomial fit", LinearizationMethod.POLYNOMIAL_FIT.value),
+    ("Iterative refinement", LinearizationMethod.ITERATIVE.value),
+    ("Direct inversion (fast)", LinearizationMethod.DIRECT_INVERSION.value),
+    ("Hybrid (best quality)", LinearizationMethod.HYBRID.value),
+]
+
+_TARGET_CHOICES: list[tuple[str, str]] = [
+    ("Even tonal steps (linear)", TargetResponse.LINEAR.value),
+    ("Match digital gamma 2.2 (sRGB)", TargetResponse.GAMMA_22.value),
+    ("Preserve paper white (highlights)", TargetResponse.PAPER_WHITE.value),
+    ("Perceptually uniform", TargetResponse.PERCEPTUAL.value),
+    ("Match monitor gamma 1.8", TargetResponse.GAMMA_18.value),
+]
+
+
+def get_linearization_mode_choices() -> list[str]:
+    """Return list of mode labels for the linearization mode dropdown."""
+    return [mode.label for mode in LINEARIZATION_MODES.values()]
+
+
+def get_mode_by_label(label: str) -> LinearizationModeConfig | None:
+    """Return mode config matching *label*, or None if not found."""
+    for mode in LINEARIZATION_MODES.values():
+        if mode.label == label:
+            return mode
+    return None
+
+
+def get_mode_value_by_label(label: str) -> str | None:
+    """Return mode value string matching *label*, or None if not found."""
+    mode = get_mode_by_label(label)
+    return mode.value if mode else None
+
+
+def get_strategy_choices() -> list[tuple[str, str]]:
+    """Return list of (label, value) tuples for linearization strategy dropdown."""
+    return list(_STRATEGY_CHOICES)
+
+
+def get_strategy_labels() -> list[str]:
+    """Return list of strategy labels."""
+    return [label for label, _ in _STRATEGY_CHOICES]
+
+
+def get_strategy_value_by_label(label: str) -> str | None:
+    """Return strategy value string matching *label*, or None if not found."""
+    for lbl, val in _STRATEGY_CHOICES:
+        if lbl == label:
+            return val
+    return None
+
+
+def get_target_choices() -> list[tuple[str, str]]:
+    """Return list of (label, value) tuples for target response dropdown."""
+    return list(_TARGET_CHOICES)
+
+
+def get_target_labels() -> list[str]:
+    """Return list of target labels."""
+    return [label for label, _ in _TARGET_CHOICES]
+
+
+def get_target_value_by_label(label: str) -> str | None:
+    """Return target value string matching *label*, or None if not found."""
+    for lbl, val in _TARGET_CHOICES:
+        if lbl == label:
+            return val
+    return None
+
+
+def get_paper_preset_choices() -> list[str]:
+    """Return list of paper preset names from PaperDatabase plus 'Other / custom'."""
+    try:
+        db = PaperDatabase()
+        names = [p.name for p in db.list_papers() if not getattr(p, "is_custom", False)]
+    except Exception:
+        names = []
+    return names + ["Other / custom"]
+
+
+def get_paper_chemistry_notes(paper_name: str) -> str:
+    """Return chemistry notes for *paper_name*, empty string if not found."""
+    if paper_name in ("Other / custom", ""):
+        return ""
+    try:
+        db = PaperDatabase()
+        for paper in db.list_papers():
+            if paper.name == paper_name:
+                return str(getattr(paper, "chemistry_notes", "") or "")
+    except Exception:
+        pass
+    return ""
+
+
+def wizard_is_valid_config(
+    mode_label: str,
+    target_label: str,
+    strategy_label: str,
+    paper_preset: str,
+    existing_profile: str | None,
+    custom_chemistry: str,
+    curve_name: str,
+) -> tuple[bool, str]:
+    """Validate wizard configuration.
+
+    Returns:
+        (is_valid, error_message) — error_message is empty string when valid.
+    """
+    mode = get_mode_by_label(mode_label)
+    if mode is None:
+        return False, "Please select a valid linearization mode."
+    if not curve_name.strip():
+        return False, "Please enter a curve name."
+    if mode.requires_target and not target_label.strip():
+        return False, "Please select a target response."
+    if mode.requires_strategy and not strategy_label.strip():
+        return False, "Please select a strategy."
+    if mode.requires_existing_profile:
+        if not existing_profile or existing_profile == "No curves available":
+            return False, "Please select an existing profile."
+    if (
+        mode.requires_paper_preset
+        and paper_preset == "Other / custom"
+        and not custom_chemistry.strip()
+    ):
+        return False, "Please enter chemistry notes for the custom paper."
+    return True, ""
+
+
+def wizard_on_mode_change(mode_label: str) -> tuple:
+    """Return 7 UI update dicts based on selected mode.
+
+    Order: [target, strategy, paper_preset, existing_profile,
+            advanced_options, curve_name, status_message]
+    """
+    mode = get_mode_by_label(mode_label)
+    if mode is None:
+        return (
+            {"visible": True},
+            {"visible": True},
+            {"visible": True},
+            {"visible": False},
+            {"visible": False},
+            {"visible": True},
+            {"visible": False},
+        )
+    return (
+        {"visible": mode.requires_target},
+        {"visible": mode.requires_strategy},
+        {"visible": mode.requires_paper_preset},
+        {"visible": mode.requires_existing_profile},
+        {"visible": mode.advanced},
+        {"visible": not mode.requires_existing_profile},
+        {"visible": False},
+    )
+
+
+def wizard_on_paper_change(paper_name: str) -> tuple[dict, dict]:
+    """Return (custom_chemistry_visibility, chemistry_notes_update) based on paper selection."""
+    if paper_name == "Other / custom":
+        return {"visible": True, "interactive": True}, {"value": ""}
+    notes = get_paper_chemistry_notes(paper_name)
+    return {"visible": False}, {"value": notes}
+
+
+def wizard_on_config_change(
+    mode_label: str,
+    target_label: str,
+    strategy_label: str,
+    paper_preset: str,
+    existing_profile: str | None,
+    custom_chemistry: str,
+    curve_name: str,
+) -> tuple[dict, str]:
+    """Return (button_update, validation_message) based on current config."""
+    is_valid, error_msg = wizard_is_valid_config(
+        mode_label,
+        target_label,
+        strategy_label,
+        paper_preset,
+        existing_profile,
+        custom_chemistry,
+        curve_name,
+    )
+    if is_valid:
+        return {"interactive": True}, "Configuration is valid."
+    return {"interactive": False}, error_msg
 
 
 def build_calibration_wizard_tab() -> None:
