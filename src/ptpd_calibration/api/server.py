@@ -17,19 +17,12 @@ def create_app():
     try:
         from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
-<<<<<<< HEAD
         from fastapi.responses import FileResponse
         from pydantic import BaseModel
     except ImportError as err:
         raise ImportError(
             "FastAPI is required. Install with: pip install ptpd-calibration[api]"
         ) from err
-=======
-        from fastapi.responses import FileResponse, JSONResponse  # noqa: F401
-        from pydantic import BaseModel
-    except ImportError:
-        raise ImportError("FastAPI is required. Install with: pip install ptpd-calibration[api]")
->>>>>>> origin/main
 
     from ptpd_calibration.config import TabletType
     from ptpd_calibration.core.models import CalibrationRecord, CurveData
@@ -293,13 +286,6 @@ def create_app():
             reader = StepTabletReader(tablet_type=TabletType(tablet_type))
             result = reader.read(file_path)
 
-<<<<<<< HEAD
-=======
-            # Persist raw scan to storage with server-generated key
-            with open(file_path, "rb") as f:
-                storage_backend.save(f"scans/{safe_name}", f.read())
-
->>>>>>> origin/main
             return {
                 "success": True,
                 "extraction_id": str(result.extraction.id),
@@ -683,11 +669,7 @@ def create_app():
         direction: str = "increasing",
     ):
         """Enforce monotonicity on a stored curve."""
-<<<<<<< HEAD
         curve = _get_curve(curve_id)
-=======
-        curve = get_curve_from_storage(curve_id)
->>>>>>> origin/main
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
 
@@ -818,15 +800,10 @@ def main():
     """Run the API server."""
     try:
         import uvicorn
-<<<<<<< HEAD
     except ImportError as err:
         raise ImportError(
             "uvicorn is required. Install with: pip install ptpd-calibration[api]"
         ) from err
-=======
-    except ImportError:
-        raise ImportError("uvicorn is required. Install with: pip install ptpd-calibration[api]")
->>>>>>> origin/main
 
     settings = get_settings()
     app = create_app()
