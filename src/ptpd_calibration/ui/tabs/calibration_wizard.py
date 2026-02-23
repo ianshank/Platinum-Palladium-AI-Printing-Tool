@@ -614,9 +614,9 @@ def build_calibration_wizard_tab() -> None:
             inputs=[
                 wizard_analysis_state,
                 wizard_curve_name,
-                wizard_paper,
+                wizard_paper_preset,
                 wizard_chemistry,
-                wizard_method,
+                wizard_linearization_mode,
             ],
             outputs=[
                 wizard_curve_state,
