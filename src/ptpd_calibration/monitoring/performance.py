@@ -11,7 +11,7 @@ import logging
 import threading
 import time
 from collections import OrderedDict, defaultdict, deque
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -161,7 +161,7 @@ class PerformanceMonitor:
             return duration
 
     @contextmanager
-    def timer(self, operation_name: str) -> Iterator[None]:
+    def timer(self, operation_name: str):
         """
         Context manager for timing operations.
 
@@ -248,10 +248,10 @@ class PerformanceMonitor:
         if not metrics:
             return None
 
-        return float(np.mean([m.value for m in metrics]))
+        return np.mean([m.value for m in metrics])
 
     def get_percentiles(
-        self, operation_name: str, percentiles: list[int] | None = None
+        self, operation_name: str, percentiles: list[int] = None
     ) -> dict[str, float]:
         """
         Get percentile values for an operation.
@@ -265,7 +265,6 @@ class PerformanceMonitor:
         """
         if percentiles is None:
             percentiles = [50, 90, 95, 99]
-
         metrics = self.get_metrics(operation_name)
         if not metrics:
             return {}
@@ -429,7 +428,7 @@ class ImageProcessingProfiler:
         self._lock = threading.RLock()
         logger.info("ImageProcessingProfiler initialized")
 
-    def profile_operation(self, func: Callable, *args: Any, **kwargs: Any) -> tuple[Any, dict[str, Any]]:
+    def profile_operation(self, func: Callable, *args, **kwargs) -> tuple[Any, dict[str, Any]]:
         """
         Profile any operation and return result with profiling data.
 
@@ -442,7 +441,7 @@ class ImageProcessingProfiler:
             Tuple of (result, profile_data)
         """
         operation_name = func.__name__
-        profile_data: dict[str, Any] = {"operation": operation_name}
+        profile_data = {"operation": operation_name}
 
         # Track memory before
         process = psutil.Process()
@@ -517,7 +516,7 @@ class ImageProcessingProfiler:
         if avg_time == 0:
             return None
 
-        return float(total_pixels / avg_time)
+        return total_pixels / avg_time
 
     def estimate_batch_time(
         self, images: list[tuple[int, int]], operation_name: str
@@ -543,7 +542,7 @@ class ImageProcessingProfiler:
         estimated_time = avg_time * len(images)
 
         # Add 10% overhead for batch operations
-        return float(estimated_time * 1.1)
+        return estimated_time * 1.1
 
     def track_memory_usage(self, operation: str) -> None:
         """
@@ -634,7 +633,7 @@ class APIPerformanceTracker:
         Args:
             max_history: Maximum number of requests to keep
         """
-        self._requests: deque[APIMetric] = deque(maxlen=max_history)
+        self._requests: list[APIMetric] = deque(maxlen=max_history)
         self._lock = threading.RLock()
         logger.info(f"APIPerformanceTracker initialized with max_history={max_history}")
 
@@ -668,7 +667,7 @@ class APIPerformanceTracker:
             logger.debug(f"Tracked {method} {endpoint}: {status} in {duration * 1000:.1f}ms")
 
     @contextmanager
-    def track(self, endpoint: str, method: str = "GET") -> Iterator[None]:
+    def track(self, endpoint: str, method: str = "GET"):
         """
         Context manager for tracking requests.
 
@@ -747,7 +746,7 @@ class APIPerformanceTracker:
             Error rate (0.0 to 1.0)
         """
         stats = self.get_endpoint_stats(endpoint, time_range)
-        return float(stats.get("error_rate", 0.0))
+        return stats.get("error_rate", 0.0)
 
     def get_response_times(self) -> dict[str, list[float]]:
         """
@@ -1019,7 +1018,7 @@ class ResourceMonitor:
         Returns:
             CPU usage percentage
         """
-        return float(psutil.cpu_percent(interval=0.1))
+        return psutil.cpu_percent(interval=0.1)
 
     def get_memory_usage(self) -> dict[str, float]:
         """
@@ -1198,7 +1197,7 @@ class PerformanceReport:
         start = datetime.combine(date.date(), datetime.min.time())
         end = datetime.combine(date.date(), datetime.max.time())
 
-        report: dict[str, Any] = {
+        report = {
             "date": date.date().isoformat(),
             "generated_at": datetime.now().isoformat(),
             "operations": {},
@@ -1236,7 +1235,7 @@ class PerformanceReport:
         Returns:
             Report dict
         """
-        report: dict[str, Any] = {
+        report = {
             "session_id": session_id,
             "generated_at": datetime.now().isoformat(),
             "operations": {},
@@ -1270,7 +1269,7 @@ class PerformanceReport:
         Returns:
             Comparison dict
         """
-        comparison: dict[str, Any] = {"period1": {}, "period2": {}, "changes": {}}
+        comparison = {"period1": {}, "period2": {}, "changes": {}}
 
         with self.monitor._lock:
             operation_names = list(self.monitor._metrics.keys())

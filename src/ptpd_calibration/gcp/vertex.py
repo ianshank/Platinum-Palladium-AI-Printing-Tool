@@ -1,11 +1,13 @@
 """
 Vertex AI integration wrapper.
 """
+
 import logging
 from typing import Any
 
 try:
     from google.cloud import aiplatform
+
     VERTEX_AVAILABLE = True
 except ImportError:
     VERTEX_AVAILABLE = False
@@ -13,6 +15,7 @@ except ImportError:
 from ptpd_calibration.gcp.config import GCPConfig
 
 logger = logging.getLogger(__name__)
+
 
 class VertexClient:
     """Wrapper for Vertex AI operations."""
@@ -32,10 +35,12 @@ class VertexClient:
         aiplatform.init(
             project=self.config.project_id,
             location=self.config.region,
-            staging_bucket=self.config.storage_bucket_uri
+            staging_bucket=self.config.storage_bucket_uri,
         )
         self._initialized = True
-        logger.info(f"Initialized Vertex AI for project {self.config.project_id} in {self.config.region}")
+        logger.info(
+            f"Initialized Vertex AI for project {self.config.project_id} in {self.config.region}"
+        )
 
     def get_model(self, model_name: str) -> Any:
         """
@@ -59,7 +64,7 @@ class VertexClient:
         container_uri: str,
         args: list[str] | None = None,
         machine_type: str = "n1-standard-4",
-        replica_count: int = 1
+        replica_count: int = 1,
     ) -> Any:
         """Submit a Custom Container Training Job to Vertex AI.
 

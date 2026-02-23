@@ -16,7 +16,6 @@ from ptpd_calibration.ui.tabs.chemistry import build_chemistry_tab as build_chem
 
 # Import new modular tabs
 from ptpd_calibration.ui.tabs.dashboard import build_dashboard_tab as build_dashboard_new
-from ptpd_calibration.ui.tabs.neural_curve import build_neural_curve_tab as build_neural_new
 from ptpd_calibration.ui.tabs.session_log import build_session_log_tab as build_session_log_new
 
 
@@ -71,10 +70,10 @@ def create_gradio_app(share: bool = False):
     """
     try:
         import gradio as gr
-    except ImportError as err:
+    except ImportError:
         raise ImportError(
             "Gradio is required for UI. Install with: pip install ptpd-calibration[ui]"
-        ) from err
+        )
 
     from ptpd_calibration.analysis import (
         StepWedgeAnalyzer,
@@ -125,15 +124,86 @@ def create_gradio_app(share: bool = False):
         "MK": "#4A4A4A",
     }
 
-    # Load custom theme and CSS
-    from ptpd_calibration.ui.theme import ProLabTheme
+    darkroom_theme = gr.themes.Base(
+        primary_hue=gr.themes.colors.amber,
+        secondary_hue=gr.themes.colors.stone,
+        neutral_hue=gr.themes.colors.stone,
+    ).set(
+        body_background_fill="#111111",
+        body_background_fill_dark="#0b0b0b",
+        block_background_fill="#1c1c1c",
+        block_background_fill_dark="#0f0f0f",
+        block_label_text_color="#f5f5f5",
+        input_background_fill="#2a2a2a",
+        input_background_fill_dark="#1f1f1f",
+    )
 
-    theme = ProLabTheme()
+    custom_css = """
+    :root, [data-ptpd-theme="darkroom"] {
+        --ptpd-bg: #0f0f0f;
+        --ptpd-card: #1f1f1f;
+        --ptpd-text: #f5f5f5;
+        --ptpd-muted: #a3a3a3;
+        --ptpd-accent: #fbbf24;
+    }
 
-    css_path = Path(__file__).parent / "styles.css"
-    custom_css = css_path.read_text(encoding="utf-8") if css_path.exists() else ""
+    [data-ptpd-theme="light"] {
+        --ptpd-bg: #f8f8f8;
+        --ptpd-card: #ffffff;
+        --ptpd-text: #1f1f1f;
+        --ptpd-muted: #6b7280;
+        --ptpd-accent: #d97706;
+    }
 
-    # Legacy inline CSS removed in favor of styles.css
+    [data-ptpd-theme="print"] {
+        --ptpd-bg: #ffffff;
+        --ptpd-card: #fdfbf6;
+        --ptpd-text: #111111;
+        --ptpd-muted: #4b5563;
+        --ptpd-accent: #b45309;
+    }
+
+    body {
+        background: var(--ptpd-bg);
+        color: var(--ptpd-text);
+    }
+
+    .ptpd-card {
+        background: var(--ptpd-card) !important;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px !important;
+        padding: 16px;
+    }
+
+    .top-bar {
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .main-tabs .tab-nav {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .main-tabs .tab-nav > button {
+            flex: 1 1 45%;
+            font-size: 0.9rem;
+        }
+
+        .stack-on-mobile {
+            flex-direction: column !important;
+        }
+    }
+
+    @media (pointer: coarse) {
+        button, input, select, textarea {
+            min-height: 44px;
+            font-size: 1rem;
+        }
+    }
+    """
 
     keyboard_js = """
     document.addEventListener('keydown', (event) => {
@@ -1637,7 +1707,7 @@ def create_gradio_app(share: bool = False):
                                 lines.append(str(qtr_output))
                         else:
                             # Empty channel - 256 zeros
-                            for _i in range(256):
+                            for i in range(256):
                                 lines.append("0")
 
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -2357,7 +2427,7 @@ def create_gradio_app(share: bool = False):
 
                 # Filter out None values and create valid points
                 points = []
-                for inp, out in zip(inputs, outputs, strict=True):
+                for inp, out in zip(inputs, outputs, strict=False):
                     if inp is not None and out is not None:
                         points.append((float(inp), float(out)))
 
@@ -2491,7 +2561,7 @@ def create_gradio_app(share: bool = False):
                     outputs = list(point_values[9:18])
 
                     points = []
-                    for inp, out in zip(inputs, outputs, strict=True):
+                    for inp, out in zip(inputs, outputs, strict=False):
                         if inp is not None and out is not None:
                             points.append((float(inp), float(out)))
 
@@ -4165,7 +4235,7 @@ def create_gradio_app(share: bool = False):
     # Create the interface
     with gr.Blocks(
         title="Pt/Pd Calibration Studio",
-        theme=theme,
+        theme=darkroom_theme,
         analytics_enabled=False,
         css=custom_css,
     ) as app:
@@ -4240,7 +4310,6 @@ def create_gradio_app(share: bool = False):
             # 5. AI Tools
             with gr.TabItem("🤖 AI Tools"), gr.Tabs(elem_id="ai-tabs"):
                 build_ai_new()
-                build_neural_new(session_logger)
                 build_quick_tools_tab()
 
             build_about_tab(tab_label="ℹ️ About")

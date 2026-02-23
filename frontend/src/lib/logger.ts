@@ -77,13 +77,14 @@ class Logger {
     context?: Record<string, unknown>,
     source?: string
   ): LogEntry {
-    return {
+    const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       message,
-      ...(context !== undefined && { context }),
-      ...(source !== undefined && { source }),
     };
+    if (context !== undefined) entry.context = context;
+    if (source !== undefined) entry.source = source;
+    return entry;
   }
 
   /**
@@ -231,7 +232,10 @@ class Logger {
   /**
    * Log with performance timing
    */
-  async timeAsync<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  async timeAsync<T>(
+    label: string,
+    fn: () => Promise<T>
+  ): Promise<T> {
     const endTimer = this.time(label);
     try {
       const result = await fn();
@@ -251,7 +255,7 @@ class ChildLogger {
   constructor(
     private parent: Logger,
     private source: string
-  ) {}
+  ) { }
 
   debug(message: string, context?: Record<string, unknown>): void {
     this.parent.debug(`[${this.source}] ${message}`, context);

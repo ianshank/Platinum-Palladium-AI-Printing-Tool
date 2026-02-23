@@ -2,7 +2,6 @@
 Tests for the QTR .quad file parser.
 """
 
-
 import pytest
 
 from ptpd_calibration.curves.parser import (

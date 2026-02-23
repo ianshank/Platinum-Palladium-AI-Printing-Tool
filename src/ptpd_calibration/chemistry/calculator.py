@@ -135,9 +135,11 @@ class ChemistryRecipe:
                 "coating_method": self.coating_method.value,
                 "contrast_boost": round(self.contrast_boost * 100, 1),
             },
-            "estimated_cost_usd": round(self.estimated_cost_usd, 2)
-            if self.estimated_cost_usd
-            else None,
+            "estimated_cost_usd": (
+                round(self.estimated_cost_usd, 2)
+                if self.estimated_cost_usd is not None
+                else None
+            ),
             "notes": self.notes,
         }
 
@@ -448,9 +450,11 @@ class ChemistryCalculator:
             paper_absorbency=recipe.paper_absorbency,
             coating_method=recipe.coating_method,
             contrast_boost=recipe.contrast_boost,
-            estimated_cost_usd=(recipe.estimated_cost_usd * scale_factor)
-            if recipe.estimated_cost_usd
-            else None,
+            estimated_cost_usd=(
+                recipe.estimated_cost_usd * scale_factor
+                if recipe.estimated_cost_usd is not None
+                else None
+            ),
             notes=notes,
         )
 

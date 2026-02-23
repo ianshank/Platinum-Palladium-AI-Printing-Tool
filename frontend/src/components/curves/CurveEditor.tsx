@@ -347,11 +347,7 @@ export function CurveEditor({
         },
         onError: (err) => {
           const rawMessage = err.response?.data?.message ?? err.message;
-          setError(
-            typeof rawMessage === 'string' && rawMessage.trim().length > 0
-              ? rawMessage
-              : 'AI enhancement failed'
-          );
+          setError(rawMessage || 'AI enhancement failed');
         },
       }
     );
@@ -447,9 +443,10 @@ export function CurveEditor({
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                backgroundColor: 'hsl(var(--card))',
                 borderRadius: '4px',
-                border: '1px solid #ccc',
+                border: '1px solid hsl(var(--border))',
+                color: 'hsl(var(--card-foreground))',
               }}
             />
             <ReferenceLine

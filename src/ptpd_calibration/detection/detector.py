@@ -246,8 +246,7 @@ class StepTabletDetector:
         """Label connected components."""
         from scipy.ndimage import label
 
-        labeled, num_features = label(binary > 0)
-        return (labeled, int(num_features))
+        return label(binary > 0)
 
     def _find_boundary(self, mask: np.ndarray) -> list[tuple[int, int]]:
         """Find boundary pixels of a binary mask."""
@@ -271,7 +270,7 @@ class StepTabletDetector:
 
         x = contour[:, 0]
         y = contour[:, 1]
-        return float(0.5 * abs(np.sum(x[:-1] * y[1:] - x[1:] * y[:-1])))
+        return 0.5 * abs(np.sum(x[:-1] * y[1:] - x[1:] * y[:-1]))
 
     def _bounding_rect(self, contour: np.ndarray) -> tuple[int, int, int, int]:
         """Get bounding rectangle of contour."""
@@ -307,8 +306,8 @@ class StepTabletDetector:
         else:
             rotation = 0.0
 
-        return float(
-            np.clip(rotation, -self.settings.max_rotation_angle, self.settings.max_rotation_angle)
+        return np.clip(
+            rotation, -self.settings.max_rotation_angle, self.settings.max_rotation_angle
         )
 
     def _rotate_image(self, image: np.ndarray, angle: float) -> np.ndarray:

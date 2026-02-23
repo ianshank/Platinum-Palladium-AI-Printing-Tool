@@ -3,7 +3,7 @@
  * Provides keyboard navigation matching legacy Gradio app (Ctrl+1-5 for tabs)
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/stores';
 import { logger } from '@/lib/logger';
@@ -27,7 +27,6 @@ export function useKeyboardShortcuts(shortcuts: ShortcutConfig[]): void {
       if (
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement ||
-        event.target instanceof HTMLSelectElement ||
         (event.target as HTMLElement).isContentEditable
       ) {
         return;
@@ -35,8 +34,9 @@ export function useKeyboardShortcuts(shortcuts: ShortcutConfig[]): void {
 
       for (const shortcut of shortcuts) {
         const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase();
-        const ctrlOrMeta = event.ctrlKey || event.metaKey;
-        const ctrlMatch = ctrlOrMeta === !!shortcut.ctrl;
+        const ctrlPressed = event.ctrlKey || event.metaKey;
+        const requiresCtrl = shortcut.ctrl ?? false;
+        const ctrlMatch = requiresCtrl ? ctrlPressed : !ctrlPressed;
         const altMatch = event.altKey === !!shortcut.alt;
         const shiftMatch = event.shiftKey === !!shortcut.shift;
 
@@ -71,77 +71,74 @@ export function useAppShortcuts(): void {
   const canRedo = useStore((state) => state.curve.canRedo);
   const addToast = useStore((state) => state.ui.addToast);
 
-  const shortcuts: ShortcutConfig[] = useMemo(
-    () => [
-      // Tab navigation (matching Gradio Ctrl+1-5)
-      {
-        key: '1',
-        ctrl: true,
-        action: () => navigate('/'),
-        description: 'Navigate to Dashboard',
+  const shortcuts: ShortcutConfig[] = [
+    // Tab navigation (matching Gradio Ctrl+1-5)
+    {
+      key: '1',
+      ctrl: true,
+      action: () => navigate('/'),
+      description: 'Navigate to Dashboard',
+    },
+    {
+      key: '2',
+      ctrl: true,
+      action: () => navigate('/calibration'),
+      description: 'Navigate to Calibration',
+    },
+    {
+      key: '3',
+      ctrl: true,
+      action: () => navigate('/curves'),
+      description: 'Navigate to Curves',
+    },
+    {
+      key: '4',
+      ctrl: true,
+      action: () => navigate('/chemistry'),
+      description: 'Navigate to Chemistry',
+    },
+    {
+      key: '5',
+      ctrl: true,
+      action: () => navigate('/assistant'),
+      description: 'Navigate to AI Assistant',
+    },
+    // Undo/Redo
+    {
+      key: 'z',
+      ctrl: true,
+      action: () => {
+        if (canUndo()) {
+          undo();
+          addToast({ title: 'Undo', variant: 'default', duration: 1000 });
+        }
       },
-      {
-        key: '2',
-        ctrl: true,
-        action: () => navigate('/calibration'),
-        description: 'Navigate to Calibration',
+      description: 'Undo',
+    },
+    {
+      key: 'z',
+      ctrl: true,
+      shift: true,
+      action: () => {
+        if (canRedo()) {
+          redo();
+          addToast({ title: 'Redo', variant: 'default', duration: 1000 });
+        }
       },
-      {
-        key: '3',
-        ctrl: true,
-        action: () => navigate('/curves'),
-        description: 'Navigate to Curves',
+      description: 'Redo',
+    },
+    {
+      key: 'y',
+      ctrl: true,
+      action: () => {
+        if (canRedo()) {
+          redo();
+          addToast({ title: 'Redo', variant: 'default', duration: 1000 });
+        }
       },
-      {
-        key: '4',
-        ctrl: true,
-        action: () => navigate('/chemistry'),
-        description: 'Navigate to Chemistry',
-      },
-      {
-        key: '5',
-        ctrl: true,
-        action: () => navigate('/assistant'),
-        description: 'Navigate to AI Assistant',
-      },
-      // Undo/Redo
-      {
-        key: 'z',
-        ctrl: true,
-        action: () => {
-          if (canUndo()) {
-            undo();
-            addToast({ title: 'Undo', variant: 'default', duration: 1000 });
-          }
-        },
-        description: 'Undo',
-      },
-      {
-        key: 'z',
-        ctrl: true,
-        shift: true,
-        action: () => {
-          if (canRedo()) {
-            redo();
-            addToast({ title: 'Redo', variant: 'default', duration: 1000 });
-          }
-        },
-        description: 'Redo',
-      },
-      {
-        key: 'y',
-        ctrl: true,
-        action: () => {
-          if (canRedo()) {
-            redo();
-            addToast({ title: 'Redo', variant: 'default', duration: 1000 });
-          }
-        },
-        description: 'Redo (alternative)',
-      },
-    ],
-    [navigate, undo, redo, canUndo, canRedo, addToast]
-  );
+      description: 'Redo (alternative)',
+    },
+  ];
 
   useKeyboardShortcuts(shortcuts);
 }

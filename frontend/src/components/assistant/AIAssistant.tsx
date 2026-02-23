@@ -117,7 +117,7 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
   const handleGetRecipe = useCallback((): void => {
     requestRecipe({
       paper_type: paperSize.name,
-      characteristics: `${Math.round(metalRatio * 100)}% Pt / ${Math.round((1 - metalRatio) * 100)}% Pd`,
+      characteristics: `${(metalRatio * 100).toFixed(0)}% Pt / ${((1 - metalRatio) * 100).toFixed(0)}% Pd`,
     });
   }, [paperSize, metalRatio, requestRecipe]);
 
@@ -176,8 +176,8 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
         <div className="space-y-0.5 px-3 pb-2 pt-1 text-muted-foreground">
           <p data-testid="context-paper">Paper: {paperSize.name}</p>
           <p data-testid="context-ratio">
-            Ratio: {Math.round(metalRatio * 100)}% Pt /{' '}
-            {Math.round((1 - metalRatio) * 100)}% Pd
+            Ratio: {(metalRatio * 100).toFixed(0)}% Pt /{' '}
+            {((1 - metalRatio) * 100).toFixed(0)}% Pd
           </p>
           <p data-testid="context-calibrations">
             Calibration records: {calibHistory.length}
