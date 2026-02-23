@@ -266,9 +266,11 @@ export const Dashboard: FC<DashboardProps> = ({
       },
       {
         label: 'Exposure Range',
-        value: statistics.exposure_range
-          ? `${statistics.exposure_range[0]}–${statistics.exposure_range[1]}s`
-          : '—',
+        value: statistics.exposure_range && (statistics.exposure_range[0] > 0 || statistics.exposure_range[1] > 0)
+          ? statistics.exposure_range[0] === statistics.exposure_range[1]
+            ? `${statistics.exposure_range[0]}s`
+            : `${statistics.exposure_range[0]}–${statistics.exposure_range[1]}s`
+          : 'N/A',
         subtitle: 'UV exposure time',
         icon: <Icons.Sun />,
         testId: 'stat-exposure-range',
@@ -363,7 +365,12 @@ export const Dashboard: FC<DashboardProps> = ({
       {/* Header with refresh */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            {isLoading && (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            )}
+          </div>
           <p className="text-muted-foreground">
             Overview of your calibration system
           </p>
@@ -384,14 +391,15 @@ export const Dashboard: FC<DashboardProps> = ({
             className={cn(
               'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm',
               'hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-              'disabled:cursor-not-allowed disabled:opacity-50',
-              isLoading && 'animate-pulse'
+              'disabled:cursor-not-allowed disabled:opacity-50'
             )}
             data-testid="dashboard-refresh"
             aria-label="Refresh dashboard data"
           >
-            <Icons.RefreshCw />
-            Refresh
+            <div className={cn('h-4 w-4', isLoading && 'animate-spin')}>
+              <Icons.RefreshCw />
+            </div>
+            {isLoading ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>

@@ -21,6 +21,7 @@ export interface ChemistryRecipe {
   contrastAgent?: {
     type: 'na2' | 'dichromate' | 'none';
     amount: number;
+    totalDrops?: number;
   };
   developer: {
     type: 'potassium_oxalate' | 'ammonium_citrate';
@@ -65,8 +66,8 @@ export const STANDARD_PAPER_SIZES: PaperSize[] = [
 ];
 
 // Developer temperature constraints (°C)
-export const TEMPERATURE_MIN = 15;
-export const TEMPERATURE_MAX = 50;
+export const TEMPERATURE_MIN = 10;
+export const TEMPERATURE_MAX = 60;
 
 const initialState = {
   paperSize: STANDARD_PAPER_SIZES[2]!, // 8x10 default
@@ -197,29 +198,26 @@ export const createChemistrySlice: StateCreator<
     const coatingFactor = COATING_FACTORS[coatingMethod];
     const totalVolume = areaSquareInches * coatingFactor;
 
-    // Metal solution is typically 40% of total
-    const metalVolume = totalVolume * 0.4;
+    // Metal solution is now 50% of total (standard 1:1 ratio)
+    const metalVolume = totalVolume * 0.5;
     const platinumMl = metalVolume * metalRatio;
     const palladiumMl = metalVolume * (1 - metalRatio);
 
-    // Ferric oxalate is 60% of total
-    const ferricOxalateMl = totalVolume * 0.6;
-
-    // Calculate contrast agent based on level
-    let contrastAgent: ChemistryRecipe['contrastAgent'];
-    if (contrastLevel > 0) {
-      contrastAgent = {
-        type: 'na2',
-        amount: contrastLevel * 0.5, // drops per 10ml
-      };
-    }
+    // Ferric oxalate is now 50% of total
+    const ferricOxalateMl = totalVolume * 0.5;
 
     const recipe: ChemistryRecipe = {
       totalVolume: Math.round(totalVolume * 100) / 100,
       platinumMl: Math.round(platinumMl * 100) / 100,
       palladiumMl: Math.round(palladiumMl * 100) / 100,
       ferricOxalateMl: Math.round(ferricOxalateMl * 100) / 100,
-      ...(contrastAgent && { contrastAgent }),
+      ...(contrastLevel > 0 && {
+        contrastAgent: {
+          type: 'na2' as const,
+          amount: contrastLevel * 0.5, // drops per 10ml (ratio)
+          totalDrops: Math.round((totalVolume / 10) * (contrastLevel * 0.5) * 10) / 10, // absolute drops
+        },
+      }),
       developer: { ...developer },
       isStale: false, // Fresh recipe
     };

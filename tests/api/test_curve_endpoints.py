@@ -70,6 +70,66 @@ class TestCurveGeneration:
         # Should fail with empty densities
         assert response.status_code in [400, 422]
 
+    # ---- Regression tests for Generate Curve bugs (2025-02-23) ----
+
+    def test_generate_curve_with_measurements_field(self, client, sample_densities):
+        """Regression: frontend wizard sends 'measurements', not 'densities'.
+
+        Bug: CurveRequest only accepted 'densities'; requests with 'measurements'
+        silently delivered an empty list to the generator.
+        """
+        request_data = {
+            "measurements": sample_densities,  # wizard-style key
+            "name": "Wizard Curve",
+            "curve_type": "linear",
+        }
+
+        response = client.post("/api/curves/generate", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["num_points"] > 0
+
+    def test_generate_curve_returns_full_arrays(self, client, sample_densities):
+        """Regression: generate_curve was returning only the first 10 points.
+
+        Bug: response contained ``input_values[:10]`` instead of the full arrays,
+        causing the chart to render a stub of the curve.
+        """
+        request_data = {
+            "measurements": sample_densities,
+            "name": "Full Array Curve",
+            "curve_type": "linear",
+        }
+
+        response = client.post("/api/curves/generate", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        # num_points must match the actual array lengths — no truncation.
+        assert len(data["input_values"]) == data["num_points"]
+        assert len(data["output_values"]) == data["num_points"]
+
+    def test_generate_curve_unknown_curve_type_defaults_to_linear(self, client, sample_densities):
+        """Regression: frontend wizard sends curve_type='monotonic' which is not in CurveType enum.
+
+        Bug: ``CurveType('monotonic')`` raised ValueError; generate_curve returned 400.
+        Now it should silently fall back to CurveType.LINEAR.
+        """
+        request_data = {
+            "measurements": sample_densities,
+            "name": "Monotonic Curve",
+            "curve_type": "monotonic",  # not a valid CurveType enum value
+        }
+
+        response = client.post("/api/curves/generate", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["num_points"] > 0
+
 
 @pytest.mark.api
 class TestCurveModification:

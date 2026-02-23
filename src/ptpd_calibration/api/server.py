@@ -15,7 +15,7 @@ def create_app():
         from fastapi import FastAPI, File, Form, HTTPException, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import FileResponse
-        from pydantic import BaseModel
+        from pydantic import BaseModel, Field, model_validator
     except ImportError as err:
         raise ImportError(
             "FastAPI is required. Install with: pip install ptpd-calibration[api]"
@@ -85,7 +85,18 @@ def create_app():
         densities: list[float]
 
     class CurveRequest(BaseModel):
-        densities: list[float]
+        """Curve generation request.
+
+        Accepts either ``measurements`` (used by the frontend wizard) or ``densities``
+        (used by backend tests / legacy callers).  Both are optional list[float] with
+        defaults of ``[]``; the route handler merges them, preferring ``measurements``.
+        """
+
+        densities: list[float] = Field(default_factory=list)
+        measurements: list[float] = Field(
+            default_factory=list,
+            description="Alias sent by the frontend calibration wizard",
+        )
         name: str = "Calibration Curve"
         curve_type: str = "linear"
         paper_type: str | None = None
@@ -187,10 +198,11 @@ def create_app():
         tablet_type: str = Form("stouffer_21"),
     ):
         """Upload and process a step tablet scan."""
-        # Save uploaded file
-        file_path = upload_dir / file.filename
+        # Guard against None filename (e.g. binary multipart uploads without filename header)
+        safe_name = file.filename or "scan_upload.tmp"
+        file_path = upload_dir / safe_name
+        content = await file.read()
         with open(file_path, "wb") as f:
-            content = await file.read()
             f.write(content)
 
         try:
@@ -218,25 +230,46 @@ def create_app():
 
     @app.post("/api/curves/generate")
     async def generate_curve(request: CurveRequest):
-        """Generate a calibration curve."""
-        generator = CurveGenerator()
+        """Generate a calibration curve.
 
+        Accepts density measurements via either the 'measurements' key (used by
+        the frontend wizard) or the 'densities' key (legacy / test callers).
+        Unknown curve_type values gracefully fall back to CurveType.LINEAR.
+        """
+        # Merge: prefer 'measurements' (wizard) over 'densities' (legacy/tests).
+        # Both fields default to [] so whichever the caller supplied will be non-empty.
+        densities = request.measurements if request.measurements else request.densities
+        if not densities:
+            raise HTTPException(
+                status_code=422,
+                detail="No density measurements provided. Supply 'measurements' or 'densities'.",
+            )
+
+        # Map unknown/frontend-specific curve_type strings to a valid CurveType.
+        # Frontend wizard sends values like 'monotonic' that are not in the enum.
+        try:
+            curve_type = CurveType(request.curve_type)
+        except ValueError:
+            curve_type = CurveType.LINEAR
+
+        generator = CurveGenerator()
         try:
             curve = generator.generate(
-                request.densities,
-                curve_type=CurveType(request.curve_type),
+                densities,
+                curve_type=curve_type,
                 name=request.name,
                 paper_type=request.paper_type,
                 chemistry=request.chemistry,
             )
 
+            # Return the FULL arrays — callers need all points to render the curve.
             return {
                 "success": True,
                 "curve_id": str(curve.id),
                 "name": curve.name,
                 "num_points": len(curve.input_values),
-                "input_values": curve.input_values[:10],  # Sample
-                "output_values": curve.output_values[:10],
+                "input_values": curve.input_values,
+                "output_values": curve.output_values,
             }
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e)) from None
@@ -387,6 +420,8 @@ def create_app():
                 modified = modifier.adjust_shadows(curve, request.amount)
             elif adjustment_type == "midtones":
                 modified = modifier.adjust_midtones(curve, request.amount)
+            elif adjustment_type == "none":
+                modified = curve
             else:
                 raise ValueError(f"Unknown adjustment type: {adjustment_type}")
 

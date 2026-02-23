@@ -15,7 +15,16 @@ import { logger } from '@/lib/logger';
 import type { CurveData } from '@/types/models';
 import { Activity, BarChart, CheckCircle2, Printer, Scan } from 'lucide-react';
 import { cn, formatSnakeCaseToTitle } from '@/lib/utils';
-// import { useToast } from '@/components/ui/use-toast'; // Assuming it exists
+import { useStore } from '@/stores';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 // Steps definition
 const STEPS = [
@@ -38,6 +47,13 @@ export function CalibrationWizard() {
   const [curveResult, setCurveResult] =
     useState<CurveGenerationResponse | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  // ── Zustand store actions for persistence across pages ──
+  const startCalibration = useStore((s) => s.calibration.startCalibration);
+  const setMeasurements = useStore((s) => s.calibration.setMeasurements);
+  const updateMetadata = useStore((s) => s.calibration.updateMetadata);
+  const setCurveInStore = useStore((s) => s.curve.setCurve);
 
   const handleNext = () => {
     setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
@@ -50,28 +66,76 @@ export function CalibrationWizard() {
   const handleScanComplete = (response: ScanUploadResponse) => {
     setScanResult(response);
     setData((prev) => ({ ...prev, extraction_id: response.extraction_id }));
+
+    // ── Persist to Zustand calibration store ──
+    // Ensure a calibration session exists before writing measurements
+    startCalibration('21-step');
+
+    if (response.densities?.length) {
+      const measurements = response.densities.map((d, i) => ({
+        step: i + 1,
+        targetDensity: i / (response.densities.length - 1),
+        measuredDensity: d,
+      }));
+      setMeasurements(measurements);
+      const meta: Record<string, number | string> = {
+        num_patches: response.num_patches,
+        originalFileName: response.extraction_id,
+      };
+      if (response.dmin != null) meta['dmin'] = response.dmin;
+      if (response.dmax != null) meta['dmax'] = response.dmax;
+      if (response.range != null) meta['range'] = response.range;
+      updateMetadata(meta);
+    }
+
     handleNext();
   };
 
   const handleGenerateValues = async () => {
     if (!scanResult?.densities?.length) {
+      setGenerateError('No density measurements found in the scan. Please go back and re-scan.');
       logger.warn('Cannot generate curve: no density measurements available');
       return;
     }
 
     setIsGenerating(true);
+    setGenerateError(null);
     try {
       const response = await api.curves.generate({
         measurements: scanResult.densities,
-        type: 'linearization',
-        name: `${data.paper_type} ${data.chemistry_type}`,
+        name: `${data.paper_type || 'Calibration'} ${data.chemistry_type || ''}`.trim(),
+        curve_type: 'linear',
       });
 
       if (response.success) {
         setCurveResult(response);
+
+        // ── Persist to Zustand curve store ──
+        const points = response.input_values.map((x, i) => ({
+          x,
+          y: response.output_values[i] ?? 0,
+        }));
+        const now = new Date().toISOString();
+        setCurveInStore({
+          id: response.curve_id,
+          name: response.name,
+          type: 'linear' as const,
+          points,
+          createdAt: now,
+          updatedAt: now,
+          metadata: { curve_type: 'calibration' },
+        });
+
+        // Set editing to false to ensure display mode
+        useStore.getState().curve.setEditing(false);
+
         handleNext();
+      } else {
+        setGenerateError('Curve generation returned an unsuccessful response.');
       }
     } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      setGenerateError(`Curve generation failed: ${msg}`);
       logger.error(
         'Curve generation failed',
         e instanceof Error ? { error: e.message } : undefined
@@ -120,7 +184,7 @@ export function CalibrationWizard() {
               />
             </div>
             <div className="flex justify-end">
-              <Button onClick={handleNext} disabled={!data.paper_type}>
+              <Button onClick={handleNext} disabled={!data.paper_type || !data.exposure_time || data.exposure_time <= 0}>
                 Next
               </Button>
             </div>
@@ -258,12 +322,61 @@ export function CalibrationWizard() {
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Analysis</h2>
             <p>Scan received. ID: {data.extraction_id}</p>
-            {/* Visualization of densities could go here */}
+            {scanResult && scanResult.densities?.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {scanResult.densities.length} density measurements detected (range: {Math.min(...scanResult.densities).toFixed(2)} - {Math.max(...scanResult.densities).toFixed(2)})
+              </p>
+            )}
+            {generateError && (
+              <div className="rounded-lg border-l-4 border-red-500 bg-red-50 p-4 dark:bg-red-900/20">
+                <p className="text-sm text-red-800 dark:text-red-200">{generateError}</p>
+              </div>
+            )}
+            {scanResult && scanResult.densities?.length > 0 && (
+              <div className="h-64 w-full rounded-lg border bg-card p-4">
+                <h3 className="mb-2 text-sm font-medium">Density Response (Step Wedge)</h3>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={scanResult.densities.map((d, i) => ({
+                      step: i + 1,
+                      density: d,
+                    }))}
+                    margin={{ top: 5, right: 20, bottom: 20, left: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="step"
+                      label={{ value: 'Step', position: 'insideBottom', offset: -10 }}
+                    />
+                    <YAxis
+                      label={{ value: 'Density', angle: -90, position: 'insideLeft' }}
+                    />
+                    <Tooltip
+                      formatter={(v: number) => v.toFixed(3)}
+                      labelFormatter={(l) => `Step ${l}`}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="density"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
             <div className="flex justify-between">
               <Button variant="outline" onClick={handleBack}>
                 Back
               </Button>
-              <Button onClick={handleGenerateValues}>Generate Curve</Button>
+              <Button
+                onClick={handleGenerateValues}
+                disabled={isGenerating || !scanResult?.densities?.length}
+              >
+                {isGenerating ? 'Generating...' : 'Generate Curve'}
+              </Button>
             </div>
           </div>
         );
@@ -280,6 +393,44 @@ export function CalibrationWizard() {
                 Next
               </Button>
             </div>
+            {curveResult && (
+              <div className="h-64 w-full rounded-lg border bg-card p-4">
+                <h3 className="mb-2 text-sm font-medium">Generated Calibration Curve</h3>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={curveResult.input_values.map((x, i) => ({
+                      input: x,
+                      output: curveResult.output_values[i],
+                    }))}
+                    margin={{ top: 5, right: 20, bottom: 20, left: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="input"
+                      type="number"
+                      domain={[0, 1]}
+                      tickFormatter={(v) => v.toFixed(1)}
+                    />
+                    <YAxis domain={[0, 1]} tickFormatter={(v) => v.toFixed(1)} />
+                    <Tooltip formatter={(v: number) => v.toFixed(3)} />
+                    <Line
+                      type="monotone"
+                      dataKey="output"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="linear"
+                      dataKey="input"
+                      stroke="#ccc"
+                      strokeDasharray="5 5"
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         );
       case 5: // Finish

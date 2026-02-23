@@ -138,6 +138,7 @@ export const api = {
       measurements: number[];
       type?: string;
       name?: string;
+      curve_type?: string;
       paper_type?: string;
       chemistry?: string;
     }) =>

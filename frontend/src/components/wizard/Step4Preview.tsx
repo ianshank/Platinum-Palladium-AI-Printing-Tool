@@ -78,11 +78,21 @@ export function Step4Preview() {
   );
   const curveName = useStore((state) => state.calibration.current?.name || '');
   // Read from metadata
-  const curveStrategy = useStore(
+  const curveStrategyRaw = useStore(
     (state) =>
       (state.calibration.current?.metadata?.curveStrategy as string) ||
       'monotonic'
   );
+
+  // Map wizard-specific strategy names to valid backend CurveType enum values.
+  // The backend accepts: 'linear' | 'paper_white' | 'aesthetic' | 'custom' | 'mcts_optimized'
+  const CURVE_TYPE_MAP: Record<string, string> = {
+    monotonic: 'linear',
+    spline: 'linear',
+    polynomial: 'linear',
+    smooth: 'linear',
+  };
+  const curveStrategy = CURVE_TYPE_MAP[curveStrategyRaw] ?? curveStrategyRaw;
 
   const generatedCurve = useStore((state) => state.curve.current);
   const setGeneratedCurve = useStore((state) => state.curve.setCurve);
@@ -101,7 +111,7 @@ export function Step4Preview() {
       generateCurve(
         {
           measurements: densities.map((d) => d.measuredDensity),
-          name: curveName,
+          name: curveName || 'Calibration Curve',
           curve_type: curveStrategy,
         },
         {
@@ -114,7 +124,7 @@ export function Step4Preview() {
             setGeneratedCurve({
               id: data.curve_id,
               name: data.name,
-              type: 'monotonic', // Default or from response if available
+              type: curveStrategyRaw as 'linear' | 'cubic' | 'monotonic' | 'pchip',
               points,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
@@ -152,7 +162,7 @@ export function Step4Preview() {
     generateCurve(
       {
         measurements: densities.map((d) => d.measuredDensity),
-        name: curveName,
+        name: curveName || 'Calibration Curve',
         curve_type: curveStrategy,
       },
       {
@@ -165,7 +175,7 @@ export function Step4Preview() {
           setGeneratedCurve({
             id: data.curve_id,
             name: data.name,
-            type: 'monotonic',
+            type: curveStrategyRaw as 'linear' | 'cubic' | 'monotonic' | 'pchip',
             points,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),

@@ -15,6 +15,8 @@
  */
 
 import { type FC, useCallback, useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 import { cn } from '@/lib/utils';
 import { useChat } from '@/hooks/useChat';
 
@@ -63,6 +65,13 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, streamContent]);
+
+  // BUG-015: Autofocus and re-focus when done loading
+  useEffect(() => {
+    if (!isBusy) {
+      inputRef.current?.focus();
+    }
+  }, [isBusy]);
 
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
@@ -203,13 +212,21 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
           >
             <div
               className={cn(
-                'max-w-[80%] rounded-lg px-4 py-2.5',
+                'max-w-[85%] rounded-lg px-4 py-2.5',
                 msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted shadow-sm'
               )}
             >
-              <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+              {msg.role === 'user' ? (
+                <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+              ) : (
+                <div className="prose-assistant text-sm">
+                  <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
+              )}
               <p
                 className={cn(
                   'mt-1 text-[10px]',
@@ -227,9 +244,13 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
         {/* Streaming indicator */}
         {isStreaming && streamContent && (
           <div className="flex justify-start" data-testid="streaming-message">
-            <div className="max-w-[80%] rounded-lg bg-muted px-4 py-2.5">
-              <p className="whitespace-pre-wrap text-sm">{streamContent}</p>
-              <span className="mt-1 inline-block h-2 w-2 animate-pulse rounded-full bg-primary" />
+            <div className="max-w-[85%] rounded-lg bg-muted px-4 py-2.5 shadow-sm">
+              <div className="prose-assistant text-sm">
+                <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+                  {streamContent}
+                </ReactMarkdown>
+              </div>
+              <span className="mt-2 inline-block h-2 w-2 animate-pulse rounded-full bg-primary" />
             </div>
           </div>
         )}

@@ -7,8 +7,10 @@ import {
   LineChart,
   Menu,
   MessageSquare,
+  Moon,
   Settings,
   SlidersHorizontal,
+  Sun,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -60,6 +62,8 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const sidebarOpen = useStore((state) => state.ui.sidebarOpen);
   const toggleSidebar = useStore((state) => state.ui.toggleSidebar);
+  const theme = useStore((state) => state.ui.theme);
+  const toggleTheme = useStore((state) => state.ui.toggleTheme);
   const isProcessing = useStore((state) => state.ui.isProcessing);
 
   // Register global keyboard shortcuts (Ctrl+1-5 tab nav, Ctrl+Z undo/redo)
@@ -75,8 +79,7 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-transform duration-200 lg:static',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-          'lg:translate-x-0'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
@@ -115,7 +118,9 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
                   'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                   isActive
                     ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  // Ensure subpaths (like /calibration steps) keep the parent highlighted
+                  (isActive || (item.path !== '/' && location.pathname.startsWith(item.path))) && 'bg-primary/20 text-primary'
                 )}
                 aria-current={isActive ? 'page' : undefined}
               >
@@ -168,27 +173,33 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
       >
         {/* Top bar */}
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={toggleSidebar}
-            aria-label="Open sidebar"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-
-          {/* Page title */}
-          <h1 className="text-lg font-semibold">
-            {NAV_ITEMS.find((item) => item.path === location.pathname)?.label ??
-              'Dashboard'}
-          </h1>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
           {/* Actions */}
-          {/* Add global actions here */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden lg:flex"
+              onClick={toggleSidebar}
+              aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </div>
         </header>
 
         {/* Page content */}

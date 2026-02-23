@@ -102,6 +102,8 @@ export const createUISlice: StateCreator<
     set((state) => {
       state.ui.theme = theme;
     });
+    // Persist theme
+    localStorage.setItem('ptpd-theme', theme);
     // Update document class for theme
     document.documentElement.classList.toggle('light', theme === 'light');
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -116,8 +118,17 @@ export const createUISlice: StateCreator<
   initializeApp: () => {
     logger.info('UI: Initializing application');
 
-    // Apply saved theme
-    const theme = get().ui.theme;
+    // Apply saved theme from localStorage if available
+    const savedTheme = localStorage.getItem('ptpd-theme') as 'light' | 'dark' | null;
+    const theme = savedTheme || get().ui.theme;
+
+    if (savedTheme) {
+      set((state) => {
+        state.ui.theme = savedTheme;
+      });
+    }
+
+    document.documentElement.classList.toggle('light', theme === 'light');
     document.documentElement.classList.toggle('dark', theme === 'dark');
 
     set((state) => {

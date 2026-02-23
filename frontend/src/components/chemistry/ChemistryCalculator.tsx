@@ -120,7 +120,7 @@ const RecipeOutput: FC<{ recipe: ChemistryRecipe }> = ({ recipe }) => (
       <div className="mt-3 border-t pt-3">
         <RecipeRow
           label="Contrast Agent"
-          value={`${recipe.contrastAgent.type.toUpperCase()} — ${formatMl(recipe.contrastAgent.amount)} drops per 10ml`}
+          value={`${recipe.contrastAgent.type.toUpperCase()} — ${formatMl(recipe.contrastAgent.amount)} dr/10ml (${recipe.contrastAgent.totalDrops ? formatMl(recipe.contrastAgent.totalDrops) : '0'} drops total)`}
           testId="recipe-contrast"
         />
       </div>
@@ -221,22 +221,39 @@ export const ChemistryCalculator: FC<ChemistryCalculatorProps> = ({
 
   const handleTemperatureChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = Number(e.target.value);
+      const valStr = e.target.value;
+      if (valStr === '') {
+        setTemperatureError('Please enter a temperature');
+        return;
+      }
 
-      // Validate temperature range
+      const value = Number(valStr);
+      if (isNaN(value)) {
+        setTemperatureError('Temperature must be a number');
+        return;
+      }
+
+      // Validate temperature range for real-time feedback
       if (value < TEMPERATURE_MIN || value > TEMPERATURE_MAX) {
         setTemperatureError(
-          `Temperature must be between ${TEMPERATURE_MIN}°C and ${TEMPERATURE_MAX}°C`
+          `Temperature should be between ${TEMPERATURE_MIN}°C and ${TEMPERATURE_MAX}°C`
         );
       } else {
         setTemperatureError(null);
       }
 
-      // Update store (store will clamp the value)
+      // Update store (store will clamp the value if we don't fix it there too, 
+      // but let's allow typing for now and only clamp on blur or if valid)
       setDeveloper({ temperatureC: value });
     },
     [setDeveloper]
   );
+
+  const handleTemperatureBlur = useCallback(() => {
+    // Force clamping on blur to ensure valid state
+    setDeveloper({ temperatureC: developer.temperatureC });
+    setTemperatureError(null);
+  }, [developer.temperatureC, setDeveloper]);
 
   const ptPercent = Math.round(metalRatio * 100);
   const pdPercent = 100 - ptPercent;
@@ -304,7 +321,7 @@ export const ChemistryCalculator: FC<ChemistryCalculatorProps> = ({
               key={key}
               type="button"
               role="radio"
-              aria-checked={coatingMethod === key}
+              aria-checked={coatingMethod === key ? 'true' : 'false'}
               onClick={() =>
                 setCoatingMethod(key as 'brush' | 'rod' | 'puddle')
               }
@@ -384,6 +401,7 @@ export const ChemistryCalculator: FC<ChemistryCalculatorProps> = ({
               max={TEMPERATURE_MAX}
               value={developer.temperatureC}
               onChange={handleTemperatureChange}
+              onBlur={handleTemperatureBlur}
               className={cn(
                 'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2',
                 temperatureError
@@ -391,7 +409,7 @@ export const ChemistryCalculator: FC<ChemistryCalculatorProps> = ({
                   : 'focus:ring-primary'
               )}
               data-testid="developer-temp-input"
-              aria-invalid={temperatureError ? true : false}
+              aria-invalid={temperatureError ? 'true' : 'false'}
               aria-describedby={temperatureError ? 'temp-error' : undefined}
             />
             {temperatureError && (
@@ -442,7 +460,7 @@ export const ChemistryCalculator: FC<ChemistryCalculatorProps> = ({
       </div>
 
       {/* --- Recipe Output --- */}
-      {recipe && <RecipeOutput recipe={recipe} />}
+      {recipe && !temperatureError && <RecipeOutput recipe={recipe} />}
     </div>
   );
 };

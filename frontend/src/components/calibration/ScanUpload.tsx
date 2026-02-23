@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useCallback, useState } from 'react';
 import { type FileRejection, useDropzone } from 'react-dropzone';
+import { cn } from '@/lib/utils';
 import { api } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import {
@@ -53,7 +54,7 @@ export function ScanUpload({
     },
     maxFiles: 1,
     maxSize: 20 * 1024 * 1024, // 20MB
-    disabled: isUploading || success,
+    disabled: isUploading,
   });
 
   const handleUpload = async () => {
@@ -97,22 +98,28 @@ export function ScanUpload({
     <div className={`w-full max-w-md ${className}`}>
       <div
         {...getRootProps()}
-        className={`relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/50'} ${error ? 'border-destructive bg-destructive/5' : ''} ${success ? 'border-green-500 bg-green-50' : ''} ${isUploading ? 'pointer-events-none opacity-50' : ''} `}
+        className={cn(
+          'relative flex min-h-[200px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-all',
+          isDragActive ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-gray-300 hover:border-primary/50',
+          error ? 'border-destructive bg-destructive/5' : '',
+          success ? 'border-green-500 bg-green-50' : '',
+          isUploading ? 'pointer-events-none opacity-50' : 'hover:bg-accent/5'
+        )}
       >
         <input {...getInputProps()} data-testid="scan-upload-input" />
 
         {/* State: Initial / Drag Assert */}
         {!file && !success && (
-          <div className="space-y-4">
-            <div className="inline-block rounded-full bg-gray-100 p-4">
-              <UploadCloud className="h-8 w-8 text-gray-400" />
+          <div className="pointer-events-none space-y-4">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted/50">
+              <UploadCloud className={cn("h-8 w-8", isDragActive ? "text-primary animate-bounce" : "text-muted-foreground")} />
             </div>
             <div>
               <p className="text-lg font-medium">
-                Click to upload or drag and drop
+                {isDragActive ? 'Drop it here!' : 'Click or drag scan image'}
               </p>
-              <p className="mt-1 text-sm text-gray-500">
-                PNG, JPG or TIFF (max 20MB)
+              <p className="mt-1 text-sm text-muted-foreground">
+                Supports PNG, JPG, TIFF (up to 20MB)
               </p>
             </div>
           </div>

@@ -1,109 +1,10 @@
-import styled, { useTheme } from 'styled-components';
 import { useStore } from '@/stores';
 import { tabletConfig } from '@/config/tablet.config';
-
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing[8]};
-`;
-
-const SectionContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing[4]};
-`;
-
-const SectionTitle = styled.h3`
-  font-size: ${({ theme }) => theme.typography.fontSize.lg};
-  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
-  color: ${({ theme }) => theme.colors.text.primary};
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing[2]};
-`;
-
-const Label = styled.label`
-  font-size: ${({ theme }) => theme.typography.fontSize.sm};
-  font-weight: ${({ theme }) => theme.typography.fontWeight.medium};
-  color: ${({ theme }) => theme.colors.text.primary};
-`;
-
-const Input = styled.input`
-  padding: ${({ theme }) => theme.spacing[3]};
-  background-color: ${({ theme }) => theme.colors.background.tertiary};
-  border: 1px solid ${({ theme }) => theme.colors.border.default};
-  border-radius: ${({ theme }) => theme.radii.md};
-  color: ${({ theme }) => theme.colors.text.primary};
-  font-size: ${({ theme }) => theme.typography.fontSize.base};
-  outline: none;
-
-  &:focus {
-    border-color: ${({ theme }) => theme.colors.accent.primary};
-  }
-`;
-
-const TextArea = styled.textarea`
-  padding: ${({ theme }) => theme.spacing[3]};
-  background-color: ${({ theme }) => theme.colors.background.tertiary};
-  border: 1px solid ${({ theme }) => theme.colors.border.default};
-  border-radius: ${({ theme }) => theme.radii.md};
-  color: ${({ theme }) => theme.colors.text.primary};
-  font-size: ${({ theme }) => theme.typography.fontSize.base};
-  min-height: 100px;
-  resize: vertical;
-  outline: none;
-
-  &:focus {
-    border-color: ${({ theme }) => theme.colors.accent.primary};
-  }
-`;
-
-const OptionCard = styled.label<{ $selected: boolean }>`
-  display: flex;
-  flex-direction: column;
-  padding: ${({ theme }) => theme.spacing[4]};
-  background-color: ${({ theme, $selected }) =>
-    $selected ? theme.colors.background.tertiary : 'transparent'};
-  border: 1px solid
-    ${({ theme, $selected }) =>
-      $selected ? theme.colors.accent.primary : theme.colors.border.default};
-  border-radius: ${({ theme }) => theme.radii.md};
-  cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.fast};
-
-  &:hover {
-    border-color: ${({ theme }) => theme.colors.accent.primary};
-  }
-
-  input {
-    display: none;
-  }
-`;
-
-const OptionTitle = styled.span`
-  font-weight: ${({ theme }) => theme.typography.fontWeight.medium};
-  color: ${({ theme }) => theme.colors.text.primary};
-  margin-bottom: ${({ theme }) => theme.spacing[1]};
-`;
-
-const OptionDescription = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSize.sm};
-  color: ${({ theme }) => theme.colors.text.secondary};
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: ${({ theme }) => theme.spacing[4]};
-`;
+import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
 export function Step3Configure() {
-  const theme = useTheme();
-
   // Store
   const currentCalibration = useStore((state) => state.calibration.current);
   const saveCalibration = useStore(
@@ -149,112 +50,109 @@ export function Step3Configure() {
     }
   };
 
-  // We could implement preset loading here
-  // For now, let's stick to the core curve config
-
   return (
-    <Container>
-      <SectionContainer>
-        <SectionTitle>Curve Name & Notes</SectionTitle>
-        <Grid>
-          <FormGroup>
-            <Label>Calibration Name</Label>
+    <div className="flex flex-col gap-8">
+      <section className="flex flex-col gap-4">
+        <h3 className="text-lg font-semibold text-foreground">Curve Name & Notes</h3>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-foreground">
+              Calibration Name
+            </label>
             <Input
               type="text"
               value={curveName}
               onChange={(e) => setConfiguration({ curveName: e.target.value })}
               placeholder="e.g., Arches Platine Pd 12m"
+              className="bg-muted/50"
             />
-          </FormGroup>
-          <FormGroup>
-            <Label>Notes (Optional)</Label>
-            <TextArea
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-foreground">
+              Notes (Optional)
+            </label>
+            <textarea
               value={notes}
               onChange={(e) => setConfiguration({ notes: e.target.value })}
               placeholder="Record exposure time, chemistry details, humidity, etc."
-              style={{ minHeight: '46px' }}
+              className="min-h-[46px] w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
-          </FormGroup>
-        </Grid>
-      </SectionContainer>
+          </div>
+        </div>
+      </section>
 
-      <SectionContainer>
-        <SectionTitle>Linearization Method</SectionTitle>
-        <Grid>
+      <section className="flex flex-col gap-4">
+        <h3 className="text-lg font-semibold text-foreground">Linearization Method</h3>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tabletConfig.linearizationMethods.slice(0, 3).map((method) => (
-            <OptionCard key={method.id} $selected={curveStrategy === method.id}>
+            <label
+              key={method.id}
+              className={cn(
+                "flex flex-col gap-1 rounded-md border-2 p-4 cursor-pointer transition-all hover:border-primary/50",
+                curveStrategy === method.id
+                  ? "border-primary bg-primary/5"
+                  : "border-muted bg-transparent"
+              )}
+            >
               <input
                 type="radio"
                 name="curveStrategy"
+                className="hidden"
                 value={method.id}
                 checked={curveStrategy === method.id}
                 onChange={() => setConfiguration({ curveStrategy: method.id })}
               />
-              <OptionTitle>{method.label}</OptionTitle>
-              <OptionDescription>{method.description}</OptionDescription>
-            </OptionCard>
+              <span className="font-medium text-foreground">{method.label}</span>
+              <span className="text-xs text-muted-foreground">{method.description}</span>
+            </label>
           ))}
-        </Grid>
-      </SectionContainer>
+        </div>
+      </section>
 
-      <SectionContainer>
-        <SectionTitle>Target Response</SectionTitle>
-        <Grid>
+      <section className="flex flex-col gap-4">
+        <h3 className="text-lg font-semibold text-foreground">Target Response</h3>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tabletConfig.targetResponses.slice(0, 3).map((target) => (
-            <OptionCard
+            <label
               key={target.id}
-              $selected={targetResponse === target.id}
+              className={cn(
+                "flex flex-col gap-1 rounded-md border-2 p-4 cursor-pointer transition-all hover:border-primary/50",
+                targetResponse === target.id
+                  ? "border-primary bg-primary/5"
+                  : "border-muted bg-transparent"
+              )}
             >
               <input
                 type="radio"
                 name="targetResponse"
+                className="hidden"
                 value={target.id}
                 checked={targetResponse === target.id}
                 onChange={() => setConfiguration({ targetResponse: target.id })}
               />
-              <OptionTitle>{target.label}</OptionTitle>
-              <OptionDescription>{target.description}</OptionDescription>
-            </OptionCard>
+              <span className="font-medium text-foreground">{target.label}</span>
+              <span className="text-xs text-muted-foreground">{target.description}</span>
+            </label>
           ))}
-        </Grid>
-      </SectionContainer>
+        </div>
+      </section>
 
       {/* Navigation */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginTop: '2rem',
-        }}
-      >
-        <button
+      <div className="mt-8 flex justify-between">
+        <Button
+          variant="outline"
           onClick={prevStep}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: theme.colors.background.tertiary,
-            color: theme.colors.text.secondary,
-            border: `1px solid ${theme.colors.border.default}`,
-            borderRadius: theme.radii.md,
-            cursor: 'pointer',
-          }}
+          className="px-6"
         >
           Back
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={nextStep}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: theme.colors.accent.primary,
-            color: theme.colors.text.inverse,
-            border: 'none',
-            borderRadius: theme.radii.md,
-            cursor: 'pointer',
-            fontWeight: 600,
-          }}
+          className="px-6 font-semibold"
         >
           Generate Curve
-        </button>
+        </Button>
       </div>
-    </Container>
+    </div>
   );
 }

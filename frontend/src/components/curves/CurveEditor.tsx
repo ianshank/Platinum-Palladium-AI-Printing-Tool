@@ -66,6 +66,7 @@ const AdjustmentSelect = ({
   <select
     id={id}
     value={value}
+    title="Select adjustment type"
     onChange={(e) => onChange(e.target.value as AdjustmentType)}
     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
   >
@@ -435,14 +436,14 @@ export function CurveEditor({
             >
               Amount
             </label>
-            <span className="text-sm text-muted-foreground">{amount}</span>
+            <span className="text-sm text-muted-foreground">{amount.toFixed(2)}</span>
           </div>
           <Slider
             id="adjustment-amount-slider"
             value={[amount]}
-            min={-100}
-            max={100}
-            step={1}
+            min={-1}
+            max={1}
+            step={0.01}
             onValueChange={(vals) => setAmount(vals[0] ?? 0)}
           />
         </div>
