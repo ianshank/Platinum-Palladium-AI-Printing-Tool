@@ -12,9 +12,7 @@ Tests modules:
 import json
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -40,8 +38,8 @@ from ptpd_calibration.integrations.hardware.debug import (
 )
 from ptpd_calibration.integrations.hardware.exceptions import (
     CalibrationError,
-    DeviceConnectionError,
     DeviceCommunicationError,
+    DeviceConnectionError,
     DeviceNotFoundError,
     DeviceReconnectionError,
     DeviceTimeoutError,
@@ -861,7 +859,7 @@ class TestHardwareDebugger:
         debugger.enable()
 
         with pytest.raises(ValueError):
-            with debugger.track_operation("test_op") as metrics:
+            with debugger.track_operation("test_op"):
                 raise ValueError("Test error")
 
         # Metrics should still be recorded

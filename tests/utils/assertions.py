@@ -191,7 +191,7 @@ def assert_recipe_valid(recipe: dict) -> None:
     for key in required_keys:
         if key in recipe:
             value = recipe[key]
-            assert isinstance(value, (int, float)), f"{key} must be numeric"
+            assert isinstance(value, int | float), f"{key} must be numeric"
             assert value >= 0, f"{key} must be non-negative"
 
 

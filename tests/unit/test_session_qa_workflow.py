@@ -5,7 +5,6 @@ Tests target uncovered code paths to maximize coverage improvement.
 """
 
 import json
-import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
@@ -32,7 +31,7 @@ from ptpd_calibration.agents.tools import (
 )
 from ptpd_calibration.config import QASettings
 from ptpd_calibration.core.models import CalibrationRecord, CurveData
-from ptpd_calibration.core.types import ChemistryType, ContrastAgent, CurveType, DeveloperType
+from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
 from ptpd_calibration.curves.analysis import CurveAnalyzer
 from ptpd_calibration.curves.export import (
     CSVExporter,
@@ -44,12 +43,10 @@ from ptpd_calibration.curves.export import (
 )
 from ptpd_calibration.ml.database import CalibrationDatabase
 from ptpd_calibration.qa.quality_assurance import (
-    Alert,
     AlertSeverity,
     AlertSystem,
     AlertType,
     ChemistryFreshnessTracker,
-    ChemistrySolution,
     DensityAnalysis,
     NegativeDensityValidator,
     PaperHumidityChecker,
@@ -71,11 +68,9 @@ from ptpd_calibration.workflow.recipe_manager import (
     RecipeFormat,
     RecipeManager,
     WorkflowAutomation,
-    WorkflowJob,
     WorkflowStatus,
     WorkflowStep,
 )
-
 
 # =============================================================================
 # SESSION LOGGER TESTS
@@ -1151,7 +1146,7 @@ class TestUVLightMeterIntegration:
     def test_calibrate_meter_with_reference(self):
         meter = UVLightMeterIntegration()
         meter.read_intensity(100.0)
-        msg = meter.calibrate_meter(reference_intensity=110.0)
+        meter.calibrate_meter(reference_intensity=110.0)
         assert meter.calibration_factor == 1.1
 
     def test_read_intensity(self):

@@ -7,8 +7,6 @@ and MCTS API router endpoints.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
 
 from ptpd_calibration.agents.subagents.base import SubagentCapability, SubagentResult
@@ -18,7 +16,6 @@ from ptpd_calibration.mcts.agents import (
     ExposureSubagent,
 )
 from ptpd_calibration.mcts.config import DEFAULT_PARAMETER_RANGES, PhysicsConstants
-
 
 # =============================================================================
 # ChemistrySubagent Tests

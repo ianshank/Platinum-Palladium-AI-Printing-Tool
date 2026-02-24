@@ -189,25 +189,25 @@ export const ResultsDashboard: FC<ResultsDashboardProps> = ({ className }) => {
           <div className="rounded-md bg-muted/50 p-3">
             <p className="text-xs text-muted-foreground">Dmin</p>
             <p className="mt-1 text-lg font-semibold text-foreground">
-              {evaluation.dmin.toFixed(3)}
+              {evaluation.dmin?.toFixed(3) ?? '0.000'}
             </p>
           </div>
           <div className="rounded-md bg-muted/50 p-3">
             <p className="text-xs text-muted-foreground">Dmax</p>
             <p className="mt-1 text-lg font-semibold text-foreground">
-              {evaluation.dmax.toFixed(3)}
+              {evaluation.dmax?.toFixed(3) ?? '0.000'}
             </p>
           </div>
           <div className="rounded-md bg-muted/50 p-3">
             <p className="text-xs text-muted-foreground">Density Range</p>
             <p className="mt-1 text-lg font-semibold text-foreground">
-              {evaluation.densityRange.toFixed(3)}
+              {evaluation.densityRange?.toFixed(3) ?? '0.000'}
             </p>
           </div>
           <div className="rounded-md bg-muted/50 p-3">
             <p className="text-xs text-muted-foreground">Gamma</p>
             <p className="mt-1 text-lg font-semibold text-foreground">
-              {evaluation.gamma.toFixed(3)}
+              {evaluation.gamma?.toFixed(3) ?? '0.000'}
             </p>
           </div>
         </div>

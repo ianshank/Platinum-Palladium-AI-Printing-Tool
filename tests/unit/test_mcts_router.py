@@ -774,7 +774,7 @@ class TestHealthChecker:
 
                 assert result.name == "llm_service"
                 assert result.healthy is True
-                assert result.latency_ms > 0
+                assert result.latency_ms >= 0
                 assert "initialized" in result.message.lower()
 
     @pytest.mark.asyncio

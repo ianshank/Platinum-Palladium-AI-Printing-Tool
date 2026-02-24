@@ -213,9 +213,9 @@ class TestFormUsability:
                 # Required fields should have validation
                 assert "required" in rules
             if "min" in rules:
-                assert isinstance(rules["min"], (int, float))
+                assert isinstance(rules["min"], int | float)
             if "max" in rules:
-                assert isinstance(rules["max"], (int, float))
+                assert isinstance(rules["max"], int | float)
 
 
 class TestLoadingStates:

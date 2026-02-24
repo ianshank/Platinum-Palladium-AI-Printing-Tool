@@ -143,21 +143,21 @@ describe('Button', () => {
   describe('Accessibility', () => {
     it('has no accessibility violations', async () => {
       const { container } = render(<Button>Accessible Button</Button>);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- axe returns error-typed value for comprehensive accessibility testing
+       
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });
 
     it('has no accessibility violations when disabled', async () => {
       const { container } = render(<Button disabled>Disabled Button</Button>);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- axe returns error-typed value for comprehensive accessibility testing
+       
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });
 
     it('has no accessibility violations when loading', async () => {
       const { container } = render(<Button isLoading>Loading Button</Button>);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- axe returns error-typed value for comprehensive accessibility testing
+       
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });

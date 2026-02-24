@@ -224,8 +224,8 @@ class EnvironmentalAdjustment(BaseModel):
 
     # Environmental conditions
     altitude_feet: float | None = None
-    month: int | None = Field(None, ge=1, le=12)
-    humidity_percent: float | None = Field(None, ge=0, le=100)
+    month: int | None = Field(default=None, ge=1, le=12)
+    humidity_percent: float | None = Field(default=None, ge=0, le=100)
     temperature_fahrenheit: float | None = None
 
     notes: list[str] = Field(default_factory=list)

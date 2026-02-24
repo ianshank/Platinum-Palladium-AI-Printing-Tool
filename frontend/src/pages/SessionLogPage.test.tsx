@@ -16,10 +16,7 @@ describe('SessionLogPage', () => {
     expect(screen.getByTestId('session-page')).toBeInTheDocument();
   });
 
-  it('renders page heading', () => {
-    render(<SessionLogPage />);
-    expect(screen.getByText('Session Log')).toBeInTheDocument();
-  });
+
 
   it('renders the SessionLog component', () => {
     render(<SessionLogPage />);

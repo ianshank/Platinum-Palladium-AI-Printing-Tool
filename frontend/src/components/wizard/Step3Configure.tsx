@@ -56,10 +56,11 @@ export function Step3Configure() {
         <h3 className="text-lg font-semibold text-foreground">Curve Name & Notes</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">
+            <label htmlFor="curve-name" className="text-sm font-medium text-foreground">
               Calibration Name
             </label>
             <Input
+              id="curve-name"
               type="text"
               value={curveName}
               onChange={(e) => setConfiguration({ curveName: e.target.value })}
@@ -68,10 +69,11 @@ export function Step3Configure() {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">
+            <label htmlFor="curve-notes" className="text-sm font-medium text-foreground">
               Notes (Optional)
             </label>
             <textarea
+              id="curve-notes"
               value={notes}
               onChange={(e) => setConfiguration({ notes: e.target.value })}
               placeholder="Record exposure time, chemistry details, humidity, etc."

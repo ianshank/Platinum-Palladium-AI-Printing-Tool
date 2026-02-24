@@ -1,7 +1,5 @@
 """Tests for MCTS configuration settings."""
 
-import os
-from pathlib import Path
 
 import pytest
 

@@ -22,29 +22,21 @@ Repository Module (src/ptpd_calibration/data/repository.py):
 import concurrent.futures
 import json
 import sqlite3
-import tempfile
 import threading
 import time
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from unittest.mock import Mock, patch
+from datetime import datetime
 
-import numpy as np
 import pytest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from ptpd_calibration.data.repository import (
     InMemoryRepository,
-    Repository,
     SQLiteRepository,
 )
 from ptpd_calibration.monitoring.performance import (
-    APIMetric,
     APIPerformanceTracker,
     CacheManager,
-    CacheStats,
     ImageProcessingProfiler,
-    PerformanceMetric,
     PerformanceMonitor,
     PerformanceReport,
     ResourceMonitor,
@@ -55,7 +47,6 @@ from ptpd_calibration.monitoring.performance import (
     get_profiler,
     get_resource_monitor,
 )
-
 
 # ============================================================================
 # Test Models for Repository Tests
@@ -1249,7 +1240,7 @@ class TestSQLiteRepository:
     def test_init_creates_schema(self, tmp_path):
         """Test that init creates database schema."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(
+        SQLiteRepository(
             TestModel, "test_table", db_path=db_path, indexed_fields=["category"]
         )
 
@@ -1763,10 +1754,10 @@ class TestRepositoryIntegration:
                 repo.add(TestModel(name=f"Test{i}", value=i))
 
         with monitor.timer("repo_get_all"):
-            all_entities = repo.get_all()
+            repo.get_all()
 
         with monitor.timer("repo_find"):
-            results = repo.find(value=5)
+            repo.find(value=5)
 
         # Verify metrics were recorded
         assert len(monitor.get_metrics("repo_add")) == 1

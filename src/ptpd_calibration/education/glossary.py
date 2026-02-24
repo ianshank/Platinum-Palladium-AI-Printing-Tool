@@ -1214,7 +1214,8 @@ class Glossary:
     def _load_terms(self) -> None:
         """Load glossary data into GlossaryTerm objects."""
         for _key, data in GLOSSARY_DATA.items():
-            term = GlossaryTerm(**data)
+            from typing import Any, cast
+            term = GlossaryTerm(**cast(dict[str, Any], data))
             # Index by lowercase version of term for case-insensitive lookup
             self.terms[term.term.lower()] = term
             # Also index synonyms

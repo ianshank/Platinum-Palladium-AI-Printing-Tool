@@ -15,7 +15,6 @@ from ptpd_calibration.zones.mapping import (
     ZoneMapping,
 )
 
-
 # ── Zone enum tests ──────────────────────────────────────────────────
 
 class TestZone:

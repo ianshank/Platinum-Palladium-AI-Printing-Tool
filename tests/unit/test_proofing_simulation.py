@@ -15,7 +15,6 @@ from ptpd_calibration.proofing.simulation import (
     SoftProofer,
 )
 
-
 # ── PaperSimulation enum tests ──────────────────────────────────────
 
 class TestPaperSimulation:

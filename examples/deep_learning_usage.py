@@ -20,7 +20,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import numpy as np
 
-
 # =============================================================================
 # Example 1: Diffusion Model Enhancement
 # =============================================================================
@@ -66,7 +65,7 @@ def example_diffusion_tonal_enhancement():
         use_controlnet=True,
     )
 
-    print(f"\n✓ Enhancement complete!")
+    print("\n✓ Enhancement complete!")
     print(f"  - Inference time: {result.inference_time_ms:.2f} ms")
     print(f"  - Device used: {result.device_used}")
     print(f"  - Original size: {result.original_size}")
@@ -118,7 +117,7 @@ def example_diffusion_inpainting():
         negative_prompt="defects, spots, stains, damage",
     )
 
-    print(f"\n✓ Inpainting complete!")
+    print("\n✓ Inpainting complete!")
     print(f"  - Inference time: {result.inference_time_ms:.2f} ms")
     print(f"  - Regions enhanced: {len(result.regions_enhanced)}")
     print(f"  - Structure preservation: {result.structure_preservation:.2%}")
@@ -163,7 +162,7 @@ def example_diffusion_style_transfer():
         strength=0.6,
     )
 
-    print(f"\n✓ Style transfer complete!")
+    print("\n✓ Style transfer complete!")
     print(f"  - Inference time: {result.inference_time_ms:.2f} ms")
     print(f"  - Prompt used: {result.prompt_used}")
     print(f"  - Structure preservation: {result.structure_preservation:.2%}")
@@ -228,7 +227,7 @@ def example_neural_curve_prediction():
         return_uncertainty=True,
     )
 
-    print(f"\n✓ Prediction complete!")
+    print("\n✓ Prediction complete!")
     print(f"  - Inference time: {result.inference_time_ms:.2f} ms")
     print(f"  - Device used: {result.device_used}")
     print(f"  - Number of points: {result.num_points}")
@@ -308,7 +307,7 @@ def example_neural_curve_training():
         save_best=False,  # Set to True to save checkpoints
     )
 
-    print(f"\n✓ Training complete!")
+    print("\n✓ Training complete!")
     print(f"  - Final training loss: {history['loss'][-1]:.4f}")
     print(f"  - Final validation loss: {history['val_loss'][-1]:.4f}")
     print(f"  - Total epochs: {len(history['loss'])}")
@@ -358,7 +357,7 @@ def example_neural_curve_ensemble():
         y_train=y_train,
     )
 
-    print(f"\n✓ Ensemble training complete!")
+    print("\n✓ Ensemble training complete!")
     for i, history in enumerate(histories):
         print(f"  Model {i + 1}: Final loss = {history['loss'][-1]:.4f}")
 
@@ -370,7 +369,7 @@ def example_neural_curve_ensemble():
         return_uncertainty=True,
     )
 
-    print(f"\n✓ Ensemble prediction complete!")
+    print("\n✓ Ensemble prediction complete!")
     print(f"  - Mean uncertainty: {result.mean_uncertainty:.4f}")
     print(f"  - Confidence: {result.confidence:.2%}")
 

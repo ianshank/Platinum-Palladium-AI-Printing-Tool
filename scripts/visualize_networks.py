@@ -1,7 +1,8 @@
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from pathlib import Path
+
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
 
 # Configure premium style
 plt.rcParams['font.family'] = 'sans-serif'
@@ -30,15 +31,15 @@ COLORS = {
 def draw_box(ax, center, size, label, type='layer', sub_label="") -> patches.FancyBboxPatch:
     x, y = center
     w, h = size
-    
+
     # Color config
     fc = COLORS.get(type, '#FFFFFF')
     ec = COLORS.get(f'border_{type}', '#000000')
-    
+
     # Shadow offset
     shadow = patches.FancyBboxPatch(
         (x - w/2 + 0.02, y - h/2 - 0.02), w, h,
-        boxstyle=f"round,pad=0.0,rounding_size=0.1",
+        boxstyle="round,pad=0.0,rounding_size=0.1",
         facecolor='#000000', alpha=0.1, zorder=1
     )
     ax.add_patch(shadow)
@@ -46,21 +47,21 @@ def draw_box(ax, center, size, label, type='layer', sub_label="") -> patches.Fan
     # Main box
     box = patches.FancyBboxPatch(
         (x - w/2, y - h/2), w, h,
-        boxstyle=f"round,pad=0.0,rounding_size=0.1",
+        boxstyle="round,pad=0.0,rounding_size=0.1",
         facecolor=fc, edgecolor=ec, linewidth=2, zorder=2
     )
     ax.add_patch(box)
-    
+
     # Text
     ax.text(x, y + 0.05 if sub_label else y, label, ha='center', va='center', fontsize=10, weight='bold', zorder=3)
     if sub_label:
         ax.text(x, y - 0.15, sub_label, ha='center', va='center', fontsize=8, color='#444', zorder=3)
-        
+
     return box
 
 def draw_arrow(ax, start, end) -> None:
     ax.annotate("", xy=end, xytext=start,
-                arrowprops=dict(arrowstyle="->", color="#444", lw=2, shrinkA=5, shrinkB=5),
+                arrowprops={'arrowstyle': "->", 'color': "#444", 'lw': 2, 'shrinkA': 5, 'shrinkB': 5},
                 zorder=1)
 
 def viz_curve_mlp() -> None:
@@ -68,7 +69,7 @@ def viz_curve_mlp() -> None:
     ax.set_aspect('equal')
     ax.axis('off')
     ax.set_title("CurveMLP Architecture", pad=20)
-    
+
     nodes = [
         ("Input Features", "vector", 'input'),
         ("Linear 128", "BN + ReLU", 'layer'),
@@ -79,20 +80,20 @@ def viz_curve_mlp() -> None:
         ("Interpolation", "Linear", 'special'),
         ("Output LUT", "Density Curve", 'output')
     ]
-    
+
     y_start = 9
     spacing = 1.2
-    
+
     positions = []
-    
+
     for i, (label, sub, type_) in enumerate(nodes):
         pos = (3, y_start - i * spacing)
         positions.append(pos)
         draw_box(ax, pos, (3, 0.8), label, type=type_, sub_label=sub)
-        
+
         if i > 0:
             draw_arrow(ax, positions[i-1], (pos[0], pos[1] + 0.4))
-            
+
     plt.tight_layout()
     plt.savefig(OUTPUT_DIR / "arch_curve_mlp.png", dpi=150, bbox_inches='tight')
     plt.close()
@@ -102,7 +103,7 @@ def viz_curve_cnn() -> None:
     ax.set_aspect('equal')
     ax.axis('off')
     ax.set_title("CurveCNN Architecture", pad=20)
-    
+
     nodes = [
         ("Input", "vector", 'input'),
         ("Proj", "Linear", 'layer'),
@@ -113,19 +114,19 @@ def viz_curve_cnn() -> None:
         ("Mono", "Constraint", 'special'),
         ("Output", "LUT", 'output')
     ]
-    
+
     x_start = 1
     spacing = 2.5
-    
+
     positions = []
     for i, (label, sub, type_) in enumerate(nodes):
         pos = (x_start + i * spacing, 2)
         positions.append(pos)
         draw_box(ax, pos, (2, 1), label, type=type_, sub_label=sub)
-        
+
         if i > 0:
             draw_arrow(ax, (positions[i-1][0]+1, 2), (pos[0]-1, 2))
-            
+
     plt.tight_layout()
     plt.savefig(OUTPUT_DIR / "arch_curve_cnn.png", dpi=150, bbox_inches='tight')
     plt.close()
@@ -152,7 +153,7 @@ def viz_content_aware_net() -> None:
     b_pos = (5, 1)
     draw_box(ax, b_pos, (2, 1.2), "Bottleneck", 'layer', "512 ch")
     draw_arrow(ax, (e_pos[-1][0], e_pos[-1][1]-0.6), (b_pos[0]-1, b_pos[1]))
-    
+
     # Decoder stream
     d_pos = [(8, 2), (8, 4), (8, 6), (8, 8)]
     for i, pos in enumerate(d_pos):
@@ -162,7 +163,7 @@ def viz_content_aware_net() -> None:
              draw_arrow(ax, (b_pos[0]+1, b_pos[1]), (pos[0], pos[1]-0.6))
         else:
              draw_arrow(ax, (d_pos[i-1][0], d_pos[i-1][1]+0.6), (pos[0], pos[1]-0.6))
-             
+
         # Skip connections
         skip_start = e_pos[3-i]
         draw_arrow(ax, (skip_start[0]+1, skip_start[1]), (pos[0]-1, pos[1]))
@@ -182,7 +183,7 @@ def viz_uniformity_net() -> None:
     ax.set_aspect('equal')
     ax.axis('off')
     ax.set_title("UniformityCorrectionNet", pad=20)
-    
+
     nodes = [
         ("Input", "", 'input'),
         ("Conv1", "3x3, 16ch", 'layer'),
@@ -191,16 +192,16 @@ def viz_uniformity_net() -> None:
         ("Smoothing", "Gaussian\nKernel", 'special'),
         ("Output", "Map", 'output')
     ]
-    
+
     x_start = 1.5
     spacing = 2.5
-    
+
     positions = []
     for i, (label, sub, type_) in enumerate(nodes):
         pos = (x_start + i * spacing, 2)
         positions.append(pos)
         draw_box(ax, pos, (2, 1.2), label, type=type_, sub_label=sub)
-        
+
         if i > 0:
             draw_arrow(ax, (positions[i-1][0]+1, 2), (pos[0]-1, 2))
 

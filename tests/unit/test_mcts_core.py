@@ -170,7 +170,6 @@ class TestPhysicsConstants:
         assert physics.fo_contrast_center == 20.0
 
         # Exposure effects
-        assert physics.exposure_dmax_rate == 0.005
         assert physics.exposure_dmax_ceiling == 2.5
         assert physics.exposure_dmax_halflife == 120.0
 

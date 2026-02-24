@@ -7,7 +7,6 @@ and density curve generation.
 
 import logging
 
-import numpy as np
 import pytest
 
 from ptpd_calibration.mcts.config import DEFAULT_PARAMETER_RANGES, PhysicsConstants

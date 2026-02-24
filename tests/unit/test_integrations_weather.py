@@ -3,7 +3,6 @@
 Tests verify weather API integration, caching, parsing, and device protocols.
 """
 
-import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -30,7 +29,6 @@ from ptpd_calibration.integrations.weather import (
     WeatherCondition,
     WeatherProvider,
 )
-
 
 # ============================================================================
 # WEATHER MODULE TESTS

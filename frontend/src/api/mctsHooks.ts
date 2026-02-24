@@ -10,6 +10,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { mctsApi } from './mcts';
 import type { AxiosError } from './client';
 import type { ApiError } from './client';
@@ -237,17 +238,9 @@ export function useMCTSTrainingStatus(
 ) {
   const setTrainingStatus = useStore((state) => state.mcts.setTrainingStatus);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: mctsQueryKeys.trainingStatus(sessionId),
-    queryFn: async () => {
-      const data = await mctsApi.getTrainingStatus(sessionId);
-      if (data.status === 'completed') {
-        setTrainingStatus('completed');
-      } else if (data.status === 'failed') {
-        setTrainingStatus('failed');
-      }
-      return data;
-    },
+    queryFn: () => mctsApi.getTrainingStatus(sessionId),
     enabled: !!sessionId,
     refetchInterval: (query) => {
       const data = query.state.data;
@@ -259,6 +252,16 @@ export function useMCTSTrainingStatus(
     },
     ...options,
   });
+
+  useEffect(() => {
+    if (query.data?.status === 'completed') {
+      setTrainingStatus('completed');
+    } else if (query.data?.status === 'failed') {
+      setTrainingStatus('failed');
+    }
+  }, [query.data?.status, setTrainingStatus]);
+
+  return query;
 }
 
 /**

@@ -1024,7 +1024,7 @@ class QRMetadataGenerator:
             ) from err
 
         # Load image if path
-        if isinstance(qr_image, (str, Path)):
+        if isinstance(qr_image, str | Path):
             qr_image = Image.open(qr_image)
 
         # Decode QR code

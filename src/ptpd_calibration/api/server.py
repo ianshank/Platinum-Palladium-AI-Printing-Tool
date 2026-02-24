@@ -15,7 +15,7 @@ def create_app():
         from fastapi import FastAPI, File, Form, HTTPException, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import FileResponse
-        from pydantic import BaseModel, Field, model_validator
+        from pydantic import BaseModel, Field
     except ImportError as err:
         raise ImportError(
             "FastAPI is required. Install with: pip install ptpd-calibration[api]"

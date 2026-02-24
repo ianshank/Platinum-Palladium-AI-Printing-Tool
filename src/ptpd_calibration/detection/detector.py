@@ -106,7 +106,7 @@ class StepTabletDetector:
             return image
         if isinstance(image, Image.Image):
             return np.array(image)
-        if isinstance(image, (Path, str)):
+        if isinstance(image, Path | str):
             pil_img = Image.open(image)
             return np.array(pil_img)
         raise TypeError(f"Unsupported image type: {type(image)}")
@@ -315,7 +315,7 @@ class StepTabletDetector:
         """Rotate image by angle (degrees)."""
         from scipy.ndimage import rotate
 
-        return rotate(image, angle, reshape=False, order=1)
+        return np.asarray(rotate(image, angle, reshape=False, order=1))
 
     def _segment_patches(
         self,
@@ -432,7 +432,7 @@ class StepTabletDetector:
 
         mean_size = np.mean(sizes)
         std_size = np.std(sizes)
-        uniformity = 1.0 - min(1.0, std_size / mean_size) if mean_size > 0 else 0.0
+        uniformity = 1.0 - float(min(1.0, std_size / mean_size)) if mean_size > 0 else 0.0
 
         # Check coverage
         total_patch_size = sum(sizes)

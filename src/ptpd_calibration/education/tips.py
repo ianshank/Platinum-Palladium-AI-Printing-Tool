@@ -544,7 +544,8 @@ class TipsManager:
 
     def _load_tips(self) -> None:
         """Load tips data into Tip objects."""
-        self.tips = [Tip(**tip_data) for tip_data in TIPS_DATA]
+        from typing import cast
+        self.tips = [Tip(**cast(dict[str, Any], tip_data)) for tip_data in TIPS_DATA]
 
     def get_contextual_tips(
         self,

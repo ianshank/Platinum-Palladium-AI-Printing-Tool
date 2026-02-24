@@ -286,9 +286,9 @@ class TestSilverGelatinChemistryValidation:
         """Test that output has correct data types."""
         result = calculator.calculate(width_inches=8.0, height_inches=10.0)
 
-        assert isinstance(result.developer.total_ml, (int, float))
-        assert isinstance(result.stop_bath_ml, (int, float))
-        assert isinstance(result.fixer_ml, (int, float))
+        assert isinstance(result.developer.total_ml, int | float)
+        assert isinstance(result.stop_bath_ml, int | float)
+        assert isinstance(result.fixer_ml, int | float)
 
     def test_processing_chemistry_serialization(self, calculator):
         """Test that result can be serialized."""

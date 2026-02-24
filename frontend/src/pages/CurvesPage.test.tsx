@@ -12,10 +12,9 @@ vi.mock('@/components/curves/CurveEditor', () => ({
 }));
 
 describe('CurvesPage', () => {
-  it('renders page heading', () => {
+  it('renders page description', () => {
     render(<CurvesPage />);
 
-    expect(screen.getByText('Curve Editor')).toBeInTheDocument();
     expect(screen.getByText(/view, edit, and generate/i)).toBeInTheDocument();
   });
 

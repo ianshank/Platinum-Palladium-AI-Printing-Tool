@@ -409,9 +409,9 @@ export function CalibrationWizard() {
                       dataKey="input"
                       type="number"
                       domain={[0, 1]}
-                      tickFormatter={(v) => v.toFixed(1)}
+                      tickFormatter={(v: number) => v.toFixed(1)}
                     />
-                    <YAxis domain={[0, 1]} tickFormatter={(v) => v.toFixed(1)} />
+                    <YAxis domain={[0, 1]} tickFormatter={(v: number) => v.toFixed(1)} />
                     <Tooltip formatter={(v: number) => v.toFixed(3)} />
                     <Line
                       type="monotone"

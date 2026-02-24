@@ -14,10 +14,8 @@ import asyncio
 import json
 import logging
 import time
-import weakref
 from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel
@@ -59,7 +57,6 @@ from ptpd_calibration.core.logging import (
     log_operation,
     setup_logging,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -811,8 +808,6 @@ class TestDumpException:
     def test_dump_exception_with_locals(self):
         """Test exception dump with local variables."""
         try:
-            local_var = 42
-            another_var = "test"
             raise RuntimeError("Error with locals")
         except RuntimeError as e:
             dump = dump_exception(e, include_locals=True)
@@ -1423,14 +1418,13 @@ class TestGetLogger:
 
     def test_get_logger_ensures_setup(self):
         """Test get_logger ensures logging is configured."""
-        from ptpd_calibration.core.logging import _logging_configured
         import ptpd_calibration.core.logging as logging_module
 
         # Reset logging state
         logging.getLogger("ptpd_calibration").handlers.clear()
         logging_module._logging_configured = False
 
-        logger = get_logger("test.module")
+        get_logger("test.module")
 
         # Should have configured logging
         root = logging.getLogger("ptpd_calibration")
@@ -1509,7 +1503,7 @@ class TestLogOperation:
         """Test log_operation logs failure on exception."""
         logger = get_logger("test")
 
-        with patch.object(logger, "log") as mock_log, patch.object(
+        with patch.object(logger, "log"), patch.object(
             logger, "error"
         ) as mock_error:
             with pytest.raises(ValueError):

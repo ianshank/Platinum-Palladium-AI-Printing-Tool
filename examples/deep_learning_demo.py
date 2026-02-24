@@ -8,18 +8,18 @@ This script shows how to use the newly implemented deep learning features:
 Note: Requires PyTorch to be installed: pip install torch torchvision
 """
 
+
 import numpy as np
-from pathlib import Path
 
 # Import the deep learning components
 from ptpd_calibration.deep_learning import (
+    DefectDetectionSettings,
+    # Defect Detection
+    DefectDetector,
     # UV Exposure
     UVExposurePredictor,
     UVExposureSettings,
     UVSourceType,
-    # Defect Detection
-    DefectDetector,
-    DefectDetectionSettings,
 )
 
 

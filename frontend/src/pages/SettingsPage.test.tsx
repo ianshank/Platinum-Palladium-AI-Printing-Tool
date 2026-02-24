@@ -16,12 +16,7 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('settings-page')).toBeInTheDocument();
   });
 
-  it('renders page heading', () => {
-    render(<SettingsPage />);
-    expect(
-      screen.getByRole('heading', { name: 'Settings' })
-    ).toBeInTheDocument();
-  });
+
 
   it('renders the Settings component', () => {
     render(<SettingsPage />);

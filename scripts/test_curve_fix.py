@@ -1,6 +1,7 @@
 """Quick sanity check for the generate_curve endpoint fixes."""
-from ptpd_calibration.api.server import create_app
 from fastapi.testclient import TestClient
+
+from ptpd_calibration.api.server import create_app
 
 app = create_app()
 client = TestClient(app)
@@ -29,7 +30,7 @@ for name, payload, expected_status in tests:
         detail = r.json().get("detail", "")
         extra = str(detail)[:80] if isinstance(detail, str) else str(detail)[:80]
     symbol = "PASS" if status_ok else "FAIL"
-    print("{} [{}] {}: {}".format(symbol, r.status_code, name, extra))
+    print(f"{symbol} [{r.status_code}] {name}: {extra}")
     if not status_ok:
         all_passed = False
 

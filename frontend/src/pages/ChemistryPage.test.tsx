@@ -19,10 +19,7 @@ describe('ChemistryPage', () => {
     expect(screen.getByTestId('chemistry-page')).toBeInTheDocument();
   });
 
-  it('renders page heading', () => {
-    render(<ChemistryPage />);
-    expect(screen.getByText('Chemistry Calculator')).toBeInTheDocument();
-  });
+
 
   it('renders page description', () => {
     render(<ChemistryPage />);

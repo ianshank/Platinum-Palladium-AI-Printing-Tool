@@ -347,12 +347,7 @@ class PhysicsConstants(BaseModel):
     )
 
     # Exposure effects on dmax
-    exposure_dmax_rate: float = Field(
-        default=0.005,
-        ge=0.0,
-        le=0.02,
-        description="Rate of dmax increase with exposure time (used in quality scoring tests)",
-    )
+
     exposure_dmax_ceiling: float = Field(
         default=2.5,
         ge=1.5,

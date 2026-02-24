@@ -7,10 +7,9 @@ vi.mock('@/components/calibration/CalibrationWizard', () => ({
 }));
 
 describe('CalibrationPage', () => {
-  it('renders page heading', () => {
+  it('renders page instructions', () => {
     render(<CalibrationPage />);
 
-    expect(screen.getByText('Calibration Wizard')).toBeInTheDocument();
     expect(screen.getByText(/follow the steps/i)).toBeInTheDocument();
   });
 

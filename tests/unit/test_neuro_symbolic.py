@@ -8,44 +8,44 @@ Tests coverage:
 4. Curve Generator (curve_generator.py)
 """
 
-import numpy as np
-import pytest
 from uuid import uuid4
 
+import numpy as np
+import pytest
+
+from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.neuro_symbolic.constraints import (
-    ConstraintType,
+    ConstrainedCurveOptimizer,
     ConstraintResult,
+    ConstraintSet,
+    ConstraintType,
     ConstraintViolation,
-    MonotonicityConstraint,
     DensityBoundsConstraint,
+    DifferentiableLoss,
+    MonotonicityConstraint,
     PhysicsConstraint,
     SmoothnessConstraint,
-    ConstraintSet,
-    DifferentiableLoss,
-    ConstrainedCurveOptimizer,
+)
+from ptpd_calibration.neuro_symbolic.curve_generator import (
+    CurveGenerationResult,
+    NeuroSymbolicCurveGenerator,
 )
 from ptpd_calibration.neuro_symbolic.knowledge_graph import (
     Entity,
     EntityType,
-    Relationship,
-    RelationType,
     KnowledgeGraph,
     PaperChemistryKnowledgeGraph,
+    Relationship,
+    RelationType,
 )
 from ptpd_calibration.neuro_symbolic.symbolic_regression import (
-    OperatorType,
-    ExpressionNode,
-    SymbolicExpression,
-    ExpressionLibrary,
-    DifferentiableSymbolicRegressor,
     CurveFormulaDiscovery,
+    DifferentiableSymbolicRegressor,
+    ExpressionLibrary,
+    ExpressionNode,
+    OperatorType,
+    SymbolicExpression,
 )
-from ptpd_calibration.neuro_symbolic.curve_generator import (
-    NeuroSymbolicCurveGenerator,
-    CurveGenerationResult,
-)
-from ptpd_calibration.core.types import CurveType
-
 
 # ============================================================================
 # Test Constraints (neuro_symbolic/constraints.py)

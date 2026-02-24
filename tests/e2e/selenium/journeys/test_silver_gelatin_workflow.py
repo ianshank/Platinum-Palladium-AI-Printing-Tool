@@ -495,7 +495,7 @@ class TestSilverGelatinSplitFilter:
             assert exposure is not None
 
             # Then calculate split filter using the base exposure
-            base_time = exposure if isinstance(exposure, (int, float)) else 10.0
+            base_time = exposure if isinstance(exposure, int | float) else 10.0
             results = silver_gelatin_page.calculate_split_filter_print(
                 base_exposure=base_time,
             )

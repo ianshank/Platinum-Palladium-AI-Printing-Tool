@@ -62,7 +62,7 @@ const mockUIState = {
 };
 
 vi.mock('@/stores', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock store selector with test state
+   
   useStore: (selector: (state: any) => any) =>
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     selector({ chat: mockChatState, ui: mockUIState }),
