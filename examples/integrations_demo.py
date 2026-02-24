@@ -6,29 +6,30 @@ Demonstrates usage of spectrophotometer, weather, printer, and ICC profile integ
 
 import asyncio
 from pathlib import Path
-from PIL import Image
-import numpy as np
 
+import numpy as np
+from PIL import Image
+
+from ptpd_calibration.config import get_settings
 from ptpd_calibration.integrations import (
-    # Spectrophotometer
-    XRiteIntegration,
-    MeasurementMode,
     ApertureSize,
-    SpectroExportFormat,
+    ColorMode,
+    # Printer
+    EpsonDriver,
+    # ICC Profiles
+    ICCProfileManager,
+    MeasurementMode,
+    MediaType,
     # Weather
     OpenWeatherMapProvider,
     PaperType,
-    # Printer
-    EpsonDriver,
-    PrintSettings,
     PrintQuality,
-    MediaType,
-    ColorMode,
-    # ICC Profiles
-    ICCProfileManager,
+    PrintSettings,
     RenderingIntent,
+    SpectroExportFormat,
+    # Spectrophotometer
+    XRiteIntegration,
 )
-from ptpd_calibration.config import get_settings
 
 
 def demo_spectrophotometer():
@@ -52,7 +53,7 @@ def demo_spectrophotometer():
         # Calibrate
         cal_result = spectro.calibrate_device()
         if cal_result.success:
-            print(f"✓ Calibration successful")
+            print("✓ Calibration successful")
             print(f"  White reference: L*={cal_result.white_reference.L:.1f}")
             print(f"  Black reference: L*={cal_result.black_reference.L:.1f}")
 
@@ -106,7 +107,7 @@ async def demo_weather():
     conditions = await weather.get_current_conditions(
         location="Portland, OR"
     )
-    print(f"✓ Current conditions for Portland, OR:")
+    print("✓ Current conditions for Portland, OR:")
     print(f"  Temperature: {conditions.temperature_c:.1f}°C ({conditions.temperature_f:.1f}°F)")
     print(f"  Humidity: {conditions.humidity_percent:.0f}%")
     print(f"  Condition: {conditions.condition.value} - {conditions.description}")
@@ -118,11 +119,11 @@ async def demo_weather():
         conditions,
         paper_type=PaperType.COLD_PRESS
     )
-    print(f"✓ Drying time estimate:")
+    print("✓ Drying time estimate:")
     print(f"  Paper type: {drying_estimate.paper_type.value}")
     print(f"  Estimated time: {drying_estimate.estimated_hours:.1f} hours")
     print(f"  Confidence: {drying_estimate.confidence:.0%}")
-    print(f"  Recommendations:")
+    print("  Recommendations:")
     for rec in drying_estimate.recommendations:
         print(f"    - {rec}")
 
@@ -132,7 +133,7 @@ async def demo_weather():
         location="Portland, OR",
         forecast_hours=48
     )
-    print(f"✓ Best time to coat:")
+    print("✓ Best time to coat:")
     print(f"  Recommended: {recommendation.best_time.strftime('%Y-%m-%d %H:%M')}")
     print(f"  Temperature: {recommendation.forecast.temperature_c:.1f}°C")
     print(f"  Humidity: {recommendation.forecast.humidity_percent:.0f}%")
@@ -158,7 +159,7 @@ def demo_printer():
 
         # Get status
         status = printer.get_status()
-        print(f"\nPrinter status:")
+        print("\nPrinter status:")
         print(f"  Model: {status['model']}")
         print(f"  Connected: {status['connected']}")
 
@@ -173,10 +174,10 @@ def demo_printer():
         print("\nRunning nozzle check...")
         nozzle_result = printer.run_nozzle_check()
         if nozzle_result.success:
-            print(f"✓ Nozzle check passed")
+            print("✓ Nozzle check passed")
             print(f"  Quality: {nozzle_result.pattern_quality:.0%}")
         else:
-            print(f"✗ Nozzle check found issues:")
+            print("✗ Nozzle check found issues:")
             for nozzle in nozzle_result.missing_nozzles:
                 print(f"    - Missing: {nozzle}")
 
@@ -235,10 +236,10 @@ def demo_icc_profiles():
     # Get default profiles
     print("\nDefault profiles:")
     srgb_profile = manager.get_default_rgb_profile()
-    print(f"✓ sRGB profile loaded")
+    print("✓ sRGB profile loaded")
 
-    gray_profile = manager.get_default_gray_profile()
-    print(f"✓ Grayscale profile loaded")
+    manager.get_default_gray_profile()
+    print("✓ Grayscale profile loaded")
 
     # Create test image
     print("\nCreating test image...")
@@ -257,7 +258,7 @@ def demo_icc_profiles():
         srgb_profile,
         rendering_intent=RenderingIntent.PERCEPTUAL
     )
-    print(f"✓ Profile applied")
+    print("✓ Profile applied")
     print(f"  Original size: {test_image.size}")
     print(f"  Profiled size: {profiled_image.size}")
 

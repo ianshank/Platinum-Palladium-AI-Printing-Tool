@@ -20,16 +20,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from ptpd_calibration.monitoring import (
-    PerformanceMonitor,
-    ImageProcessingProfiler,
     APIPerformanceTracker,
     CacheManager,
-    ResourceMonitor,
+    ImageProcessingProfiler,
+    PerformanceMonitor,
     PerformanceReport,
-    get_monitor,
-    get_profiler,
+    ResourceMonitor,
     get_api_tracker,
     get_cache,
+    get_monitor,
+    get_profiler,
     get_resource_monitor,
 )
 
@@ -51,7 +51,7 @@ def demo_performance_monitor():
 
     # Example 2: Context manager
     print("\n2. Context manager example:")
-    for i in range(3):
+    for _i in range(3):
         with monitor.timer("api_call"):
             time.sleep(0.05)  # Simulate API call
 
@@ -105,7 +105,7 @@ def demo_image_processing_profiler():
 
     # Example 2: Profile multiple operations
     print("\n2. Profile batch operations:")
-    for i in range(3):
+    for _i in range(3):
         profiler.profile_operation(process_image, 800, 600, complexity=0.8)
 
     # Example 3: Get processing speed
@@ -133,9 +133,9 @@ def demo_image_processing_profiler():
     # Example 6: Identify bottlenecks
     print("\n6. Identify bottlenecks:")
     # Create some varied performance data
-    for i in range(5):
+    for _i in range(5):
         profiler.profile_operation(process_image, 800, 600, complexity=1.0)
-    for i in range(2):
+    for _i in range(2):
         profiler.profile_operation(process_image, 800, 600, complexity=5.0)  # Slower
 
     bottlenecks = profiler.identify_bottlenecks(["process_image"])
@@ -170,7 +170,7 @@ def demo_api_performance_tracker():
     # Example 3: Get endpoint stats
     print("\n3. Endpoint statistics:")
     stats = tracker.get_endpoint_stats("/api/process")
-    print(f"   Endpoint: /api/process")
+    print("   Endpoint: /api/process")
     print(f"   Total requests: {stats['count']}")
     print(f"   Error rate: {stats['error_rate']:.1%}")
     print(f"   Mean response: {stats['mean_ms']:.1f}ms")
@@ -305,7 +305,7 @@ def demo_performance_report():
     api_tracker = APIPerformanceTracker()
 
     # Generate some metrics
-    for i in range(10):
+    for _i in range(10):
         with monitor.timer("operation_a"):
             time.sleep(0.01)
         with monitor.timer("operation_b"):
@@ -342,14 +342,14 @@ def demo_performance_report():
     period2 = (now - timedelta(hours=1), now)
 
     # Add more metrics for comparison
-    for i in range(5):
+    for _i in range(5):
         monitor.record_metric("test_op", 0.5, "seconds")
     time.sleep(0.1)
-    for i in range(5):
+    for _i in range(5):
         monitor.record_metric("test_op", 0.6, "seconds")
 
     comparison = report_gen.compare_performance(period1, period2)
-    print(f"   Periods compared: 2")
+    print("   Periods compared: 2")
     print(f"   Operations analyzed: {len(comparison['changes'])}")
 
     # Example 4: Export report

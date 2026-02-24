@@ -1,0 +1,284 @@
+{
+  "version": "1.0.0",
+  "description": "Mapping of Gradio components to React equivalents",
+  "updatedAt": "2026-01-24T00:00:00Z",
+  "mappings": {
+    "primitives": {
+      "gr.Textbox": {
+        "react": "Input",
+        "package": "@/components/ui/input",
+        "props": {
+          "value": "value",
+          "label": "aria-label",
+          "placeholder": "placeholder",
+          "lines": "multiline (use Textarea if > 1)",
+          "max_lines": "rows",
+          "interactive": "!disabled",
+          "visible": "conditional render",
+          "elem_id": "id",
+          "elem_classes": "className"
+        },
+        "events": {
+          "change": "onChange",
+          "input": "onInput",
+          "submit": "onKeyDown (Enter)",
+          "blur": "onBlur",
+          "focus": "onFocus"
+        },
+        "notes": "Use react-hook-form for form state"
+      },
+      "gr.Number": {
+        "react": "NumberInput",
+        "package": "@/components/ui/number-input",
+        "props": {
+          "value": "value",
+          "minimum": "min",
+          "maximum": "max",
+          "step": "step",
+          "precision": "decimalPlaces",
+          "label": "aria-label"
+        },
+        "events": {
+          "change": "onChange"
+        },
+        "notes": "Use react-number-format for formatting"
+      },
+      "gr.Slider": {
+        "react": "Slider",
+        "package": "@radix-ui/react-slider",
+        "props": {
+          "value": "[value]",
+          "minimum": "min",
+          "maximum": "max",
+          "step": "step",
+          "label": "aria-label"
+        },
+        "events": {
+          "change": "onValueChange",
+          "release": "onValueCommit"
+        },
+        "notes": "Radix returns array, extract [0] for single value"
+      },
+      "gr.Dropdown": {
+        "react": "Select",
+        "package": "@radix-ui/react-select",
+        "props": {
+          "value": "value",
+          "choices": "children (SelectItem)",
+          "label": "aria-label",
+          "multiselect": "multiple (use different component)",
+          "allow_custom_value": "creatable"
+        },
+        "events": {
+          "change": "onValueChange",
+          "select": "onValueChange"
+        },
+        "notes": "Use react-select for complex cases"
+      },
+      "gr.Checkbox": {
+        "react": "Checkbox",
+        "package": "@radix-ui/react-checkbox",
+        "props": {
+          "value": "checked",
+          "label": "children or aria-label"
+        },
+        "events": {
+          "change": "onCheckedChange"
+        },
+        "notes": "Returns boolean or 'indeterminate'"
+      },
+      "gr.Radio": {
+        "react": "RadioGroup",
+        "package": "@radix-ui/react-radio-group",
+        "props": {
+          "value": "value",
+          "choices": "children (RadioGroupItem)",
+          "label": "aria-label"
+        },
+        "events": {
+          "change": "onValueChange"
+        }
+      },
+      "gr.Button": {
+        "react": "Button",
+        "package": "@/components/ui/button",
+        "props": {
+          "value": "children",
+          "variant": "variant",
+          "size": "size",
+          "interactive": "!disabled"
+        },
+        "events": {
+          "click": "onClick"
+        },
+        "notes": "Add loading state for async actions"
+      }
+    },
+    "media": {
+      "gr.Image": {
+        "react": "ImageUpload",
+        "package": "@/components/ImageUpload",
+        "props": {
+          "value": "src",
+          "type": "mode (upload | display)",
+          "sources": "accept types",
+          "tool": "editMode",
+          "height": "height",
+          "width": "width"
+        },
+        "events": {
+          "change": "onUpload",
+          "upload": "onUpload",
+          "clear": "onClear",
+          "select": "onSelect"
+        },
+        "notes": "Use react-dropzone for upload, Canvas for editing"
+      },
+      "gr.File": {
+        "react": "FileUpload",
+        "package": "@/components/FileUpload",
+        "props": {
+          "value": "files",
+          "file_count": "maxFiles",
+          "file_types": "accept"
+        },
+        "events": {
+          "change": "onFilesChange",
+          "upload": "onUpload",
+          "clear": "onClear"
+        },
+        "notes": "Use react-dropzone with Uppy for progress"
+      },
+      "gr.Gallery": {
+        "react": "ImageGallery",
+        "package": "@/components/ImageGallery",
+        "props": {
+          "value": "images",
+          "columns": "columns",
+          "rows": "rows",
+          "height": "height"
+        },
+        "events": {
+          "select": "onSelect"
+        },
+        "notes": "Use yet-another-react-lightbox"
+      },
+      "gr.Plot": {
+        "react": "Plot (curves) | Chart (histograms)",
+        "package": "react-plotly.js | recharts",
+        "props": {
+          "value": "data",
+          "format": "type (line, bar, scatter)"
+        },
+        "notes": "Use Plotly for curves, Recharts for simple charts"
+      }
+    },
+    "layout": {
+      "gr.Row": {
+        "react": "div",
+        "className": "flex flex-row gap-4 items-start",
+        "props": {
+          "equal_height": "items-stretch",
+          "variant": "compact | default | panel"
+        }
+      },
+      "gr.Column": {
+        "react": "div",
+        "className": "flex flex-col gap-4",
+        "props": {
+          "scale": "flex-{scale}",
+          "min_width": "min-w-{value}"
+        }
+      },
+      "gr.Tabs": {
+        "react": "Tabs",
+        "package": "@radix-ui/react-tabs",
+        "structure": {
+          "Tabs": "Tabs.Root",
+          "Tab": "Tabs.Trigger (in Tabs.List)",
+          "TabPanel": "Tabs.Content"
+        },
+        "notes": "Persist active tab in Zustand"
+      },
+      "gr.Accordion": {
+        "react": "Accordion",
+        "package": "@radix-ui/react-accordion",
+        "props": {
+          "open": "value (controlled) or defaultValue",
+          "label": "Trigger children"
+        },
+        "notes": "Use type='multiple' for multiple open"
+      },
+      "gr.Group": {
+        "react": "div",
+        "className": "border rounded-lg p-4 space-y-4"
+      },
+      "gr.Box": {
+        "react": "div",
+        "className": "custom styling"
+      }
+    },
+    "advanced": {
+      "gr.Chatbot": {
+        "react": "ChatInterface",
+        "package": "@/components/ChatInterface",
+        "props": {
+          "value": "messages",
+          "height": "height",
+          "show_copy_button": "copyable",
+          "show_share_button": "shareable"
+        },
+        "events": {
+          "like": "onLike",
+          "retry": "onRetry"
+        },
+        "notes": "Custom implementation with streaming support"
+      },
+      "gr.Markdown": {
+        "react": "Markdown",
+        "package": "react-markdown",
+        "props": {
+          "value": "children"
+        },
+        "notes": "Use rehype-sanitize for XSS protection"
+      },
+      "gr.Dataframe": {
+        "react": "DataTable",
+        "package": "@tanstack/react-table",
+        "props": {
+          "value": "data",
+          "headers": "columns",
+          "datatype": "column types",
+          "interactive": "editable"
+        },
+        "notes": "Use virtual scrolling for large datasets"
+      },
+      "gr.State": {
+        "react": "Zustand store slice",
+        "notes": "Use store slice instead of component state"
+      },
+      "gr.Blocks": {
+        "react": "React component tree",
+        "notes": "Natural React component composition"
+      }
+    }
+  },
+  "patterns": {
+    "visibility": {
+      "gradio": "visible=False",
+      "react": "{condition && <Component />}"
+    },
+    "interactivity": {
+      "gradio": "interactive=False",
+      "react": "disabled={true}"
+    },
+    "callbacks": {
+      "gradio": ".change(fn, inputs=[...], outputs=[...])",
+      "react": "onChange={(value) => { setState(value); /* side effects */ }}"
+    },
+    "events": {
+      "gradio": "component.change(handler).then(next_handler)",
+      "react": "async onChange handlers or useEffect for side effects"
+    }
+  }
+}

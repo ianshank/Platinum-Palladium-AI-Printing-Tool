@@ -4,8 +4,6 @@ File Upload Component E2E Tests.
 Tests file upload interactions across the application.
 """
 
-from pathlib import Path
-
 import pytest
 
 from tests.e2e.selenium.pages.base_page import BasePage
@@ -32,12 +30,10 @@ class TestFileUpload:
     @pytest.fixture
     def sample_image(self, tmp_path):
         """Create a sample image file."""
-        from PIL import Image
         import numpy as np
+        from PIL import Image
 
-        img = Image.fromarray(
-            np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
-        )
+        img = Image.fromarray(np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8))
         file_path = tmp_path / "test_image.png"
         img.save(file_path)
         return file_path
@@ -45,12 +41,10 @@ class TestFileUpload:
     @pytest.fixture
     def sample_tiff(self, tmp_path):
         """Create a sample TIFF file."""
-        from PIL import Image
         import numpy as np
+        from PIL import Image
 
-        img = Image.fromarray(
-            np.random.randint(0, 255, (100, 100), dtype=np.uint8), mode="L"
-        )
+        img = Image.fromarray(np.random.randint(0, 255, (100, 100), dtype=np.uint8), mode="L")
         file_path = tmp_path / "test_image.tiff"
         img.save(file_path)
         return file_path
@@ -64,9 +58,7 @@ class TestFileUpload:
         try:
             page.upload_file("Step Tablet", str(sample_image))
             # Should show preview
-            preview = page.wait_for_element(
-                By.CSS_SELECTOR, ".image-preview, img", timeout=10
-            )
+            preview = page.wait_for_element(By.CSS_SELECTOR, ".image-preview, img", timeout=10)
             assert preview is not None
         except Exception:
             pytest.skip("File upload component not found")
@@ -78,22 +70,18 @@ class TestFileUpload:
 
         try:
             page.upload_file("Step Tablet", str(sample_tiff))
-            preview = page.wait_for_element(
-                By.CSS_SELECTOR, ".image-preview, img", timeout=10
-            )
+            preview = page.wait_for_element(By.CSS_SELECTOR, ".image-preview, img", timeout=10)
             assert preview is not None
         except Exception:
             pytest.skip("File upload component not found")
 
     def test_upload_large_image(self, page, tmp_path):
         """Test uploading a large image."""
-        from PIL import Image
         import numpy as np
+        from PIL import Image
 
         # Create a larger image (2000x2000)
-        img = Image.fromarray(
-            np.random.randint(0, 255, (2000, 2000, 3), dtype=np.uint8)
-        )
+        img = Image.fromarray(np.random.randint(0, 255, (2000, 2000, 3), dtype=np.uint8))
         file_path = tmp_path / "large_image.png"
         img.save(file_path)
 
@@ -115,21 +103,19 @@ class TestFileUpload:
         page.wait_for_gradio_ready()
         page.click_tab("📊 Calibration")
 
-        try:
+        import contextlib
+
+        with contextlib.suppress(Exception):
             page.upload_file("Step Tablet", str(file_path))
             # Should show error or reject the file
-        except Exception:
-            pass  # Expected behavior
 
     def test_replace_uploaded_file(self, page, sample_image, tmp_path):
         """Test replacing an uploaded file with a new one."""
-        from PIL import Image
         import numpy as np
+        from PIL import Image
 
         # Create a second image
-        img2 = Image.fromarray(
-            np.random.randint(0, 255, (150, 150, 3), dtype=np.uint8)
-        )
+        img2 = Image.fromarray(np.random.randint(0, 255, (150, 150, 3), dtype=np.uint8))
         file_path2 = tmp_path / "test_image2.png"
         img2.save(file_path2)
 
@@ -182,9 +168,7 @@ class TestTabNavigation:
         """Test that active tab has correct styling."""
         page.wait_for_gradio_ready()
 
-        active_tab = page.find_element(
-            By.CSS_SELECTOR, "button[role='tab'][aria-selected='true']"
-        )
+        active_tab = page.find_element(By.CSS_SELECTOR, "button[role='tab'][aria-selected='true']")
         assert active_tab is not None
 
     def test_tab_keyboard_navigation(self, page):
@@ -262,8 +246,8 @@ class TestDropdownSelectors:
 
         papers = ["Arches Platine", "Bergger COT320", "Hahnemuhle Platinum Rag"]
 
+        import contextlib
+
         for paper in papers:
-            try:
+            with contextlib.suppress(Exception):
                 page.select_dropdown("Paper Type", paper)
-            except Exception:
-                pass  # Option may not exist

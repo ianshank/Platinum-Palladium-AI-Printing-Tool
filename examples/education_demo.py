@@ -14,9 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from ptpd_calibration.education import (
     Glossary,
     TipsManager,
-    TutorialDifficulty,
     TutorialManager,
-    UserProgress,
 )
 
 
@@ -48,16 +46,16 @@ def demo_tutorials():
         print(f"\n{first_print.display_name}")
         print(f"\n{first_print.description}")
         print(f"\nPrerequisites: {first_print.prerequisites or 'None'}")
-        print(f"\nLearning Objectives:")
+        print("\nLearning Objectives:")
         for obj in first_print.learning_objectives:
             print(f"  • {obj}")
 
-        print(f"\nMaterials Needed:")
+        print("\nMaterials Needed:")
         for material in first_print.materials_needed[:5]:  # Show first 5
             print(f"  • {material}")
         print(f"  ... and {len(first_print.materials_needed) - 5} more items")
 
-        print(f"\nFirst 3 Steps:")
+        print("\nFirst 3 Steps:")
         for step in first_print.steps[:3]:
             print(f"\n  Step {step.step_number}: {step.title}")
             print(f"  Action: {step.action.value}")
@@ -166,7 +164,7 @@ def demo_tips():
     stats = tips_mgr.get_statistics()
     print(f"Total tips: {stats['total_tips']}")
     print(f"High priority tips: {stats['high_priority_count']}")
-    print(f"\nTips by category:")
+    print("\nTips by category:")
     for cat, count in sorted(stats['tips_by_category'].items()):
         if count > 0:
             print(f"  • {cat}: {count}")

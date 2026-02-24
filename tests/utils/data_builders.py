@@ -5,9 +5,6 @@ Provides builder classes and factories for creating test data.
 """
 
 import random
-from datetime import datetime
-from typing import Any
-from uuid import uuid4
 
 import numpy as np
 
@@ -52,7 +49,7 @@ class DensityBuilder:
     def build(self) -> list[float]:
         """Build the density list."""
         steps = np.linspace(0, 1, self._num_steps)
-        densities = self._dmin + (self._dmax - self._dmin) * (steps ** self._gamma)
+        densities = self._dmin + (self._dmax - self._dmin) * (steps**self._gamma)
 
         if self._noise > 0:
             noise = np.random.normal(0, self._noise, self._num_steps)
@@ -107,7 +104,7 @@ class CurveBuilder:
         input_values = list(np.linspace(0, 1, self._num_points))
 
         # Apply gamma
-        output_values = [x ** self._gamma for x in input_values]
+        output_values = [x**self._gamma for x in input_values]
 
         # Apply brightness
         output_values = [min(1, max(0, y + self._brightness)) for y in output_values]
@@ -116,10 +113,7 @@ class CurveBuilder:
         if self._contrast != 0:
             pivot = 0.5
             factor = (1 + self._contrast) if self._contrast > 0 else (1 / (1 - self._contrast))
-            output_values = [
-                min(1, max(0, (y - pivot) * factor + pivot))
-                for y in output_values
-            ]
+            output_values = [min(1, max(0, (y - pivot) * factor + pivot)) for y in output_values]
 
         return {
             "name": self._name,
@@ -186,9 +180,7 @@ class CalibrationRecordBuilder:
         self._contrast_amount = amount
         return self
 
-    def with_environment(
-        self, humidity: float, temperature: float
-    ) -> "CalibrationRecordBuilder":
+    def with_environment(self, humidity: float, temperature: float) -> "CalibrationRecordBuilder":
         """Set environment conditions."""
         self._humidity = humidity
         self._temperature = temperature
@@ -266,7 +258,7 @@ class ImageBuilder:
         self._fill = ("step_tablet", num_patches)
         return self
 
-    def build(self) -> "Image":
+    def build(self):
         """Build the PIL Image."""
         from PIL import Image
 
@@ -287,9 +279,7 @@ class ImageBuilder:
             if self._mode == "L":
                 arr = np.random.randint(0, 255, (self._height, self._width), dtype=np.uint8)
             else:
-                arr = np.random.randint(
-                    0, 255, (self._height, self._width, 3), dtype=np.uint8
-                )
+                arr = np.random.randint(0, 255, (self._height, self._width, 3), dtype=np.uint8)
 
         elif isinstance(self._fill, tuple) and self._fill[0] == "solid":
             value = self._fill[1]
@@ -313,9 +303,8 @@ class ImageBuilder:
 
         return Image.fromarray(arr, mode=self._mode)
 
-    def build_path(self, tmp_path, filename: str = "test_image.png") -> "Path":
+    def build_path(self, tmp_path, filename: str = "test_image.png"):
         """Build and save image, returning the path."""
-        from pathlib import Path
 
         img = self.build()
         path = tmp_path / filename
@@ -398,7 +387,6 @@ class CyanotypeRecipeBuilder:
         """Build a CyanotypeRecipe model instance."""
         from ptpd_calibration.chemistry.cyanotype_calculator import (
             CyanotypeCalculator,
-            CyanotypeRecipe,
         )
         from ptpd_calibration.core.types import CyanotypeFormula
 
@@ -468,11 +456,11 @@ class CyanotypeExposureBuilder:
 
     def build_model(self):
         """Build a CyanotypeExposureResult model instance."""
+        from ptpd_calibration.core.types import CyanotypeFormula
         from ptpd_calibration.exposure.alternative_calculators import (
             CyanotypeExposureCalculator,
             UVSource,
         )
-        from ptpd_calibration.core.types import CyanotypeFormula
 
         calculator = CyanotypeExposureCalculator()
         uv_map = {
@@ -589,8 +577,8 @@ class SilverGelatinChemistryBuilder:
     def build_model(self):
         """Build a ProcessingChemistry model instance."""
         from ptpd_calibration.chemistry.silver_gelatin_calculator import (
-            SilverGelatinCalculator,
             DilutionRatio,
+            SilverGelatinCalculator,
             TraySize,
         )
         from ptpd_calibration.core.types import (
@@ -700,11 +688,10 @@ class SilverGelatinExposureBuilder:
 
     def build_model(self):
         """Build a SilverGelatinExposureResult model instance."""
+        from ptpd_calibration.core.types import PaperGrade
         from ptpd_calibration.exposure.alternative_calculators import (
             SilverGelatinExposureCalculator,
-            EnlargerLightSource,
         )
-        from ptpd_calibration.core.types import PaperGrade
 
         calculator = SilverGelatinExposureCalculator()
         grade_map = {
@@ -715,7 +702,6 @@ class SilverGelatinExposureBuilder:
             "grade_4": PaperGrade.GRADE_4,
             "grade_5": PaperGrade.GRADE_5,
         }
-
 
         return calculator.calculate(
             enlarger_height_cm=self._enlarger_height,

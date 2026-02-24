@@ -10,117 +10,50 @@ Uses template system for:
 """
 
 from pathlib import Path
-from typing import Any, Callable, Optional, TypeVar
-from datetime import datetime, timedelta
-from functools import wraps
 
 import numpy as np
 
-# Template system imports
-from ptpd_calibration.bootstrap import (
-    get_app_context,
-    get_app_logger,
-    with_request_context,
-    create_component_boundary,
+from ptpd_calibration.ui.tabs.ai_assistant import build_ai_assistant_tab as build_ai_new
+from ptpd_calibration.ui.tabs.calibration_wizard import (
+    build_calibration_wizard_tab as build_wizard_new,
 )
-from ptpd_calibration.template.errors import (
-    TemplateError,
-    ValidationError,
-    create_gradio_error_wrapper,
-)
-from ptpd_calibration.template.logging_config import LogContext
-
-# Type variable for generic handler wrapping
-F = TypeVar("F", bound=Callable[..., Any])
-
-# Initialize template components
-_ui_logger = get_app_logger("ptpd_calibration.ui")
-_ui_boundary = create_component_boundary("gradio_ui", default_return=None)
-
-
-def _wrap_gradio_handler(handler_name: str) -> Callable[[F], F]:
-    """
-    Create a decorator that wraps Gradio handlers with error handling and logging.
-
-    Args:
-        handler_name: Name for logging the handler
-
-    Returns:
-        Decorator function
-    """
-    def decorator(func: F) -> F:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            with with_request_context(operation=handler_name):
-                try:
-                    _ui_logger.debug(f"Handler started: {handler_name}")
-                    result = func(*args, **kwargs)
-                    _ui_logger.debug(f"Handler completed: {handler_name}")
-                    return result
-                except ValidationError as e:
-                    _ui_logger.warning(
-                        f"Validation error in {handler_name}",
-                        error=str(e),
-                        details=e.details,
-                    )
-                    return {"error": e.user_message or str(e)}
-                except TemplateError as e:
-                    _ui_logger.error(
-                        f"Error in {handler_name}",
-                        error=str(e),
-                        error_code=e.error_code,
-                    )
-                    return {"error": e.user_message or "An error occurred. Please try again."}
-                except Exception as e:
-                    _ui_logger.error(
-                        f"Unexpected error in {handler_name}",
-                        error=str(e),
-                        exc_info=True,
-                    )
-                    return {"error": "An unexpected error occurred. Please check the logs."}
-        return wrapper  # type: ignore
-    return decorator
-
+from ptpd_calibration.ui.tabs.chemistry import build_chemistry_tab as build_chemistry_new
 
 # Import new modular tabs
 from ptpd_calibration.ui.tabs.dashboard import build_dashboard_tab as build_dashboard_new
-from ptpd_calibration.ui.tabs.calibration_wizard import build_calibration_wizard_tab as build_wizard_new
-from ptpd_calibration.ui.tabs.chemistry import build_chemistry_tab as build_chemistry_new
 from ptpd_calibration.ui.tabs.session_log import build_session_log_tab as build_session_log_new
-from ptpd_calibration.ui.tabs.ai_assistant import build_ai_assistant_tab as build_ai_new
-
 
 
 def _patch_gradio_client_utils():
     """
     Monkey-patch gradio_client.utils to handle additionalProperties: true.
-    
+
     This fixes a bug where Pydantic models with Dict[str, Any] fields
     generate JSON schemas with additionalProperties: true (a boolean),
     but gradio_client expects it to be a dict.
     """
     try:
         import gradio_client.utils as client_utils
-        
+
         original_get_type = client_utils.get_type
-        
+
         def patched_get_type(schema):
             # Handle case where schema is a boolean (additionalProperties: true)
             if isinstance(schema, bool):
                 return "Any"
             return original_get_type(schema)
-        
+
         client_utils.get_type = patched_get_type
-        
+
         # Also patch _json_schema_to_python_type to handle boolean schemas
         original_json_schema_to_python_type = client_utils._json_schema_to_python_type
-        
+
         def patched_json_schema_to_python_type(schema, defs):
             # Handle case where schema is a boolean
             if isinstance(schema, bool):
                 return "Any"
             return original_json_schema_to_python_type(schema, defs)
-        
+
         client_utils._json_schema_to_python_type = patched_json_schema_to_python_type
     except Exception:
         pass  # Silently ignore if patching fails
@@ -150,49 +83,36 @@ def create_gradio_app(share: bool = False):
             "Gradio is required for UI. Install with: pip install ptpd-calibration[ui]"
         )
 
-    from ptpd_calibration.config import TabletType, get_settings
-    from ptpd_calibration.core.types import CurveType
-    from ptpd_calibration.core.models import CurveData
-    from ptpd_calibration.curves import (
-        CurveAnalyzer,
-        CurveGenerator,
-        load_quad_file,
-        load_quad_string,
-        CurveModifier,
-        SmoothingMethod,
-        CurveAIEnhancer,
-        EnhancementGoal,
-        save_curve,
-        CurveVisualizer,
-        VisualizationConfig,
-        PlotStyle,
-        ColorScheme,
-    )
-    from ptpd_calibration.detection import StepTabletReader
     from ptpd_calibration.analysis import (
         StepWedgeAnalyzer,
         WedgeAnalysisConfig,
-        QualityGrade,
     )
-    from ptpd_calibration.chemistry import (
-        ChemistryCalculator,
-        ChemistryRecipe,
-        PaperAbsorbency,
-        CoatingMethod,
-        MetalMix,
-        METAL_MIX_RATIOS,
+    from ptpd_calibration.config import TabletType, get_settings
+    from ptpd_calibration.core.models import CurveData
+    from ptpd_calibration.core.types import CurveType
+    from ptpd_calibration.curves import (
+        ColorScheme,
+        CurveAIEnhancer,
+        CurveGenerator,
+        CurveModifier,
+        CurveVisualizer,
+        EnhancementGoal,
+        PlotStyle,
+        SmoothingMethod,
+        VisualizationConfig,
+        load_quad_file,
+        load_quad_string,
+        save_curve,
     )
+    from ptpd_calibration.detection import StepTabletReader
     from ptpd_calibration.imaging import (
-        ImageProcessor,
-        ImageFormat,
         ExportSettings,
+        ImageFormat,
+        ImageProcessor,
     )
     from ptpd_calibration.imaging.processor import ColorMode
     from ptpd_calibration.session import (
         SessionLogger,
-        PrintRecord,
-        ChemistryUsed,
-        PrintResult,
     )
 
     # Get settings for configuration-driven defaults
@@ -212,16 +132,86 @@ def create_gradio_app(share: bool = False):
         "MK": "#4A4A4A",
     }
 
-    # Load custom theme and CSS
-    from ptpd_calibration.ui.theme import ProLabTheme
-    
-    theme = ProLabTheme()
-    
-    css_path = Path(__file__).parent / "styles.css"
-    custom_css = css_path.read_text(encoding="utf-8") if css_path.exists() else ""
+    darkroom_theme = gr.themes.Base(
+        primary_hue=gr.themes.colors.amber,
+        secondary_hue=gr.themes.colors.stone,
+        neutral_hue=gr.themes.colors.stone,
+    ).set(
+        body_background_fill="#111111",
+        body_background_fill_dark="#0b0b0b",
+        block_background_fill="#1c1c1c",
+        block_background_fill_dark="#0f0f0f",
+        block_label_text_color="#f5f5f5",
+        input_background_fill="#2a2a2a",
+        input_background_fill_dark="#1f1f1f",
+    )
 
+    custom_css = """
+    :root, [data-ptpd-theme="darkroom"] {
+        --ptpd-bg: #0f0f0f;
+        --ptpd-card: #1f1f1f;
+        --ptpd-text: #f5f5f5;
+        --ptpd-muted: #a3a3a3;
+        --ptpd-accent: #fbbf24;
+    }
 
-    # Legacy inline CSS removed in favor of styles.css
+    [data-ptpd-theme="light"] {
+        --ptpd-bg: #f8f8f8;
+        --ptpd-card: #ffffff;
+        --ptpd-text: #1f1f1f;
+        --ptpd-muted: #6b7280;
+        --ptpd-accent: #d97706;
+    }
+
+    [data-ptpd-theme="print"] {
+        --ptpd-bg: #ffffff;
+        --ptpd-card: #fdfbf6;
+        --ptpd-text: #111111;
+        --ptpd-muted: #4b5563;
+        --ptpd-accent: #b45309;
+    }
+
+    body {
+        background: var(--ptpd-bg);
+        color: var(--ptpd-text);
+    }
+
+    .ptpd-card {
+        background: var(--ptpd-card) !important;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px !important;
+        padding: 16px;
+    }
+
+    .top-bar {
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .main-tabs .tab-nav {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .main-tabs .tab-nav > button {
+            flex: 1 1 45%;
+            font-size: 0.9rem;
+        }
+
+        .stack-on-mobile {
+            flex-direction: column !important;
+        }
+    }
+
+    @media (pointer: coarse) {
+        button, input, select, textarea {
+            min-height: 44px;
+            font-size: 1rem;
+        }
+    }
+    """
 
     keyboard_js = """
     document.addEventListener('keydown', (event) => {
@@ -241,7 +231,6 @@ def create_gradio_app(share: bool = False):
 
     session_logger = SessionLogger()
 
-    
     def build_curve_display_tab():
         # ========================================
         # TAB 1: Curve Display
@@ -356,17 +345,13 @@ def create_gradio_app(share: bool = False):
                                     curve = profile.to_curve_data(active[0])
                                     curves.append(curve)
                                     names.append(f"{profile.profile_name} ({active[0]})")
-                        elif suffix == ".json":
+                        elif suffix == ".json" or suffix == ".csv":
                             from ptpd_calibration.curves.export import load_curve
+
                             curve = load_curve(file_path)
                             curves.append(curve)
                             names.append(curve.name)
-                        elif suffix == ".csv":
-                            from ptpd_calibration.curves.export import load_curve
-                            curve = load_curve(file_path)
-                            curves.append(curve)
-                            names.append(curve.name)
-                    except Exception as e:
+                    except Exception:
                         continue
 
                 # Update display
@@ -459,39 +444,73 @@ def create_gradio_app(share: bool = False):
                 """Clear all loaded curves."""
                 return [], [], [], None, {}
 
-            def on_display_options_change(curves, names, style, scheme, show_ref, show_stats, show_diff):
+            def on_display_options_change(
+                curves, names, style, scheme, show_ref, show_stats, show_diff
+            ):
                 """Handle display option changes."""
                 if not curves:
                     return [], None, {}
-                return update_curve_display(curves, names, style, scheme, show_ref, show_stats, show_diff)
+                return update_curve_display(
+                    curves, names, style, scheme, show_ref, show_stats, show_diff
+                )
 
             # Connect event handlers
             load_files_btn.click(
                 load_curve_files,
                 inputs=[curve_file_upload, loaded_curves, curve_names_list],
-                outputs=[loaded_curves, curve_names_list, curves_list_display, curve_display_plot, stats_output],
+                outputs=[
+                    loaded_curves,
+                    curve_names_list,
+                    curves_list_display,
+                    curve_display_plot,
+                    stats_output,
+                ],
             )
 
             add_pasted_btn.click(
                 add_pasted_curve,
                 inputs=[paste_curve_data, paste_curve_name, loaded_curves, curve_names_list],
-                outputs=[loaded_curves, curve_names_list, curves_list_display, curve_display_plot, stats_output],
+                outputs=[
+                    loaded_curves,
+                    curve_names_list,
+                    curves_list_display,
+                    curve_display_plot,
+                    stats_output,
+                ],
             )
 
             clear_curves_btn.click(
                 clear_all_curves,
-                outputs=[loaded_curves, curve_names_list, curves_list_display, curve_display_plot, stats_output],
+                outputs=[
+                    loaded_curves,
+                    curve_names_list,
+                    curves_list_display,
+                    curve_display_plot,
+                    stats_output,
+                ],
             )
 
             # Display option change handlers
-            for component in [plot_style, color_scheme, show_reference, show_statistics, show_difference]:
+            for component in [
+                plot_style,
+                color_scheme,
+                show_reference,
+                show_statistics,
+                show_difference,
+            ]:
                 component.change(
                     on_display_options_change,
-                    inputs=[loaded_curves, curve_names_list, plot_style, color_scheme, show_reference, show_statistics, show_difference],
+                    inputs=[
+                        loaded_curves,
+                        curve_names_list,
+                        plot_style,
+                        color_scheme,
+                        show_reference,
+                        show_statistics,
+                        show_difference,
+                    ],
                     outputs=[curves_list_display, curve_display_plot, stats_output],
                 )
-
-
 
     def build_step_wedge_tab():
         # ========================================
@@ -610,7 +629,9 @@ def create_gradio_app(share: bool = False):
                         export_curve_btn = gr.Button("Export Curve")
                     export_file_output = gr.File(label="Download Curve")
 
-            def analyze_step_wedge(image_path, tablet_type, min_range, fix_reversals, reject_outliers):
+            def analyze_step_wedge(
+                image_path, tablet_type, min_range, fix_reversals, reject_outliers
+            ):
                 """Analyze uploaded step wedge scan."""
                 if image_path is None:
                     return None, "No Image", 0, None, {}, "", "", gr.update()
@@ -635,19 +656,37 @@ def create_gradio_app(share: bool = False):
 
                     # Create density plot
                     import matplotlib.pyplot as plt
+
                     fig, ax = plt.subplots(figsize=(10, 6))
 
                     if result.densities:
                         x = np.linspace(0, 100, len(result.densities))
-                        ax.plot(x, result.densities, "o-", color="#B8860B", linewidth=2, markersize=6, label="Measured")
+                        ax.plot(
+                            x,
+                            result.densities,
+                            "o-",
+                            color="#B8860B",
+                            linewidth=2,
+                            markersize=6,
+                            label="Measured",
+                        )
 
                         if result.raw_densities and result.raw_densities != result.densities:
-                            ax.plot(x, result.raw_densities, "x--", color="#808080", alpha=0.5, label="Raw")
+                            ax.plot(
+                                x,
+                                result.raw_densities,
+                                "x--",
+                                color="#808080",
+                                alpha=0.5,
+                                label="Raw",
+                            )
                             ax.legend()
 
                     ax.set_xlabel("Input %")
                     ax.set_ylabel("Density")
-                    ax.set_title(f"Step Wedge Response (Dmin: {result.dmin:.3f}, Dmax: {result.dmax:.3f})")
+                    ax.set_title(
+                        f"Step Wedge Response (Dmin: {result.dmin:.3f}, Dmax: {result.dmax:.3f})"
+                    )
                     ax.grid(True, alpha=0.3)
                     ax.set_facecolor("#FAF8F5")
                     fig.patch.set_facecolor("#FAF8F5")
@@ -658,17 +697,19 @@ def create_gradio_app(share: bool = False):
                     # Warnings
                     warnings_text = ""
                     if result.quality and result.quality.warnings:
-                        warnings_text = "\n".join([
-                            f"[{w.level.value.upper()}] {w.message}"
-                            for w in result.quality.warnings
-                        ])
+                        warnings_text = "\n".join(
+                            [
+                                f"[{w.level.value.upper()}] {w.message}"
+                                for w in result.quality.warnings
+                            ]
+                        )
 
                     # Recommendations
                     recommendations_text = ""
                     if result.quality and result.quality.recommendations:
-                        recommendations_text = "\n".join([
-                            f"• {r}" for r in result.quality.recommendations
-                        ])
+                        recommendations_text = "\n".join(
+                            [f"• {r}" for r in result.quality.recommendations]
+                        )
 
                     return (
                         result,
@@ -684,9 +725,7 @@ def create_gradio_app(share: bool = False):
                 except Exception as e:
                     return None, f"Error: {str(e)}", 0, None, {}, str(e), "", gr.update()
 
-            def generate_calibration_curve(
-                result, curve_name, paper_type, chemistry, curve_type
-            ):
+            def generate_calibration_curve(result, curve_name, paper_type, chemistry, curve_type):
                 """Generate calibration curve from analysis result."""
                 if result is None or not result.densities:
                     return None, None, gr.update()
@@ -713,6 +752,7 @@ def create_gradio_app(share: bool = False):
 
                     # Create curve plot
                     import matplotlib.pyplot as plt
+
                     fig, ax = plt.subplots(figsize=(10, 6))
 
                     ax.plot(
@@ -737,7 +777,7 @@ def create_gradio_app(share: bool = False):
 
                     return curve, fig, gr.update(visible=True)
 
-                except Exception as e:
+                except Exception:
                     return None, None, gr.update()
 
             def export_generated_curve(curve, format_type):
@@ -767,13 +807,34 @@ def create_gradio_app(share: bool = False):
             # Connect handlers
             analyze_wedge_btn.click(
                 analyze_step_wedge,
-                inputs=[wedge_image_upload, tablet_type_select, min_density_range, auto_fix_reversals, outlier_rejection],
-                outputs=[analysis_result_state, quality_grade_display, quality_score_display, density_curve_plot, quality_metrics_json, warnings_output, recommendations_output, generate_curve_btn],
+                inputs=[
+                    wedge_image_upload,
+                    tablet_type_select,
+                    min_density_range,
+                    auto_fix_reversals,
+                    outlier_rejection,
+                ],
+                outputs=[
+                    analysis_result_state,
+                    quality_grade_display,
+                    quality_score_display,
+                    density_curve_plot,
+                    quality_metrics_json,
+                    warnings_output,
+                    recommendations_output,
+                    generate_curve_btn,
+                ],
             )
 
             generate_curve_btn.click(
                 generate_calibration_curve,
-                inputs=[analysis_result_state, curve_name_input, paper_type_input, chemistry_input, curve_type_select],
+                inputs=[
+                    analysis_result_state,
+                    curve_name_input,
+                    paper_type_input,
+                    chemistry_input,
+                    curve_type_select,
+                ],
                 outputs=[generated_curve_state, generated_curve_plot, export_curve_btn],
             )
 
@@ -782,8 +843,6 @@ def create_gradio_app(share: bool = False):
                 inputs=[generated_curve_state, export_format_select],
                 outputs=[export_file_output],
             )
-
-
 
     def build_step_tablet_reader_tab():
         # ========================================
@@ -850,8 +909,6 @@ def create_gradio_app(share: bool = False):
                 inputs=[scan_input, tablet_type],
                 outputs=[analysis_output, density_plot],
             )
-
-
 
     def build_generate_curve_tab():
         # ========================================
@@ -928,8 +985,6 @@ def create_gradio_app(share: bool = False):
                 outputs=[curve_output, curve_plot],
             )
 
-
-
     def build_curve_editor_tab():
         # ========================================
         with gr.TabItem("Curve Editor"):
@@ -958,7 +1013,20 @@ def create_gradio_app(share: bool = False):
                                 file_types=[".quad", ".txt"],
                             )
                             channel_select = gr.Dropdown(
-                                choices=["ALL", "K", "C", "M", "Y", "LC", "LM", "LK", "LLK", "V", "MK", "PK"],
+                                choices=[
+                                    "ALL",
+                                    "K",
+                                    "C",
+                                    "M",
+                                    "Y",
+                                    "LC",
+                                    "LM",
+                                    "LK",
+                                    "LLK",
+                                    "V",
+                                    "MK",
+                                    "PK",
+                                ],
                                 value="K",
                                 label="Channel",
                                 interactive=True,
@@ -989,7 +1057,14 @@ def create_gradio_app(share: bool = False):
                     gr.Markdown("#### Modify Curve")
 
                     adjustment_type = gr.Dropdown(
-                        choices=["brightness", "contrast", "gamma", "highlights", "shadows", "midtones"],
+                        choices=[
+                            "brightness",
+                            "contrast",
+                            "gamma",
+                            "highlights",
+                            "shadows",
+                            "midtones",
+                        ],
                         value="brightness",
                         label="Adjustment Type",
                     )
@@ -1063,7 +1138,14 @@ def create_gradio_app(share: bool = False):
                         visible=True,
                     )
 
-            def create_curve_plot(inputs, outputs, name="Curve", profile_data=None, show_all=False, selected_channel="K"):
+            def create_curve_plot(
+                inputs,
+                outputs,
+                name="Curve",
+                profile_data=None,
+                show_all=False,
+                selected_channel="K",
+            ):
                 """Create a matplotlib plot for the curve with multi-channel support."""
                 import matplotlib.pyplot as plt
 
@@ -1078,8 +1160,15 @@ def create_gradio_app(share: bool = False):
                             color = CHANNEL_COLORS.get(ch_name, "#8B4513")
                             linewidth = 2.5 if ch_name == selected_channel else 1.5
                             alpha = 1.0 if ch_name == selected_channel else 0.6
-                            ax.plot(ch_inputs, ch_outputs, "-", color=color,
-                                   linewidth=linewidth, alpha=alpha, label=ch_name)
+                            ax.plot(
+                                ch_inputs,
+                                ch_outputs,
+                                "-",
+                                color=color,
+                                linewidth=linewidth,
+                                alpha=alpha,
+                                label=ch_name,
+                            )
                 elif inputs and outputs:
                     color = CHANNEL_COLORS.get(selected_channel, "#8B4513")
                     ax.plot(inputs, outputs, "-", color=color, linewidth=2, label=name)
@@ -1105,7 +1194,15 @@ def create_gradio_app(share: bool = False):
             def load_quad_uploaded(file, channel, show_all):
                 """Load curve from uploaded .quad file."""
                 if file is None:
-                    return [], [], "No Curve", {"error": "No file uploaded"}, None, None, gr.update()
+                    return (
+                        [],
+                        [],
+                        "No Curve",
+                        {"error": "No file uploaded"},
+                        None,
+                        None,
+                        gr.update(),
+                    )
 
                 try:
                     profile = load_quad_file(Path(file.name))
@@ -1129,8 +1226,14 @@ def create_gradio_app(share: bool = False):
                                 "outputs": ch_outputs,
                             }
 
-                    available_channels = profile.all_channel_names if profile.all_channel_names else ["K"]
-                    selected_channel = channel.upper() if channel.upper() in available_channels else available_channels[0]
+                    available_channels = (
+                        profile.all_channel_names if profile.all_channel_names else ["K"]
+                    )
+                    selected_channel = (
+                        channel.upper()
+                        if channel.upper() in available_channels
+                        else available_channels[0]
+                    )
 
                     if selected_channel in profile.channels:
                         curve_data = profile.to_curve_data(selected_channel)
@@ -1154,10 +1257,12 @@ def create_gradio_app(share: bool = False):
                     }
 
                     fig = create_curve_plot(
-                        inputs, outputs, name,
+                        inputs,
+                        outputs,
+                        name,
                         profile_data=profile_data,
                         show_all=show_all,
-                        selected_channel=selected_channel
+                        selected_channel=selected_channel,
                     )
 
                     # Add "ALL" option at the beginning of channel choices
@@ -1167,8 +1272,17 @@ def create_gradio_app(share: bool = False):
                     return inputs, outputs, name, info, fig, profile_data, dropdown_update
                 except Exception as e:
                     import traceback
+
                     error_detail = f"{str(e)}\n{traceback.format_exc()}"
-                    return [], [], "Error", {"error": str(e), "detail": error_detail}, None, None, gr.update()
+                    return (
+                        [],
+                        [],
+                        "Error",
+                        {"error": str(e), "detail": error_detail},
+                        None,
+                        None,
+                        gr.update(),
+                    )
 
             def load_data_from_text(data_str):
                 """Load curve from comma-separated values."""
@@ -1212,8 +1326,14 @@ def create_gradio_app(share: bool = False):
                                 "outputs": ch_outputs,
                             }
 
-                    available_channels = profile.all_channel_names if profile.all_channel_names else ["K"]
-                    selected_channel = channel.upper() if channel.upper() in available_channels else available_channels[0]
+                    available_channels = (
+                        profile.all_channel_names if profile.all_channel_names else ["K"]
+                    )
+                    selected_channel = (
+                        channel.upper()
+                        if channel.upper() in available_channels
+                        else available_channels[0]
+                    )
 
                     if selected_channel in profile.channels:
                         curve_data = profile.to_curve_data(selected_channel)
@@ -1234,10 +1354,12 @@ def create_gradio_app(share: bool = False):
                     }
 
                     fig = create_curve_plot(
-                        inputs, outputs, name,
+                        inputs,
+                        outputs,
+                        name,
                         profile_data=profile_data,
                         show_all=show_all,
-                        selected_channel=selected_channel
+                        selected_channel=selected_channel,
                     )
 
                     # Add "ALL" option at the beginning of channel choices
@@ -1283,10 +1405,12 @@ def create_gradio_app(share: bool = False):
                         }
 
                         fig = create_curve_plot(
-                            inputs, outputs, name,
+                            inputs,
+                            outputs,
+                            name,
                             profile_data=profile_data,
                             show_all=True,  # Force show_all when ALL is selected
-                            selected_channel=primary_channel
+                            selected_channel=primary_channel,
                         )
 
                         return inputs, outputs, name, info, fig
@@ -1308,10 +1432,12 @@ def create_gradio_app(share: bool = False):
                     }
 
                     fig = create_curve_plot(
-                        inputs, outputs, name,
+                        inputs,
+                        outputs,
+                        name,
                         profile_data=profile_data,
                         show_all=show_all,
-                        selected_channel=selected_channel
+                        selected_channel=selected_channel,
                     )
 
                     return inputs, outputs, name, info, fig
@@ -1327,10 +1453,12 @@ def create_gradio_app(share: bool = False):
                 selected_channel = channel.upper() if channel else "K"
 
                 fig = create_curve_plot(
-                    inputs, outputs, name,
+                    inputs,
+                    outputs,
+                    name,
                     profile_data=profile_data,
                     show_all=show_all,
-                    selected_channel=selected_channel
+                    selected_channel=selected_channel,
                 )
 
                 return fig
@@ -1417,7 +1545,14 @@ def create_gradio_app(share: bool = False):
             async def apply_ai_enhancement(inputs, outputs, name, goal, context):
                 """Apply AI enhancement to curve."""
                 if not inputs or not outputs:
-                    return inputs, outputs, name, {"error": "No curve loaded"}, None, "No curve loaded"
+                    return (
+                        inputs,
+                        outputs,
+                        name,
+                        {"error": "No curve loaded"},
+                        None,
+                        "No curve loaded",
+                    )
 
                 try:
                     curve = CurveData(
@@ -1454,13 +1589,22 @@ def create_gradio_app(share: bool = False):
 
                     # Handle analysis which can be a dict or string
                     if isinstance(result.analysis, dict):
-                        analysis_text = result.analysis.get("summary", "Enhancement applied successfully.")
+                        analysis_text = result.analysis.get(
+                            "summary", "Enhancement applied successfully."
+                        )
                     elif result.analysis:
                         analysis_text = str(result.analysis)
                     else:
                         analysis_text = "Enhancement applied successfully."
 
-                    return enhanced.input_values, enhanced.output_values, new_name, info, fig, analysis_text
+                    return (
+                        enhanced.input_values,
+                        enhanced.output_values,
+                        new_name,
+                        info,
+                        fig,
+                        analysis_text,
+                    )
                 except Exception as e:
                     return inputs, outputs, name, {"error": str(e)}, None, f"Error: {str(e)}"
 
@@ -1494,7 +1638,7 @@ def create_gradio_app(share: bool = False):
                                 channels_data,
                                 profile_data.get("resolution", 2880),
                                 profile_data.get("ink_limit", 100.0),
-                                profile_data.get("comments", [])
+                                profile_data.get("comments", []),
                             )
                             return str(temp_path)
 
@@ -1507,12 +1651,15 @@ def create_gradio_app(share: bool = False):
                     save_curve(curve, temp_path, format=format_type)
 
                     return str(temp_path)
-                except Exception as e:
+                except Exception:
                     import traceback
+
                     traceback.print_exc()
                     return None
 
-            def _export_multi_channel_quad(path, name, channels_data, resolution=2880, ink_limit=100.0, comments=None):
+            def _export_multi_channel_quad(
+                path, name, channels_data, resolution=2880, ink_limit=100.0, comments=None
+            ):
                 """Export a multi-channel .quad file in QuadTone RIP format.
 
                 QuadTone RIP format uses:
@@ -1593,7 +1740,13 @@ def create_gradio_app(share: bool = False):
             load_data_btn.click(
                 load_data_from_text,
                 inputs=[curve_data_input],
-                outputs=[current_curve_inputs, current_curve_outputs, current_curve_name, editor_info, editor_plot],
+                outputs=[
+                    current_curve_inputs,
+                    current_curve_outputs,
+                    current_curve_name,
+                    editor_info,
+                    editor_plot,
+                ],
             )
 
             parse_quad_btn.click(
@@ -1613,40 +1766,94 @@ def create_gradio_app(share: bool = False):
             channel_select.change(
                 on_channel_change,
                 inputs=[channel_select, current_profile_data, show_all_channels],
-                outputs=[current_curve_inputs, current_curve_outputs, current_curve_name, editor_info, editor_plot],
+                outputs=[
+                    current_curve_inputs,
+                    current_curve_outputs,
+                    current_curve_name,
+                    editor_info,
+                    editor_plot,
+                ],
             )
 
             show_all_channels.change(
                 on_show_all_toggle,
-                inputs=[show_all_channels, channel_select, current_profile_data, current_curve_inputs, current_curve_outputs, current_curve_name],
+                inputs=[
+                    show_all_channels,
+                    channel_select,
+                    current_profile_data,
+                    current_curve_inputs,
+                    current_curve_outputs,
+                    current_curve_name,
+                ],
                 outputs=[editor_plot],
             )
 
             apply_adjust_btn.click(
                 apply_adjustment,
-                inputs=[current_curve_inputs, current_curve_outputs, current_curve_name, adjustment_type, adjustment_amount],
-                outputs=[current_curve_inputs, current_curve_outputs, current_curve_name, editor_info, editor_plot],
+                inputs=[
+                    current_curve_inputs,
+                    current_curve_outputs,
+                    current_curve_name,
+                    adjustment_type,
+                    adjustment_amount,
+                ],
+                outputs=[
+                    current_curve_inputs,
+                    current_curve_outputs,
+                    current_curve_name,
+                    editor_info,
+                    editor_plot,
+                ],
             )
 
             apply_smooth_btn.click(
                 apply_smoothing,
-                inputs=[current_curve_inputs, current_curve_outputs, current_curve_name, smooth_method, smooth_strength],
-                outputs=[current_curve_inputs, current_curve_outputs, current_curve_name, editor_info, editor_plot],
+                inputs=[
+                    current_curve_inputs,
+                    current_curve_outputs,
+                    current_curve_name,
+                    smooth_method,
+                    smooth_strength,
+                ],
+                outputs=[
+                    current_curve_inputs,
+                    current_curve_outputs,
+                    current_curve_name,
+                    editor_info,
+                    editor_plot,
+                ],
             )
 
             apply_enhance_btn.click(
                 apply_ai_enhancement,
-                inputs=[current_curve_inputs, current_curve_outputs, current_curve_name, enhance_goal, enhance_context],
-                outputs=[current_curve_inputs, current_curve_outputs, current_curve_name, editor_info, editor_plot, ai_analysis],
+                inputs=[
+                    current_curve_inputs,
+                    current_curve_outputs,
+                    current_curve_name,
+                    enhance_goal,
+                    enhance_context,
+                ],
+                outputs=[
+                    current_curve_inputs,
+                    current_curve_outputs,
+                    current_curve_name,
+                    editor_info,
+                    editor_plot,
+                    ai_analysis,
+                ],
             )
 
             export_btn.click(
                 export_current_curve,
-                inputs=[current_curve_inputs, current_curve_outputs, current_curve_name, export_format, current_profile_data],
+                inputs=[
+                    current_curve_inputs,
+                    current_curve_outputs,
+                    current_curve_name,
+                    export_format,
+                    current_profile_data,
+                ],
                 outputs=[export_file],
             )
-
-
 
     def build_quick_tools_tab():
         # ========================================
@@ -1711,8 +1918,6 @@ def create_gradio_app(share: bool = False):
                 inputs=problem_input,
                 outputs=troubleshoot_output,
             )
-
-
 
     def build_image_preview_tab():
         # ========================================
@@ -1807,11 +2012,9 @@ def create_gradio_app(share: bool = False):
                     if suffix in [".quad", ".txt"]:
                         profile = load_quad_file(file_path)
                         curve = profile.to_curve_data("K")
-                    elif suffix == ".json":
+                    elif suffix == ".json" or suffix == ".csv":
                         from ptpd_calibration.curves.export import load_curve
-                        curve = load_curve(file_path)
-                    elif suffix == ".csv":
-                        from ptpd_calibration.curves.export import load_curve
+
                         curve = load_curve(file_path)
                     else:
                         return None, {"error": f"Unsupported format: {suffix}"}
@@ -1891,8 +2094,6 @@ def create_gradio_app(share: bool = False):
                 inputs=[preview_image_upload, preview_curve_state, preview_color_mode],
                 outputs=[original_preview, processed_preview, preview_info_display],
             )
-
-
 
     def build_digital_negative_tab():
         # ========================================
@@ -2012,11 +2213,9 @@ def create_gradio_app(share: bool = False):
                     if suffix in [".quad", ".txt"]:
                         profile = load_quad_file(file_path)
                         curve = profile.to_curve_data("K")
-                    elif suffix == ".json":
+                    elif suffix == ".json" or suffix == ".csv":
                         from ptpd_calibration.curves.export import load_curve
-                        curve = load_curve(file_path)
-                    elif suffix == ".csv":
-                        from ptpd_calibration.curves.export import load_curve
+
                         curve = load_curve(file_path)
                     else:
                         return None, {"error": f"Unsupported: {suffix}"}
@@ -2077,6 +2276,7 @@ def create_gradio_app(share: bool = False):
 
                 try:
                     import tempfile
+
                     processor = ImageProcessor()
 
                     settings = ExportSettings(
@@ -2100,7 +2300,7 @@ def create_gradio_app(share: bool = False):
                     processor.export(result, temp_path, settings)
 
                     return str(temp_path)
-                except Exception as e:
+                except Exception:
                     return None
 
             # Connect handlers
@@ -2128,8 +2328,6 @@ def create_gradio_app(share: bool = False):
                 outputs=[dn_export_file],
             )
 
-
-
     def build_interactive_editor_tab():
         # ========================================
         with gr.TabItem("Interactive Editor"):
@@ -2155,7 +2353,7 @@ def create_gradio_app(share: bool = False):
                         for i in range(9):
                             with gr.Row():
                                 inp = gr.Number(
-                                    label=f"In {i+1}",
+                                    label=f"In {i + 1}",
                                     value=i / 8.0,
                                     minimum=0.0,
                                     maximum=1.0,
@@ -2163,7 +2361,7 @@ def create_gradio_app(share: bool = False):
                                     scale=1,
                                 )
                                 out = gr.Number(
-                                    label=f"Out {i+1}",
+                                    label=f"Out {i + 1}",
                                     value=i / 8.0,
                                     minimum=0.0,
                                     maximum=1.0,
@@ -2237,7 +2435,7 @@ def create_gradio_app(share: bool = False):
 
                 # Filter out None values and create valid points
                 points = []
-                for inp, out in zip(inputs, outputs):
+                for inp, out in zip(inputs, outputs, strict=False):
                     if inp is not None and out is not None:
                         points.append((float(inp), float(out)))
 
@@ -2256,7 +2454,15 @@ def create_gradio_app(share: bool = False):
 
                 # Create plot
                 fig, ax = plt.subplots(figsize=(8, 6))
-                ax.plot(curve.input_values, curve.output_values, "o-", color="#8B4513", linewidth=2, markersize=8, label="Curve")
+                ax.plot(
+                    curve.input_values,
+                    curve.output_values,
+                    "o-",
+                    color="#8B4513",
+                    linewidth=2,
+                    markersize=8,
+                    label="Curve",
+                )
                 ax.plot([0, 1], [0, 1], "--", color="gray", alpha=0.5, label="Linear")
                 ax.set_xlabel("Input")
                 ax.set_ylabel("Output")
@@ -2279,17 +2485,44 @@ def create_gradio_app(share: bool = False):
             def apply_ie_preset(preset):
                 """Apply a preset to the curve."""
                 presets = {
-                    "linear": [(i/8, i/8) for i in range(9)],
-                    "s_curve": [(0, 0), (0.125, 0.08), (0.25, 0.18), (0.375, 0.35),
-                               (0.5, 0.5), (0.625, 0.65), (0.75, 0.82), (0.875, 0.92), (1, 1)],
-                    "brighten": [(i/8, min(1, (i/8) * 1.2 + 0.05)) for i in range(9)],
-                    "darken": [(i/8, max(0, (i/8) * 0.8)) for i in range(9)],
-                    "high_contrast": [(0, 0), (0.125, 0.03), (0.25, 0.1), (0.375, 0.25),
-                                     (0.5, 0.5), (0.625, 0.75), (0.75, 0.9), (0.875, 0.97), (1, 1)],
-                    "low_contrast": [(0, 0.1), (0.125, 0.175), (0.25, 0.275), (0.375, 0.375),
-                                    (0.5, 0.5), (0.625, 0.625), (0.75, 0.725), (0.875, 0.825), (1, 0.9)],
-                    "gamma_18": [(i/8, (i/8) ** (1/1.8)) for i in range(9)],
-                    "gamma_22": [(i/8, (i/8) ** (1/2.2)) for i in range(9)],
+                    "linear": [(i / 8, i / 8) for i in range(9)],
+                    "s_curve": [
+                        (0, 0),
+                        (0.125, 0.08),
+                        (0.25, 0.18),
+                        (0.375, 0.35),
+                        (0.5, 0.5),
+                        (0.625, 0.65),
+                        (0.75, 0.82),
+                        (0.875, 0.92),
+                        (1, 1),
+                    ],
+                    "brighten": [(i / 8, min(1, (i / 8) * 1.2 + 0.05)) for i in range(9)],
+                    "darken": [(i / 8, max(0, (i / 8) * 0.8)) for i in range(9)],
+                    "high_contrast": [
+                        (0, 0),
+                        (0.125, 0.03),
+                        (0.25, 0.1),
+                        (0.375, 0.25),
+                        (0.5, 0.5),
+                        (0.625, 0.75),
+                        (0.75, 0.9),
+                        (0.875, 0.97),
+                        (1, 1),
+                    ],
+                    "low_contrast": [
+                        (0, 0.1),
+                        (0.125, 0.175),
+                        (0.25, 0.275),
+                        (0.375, 0.375),
+                        (0.5, 0.5),
+                        (0.625, 0.625),
+                        (0.75, 0.725),
+                        (0.875, 0.825),
+                        (1, 0.9),
+                    ],
+                    "gamma_18": [(i / 8, (i / 8) ** (1 / 1.8)) for i in range(9)],
+                    "gamma_22": [(i / 8, (i / 8) ** (1 / 2.2)) for i in range(9)],
                 }
 
                 points = presets.get(preset, presets["linear"])
@@ -2336,7 +2569,7 @@ def create_gradio_app(share: bool = False):
                     outputs = list(point_values[9:18])
 
                     points = []
-                    for inp, out in zip(inputs, outputs):
+                    for inp, out in zip(inputs, outputs, strict=False):
                         if inp is not None and out is not None:
                             points.append((float(inp), float(out)))
 
@@ -2395,8 +2628,6 @@ def create_gradio_app(share: bool = False):
                 outputs=[ie_export_file],
             )
 
-
-
     def build_settings_tab():
         # ========================================
         with gr.TabItem("Settings"):
@@ -2444,7 +2675,9 @@ def create_gradio_app(share: bool = False):
 
                     api_key_status = gr.Textbox(
                         label="Status",
-                        value="No API key configured" if not settings.llm.get_active_api_key() else "API key configured (from environment)",
+                        value="No API key configured"
+                        if not settings.llm.get_active_api_key()
+                        else "API key configured (from environment)",
                         interactive=False,
                     )
 
@@ -2526,7 +2759,8 @@ def create_gradio_app(share: bool = False):
                         return "No API key provided", gr.update()
 
                     # Update the global settings
-                    from ptpd_calibration.config import get_settings, LLMProvider
+                    from ptpd_calibration.config import LLMProvider, get_settings
+
                     current_settings = get_settings()
                     current_settings.llm.runtime_api_key = api_key.strip()
                     current_settings.llm.provider = LLMProvider(provider)
@@ -2536,23 +2770,29 @@ def create_gradio_app(share: bool = False):
                     # Verify the key works (basic format check)
                     key = api_key.strip()
                     if provider == "anthropic" and not key.startswith("sk-ant-"):
-                        return "Warning: Anthropic keys typically start with 'sk-ant-'. Key saved anyway.", {
-                            "provider": provider,
-                            "anthropic_model": anthropic_model,
-                            "openai_model": openai_model,
-                            "api_key_configured": True,
-                            "max_tokens": current_settings.llm.max_tokens,
-                            "temperature": current_settings.llm.temperature,
-                        }
+                        return (
+                            "Warning: Anthropic keys typically start with 'sk-ant-'. Key saved anyway.",
+                            {
+                                "provider": provider,
+                                "anthropic_model": anthropic_model,
+                                "openai_model": openai_model,
+                                "api_key_configured": True,
+                                "max_tokens": current_settings.llm.max_tokens,
+                                "temperature": current_settings.llm.temperature,
+                            },
+                        )
                     elif provider == "openai" and not key.startswith("sk-"):
-                        return "Warning: OpenAI keys typically start with 'sk-'. Key saved anyway.", {
-                            "provider": provider,
-                            "anthropic_model": anthropic_model,
-                            "openai_model": openai_model,
-                            "api_key_configured": True,
-                            "max_tokens": current_settings.llm.max_tokens,
-                            "temperature": current_settings.llm.temperature,
-                        }
+                        return (
+                            "Warning: OpenAI keys typically start with 'sk-'. Key saved anyway.",
+                            {
+                                "provider": provider,
+                                "anthropic_model": anthropic_model,
+                                "openai_model": openai_model,
+                                "api_key_configured": True,
+                                "max_tokens": current_settings.llm.max_tokens,
+                                "temperature": current_settings.llm.temperature,
+                            },
+                        )
 
                     return f"API key saved successfully for {provider.title()}", {
                         "provider": provider,
@@ -2567,11 +2807,14 @@ def create_gradio_app(share: bool = False):
 
             save_api_key_btn.click(
                 save_api_key,
-                inputs=[llm_provider_select, api_key_input, anthropic_model_input, openai_model_input],
+                inputs=[
+                    llm_provider_select,
+                    api_key_input,
+                    anthropic_model_input,
+                    openai_model_input,
+                ],
                 outputs=[api_key_status, current_config_display],
             )
-
-
 
     def build_batch_processing_tab():
         # ========================================
@@ -2584,8 +2827,6 @@ def create_gradio_app(share: bool = False):
                 Create digital negatives in batch for efficient workflow.
                 """
             )
-
-            from ptpd_calibration.batch import BatchProcessor, BatchSettings
 
             batch_curve_state = gr.State(None)
 
@@ -2640,7 +2881,9 @@ def create_gradio_app(share: bool = False):
                         interactive=False,
                     )
                     batch_results = gr.JSON(label="Processing Results")
-                    batch_download = gr.File(label="Download Processed Files", file_count="multiple")
+                    batch_download = gr.File(
+                        label="Download Processed Files", file_count="multiple"
+                    )
 
             def load_batch_curve(file):
                 """Load curve for batch processing."""
@@ -2654,6 +2897,7 @@ def create_gradio_app(share: bool = False):
                         curve = profile.to_curve_data("K")
                     else:
                         from ptpd_calibration.curves.export import load_curve
+
                         curve = load_curve(file_path)
                     return curve, {"name": curve.name, "points": len(curve.input_values)}
                 except Exception as e:
@@ -2665,8 +2909,9 @@ def create_gradio_app(share: bool = False):
                     return "No files to process", {}, None
 
                 try:
-                    import tempfile
                     import os
+                    import tempfile
+
                     processor = ImageProcessor()
                     color_mode = ColorMode.GRAYSCALE if grayscale else ColorMode.PRESERVE
 
@@ -2674,7 +2919,7 @@ def create_gradio_app(share: bool = False):
                     output_files = []
                     temp_dir = tempfile.mkdtemp()
 
-                    for i, file in enumerate(files):
+                    for _i, file in enumerate(files):
                         try:
                             result = processor.create_digital_negative(
                                 file.name,
@@ -2685,7 +2930,12 @@ def create_gradio_app(share: bool = False):
 
                             # Export
                             base_name = Path(file.name).stem
-                            ext_map = {"tiff": ".tiff", "png": ".png", "jpeg": ".jpg", "original": Path(file.name).suffix}
+                            ext_map = {
+                                "tiff": ".tiff",
+                                "png": ".png",
+                                "jpeg": ".jpg",
+                                "original": Path(file.name).suffix,
+                            }
                             ext = ext_map.get(output_format, ".tiff")
                             out_path = os.path.join(temp_dir, f"{base_name}_processed{ext}")
 
@@ -2695,9 +2945,15 @@ def create_gradio_app(share: bool = False):
                             output_files.append(out_path)
                             results.append({"file": base_name, "status": "success"})
                         except Exception as e:
-                            results.append({"file": Path(file.name).stem, "status": f"error: {str(e)}"})
+                            results.append(
+                                {"file": Path(file.name).stem, "status": f"error: {str(e)}"}
+                            )
 
-                    return f"Processed {len(output_files)} files", {"results": results}, output_files
+                    return (
+                        f"Processed {len(output_files)} files",
+                        {"results": results},
+                        output_files,
+                    )
 
                 except Exception as e:
                     return f"Error: {str(e)}", {"error": str(e)}, None
@@ -2710,11 +2966,15 @@ def create_gradio_app(share: bool = False):
 
             process_batch_btn.click(
                 process_batch,
-                inputs=[batch_files_upload, batch_curve_state, batch_invert, batch_grayscale, batch_format],
+                inputs=[
+                    batch_files_upload,
+                    batch_curve_state,
+                    batch_invert,
+                    batch_grayscale,
+                    batch_format,
+                ],
                 outputs=[batch_progress, batch_results, batch_download],
             )
-
-
 
     def build_histogram_tab():
         # ========================================
@@ -2805,8 +3065,6 @@ def create_gradio_app(share: bool = False):
                 inputs=[hist_image_upload, hist_scale, hist_show_zones, hist_show_rgb],
                 outputs=[hist_plot, hist_stats],
             )
-
-
 
     def build_exposure_tab():
         # ========================================
@@ -2966,9 +3224,7 @@ def create_gradio_app(share: bool = False):
                         "center_exposure": center,
                         "increment_stops": increment,
                         "times_minutes": [round(t, 2) for t in times],
-                        "times_formatted": [
-                            f"{int(t)}:{int((t % 1) * 60):02d}" for t in times
-                        ],
+                        "times_formatted": [f"{int(t)}:{int((t % 1) * 60):02d}" for t in times],
                     }
                     return result
                 except Exception as e:
@@ -2976,7 +3232,14 @@ def create_gradio_app(share: bool = False):
 
             calculate_exposure_btn.click(
                 calculate_exposure,
-                inputs=[base_exposure, base_density, current_density, light_source_select, distance_inches, exp_platinum_ratio],
+                inputs=[
+                    base_exposure,
+                    base_density,
+                    current_density,
+                    light_source_select,
+                    distance_inches,
+                    exp_platinum_ratio,
+                ],
                 outputs=[exposure_result_display, exposure_details],
             )
 
@@ -2985,8 +3248,6 @@ def create_gradio_app(share: bool = False):
                 inputs=[test_center_exposure, test_steps, test_increment],
                 outputs=[test_strip_result],
             )
-
-
 
     def build_zone_system_tab():
         # ========================================
@@ -3001,10 +3262,10 @@ def create_gradio_app(share: bool = False):
             )
 
             from ptpd_calibration.zones import (
+                ZONE_DESCRIPTIONS,
+                Zone,
                 ZoneMapper,
                 ZoneMapping,
-                Zone,
-                ZONE_DESCRIPTIONS,
             )
 
             with gr.Row():
@@ -3092,7 +3353,9 @@ def create_gradio_app(share: bool = False):
                     zones = list(range(11))
                     pcts = [analysis.zone_histogram.get(Zone(z), 0) * 100 for z in zones]
 
-                    colors = [f"#{int(25.5 * z):02x}{int(25.5 * z):02x}{int(25.5 * z):02x}" for z in zones]
+                    colors = [
+                        f"#{int(25.5 * z):02x}{int(25.5 * z):02x}{int(25.5 * z):02x}" for z in zones
+                    ]
                     ax1.bar(zones, pcts, color=colors, edgecolor="black")
                     ax1.set_xlabel("Zone")
                     ax1.set_ylabel("Percentage")
@@ -3124,8 +3387,6 @@ def create_gradio_app(share: bool = False):
                 outputs=[zone_plot, zone_analysis_result, dev_recommendations],
             )
 
-
-
     def build_soft_proofing_tab():
         # ========================================
         with gr.TabItem("Soft Proofing"):
@@ -3139,10 +3400,10 @@ def create_gradio_app(share: bool = False):
             )
 
             from ptpd_calibration.proofing import (
-                SoftProofer,
-                ProofSettings,
-                PaperSimulation,
                 PAPER_PRESETS,
+                PaperSimulation,
+                ProofSettings,
+                SoftProofer,
             )
 
             with gr.Row():
@@ -3252,6 +3513,7 @@ def create_gradio_app(share: bool = False):
 
                 try:
                     from PIL import Image
+
                     # Load and display original
                     original = Image.open(image_path)
                     original.thumbnail((600, 600), Image.Resampling.LANCZOS)
@@ -3285,11 +3547,17 @@ def create_gradio_app(share: bool = False):
 
             generate_proof_btn.click(
                 generate_soft_proof,
-                inputs=[proof_image_upload, paper_preset_select, proof_dmax, proof_dmin, proof_platinum, proof_texture, proof_brightness],
+                inputs=[
+                    proof_image_upload,
+                    paper_preset_select,
+                    proof_dmax,
+                    proof_dmin,
+                    proof_platinum,
+                    proof_texture,
+                    proof_brightness,
+                ],
                 outputs=[original_proof_image, proofed_image, proof_info],
             )
-
-
 
     def build_paper_profiles_tab():
         # ========================================
@@ -3374,7 +3642,12 @@ def create_gradio_app(share: bool = False):
                 if not name:
                     return {"error": "Paper name required"}
                 try:
-                    from ptpd_calibration.papers.profiles import PaperCharacteristics, SizingType, TextureType
+                    from ptpd_calibration.papers.profiles import (
+                        PaperCharacteristics,
+                        SizingType,
+                        TextureType,
+                    )
+
                     profile = PaperProfile(
                         name=name,
                         manufacturer=mfr or "Custom",
@@ -3397,11 +3670,15 @@ def create_gradio_app(share: bool = False):
 
             add_paper_btn.click(
                 add_custom_paper,
-                inputs=[new_paper_name, new_paper_mfr, new_paper_weight, new_paper_sizing, new_paper_texture],
+                inputs=[
+                    new_paper_name,
+                    new_paper_mfr,
+                    new_paper_weight,
+                    new_paper_sizing,
+                    new_paper_texture,
+                ],
                 outputs=[paper_profile_display],
             )
-
-
 
     def build_auto_linearization_tab():
         # ========================================
@@ -3500,6 +3777,7 @@ def create_gradio_app(share: bool = False):
                     densities = [float(d.strip()) for d in densities_str.split(",")]
 
                     from ptpd_calibration.curves.linearization import LinearizationConfig
+
                     config = LinearizationConfig(
                         method=LinearizationMethod(method),
                         target=TargetResponse(target),
@@ -3540,6 +3818,7 @@ def create_gradio_app(share: bool = False):
                     return result.curve, fig, result.to_dict()
                 except Exception as e:
                     import traceback
+
                     return None, None, {"error": str(e), "traceback": traceback.format_exc()}
 
             def export_linearization_curve(curve, export_format):
@@ -3549,6 +3828,7 @@ def create_gradio_app(share: bool = False):
 
                 try:
                     import tempfile
+
                     ext_map = {"qtr": ".quad", "csv": ".csv", "json": ".json"}
                     ext = ext_map.get(export_format, ".quad")
 
@@ -3562,7 +3842,13 @@ def create_gradio_app(share: bool = False):
 
             run_linearization_btn.click(
                 run_linearization,
-                inputs=[linearize_densities, linearize_name, linearize_method, linearize_target, linearize_smoothing],
+                inputs=[
+                    linearize_densities,
+                    linearize_name,
+                    linearize_method,
+                    linearize_target,
+                    linearize_smoothing,
+                ],
                 outputs=[linearize_curve_state, linearize_plot, linearize_result],
             )
 
@@ -3571,8 +3857,6 @@ def create_gradio_app(share: bool = False):
                 inputs=[linearize_curve_state, linearize_export_format],
                 outputs=[linearize_export_file],
             )
-
-
 
     def build_scanner_calibration_tab():
         # ========================================
@@ -3586,7 +3870,7 @@ def create_gradio_app(share: bool = False):
                 """
             )
 
-            from ptpd_calibration.detection.scanner import ScannerCalibration, ScannerProfile
+            from ptpd_calibration.detection.scanner import ScannerCalibration
 
             with gr.Row():
                 with gr.Column(scale=1):
@@ -3699,10 +3983,12 @@ def create_gradio_app(share: bool = False):
                     fig, ax = plt.subplots(figsize=(8, 5))
 
                     x = list(range(256))
-                    ax.plot(x, profile.red_curve.output_values, 'r-', label='Red', linewidth=1.5)
-                    ax.plot(x, profile.green_curve.output_values, 'g-', label='Green', linewidth=1.5)
-                    ax.plot(x, profile.blue_curve.output_values, 'b-', label='Blue', linewidth=1.5)
-                    ax.plot([0, 255], [0, 255], 'k--', alpha=0.3, label='Linear')
+                    ax.plot(x, profile.red_curve.output_values, "r-", label="Red", linewidth=1.5)
+                    ax.plot(
+                        x, profile.green_curve.output_values, "g-", label="Green", linewidth=1.5
+                    )
+                    ax.plot(x, profile.blue_curve.output_values, "b-", label="Blue", linewidth=1.5)
+                    ax.plot([0, 255], [0, 255], "k--", alpha=0.3, label="Linear")
 
                     ax.set_xlabel("Input Value")
                     ax.set_ylabel("Output Value")
@@ -3745,20 +4031,22 @@ def create_gradio_app(share: bool = False):
 
                     # Response curves
                     x = list(range(256))
-                    axes[0].plot(x, profile.red_curve.output_values, 'r-', label='Red')
-                    axes[0].plot(x, profile.green_curve.output_values, 'g-', label='Green')
-                    axes[0].plot(x, profile.blue_curve.output_values, 'b-', label='Blue')
+                    axes[0].plot(x, profile.red_curve.output_values, "r-", label="Red")
+                    axes[0].plot(x, profile.green_curve.output_values, "g-", label="Green")
+                    axes[0].plot(x, profile.blue_curve.output_values, "b-", label="Blue")
                     axes[0].set_title("Response Curves")
                     axes[0].legend()
                     axes[0].grid(True, alpha=0.3)
 
                     # Uniformity map
                     if profile.uniformity_map is not None:
-                        im = axes[1].imshow(profile.uniformity_map, cmap='RdYlGn', vmin=0.9, vmax=1.1)
+                        im = axes[1].imshow(
+                            profile.uniformity_map, cmap="RdYlGn", vmin=0.9, vmax=1.1
+                        )
                         axes[1].set_title("Field Uniformity")
                         plt.colorbar(im, ax=axes[1])
                     else:
-                        axes[1].text(0.5, 0.5, "No uniformity data", ha='center', va='center')
+                        axes[1].text(0.5, 0.5, "No uniformity data", ha="center", va="center")
 
                     fig.tight_layout()
 
@@ -3771,6 +4059,7 @@ def create_gradio_app(share: bool = False):
                     return cal, status, fig
                 except Exception as e:
                     import traceback
+
                     return None, f"Error: {str(e)}\n{traceback.format_exc()}", None
 
             def load_profile(file):
@@ -3779,8 +4068,9 @@ def create_gradio_app(share: bool = False):
                     return None, "No file selected", None
 
                 try:
-                    import matplotlib.pyplot as plt
                     from pathlib import Path
+
+                    import matplotlib.pyplot as plt
 
                     cal = ScannerCalibration.load(Path(file.name))
                     profile = cal.profile
@@ -3788,10 +4078,10 @@ def create_gradio_app(share: bool = False):
                     # Create plot
                     fig, ax = plt.subplots(figsize=(8, 5))
                     x = list(range(256))
-                    ax.plot(x, profile.red_curve.output_values, 'r-', label='Red')
-                    ax.plot(x, profile.green_curve.output_values, 'g-', label='Green')
-                    ax.plot(x, profile.blue_curve.output_values, 'b-', label='Blue')
-                    ax.plot([0, 255], [0, 255], 'k--', alpha=0.3, label='Linear')
+                    ax.plot(x, profile.red_curve.output_values, "r-", label="Red")
+                    ax.plot(x, profile.green_curve.output_values, "g-", label="Green")
+                    ax.plot(x, profile.blue_curve.output_values, "b-", label="Blue")
+                    ax.plot([0, 255], [0, 255], "k--", alpha=0.3, label="Linear")
                     ax.set_xlabel("Input Value")
                     ax.set_ylabel("Output Value")
                     ax.set_title(f"Loaded Profile: {profile.name}")
@@ -3820,7 +4110,7 @@ def create_gradio_app(share: bool = False):
                 try:
                     corrected = cal.apply_correction(image)
                     return corrected
-                except Exception as e:
+                except Exception:
                     return None
 
             def save_profile(cal):
@@ -3832,7 +4122,9 @@ def create_gradio_app(share: bool = False):
                     import tempfile
                     from pathlib import Path
 
-                    safe_name = "".join(c for c in cal.profile.name if c.isalnum() or c in " -_")[:30]
+                    safe_name = "".join(c for c in cal.profile.name if c.isalnum() or c in " -_")[
+                        :30
+                    ]
                     temp_path = Path(tempfile.gettempdir()) / f"{safe_name}_scanner_profile.json"
                     cal.save(temp_path)
                     return str(temp_path)
@@ -3841,7 +4133,16 @@ def create_gradio_app(share: bool = False):
 
             calibrate_simple_btn.click(
                 create_simple_profile,
-                inputs=[profile_name, scanner_model, white_r, white_g, white_b, black_r, black_g, black_b],
+                inputs=[
+                    profile_name,
+                    scanner_model,
+                    white_r,
+                    white_g,
+                    white_b,
+                    black_r,
+                    black_g,
+                    black_b,
+                ],
                 outputs=[scanner_cal_state, profile_status, profile_curves_plot],
             )
 
@@ -3868,8 +4169,6 @@ def create_gradio_app(share: bool = False):
                 inputs=[scanner_cal_state],
                 outputs=[profile_download],
             )
-
-
 
     def build_about_tab(tab_label: str = "About"):
         # ========================================
@@ -3940,10 +4239,11 @@ def create_gradio_app(share: bool = False):
                 - [Bostick & Sullivan](https://www.bostick-sullivan.com/)
                 """
             )
-# Create the interface
+
+    # Create the interface
     with gr.Blocks(
         title="Pt/Pd Calibration Studio",
-        theme=theme,
+        theme=darkroom_theme,
         analytics_enabled=False,
         css=custom_css,
     ) as app:
@@ -3954,7 +4254,7 @@ def create_gradio_app(share: bool = False):
             }
         )
         gr.HTML(
-            f"<script>document.documentElement.setAttribute('data-ptpd-theme','darkroom');</script>",
+            "<script>document.documentElement.setAttribute('data-ptpd-theme','darkroom');</script>",
             visible=False,
         )
         gr.HTML(f"<script>{keyboard_js}</script>", visible=False)
@@ -3988,41 +4288,37 @@ def create_gradio_app(share: bool = False):
             build_dashboard_new(onboarding_state, session_logger)
 
             # 2. Calibration
-            with gr.TabItem("📊 Calibration"):
-                with gr.Tabs(elem_id="calibration-tabs"):
-                    build_wizard_new()
-                    build_step_tablet_reader_tab()
-                    build_step_wedge_tab()
-                    build_curve_display_tab()
-                    build_generate_curve_tab()
-                    build_curve_editor_tab()
-                    build_auto_linearization_tab()
+            with gr.TabItem("📊 Calibration"), gr.Tabs(elem_id="calibration-tabs"):
+                build_wizard_new()
+                build_step_tablet_reader_tab()
+                build_step_wedge_tab()
+                build_curve_display_tab()
+                build_generate_curve_tab()
+                build_curve_editor_tab()
+                build_auto_linearization_tab()
 
             # 3. Image Prep
-            with gr.TabItem("🎨 Image Prep"):
-                with gr.Tabs(elem_id="image-tabs"):
-                    build_image_preview_tab()
-                    build_digital_negative_tab()
-                    build_interactive_editor_tab()
-                    build_batch_processing_tab()
-                    build_histogram_tab()
-                    build_zone_system_tab()
-                    build_soft_proofing_tab()
+            with gr.TabItem("🎨 Image Prep"), gr.Tabs(elem_id="image-tabs"):
+                build_image_preview_tab()
+                build_digital_negative_tab()
+                build_interactive_editor_tab()
+                build_batch_processing_tab()
+                build_histogram_tab()
+                build_zone_system_tab()
+                build_soft_proofing_tab()
 
             # 4. Darkroom
-            with gr.TabItem("🧪 Darkroom"):
-                with gr.Tabs(elem_id="darkroom-tabs"):
-                    build_chemistry_new()
-                    build_exposure_tab()
-                    build_paper_profiles_tab()
-                    build_session_log_new(session_logger)
-                    build_settings_tab()
+            with gr.TabItem("🧪 Darkroom"), gr.Tabs(elem_id="darkroom-tabs"):
+                build_chemistry_new()
+                build_exposure_tab()
+                build_paper_profiles_tab()
+                build_session_log_new(session_logger)
+                build_settings_tab()
 
             # 5. AI Tools
-            with gr.TabItem("🤖 AI Tools"):
-                with gr.Tabs(elem_id="ai-tabs"):
-                    build_ai_new()
-                    build_quick_tools_tab()
+            with gr.TabItem("🤖 AI Tools"), gr.Tabs(elem_id="ai-tabs"):
+                build_ai_new()
+                build_quick_tools_tab()
 
             build_about_tab(tab_label="ℹ️ About")
 
@@ -4063,5 +4359,6 @@ def launch_ui(share: bool = True, port: int = 7860, server_name: str = "0.0.0.0"
 
 if __name__ == "__main__":
     import os
+
     port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
     launch_ui(port=port)

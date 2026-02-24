@@ -78,9 +78,7 @@ class ChemistryCalculatorPage(BasePage):
         results = {}
         try:
             # Look for result rows
-            rows = self.find_elements(
-                By.CSS_SELECTOR, ".recipe-row, .result-item, tr"
-            )
+            rows = self.find_elements(By.CSS_SELECTOR, ".recipe-row, .result-item, tr")
             for row in rows:
                 try:
                     label = row.find_element(By.CSS_SELECTOR, ".label, td:first-child").text

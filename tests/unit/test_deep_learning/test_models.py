@@ -9,7 +9,6 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 import numpy as np
-import pytest
 
 from ptpd_calibration.deep_learning.models import (
     BaseAIResult,
@@ -19,7 +18,6 @@ from ptpd_calibration.deep_learning.models import (
     DetectedDefect,
     DetectedPatch,
     DiffusionEnhancementResult,
-    EnhancementRegion,
     FederatedRoundResult,
     FederatedUpdate,
     ImageAnalysis,
@@ -37,7 +35,6 @@ from ptpd_calibration.deep_learning.types import (
     ComparisonResult,
     DefectSeverity,
     DefectType,
-    DetectionConfidence,
     EnhancementMode,
     QualityLevel,
     RecipeCategory,
@@ -157,8 +154,7 @@ class TestDeepDetectionResult:
     def test_with_patches(self):
         """Test result with patches."""
         patches = [
-            DetectedPatch(index=i, bbox=(i * 30, 0, 30, 100), confidence=0.9)
-            for i in range(21)
+            DetectedPatch(index=i, bbox=(i * 30, 0, 30, 100), confidence=0.9) for i in range(21)
         ]
 
         result = DeepDetectionResult(

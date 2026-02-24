@@ -4,7 +4,7 @@ Calibration assistant powered by LLM.
 Provides conversational AI assistance for Pt/Pd printing calibration.
 """
 
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
 
 from ptpd_calibration.config import LLMSettings, get_settings
 from ptpd_calibration.core.models import CalibrationRecord
@@ -28,9 +28,9 @@ class CalibrationAssistant:
 
     def __init__(
         self,
-        client: Optional[LLMClient] = None,
-        settings: Optional[LLMSettings] = None,
-        database: Optional[CalibrationDatabase] = None,
+        client: LLMClient | None = None,
+        settings: LLMSettings | None = None,
+        database: CalibrationDatabase | None = None,
     ):
         """
         Initialize the calibration assistant.
@@ -254,9 +254,9 @@ Provide:
 
 
 def create_assistant(
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
     provider: str = "anthropic",
-    database: Optional[CalibrationDatabase] = None,
+    database: CalibrationDatabase | None = None,
 ) -> CalibrationAssistant:
     """
     Create a calibration assistant with the specified configuration.

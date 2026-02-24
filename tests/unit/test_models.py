@@ -2,25 +2,23 @@
 Tests for core data models.
 """
 
-import pytest
 from datetime import datetime
 from uuid import UUID
 
 import numpy as np
+import pytest
 
 from ptpd_calibration.core.models import (
-    PatchData,
+    CalibrationRecord,
+    CurveData,
     DensityMeasurement,
     ExtractionResult,
-    StepTabletResult,
-    CurveData,
     PaperProfile,
-    CalibrationRecord,
+    PatchData,
 )
 from ptpd_calibration.core.types import (
     ChemistryType,
     ContrastAgent,
-    CurveType,
     DeveloperType,
     MeasurementUnit,
     PaperSizing,

@@ -8,16 +8,17 @@ Tests for:
 - Local storage handling
 """
 
-from pathlib import Path
-import time
+import contextlib
 import json
+import time
+from pathlib import Path
 
 import pytest
 
 try:
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
 
     SELENIUM_AVAILABLE = True
 except ImportError:
@@ -30,8 +31,8 @@ except ImportError:
 @pytest.fixture
 def sample_step_tablet(tmp_path) -> Path:
     """Create a sample step tablet image."""
-    from PIL import Image
     import numpy as np
+    from PIL import Image
 
     width, height = 420, 100
     num_patches = 21
@@ -40,7 +41,7 @@ def sample_step_tablet(tmp_path) -> Path:
     img_array = np.zeros((height, width), dtype=np.uint8)
     for i in range(num_patches):
         value = 255 - int(255 * (i / (num_patches - 1)) ** 0.8)
-        img_array[:, i * patch_width:(i + 1) * patch_width] = value
+        img_array[:, i * patch_width : (i + 1) * patch_width] = value
 
     img = Image.fromarray(img_array, mode="L").convert("RGB")
     file_path = tmp_path / "test_step_tablet.png"
@@ -93,9 +94,7 @@ class TestSessionPersistence:
         # App should at least be functional
         assert driver.find_element(By.CSS_SELECTOR, ".gradio-container")
 
-    def test_uploaded_file_state_persists(
-        self, driver, gradio_wait, sample_step_tablet
-    ):
+    def test_uploaded_file_state_persists(self, driver, gradio_wait, sample_step_tablet):
         """Test that uploaded file state persists."""
         gradio_wait()
 
@@ -160,10 +159,8 @@ class TestSessionPersistence:
         buttons = driver.find_elements(By.CSS_SELECTOR, "button")
         for btn in buttons:
             if "calculate" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(2)
@@ -201,10 +198,8 @@ class TestDataSaveAndLoad:
         buttons = driver.find_elements(By.CSS_SELECTOR, "button")
         for btn in buttons:
             if "save" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(2)
@@ -237,10 +232,8 @@ class TestDataSaveAndLoad:
         buttons = driver.find_elements(By.CSS_SELECTOR, "button")
         for btn in buttons:
             if "save" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(2)
@@ -271,10 +264,8 @@ class TestDataSaveAndLoad:
         buttons = driver.find_elements(By.CSS_SELECTOR, "button")
         for btn in buttons:
             if "export" in btn.text.lower() or "quad" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(2)
@@ -303,10 +294,8 @@ class TestDataSaveAndLoad:
         buttons = driver.find_elements(By.CSS_SELECTOR, "button")
         for btn in buttons:
             if "csv" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(2)
@@ -324,9 +313,7 @@ class TestLocalStorageHandling:
         gradio_wait()
 
         # Check if local storage is available
-        result = driver.execute_script(
-            "return typeof(Storage) !== 'undefined'"
-        )
+        result = driver.execute_script("return typeof(Storage) !== 'undefined'")
         assert result, "Local storage should be available"
 
     def test_write_to_local_storage(self, driver, gradio_wait):
@@ -334,14 +321,10 @@ class TestLocalStorageHandling:
         gradio_wait()
 
         # Write test data
-        driver.execute_script(
-            "localStorage.setItem('ptpd_test', 'test_value')"
-        )
+        driver.execute_script("localStorage.setItem('ptpd_test', 'test_value')")
 
         # Verify write
-        result = driver.execute_script(
-            "return localStorage.getItem('ptpd_test')"
-        )
+        result = driver.execute_script("return localStorage.getItem('ptpd_test')")
         assert result == "test_value"
 
         # Clean up
@@ -357,9 +340,7 @@ class TestLocalStorageHandling:
         )
 
         # Read and parse
-        result = driver.execute_script(
-            "return JSON.parse(localStorage.getItem('ptpd_read_test'))"
-        )
+        result = driver.execute_script("return JSON.parse(localStorage.getItem('ptpd_read_test'))")
         assert result == {"key": "value"}
 
         # Clean up
@@ -378,9 +359,7 @@ class TestLocalStorageHandling:
         )
 
         # Read
-        result = driver.execute_script(
-            "return JSON.parse(localStorage.getItem('ptpd_large_test'))"
-        )
+        result = driver.execute_script("return JSON.parse(localStorage.getItem('ptpd_large_test'))")
         assert len(result["values"]) == 1000
 
         # Clean up
@@ -450,10 +429,8 @@ class TestSessionLogIntegration:
         buttons = driver.find_elements(By.CSS_SELECTOR, "button")
         for btn in buttons:
             if "clear" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(1)
@@ -466,9 +443,7 @@ class TestSessionLogIntegration:
 class TestDatabasePersistence:
     """Test database persistence functionality."""
 
-    def test_calibration_saved_to_database(
-        self, driver, gradio_wait, sample_step_tablet
-    ):
+    def test_calibration_saved_to_database(self, driver, gradio_wait, sample_step_tablet):
         """Test that calibration is saved to database."""
         gradio_wait()
 
@@ -492,10 +467,8 @@ class TestDatabasePersistence:
         buttons = driver.find_elements(By.CSS_SELECTOR, "button")
         for btn in buttons:
             if "analyze" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(2)
@@ -503,19 +476,15 @@ class TestDatabasePersistence:
         # Try save
         for btn in buttons:
             if "save" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(2)
 
         assert driver.find_element(By.CSS_SELECTOR, ".gradio-container")
 
-    def test_saved_calibrations_appear_on_dashboard(
-        self, driver, gradio_wait, sample_step_tablet
-    ):
+    def test_saved_calibrations_appear_on_dashboard(self, driver, gradio_wait, sample_step_tablet):
         """Test that saved calibrations appear on dashboard."""
         gradio_wait()
 
@@ -580,10 +549,8 @@ class TestDatabasePersistence:
         buttons = driver.find_elements(By.CSS_SELECTOR, "button")
         for btn in buttons:
             if "calculate" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(2)
@@ -591,10 +558,8 @@ class TestDatabasePersistence:
         # Save
         for btn in driver.find_elements(By.CSS_SELECTOR, "button"):
             if "save" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(2)
@@ -652,10 +617,8 @@ class TestCrossSessionContinuity:
         buttons = driver.find_elements(By.CSS_SELECTOR, "button")
         for btn in buttons:
             if "theme" in btn.text.lower() or "dark" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(1)

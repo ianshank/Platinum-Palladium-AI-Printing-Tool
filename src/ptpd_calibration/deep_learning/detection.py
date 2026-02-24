@@ -19,7 +19,6 @@ import asyncio
 import logging
 import time
 from pathlib import Path
-from typing import Any, Optional
 
 import numpy as np
 
@@ -33,7 +32,6 @@ from ptpd_calibration.deep_learning.types import (
     DetectionBackend,
     DetectionConfidence,
     ImageArray,
-    Mask,
     SegmentationBackend,
 )
 
@@ -139,7 +137,7 @@ class DeepTabletDetector:
         >>> result = await detector.detect(image)
     """
 
-    def __init__(self, settings: Optional[DetectionModelSettings] = None):
+    def __init__(self, settings: DetectionModelSettings | None = None):
         """
         Initialize the deep tablet detector.
 
@@ -147,7 +145,7 @@ class DeepTabletDetector:
             settings: Detection model settings. If None, uses defaults.
         """
         self.settings = settings or DetectionModelSettings()
-        self._device: Optional[str] = None
+        self._device: str | None = None
         self._yolo_model = None
         self._sam_model = None
         self._sam_generator = None
@@ -208,18 +206,20 @@ class DeepTabletDetector:
             return True
 
         # Try loading YOLO model
-        if self.settings.detection_backend == DetectionBackend.YOLOV8:
-            if not self._load_yolo_model():
-                logger.warning("Failed to load YOLO model")
-                return False
+        if (
+            self.settings.detection_backend == DetectionBackend.YOLOV8
+            and not self._load_yolo_model()
+        ):
+            logger.warning("Failed to load YOLO model")
+            return False
 
         # Try loading SAM model if requested
-        if self.settings.segmentation_backend in {
-            SegmentationBackend.SAM,
-            SegmentationBackend.SAM2,
-        }:
-            if not self._load_sam_model():
-                logger.warning("SAM model not available, using bounding boxes only")
+        if (
+            self.settings.segmentation_backend
+            in {SegmentationBackend.SAM, SegmentationBackend.SAM2}
+            and not self._load_sam_model()
+        ):
+            logger.warning("SAM model not available, using bounding boxes only")
 
         self._models_loaded = True
         return True
@@ -306,7 +306,7 @@ class DeepTabletDetector:
             logger.error(f"Failed to load SAM model: {e}")
             return False
 
-    def _find_sam_checkpoint(self) -> Optional[Path]:
+    def _find_sam_checkpoint(self) -> Path | None:
         """
         Find SAM checkpoint in common locations.
 
@@ -422,9 +422,7 @@ class DeepTabletDetector:
             logger.error(f"Detection failed: {e}", exc_info=True)
             return await self._fallback_classical_detection(image, str(e), start_time)
 
-    async def _detect_tablet_yolo(
-        self, image: ImageArray
-    ) -> tuple[Optional[BoundingBox], float]:
+    async def _detect_tablet_yolo(self, image: ImageArray) -> tuple[BoundingBox | None, float]:
         """
         Detect step tablet using YOLOv8.
 
@@ -651,9 +649,7 @@ class DeepTabletDetector:
 
         return patches
 
-    def _merge_overlapping_patches(
-        self, patches: list[DetectedPatch]
-    ) -> list[DetectedPatch]:
+    def _merge_overlapping_patches(self, patches: list[DetectedPatch]) -> list[DetectedPatch]:
         """
         Merge patches with significant overlap.
 

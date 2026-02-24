@@ -8,8 +8,8 @@ feature, ensuring the complete user experience works as expected.
 import importlib.util
 import json
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import numpy as np
 import pytest
@@ -174,7 +174,7 @@ class TestExperiencedUserJourney:
     4. Get suggestions for adjustments
     """
 
-    def test_experienced_user_custom_training(self, user_workspace: Path):
+    def test_experienced_user_custom_training(self, user_workspace: Path):  # noqa: ARG002
         """Test experienced user training on custom data."""
         from ptpd_calibration.config import DeepLearningSettings
         from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor
@@ -324,7 +324,7 @@ class TestExperimentalWorkflow:
             ratio_curves[ratio] = predictor.predict(record)
 
         # Verify all predictions work
-        for ratio, prediction in ratio_curves.items():
+        for _ratio, prediction in ratio_curves.items():
             assert prediction.curve is not None
             assert len(prediction.curve) == 64
 

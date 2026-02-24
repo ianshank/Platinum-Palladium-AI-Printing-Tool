@@ -10,7 +10,7 @@ import json
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -25,13 +25,13 @@ class ExportMetadata(BaseModel):
     export_version: str = Field(default="1.0.0")
     format: str = Field(...)
     record_count: int = Field(default=0)
-    notes: Optional[str] = Field(default=None)
+    notes: str | None = Field(default=None)
 
 
 class DataExporter:
     """Export data to various formats."""
 
-    def __init__(self, database: Optional[PrintDatabase] = None) -> None:
+    def __init__(self, database: PrintDatabase | None = None) -> None:
         """
         Initialize the data exporter.
 
@@ -75,11 +75,11 @@ class DataExporter:
             ImportError: If PyYAML is not installed
         """
         try:
-            import yaml
-        except ImportError:
+            import yaml  # type: ignore[import-untyped]
+        except ImportError as err:
             raise ImportError(
                 "PyYAML is required for YAML export. Install with: pip install pyyaml"
-            )
+            ) from err
 
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -154,7 +154,7 @@ class DataExporter:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         # Get all unique keys from all records
-        all_keys = set()
+        all_keys: set[str] = set()
         for record in data:
             all_keys.update(record.keys())
 
@@ -171,17 +171,15 @@ class DataExporter:
                     value = record.get(key)
                     if value is None:
                         row[key] = ""
-                    elif isinstance(value, (list, dict)):
+                    elif isinstance(value, list | dict):
                         row[key] = json.dumps(value)
-                    elif isinstance(value, (datetime, UUID)):
+                    elif isinstance(value, datetime | UUID):
                         row[key] = str(value)
                     else:
                         row[key] = value
                 writer.writerow(row)
 
-    def export_prints(
-        self, filters: Optional[dict[str, Any]], format: str, path: Path
-    ) -> int:
+    def export_prints(self, filters: dict[str, Any] | None, format: str, path: Path) -> int:
         """
         Export print records from database.
 
@@ -223,9 +221,7 @@ class DataExporter:
 
         return len(data)
 
-    def export_recipes(
-        self, recipe_ids: list[UUID], format: str, path: Path
-    ) -> int:
+    def export_recipes(self, recipe_ids: list[UUID], format: str, path: Path) -> int:
         """
         Export specific recipes.
 
@@ -312,9 +308,7 @@ class DataExporter:
         """Custom JSON serializer for non-standard types."""
         if isinstance(obj, datetime):
             return obj.isoformat()
-        elif isinstance(obj, UUID):
-            return str(obj)
-        elif isinstance(obj, Path):
+        elif isinstance(obj, UUID | Path):
             return str(obj)
         elif hasattr(obj, "model_dump"):
             return obj.model_dump()
@@ -348,7 +342,7 @@ class DataExporter:
 class DataImporter:
     """Import data from various formats."""
 
-    def __init__(self, database: Optional[PrintDatabase] = None) -> None:
+    def __init__(self, database: PrintDatabase | None = None) -> None:
         """
         Initialize the data importer.
 
@@ -367,7 +361,7 @@ class DataImporter:
         Returns:
             Imported data dictionary
         """
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
 
         return data
@@ -386,13 +380,13 @@ class DataImporter:
             ImportError: If PyYAML is not installed
         """
         try:
-            import yaml
-        except ImportError:
+            import yaml  # type: ignore[import-untyped]
+        except ImportError as err:
             raise ImportError(
                 "PyYAML is required for YAML import. Install with: pip install pyyaml"
-            )
+            ) from err
 
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         return data
@@ -410,7 +404,7 @@ class DataImporter:
         tree = ET.parse(path)
         root = tree.getroot()
 
-        data = {"metadata": {}, "records": []}
+        data: dict[str, Any] = {"metadata": {}, "records": []}
 
         # Parse metadata
         meta_elem = root.find("metadata")
@@ -515,7 +509,7 @@ class DataImporter:
 
         return stats
 
-    def import_all(self, path: Path) -> dict[str, int]:
+    def import_all(self, path: Path) -> dict[str, Any]:
         """
         Import all data from an export directory.
 
@@ -531,7 +525,7 @@ class DataImporter:
         if self.database is None:
             raise ValueError("Database not set")
 
-        stats = {}
+        stats: dict[str, Any] = {}
 
         # Import prints
         prints_path = path / "prints.json"
@@ -544,7 +538,7 @@ class DataImporter:
 
     def _xml_to_dict(self, element: ET.Element) -> dict[str, Any]:
         """Convert XML element to dictionary recursively."""
-        result = {}
+        result: dict[str, Any] = {}
 
         for child in element:
             # Check if null
@@ -555,8 +549,7 @@ class DataImporter:
                 # Check if it's a list (all children are 'item')
                 if all(subchild.tag == "item" for subchild in child):
                     result[child.tag] = [
-                        self._xml_to_dict(item) if len(item) > 0 else item.text
-                        for item in child
+                        self._xml_to_dict(item) if len(item) > 0 else item.text for item in child
                     ]
                 else:
                     result[child.tag] = self._xml_to_dict(child)

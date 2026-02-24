@@ -8,16 +8,17 @@ Tests the application's resilience to errors and edge cases:
 - Graceful degradation
 """
 
-from pathlib import Path
+import contextlib
 import time
+from pathlib import Path
 
 import pytest
 
 try:
+    from selenium.common.exceptions import TimeoutException  # noqa: F401
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
-    from selenium.common.exceptions import TimeoutException
+    from selenium.webdriver.support.ui import WebDriverWait
 
     SELENIUM_AVAILABLE = True
 except ImportError:
@@ -47,8 +48,8 @@ def empty_file(tmp_path) -> Path:
 @pytest.fixture
 def oversized_image(tmp_path) -> Path:
     """Create a very large image file."""
-    from PIL import Image
     import numpy as np
+    from PIL import Image
 
     # Create a 5000x5000 image (large but not unreasonably so)
     img_array = np.random.randint(0, 255, (1000, 1000), dtype=np.uint8)
@@ -442,10 +443,8 @@ class TestGracefulDegradation:
         buttons = driver.find_elements(By.CSS_SELECTOR, "button")
         for btn in buttons:
             if "calculate" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(1)
@@ -509,8 +508,8 @@ class TestConcurrentOperations:
 
     def test_multiple_file_upload_attempts(self, driver, gradio_wait, tmp_path):
         """Test handling of multiple file upload attempts."""
-        from PIL import Image
         import numpy as np
+        from PIL import Image
 
         gradio_wait()
 
@@ -577,10 +576,8 @@ class TestStateConsistency:
         buttons = driver.find_elements(By.CSS_SELECTOR, "button")
         for btn in buttons:
             if "clear" in btn.text.lower() or "reset" in btn.text.lower():
-                try:
+                with contextlib.suppress(Exception):
                     btn.click()
-                except Exception:
-                    pass
                 break
 
         time.sleep(1)

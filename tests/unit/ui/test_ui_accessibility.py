@@ -5,10 +5,6 @@ Tests UI components for accessibility compliance and usability patterns.
 These are unit-level tests that can run without Selenium.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
-from typing import Any
-
 
 class MockGradioBlock:
     """Mock Gradio block for testing."""
@@ -212,7 +208,7 @@ class TestFormUsability:
             "exposure_time": {"required": False, "type": "float", "min": 0},
         }
 
-        for field, rules in validation_rules.items():
+        for _field, rules in validation_rules.items():
             if rules["required"]:
                 # Required fields should have validation
                 assert "required" in rules
@@ -262,7 +258,7 @@ class TestLoadingStates:
         ]
 
         # Each should have a cancel mechanism
-        for operation in cancellable_operations:
+        for _operation in cancellable_operations:
             # In real implementation, would check for cancel button
             pass
 
@@ -296,8 +292,9 @@ class TestResponsiveDesign:
         ]
 
         for element in interactive_elements:
-            assert element["size"] >= min_touch_target, \
+            assert element["size"] >= min_touch_target, (
                 f"{element['name']} should be at least {min_touch_target}px"
+            )
 
     def test_text_readable_without_zoom(self):
         """Test that text is readable without zoom."""
@@ -358,7 +355,7 @@ class TestErrorHandling:
             "Missing required field",
         ]
 
-        for error in expected_recoverable_errors:
+        for _error in expected_recoverable_errors:
             # App should remain functional after each error type
             pass
 
@@ -420,7 +417,7 @@ class TestUIConsistency:
             "danger": {"background": "red", "text": "white"},
         }
 
-        for btn_type, styles in button_types.items():
+        for _btn_type, styles in button_types.items():
             assert "background" in styles
             assert "text" in styles
 
@@ -460,6 +457,6 @@ class TestUIConsistency:
             "caption": {"size": 12, "weight": "normal"},
         }
 
-        for style, props in typography.items():
+        for _style, props in typography.items():
             assert props["size"] > 0
             assert props["weight"] in ["normal", "medium", "semibold", "bold"]

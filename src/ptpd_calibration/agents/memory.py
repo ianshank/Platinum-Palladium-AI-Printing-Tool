@@ -6,7 +6,6 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 from uuid import UUID, uuid4
 
 
@@ -63,7 +62,7 @@ class AgentMemory:
 
     def __init__(
         self,
-        storage_path: Optional[Path] = None,
+        storage_path: Path | None = None,
         max_items: int = 1000,
         working_memory_size: int = 10,
     ):
@@ -92,7 +91,7 @@ class AgentMemory:
         content: str,
         category: str = "general",
         importance: float = 0.5,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> MemoryItem:
         """
         Store a memory item.
@@ -143,7 +142,7 @@ class AgentMemory:
     def recall(
         self,
         query: str,
-        category: Optional[str] = None,
+        category: str | None = None,
         limit: int = 5,
     ) -> list[MemoryItem]:
         """
@@ -207,7 +206,7 @@ class AgentMemory:
 
         return results
 
-    def get(self, key: str) -> Optional[MemoryItem]:
+    def get(self, key: str) -> MemoryItem | None:
         """Get a specific memory by key."""
         item = self._long_term.get(key)
         if item:
@@ -222,9 +221,8 @@ class AgentMemory:
             del self._long_term[key]
 
             # Remove from category index
-            if item.category in self._categories:
-                if key in self._categories[item.category]:
-                    self._categories[item.category].remove(key)
+            if item.category in self._categories and key in self._categories[item.category]:
+                self._categories[item.category].remove(key)
 
             if self.storage_path:
                 self._save()
@@ -271,7 +269,11 @@ class AgentMemory:
         scored = []
         for key, item in self._long_term.items():
             age_days = (datetime.now() - item.last_accessed).days
-            score = item.importance * 0.5 + (1 - age_days / 365) * 0.3 + min(item.access_count / 10, 1) * 0.2
+            score = (
+                item.importance * 0.5
+                + (1 - age_days / 365) * 0.3
+                + min(item.access_count / 10, 1) * 0.2
+            )
             scored.append((key, score))
 
         # Sort by score and remove lowest

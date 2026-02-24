@@ -10,14 +10,14 @@ import asyncio
 import base64
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
-from typing import Any, AsyncGenerator, Optional
-from uuid import UUID, uuid4
+from typing import Any
+from uuid import uuid4
 
 import numpy as np
-from pydantic import BaseModel, Field
 
 from ptpd_calibration.deep_learning.config import MultiModalSettings
 from ptpd_calibration.deep_learning.models import (
@@ -27,7 +27,6 @@ from ptpd_calibration.deep_learning.models import (
 )
 from ptpd_calibration.deep_learning.types import (
     AssistantMode,
-    ToolType,
     VisionLanguageModel,
 )
 
@@ -174,7 +173,7 @@ class ChemistryCalculatorTool(BaseTool):
             "platinum_ml": platinum_ml,
             "palladium_ml": palladium_ml,
             "total_ml": total_volume,
-            "ratio": f"{int(platinum_ratio*100)}:{int((1-platinum_ratio)*100)}",
+            "ratio": f"{int(platinum_ratio * 100)}:{int((1 - platinum_ratio) * 100)}",
         }
 
         if coating_area:
@@ -408,7 +407,7 @@ class RAGRetriever:
 
     def __init__(
         self,
-        knowledge_base_path: Optional[Path] = None,
+        knowledge_base_path: Path | None = None,
         chunk_size: int = 512,
         top_k: int = 5,
     ):
@@ -426,7 +425,7 @@ class RAGRetriever:
         self.embeddings: dict[str, list[float]] = {}
         self.documents: dict[str, str] = {}
 
-    async def retrieve(self, query: str, top_k: Optional[int] = None) -> list[str]:
+    async def retrieve(self, query: str, top_k: int | None = None) -> list[str]:
         """
         Retrieve relevant documents for a query.
 
@@ -478,7 +477,7 @@ class MultiModalAssistant:
     with graceful fallback.
     """
 
-    def __init__(self, settings: Optional[MultiModalSettings] = None):
+    def __init__(self, settings: MultiModalSettings | None = None):
         """
         Initialize the multi-modal assistant.
 
@@ -513,9 +512,7 @@ class MultiModalAssistant:
                 try:
                     import openai
 
-                    self._openai_client = openai.AsyncOpenAI(
-                        api_key=self.settings.openai_api_key
-                    )
+                    self._openai_client = openai.AsyncOpenAI(api_key=self.settings.openai_api_key)
                 except ImportError:
                     logger.warning("openai package not available")
         except Exception as e:
@@ -536,9 +533,7 @@ class MultiModalAssistant:
             "defect_diagnosis": DefectDiagnosisTool(
                 timeout_seconds=self.settings.tool_timeout_seconds
             ),
-            "recipe_lookup": RecipeLookupTool(
-                timeout_seconds=self.settings.tool_timeout_seconds
-            ),
+            "recipe_lookup": RecipeLookupTool(timeout_seconds=self.settings.tool_timeout_seconds),
             "quality_assessment": QualityAssessmentTool(
                 timeout_seconds=self.settings.tool_timeout_seconds
             ),
@@ -546,9 +541,7 @@ class MultiModalAssistant:
 
         # Filter to enabled tools only
         enabled_tools = {
-            name: tool
-            for name, tool in all_tools.items()
-            if name in self.settings.enabled_tools
+            name: tool for name, tool in all_tools.items() if name in self.settings.enabled_tools
         }
 
         logger.info(f"Initialized {len(enabled_tools)} tools: {list(enabled_tools.keys())}")
@@ -559,16 +552,14 @@ class MultiModalAssistant:
         if not self.settings.use_rag:
             return None
 
-        return RAGRetriever(
-            chunk_size=self.settings.rag_chunk_size, top_k=self.settings.rag_top_k
-        )
+        return RAGRetriever(chunk_size=self.settings.rag_chunk_size, top_k=self.settings.rag_top_k)
 
     async def chat(
         self,
         message: str,
-        images: Optional[list[np.ndarray]] = None,
+        images: list[np.ndarray] | None = None,
         mode: AssistantMode = AssistantMode.CHAT,
-        stream: Optional[bool] = None,
+        stream: bool | None = None,
     ) -> MultiModalResponse:
         """
         Chat with the assistant.
@@ -647,7 +638,7 @@ class MultiModalAssistant:
     async def analyze_image(
         self,
         image: np.ndarray,
-        query: Optional[str] = None,
+        query: str | None = None,
     ) -> ImageAnalysis:
         """
         Analyze an image with the vision model.
@@ -685,9 +676,7 @@ class MultiModalAssistant:
             extracted_data={},
         )
 
-    async def execute_tool(
-        self, tool_name: str, tool_input: dict[str, Any]
-    ) -> ToolCall:
+    async def execute_tool(self, tool_name: str, tool_input: dict[str, Any]) -> ToolCall:
         """
         Execute a tool by name.
 
@@ -761,7 +750,9 @@ class MultiModalAssistant:
         if image_analyses:
             context_parts.append("Image analysis:")
             for analysis in image_analyses:
-                context_parts.append(f"- Image {analysis.image_index}: {analysis.description[:100]}")
+                context_parts.append(
+                    f"- Image {analysis.image_index}: {analysis.description[:100]}"
+                )
             context_parts.append("")
 
         # Add user message
@@ -769,29 +760,26 @@ class MultiModalAssistant:
 
         return "\n".join(context_parts)
 
-    async def _get_llm_response(
-        self, context: str, images: Optional[list[np.ndarray]] = None
-    ) -> str:
+    async def _get_llm_response(self, context: str, images: list[np.ndarray] | None = None) -> str:
         """Get response from LLM (non-streaming)."""
         # Try primary model
         try:
-            if self._is_claude_model(self.settings.vision_language_model):
-                if self._anthropic_client:
-                    return await self._get_claude_response(context, images)
-            elif self._is_openai_model(self.settings.vision_language_model):
-                if self._openai_client:
-                    return await self._get_openai_response(context, images)
+            if (
+                self._is_claude_model(self.settings.vision_language_model)
+                and self._anthropic_client
+            ):
+                return await self._get_claude_response(context, images)
+            elif self._is_openai_model(self.settings.vision_language_model) and self._openai_client:
+                return await self._get_openai_response(context, images)
         except Exception as e:
             logger.warning(f"Primary model failed: {e}, trying fallback")
 
         # Try fallback model
         try:
-            if self._is_claude_model(self.settings.fallback_model):
-                if self._anthropic_client:
-                    return await self._get_claude_response(context, images)
-            elif self._is_openai_model(self.settings.fallback_model):
-                if self._openai_client:
-                    return await self._get_openai_response(context, images)
+            if self._is_claude_model(self.settings.fallback_model) and self._anthropic_client:
+                return await self._get_claude_response(context, images)
+            elif self._is_openai_model(self.settings.fallback_model) and self._openai_client:
+                return await self._get_openai_response(context, images)
         except Exception as e:
             logger.error(f"Fallback model failed: {e}")
 
@@ -799,7 +787,7 @@ class MultiModalAssistant:
         return self._get_fallback_response(context)
 
     async def _stream_llm_response(
-        self, context: str, images: Optional[list[np.ndarray]] = None
+        self, context: str, images: list[np.ndarray] | None = None
     ) -> AsyncGenerator[str, None]:
         """Stream response from LLM."""
         # Simplified - in production would stream from API
@@ -807,7 +795,7 @@ class MultiModalAssistant:
         yield response
 
     async def _get_claude_response(
-        self, context: str, images: Optional[list[np.ndarray]] = None
+        self, context: str, images: list[np.ndarray] | None = None
     ) -> str:
         """Get response from Claude."""
         if not self._anthropic_client:
@@ -820,14 +808,16 @@ class MultiModalAssistant:
         if images:
             for img in images[: self.settings.max_images_per_request]:
                 img_b64 = self._encode_image(img)
-                content.append({
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": "image/png",
-                        "data": img_b64,
-                    },
-                })
+                content.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/png",
+                            "data": img_b64,
+                        },
+                    }
+                )
 
         # Add text
         content.append({"type": "text", "text": context})
@@ -843,7 +833,7 @@ class MultiModalAssistant:
         return response.content[0].text
 
     async def _get_openai_response(
-        self, context: str, images: Optional[list[np.ndarray]] = None
+        self, context: str, images: list[np.ndarray] | None = None
     ) -> str:
         """Get response from OpenAI."""
         if not self._openai_client:
@@ -856,13 +846,15 @@ class MultiModalAssistant:
         if images:
             for img in images[: self.settings.max_images_per_request]:
                 img_b64 = self._encode_image(img)
-                content.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/png;base64,{img_b64}",
-                        "detail": self.settings.image_detail,
-                    },
-                })
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{img_b64}",
+                            "detail": self.settings.image_detail,
+                        },
+                    }
+                )
 
         # Call API
         response = await self._openai_client.chat.completions.create(
@@ -874,45 +866,47 @@ class MultiModalAssistant:
 
         return response.choices[0].message.content
 
-    async def _get_image_description(
-        self, image_b64: str, query: str
-    ) -> str:
+    async def _get_image_description(self, image_b64: str, query: str) -> str:
         """Get image description from vision model."""
         try:
             if self._anthropic_client:
                 response = await self._anthropic_client.messages.create(
                     model=self._get_model_id(self.settings.vision_language_model),
                     max_tokens=1024,
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": "image/png",
-                                    "data": image_b64,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": "image/png",
+                                        "data": image_b64,
+                                    },
                                 },
-                            },
-                            {"type": "text", "text": query},
-                        ],
-                    }],
+                                {"type": "text", "text": query},
+                            ],
+                        }
+                    ],
                 )
                 return response.content[0].text
             elif self._openai_client:
                 response = await self._openai_client.chat.completions.create(
                     model=self._get_model_id(self.settings.vision_language_model),
                     max_tokens=1024,
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": query},
-                            {
-                                "type": "image_url",
-                                "image_url": {"url": f"data:image/png;base64,{image_b64}"},
-                            },
-                        ],
-                    }],
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": query},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": f"data:image/png;base64,{image_b64}"},
+                                },
+                            ],
+                        }
+                    ],
                 )
                 return response.choices[0].message.content
         except Exception as e:
@@ -920,9 +914,7 @@ class MultiModalAssistant:
 
         return "Unable to analyze image."
 
-    async def _analyze_image_simple(
-        self, image: np.ndarray, index: int
-    ) -> ImageAnalysis:
+    async def _analyze_image_simple(self, image: np.ndarray, index: int) -> ImageAnalysis:
         """Simple image analysis without API call."""
         # Basic analysis based on image statistics
         mean_value = np.mean(image)
@@ -952,7 +944,10 @@ class MultiModalAssistant:
             from PIL import Image
 
             # Resize if needed
-            if image.shape[0] > self.settings.max_image_size or image.shape[1] > self.settings.max_image_size:
+            if (
+                image.shape[0] > self.settings.max_image_size
+                or image.shape[1] > self.settings.max_image_size
+            ):
                 max_dim = max(image.shape[:2])
                 scale = self.settings.max_image_size / max_dim
                 new_size = (int(image.shape[1] * scale), int(image.shape[0] * scale))

@@ -35,9 +35,7 @@ class AIAssistantPage(BasePage):
 
     def send_message(self, message: str) -> None:
         """Send a message to the AI assistant."""
-        textbox = self.wait_for_element(
-            By.CSS_SELECTOR, "textarea, input[type='text']"
-        )
+        textbox = self.wait_for_element(By.CSS_SELECTOR, "textarea, input[type='text']")
         textbox.clear()
         textbox.send_keys(message)
 
@@ -47,9 +45,7 @@ class AIAssistantPage(BasePage):
 
     def send_message_with_enter(self, message: str) -> None:
         """Send a message using Enter key."""
-        textbox = self.wait_for_element(
-            By.CSS_SELECTOR, "textarea, input[type='text']"
-        )
+        textbox = self.wait_for_element(By.CSS_SELECTOR, "textarea, input[type='text']")
         textbox.clear()
         textbox.send_keys(message)
         textbox.send_keys(Keys.RETURN)
@@ -59,9 +55,7 @@ class AIAssistantPage(BasePage):
         """Get the chat history as a list of messages."""
         messages = []
         try:
-            message_elements = self.find_elements(
-                By.CSS_SELECTOR, ".message, .chat-message"
-            )
+            message_elements = self.find_elements(By.CSS_SELECTOR, ".message, .chat-message")
             for msg in message_elements:
                 role = "user" if "user" in msg.get_attribute("class") else "assistant"
                 content = msg.text
@@ -85,16 +79,12 @@ class AIAssistantPage(BasePage):
     def wait_for_response(self, timeout: int = 60) -> str:
         """Wait for an AI response and return it."""
         # Wait for loading indicator to appear and disappear
-        try:
-            self.wait_for_element(
-                By.CSS_SELECTOR, ".loading, .typing-indicator", timeout=5
-            )
-        except Exception:
-            pass
+        import contextlib
 
-        self.wait_for_invisible(
-            By.CSS_SELECTOR, ".loading, .typing-indicator", timeout=timeout
-        )
+        with contextlib.suppress(Exception):
+            self.wait_for_element(By.CSS_SELECTOR, ".loading, .typing-indicator", timeout=5)
+
+        self.wait_for_invisible(By.CSS_SELECTOR, ".loading, .typing-indicator", timeout=timeout)
         return self.get_last_response()
 
     # --- Quick Actions ---

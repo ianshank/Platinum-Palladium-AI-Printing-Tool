@@ -6,7 +6,6 @@ Provides utilities for screenshot comparison and baseline management.
 
 import os
 from pathlib import Path
-from typing import Generator
 
 import pytest
 
@@ -40,12 +39,10 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "visual: mark test as a visual regression test")
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config, items):  # noqa: ARG001
     """Skip visual tests if dependencies are not available."""
     if not PIL_AVAILABLE or not PIXELMATCH_AVAILABLE:
-        skip_visual = pytest.mark.skip(
-            reason="Visual testing dependencies not installed"
-        )
+        skip_visual = pytest.mark.skip(reason="Visual testing dependencies not installed")
         for item in items:
             if "visual" in item.keywords:
                 item.add_marker(skip_visual)
@@ -274,7 +271,7 @@ class VisualComparator:
 def capture_component_screenshot(driver):
     """Factory fixture to capture screenshots of specific components."""
 
-    def _capture(selector: str, name: str) -> Image.Image:
+    def _capture(selector: str, _name: str) -> Image.Image:
         """Capture a screenshot of a specific element."""
         from selenium.webdriver.common.by import By
 
@@ -292,7 +289,7 @@ def capture_component_screenshot(driver):
 def capture_full_screenshot(driver):
     """Factory fixture to capture full page screenshots."""
 
-    def _capture(name: str) -> Image.Image:
+    def _capture(_name: str) -> Image.Image:
         """Capture a full page screenshot."""
         screenshot_bytes = driver.get_screenshot_as_png()
 

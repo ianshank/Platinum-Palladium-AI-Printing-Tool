@@ -118,9 +118,7 @@ class CalibrationWizardPage(BasePage):
     def is_curve_displayed(self) -> bool:
         """Check if a curve is displayed."""
         try:
-            self.wait_for_element(
-                By.CSS_SELECTOR, "canvas, .plot-container, svg", timeout=10
-            )
+            self.wait_for_element(By.CSS_SELECTOR, "canvas, .plot-container, svg", timeout=10)
             return True
         except Exception:
             return False

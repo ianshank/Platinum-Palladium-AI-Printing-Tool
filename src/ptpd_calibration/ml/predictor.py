@@ -4,7 +4,7 @@ ML-based curve prediction from calibration parameters.
 
 import pickle
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 import numpy as np
 
@@ -23,8 +23,8 @@ class CurvePredictor:
 
     def __init__(
         self,
-        model_type: Optional[str] = None,
-        settings: Optional[MLSettings] = None,
+        model_type: str | None = None,
+        settings: MLSettings | None = None,
     ):
         """
         Initialize the predictor.
@@ -44,7 +44,7 @@ class CurvePredictor:
     def train(
         self,
         database: CalibrationDatabase,
-        validation_split: Optional[float] = None,
+        validation_split: float | None = None,
     ) -> dict:
         """
         Train the predictor on calibration database.
@@ -60,8 +60,7 @@ class CurvePredictor:
 
         if len(records) < self.settings.min_training_samples:
             raise ValueError(
-                f"Need at least {self.settings.min_training_samples} records, "
-                f"got {len(records)}"
+                f"Need at least {self.settings.min_training_samples} records, got {len(records)}"
             )
 
         # Filter records with density measurements
@@ -89,6 +88,8 @@ class CurvePredictor:
 
         # Create and train model
         self.model = self._create_model()
+        if self.model is None:
+            raise RuntimeError("Model not trained")
         self.model.fit(X_train, y_train)
         self.is_trained = True
 
@@ -111,7 +112,7 @@ class CurvePredictor:
         self,
         record: CalibrationRecord,
         return_uncertainty: bool = False,
-    ) -> tuple[list[float], Optional[float]]:
+    ) -> tuple[list[float], float | None]:
         """
         Predict density response for a calibration setup.
 
@@ -124,6 +125,8 @@ class CurvePredictor:
         """
         if not self.is_trained:
             raise RuntimeError("Model not trained")
+        if self.model is None:
+            raise RuntimeError("Model not trained")
 
         # Prepare features
         X = self._record_to_features(record)
@@ -134,9 +137,7 @@ class CurvePredictor:
         uncertainty = None
         if return_uncertainty and hasattr(self.model, "estimators_"):
             # For ensemble models, use variance across estimators
-            predictions = np.array([
-                est.predict([X])[0] for est in self.model.estimators_
-            ])
+            predictions = np.array([est.predict([X])[0] for est in self.model.estimators_])
             uncertainty = float(np.std(predictions))
 
         return list(prediction), uncertainty
@@ -183,9 +184,7 @@ class CurvePredictor:
             new_ratio = min(1.0, record.metal_ratio + 0.1)
             if new_ratio != record.metal_ratio:
                 adjustments["metal_ratio"] = new_ratio
-                suggestions.append(
-                    f"Increase platinum ratio to {new_ratio:.1%} for higher Dmax"
-                )
+                suggestions.append(f"Increase platinum ratio to {new_ratio:.1%} for higher Dmax")
 
         return {
             "current_prediction": current_pred,
@@ -226,7 +225,7 @@ class CurvePredictor:
 
         return predictor
 
-    def _create_model(self):
+    def _create_model(self) -> Any:
         """Create the ML model based on settings."""
         try:
             if self.model_type == "gradient_boosting":
@@ -269,15 +268,13 @@ class CurvePredictor:
 
     def _build_encoders(self, records: list[CalibrationRecord]) -> None:
         """Build categorical encoders from records."""
-        papers = sorted(set(r.paper_type for r in records))
+        papers = sorted({r.paper_type for r in records})
         self._paper_encoder = {p: i for i, p in enumerate(papers)}
 
-        chemistries = sorted(set(r.chemistry_type.value for r in records))
+        chemistries = sorted({r.chemistry_type.value for r in records})
         self._chemistry_encoder = {c: i for i, c in enumerate(chemistries)}
 
-    def _prepare_data(
-        self, records: list[CalibrationRecord]
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def _prepare_data(self, records: list[CalibrationRecord]) -> tuple[np.ndarray, np.ndarray]:
         """Prepare training data from records."""
         X = []
         y = []

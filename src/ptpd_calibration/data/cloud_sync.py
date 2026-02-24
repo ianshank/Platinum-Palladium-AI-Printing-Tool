@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -44,7 +44,7 @@ class SyncRecord(BaseModel):
     files_synced: int = Field(default=0)
     bytes_transferred: int = Field(default=0)
     errors: list[str] = Field(default_factory=list)
-    duration_seconds: Optional[float] = Field(default=None)
+    duration_seconds: float | None = Field(default=None)
 
 
 class FileMetadata(BaseModel):
@@ -54,8 +54,8 @@ class FileMetadata(BaseModel):
     size: int = Field(...)
     modified_time: datetime = Field(...)
     checksum: str = Field(...)
-    local_version: Optional[str] = Field(default=None)
-    remote_version: Optional[str] = Field(default=None)
+    local_version: str | None = Field(default=None)
+    remote_version: str | None = Field(default=None)
 
 
 class CloudProvider(ABC):
@@ -125,7 +125,7 @@ class CloudProvider(ABC):
         pass
 
     @abstractmethod
-    def get_file_metadata(self, remote_path: str) -> Optional[FileMetadata]:
+    def get_file_metadata(self, remote_path: str) -> FileMetadata | None:
         """
         Get metadata for a file in cloud storage.
 
@@ -209,7 +209,7 @@ class LocalStorageProvider(CloudProvider):
         except Exception:
             return False
 
-    def get_file_metadata(self, remote_path: str) -> Optional[FileMetadata]:
+    def get_file_metadata(self, remote_path: str) -> FileMetadata | None:
         """Get metadata for file in sync directory."""
         path = self.sync_dir / remote_path
         if not path.exists():
@@ -255,8 +255,10 @@ class S3Provider(CloudProvider):
 
         try:
             import boto3
-        except ImportError:
-            raise ImportError("boto3 is required for S3 sync. Install with: pip install boto3")
+        except ImportError as err:
+            raise ImportError(
+                "boto3 is required for S3 sync. Install with: pip install boto3"
+            ) from err
 
         self.bucket = config.get("bucket")
         if not self.bucket:
@@ -305,7 +307,7 @@ class S3Provider(CloudProvider):
         except Exception:
             return False
 
-    def get_file_metadata(self, remote_path: str) -> Optional[FileMetadata]:
+    def get_file_metadata(self, remote_path: str) -> FileMetadata | None:
         """Get metadata for file in S3."""
         try:
             response = self.s3.head_object(Bucket=self.bucket, Key=remote_path)
@@ -334,7 +336,7 @@ class SyncManager:
         self,
         local_path: Path,
         provider: CloudProvider,
-        sync_state_path: Optional[Path] = None,
+        sync_state_path: Path | None = None,
     ) -> None:
         """
         Initialize the sync manager.
@@ -472,38 +474,28 @@ class SyncManager:
         for conflict in conflicts:
             try:
                 if strategy == ConflictStrategy.LOCAL_WINS:
-                    self.provider.upload_file(
-                        conflict["local_path"], conflict["remote_path"]
-                    )
+                    self.provider.upload_file(conflict["local_path"], conflict["remote_path"])
                 elif strategy == ConflictStrategy.REMOTE_WINS:
-                    self.provider.download_file(
-                        conflict["remote_path"], conflict["local_path"]
-                    )
+                    self.provider.download_file(conflict["remote_path"], conflict["local_path"])
                 elif strategy == ConflictStrategy.NEWEST_WINS:
                     if conflict["local_newer"]:
-                        self.provider.upload_file(
-                            conflict["local_path"], conflict["remote_path"]
-                        )
+                        self.provider.upload_file(conflict["local_path"], conflict["remote_path"])
                     else:
-                        self.provider.download_file(
-                            conflict["remote_path"], conflict["local_path"]
-                        )
+                        self.provider.download_file(conflict["remote_path"], conflict["local_path"])
                 resolved["resolved"] += 1
             except Exception:
                 resolved["failed"] += 1
 
         return resolved
 
-    def get_last_sync_time(self) -> Optional[datetime]:
+    def get_last_sync_time(self) -> datetime | None:
         """
         Get timestamp of last successful sync.
 
         Returns:
             Datetime of last sync, or None if never synced
         """
-        successful_syncs = [
-            r for r in self.sync_history if r.status == SyncStatus.COMPLETED
-        ]
+        successful_syncs = [r for r in self.sync_history if r.status == SyncStatus.COMPLETED]
         if successful_syncs:
             return successful_syncs[-1].timestamp
         return None
@@ -587,20 +579,16 @@ class SyncManager:
         """Load sync state from file."""
         if self.sync_state_path.exists():
             try:
-                with open(self.sync_state_path, "r", encoding="utf-8") as f:
+                with open(self.sync_state_path, encoding="utf-8") as f:
                     data = json.load(f)
-                    self.sync_history = [
-                        SyncRecord(**record) for record in data.get("history", [])
-                    ]
+                    self.sync_history = [SyncRecord(**record) for record in data.get("history", [])]
             except Exception:
                 self.sync_history = []
 
     def _save_sync_state(self) -> None:
         """Save sync state to file."""
         try:
-            data = {
-                "history": [record.model_dump() for record in self.sync_history[-100:]]
-            }
+            data = {"history": [record.model_dump() for record in self.sync_history[-100:]]}
             self.sync_state_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.sync_state_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, default=str)

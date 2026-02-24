@@ -65,20 +65,23 @@ class TestDashboardVisual:
         # Toggle dark mode (Radio button now)
         try:
             # Find the radio group for theme
-            theme_radio = driver.find_element(By.XPATH, "//span[contains(text(), 'Themes') or contains(text(), 'Theme')]/ancestor::div[contains(@class, 'radio-group')]")
+            theme_radio = driver.find_element(
+                By.XPATH,
+                "//span[contains(text(), 'Themes') or contains(text(), 'Theme')]/ancestor::div[contains(@class, 'radio-group')]",
+            )
             # Click "Darkroom" or ensure it is selected (it is default now)
             # Actually test testing "Light" mode might be better if default is dark
             light_option = theme_radio.find_element(By.XPATH, ".//label[contains(., 'Light')]")
             light_option.click()
             gradio_wait()
-            
+
             # Switch back to dark for screenshot consistency if needed, or just test light mode
             dark_option = theme_radio.find_element(By.XPATH, ".//label[contains(., 'Darkroom')]")
             dark_option.click()
             gradio_wait()
         except Exception:
-             # Fallback or skip if not found
-             pass
+            # Fallback or skip if not found
+            pass
 
         screenshot = capture_full_screenshot("dashboard_dark")
         visual_comparator.assert_match("dashboard_dark_mode", screenshot)
@@ -233,7 +236,7 @@ class TestComponentVisual:
     @pytest.mark.skipif(not SELENIUM_AVAILABLE, reason="Selenium not installed")
     def test_button_styles(
         self,
-        driver,
+        driver,  # noqa: ARG002
         visual_comparator,
         capture_component_screenshot,
         gradio_wait,
@@ -250,7 +253,7 @@ class TestComponentVisual:
     @pytest.mark.skipif(not SELENIUM_AVAILABLE, reason="Selenium not installed")
     def test_tab_bar(
         self,
-        driver,
+        driver,  # noqa: ARG002
         visual_comparator,
         capture_component_screenshot,
         gradio_wait,
@@ -259,9 +262,7 @@ class TestComponentVisual:
         gradio_wait()
 
         try:
-            screenshot = capture_component_screenshot(
-                "[role='tablist']", "tab_bar"
-            )
+            screenshot = capture_component_screenshot("[role='tablist']", "tab_bar")
             visual_comparator.assert_match("tab_bar", screenshot)
         except Exception:
             pytest.skip("Tab bar not found")
@@ -292,7 +293,7 @@ class TestResponsiveVisual:
     )
     def test_responsive_layouts(
         self,
-        driver,
+        driver,  # noqa: ARG002
         visual_comparator,
         capture_full_screenshot,
         gradio_wait,
@@ -322,23 +323,22 @@ class TestChartVisual:
 
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
-            import numpy as np
         except ImportError:
             pytest.skip("Matplotlib not installed")
 
         # Use CurveVisualizer
-        from ptpd_calibration.curves.visualization import CurveVisualizer, VisualizationConfig
         from ptpd_calibration.core.models import CurveData
-        
+        from ptpd_calibration.curves.visualization import CurveVisualizer, VisualizationConfig
+
         config = VisualizationConfig(figure_width=8, figure_height=6, dpi=100)
         visualizer = CurveVisualizer(config)
-        
-        x = [i/255 for i in range(256)]
+
+        x = [i / 255 for i in range(256)]
         y = [v**0.9 for v in x]
         curve = CurveData(name="Test Curve", input_values=x, output_values=y)
-        
+
         fig = visualizer.plot_single_curve(curve)
-        
+
         # Save to image
         plot_path = tmp_path / "curve_plot.png"
         visualizer.save_figure(fig, plot_path)

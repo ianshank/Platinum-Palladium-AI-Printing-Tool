@@ -9,9 +9,9 @@ import pytest
 from PIL import Image
 
 from ptpd_calibration.detection.scanner import (
+    ChannelCurve,
     ScannerCalibration,
     ScannerProfile,
-    ChannelCurve,
 )
 
 
@@ -285,7 +285,7 @@ class TestCalibrateFromTarget:
         arr = np.zeros((100, 100, 3), dtype=np.uint8)
         for i in range(10):
             val = i * 25
-            arr[i * 10:(i + 1) * 10, :, :] = val
+            arr[i * 10 : (i + 1) * 10, :, :] = val
         return arr
 
     def test_calibrate_from_target_creates_profile(self, target_image):
@@ -321,6 +321,7 @@ class TestSaveLoad:
 
         assert path.exists()
         import json
+
         data = json.loads(path.read_text())
         assert data["name"] == "Save Test"
         assert data["scanner_model"] == "Test Scanner"
@@ -340,6 +341,7 @@ class TestSaveLoad:
         calibration.save(path)
 
         import json
+
         data = json.loads(path.read_text())
         assert "uniformity_map" in data
         assert data["uniformity_map_size"] == [10, 10]
@@ -490,7 +492,7 @@ class TestScannerCalibrationWorkflow:
         arr = np.zeros((100, 200, 3), dtype=np.uint8)
         for i in range(10):
             val = i * 25
-            arr[:, i * 20:(i + 1) * 20, :] = val
+            arr[:, i * 20 : (i + 1) * 20, :] = val
         return arr
 
     def test_create_profile_from_target(self, target_image):

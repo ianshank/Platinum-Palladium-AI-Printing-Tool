@@ -5,7 +5,6 @@ These tests quickly verify that core functionality works after deployment.
 Run these after deploying to Huggingface Spaces or other environments.
 """
 
-import sys
 from pathlib import Path
 
 import pytest
@@ -41,14 +40,14 @@ class TestCoreImports:
 
     def test_curves_imports(self):
         """Test curves module imports."""
-        from ptpd_calibration.curves import CurveGenerator, AutoLinearizer
+        from ptpd_calibration.curves import AutoLinearizer, CurveGenerator
 
         assert CurveGenerator is not None
         assert AutoLinearizer is not None
 
     def test_imaging_imports(self):
         """Test imaging module imports."""
-        from ptpd_calibration.imaging import ImageProcessor, HistogramAnalyzer
+        from ptpd_calibration.imaging import HistogramAnalyzer, ImageProcessor
 
         assert ImageProcessor is not None
         assert HistogramAnalyzer is not None

@@ -9,11 +9,11 @@ import pytest
 from PIL import Image
 
 from ptpd_calibration.proofing.simulation import (
-    PaperSimulation,
-    ProofSettings,
-    ProofResult,
-    SoftProofer,
     PAPER_PRESETS,
+    PaperSimulation,
+    ProofResult,
+    ProofSettings,
+    SoftProofer,
 )
 
 
@@ -62,7 +62,9 @@ class TestProofSettings:
         """Should create settings from preset."""
         settings = ProofSettings.from_paper_preset(PaperSimulation.BERGGER_COT320)
 
-        assert settings.paper_white_rgb == PAPER_PRESETS[PaperSimulation.BERGGER_COT320]["white_rgb"]
+        assert (
+            settings.paper_white_rgb == PAPER_PRESETS[PaperSimulation.BERGGER_COT320]["white_rgb"]
+        )
         assert settings.paper_dmax == PAPER_PRESETS[PaperSimulation.BERGGER_COT320]["dmax"]
 
     def test_from_paper_preset_custom(self):

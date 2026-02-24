@@ -29,7 +29,6 @@ from ptpd_calibration.education.tutorials import (
     UserProgress,
 )
 
-
 # ============================================================================
 # TutorialManager Tests
 # ============================================================================
@@ -60,16 +59,12 @@ class TestTutorialManager:
         assert len(tutorials) > 0
         assert all(isinstance(t, Tutorial) for t in tutorials)
         # Verify they are sorted by difficulty then name
-        assert tutorials == sorted(
-            tutorials, key=lambda t: (t.difficulty.value, t.name)
-        )
+        assert tutorials == sorted(tutorials, key=lambda t: (t.difficulty.value, t.name))
 
     def test_get_available_tutorials_by_difficulty(self, tutorial_manager):
         """Test filtering tutorials by difficulty."""
         # Get beginner tutorials
-        beginner = tutorial_manager.get_available_tutorials(
-            difficulty=TutorialDifficulty.BEGINNER
-        )
+        beginner = tutorial_manager.get_available_tutorials(difficulty=TutorialDifficulty.BEGINNER)
         assert all(t.difficulty == TutorialDifficulty.BEGINNER for t in beginner)
         assert len(beginner) > 0
 
@@ -77,15 +72,11 @@ class TestTutorialManager:
         intermediate = tutorial_manager.get_available_tutorials(
             difficulty=TutorialDifficulty.INTERMEDIATE
         )
-        assert all(
-            t.difficulty == TutorialDifficulty.INTERMEDIATE for t in intermediate
-        )
+        assert all(t.difficulty == TutorialDifficulty.INTERMEDIATE for t in intermediate)
         assert len(intermediate) > 0
 
         # Get advanced tutorials
-        advanced = tutorial_manager.get_available_tutorials(
-            difficulty=TutorialDifficulty.ADVANCED
-        )
+        advanced = tutorial_manager.get_available_tutorials(difficulty=TutorialDifficulty.ADVANCED)
         assert all(t.difficulty == TutorialDifficulty.ADVANCED for t in advanced)
         assert len(advanced) > 0
 
@@ -175,9 +166,7 @@ class TestTutorialManager:
         """Test validating with step number > total steps."""
         tutorial = tutorial_manager.get_tutorial("first_print")
         total_steps = len(tutorial.steps)
-        is_valid, message = tutorial_manager.validate_step(
-            "first_print", total_steps + 1, None
-        )
+        is_valid, message = tutorial_manager.validate_step("first_print", total_steps + 1, None)
         assert is_valid is False
         assert "Invalid step number" in message
 
@@ -292,9 +281,9 @@ class TestTutorialManager:
         all_names = set(tutorial_manager.tutorials.keys())
         for tutorial in tutorial_manager.tutorials.values():
             for prereq in tutorial.prerequisites:
-                assert (
-                    prereq in all_names
-                ), f"Prerequisite '{prereq}' not found for '{tutorial.name}'"
+                assert prereq in all_names, (
+                    f"Prerequisite '{prereq}' not found for '{tutorial.name}'"
+                )
 
 
 # ============================================================================
@@ -548,7 +537,7 @@ class TestGlossary:
             for related in term.related_terms + term.see_also:
                 # Related terms use underscores, need to convert
                 related_with_spaces = related.replace("_", " ")
-                found = glossary.lookup(related_with_spaces)
+                glossary.lookup(related_with_spaces)
                 # It's okay if some related terms don't exist yet
                 # (they might be added later), but log for awareness
 
@@ -583,12 +572,8 @@ class TestTipsManager:
 
     def test_get_contextual_tips_with_difficulty_filter(self, tips_manager):
         """Test getting contextual tips with difficulty filter."""
-        tips = tips_manager.get_contextual_tips(
-            "coating", difficulty=TipDifficulty.BEGINNER
-        )
-        assert all(
-            t.difficulty in [TipDifficulty.BEGINNER, TipDifficulty.ALL] for t in tips
-        )
+        tips = tips_manager.get_contextual_tips("coating", difficulty=TipDifficulty.BEGINNER)
+        assert all(t.difficulty in [TipDifficulty.BEGINNER, TipDifficulty.ALL] for t in tips)
 
     def test_get_contextual_tips_with_limit(self, tips_manager):
         """Test that limit parameter works."""
@@ -649,9 +634,7 @@ class TestTipsManager:
             tips_manager.mark_tip_seen(tip.id)
 
         # Try to get unseen safety tip
-        tip = tips_manager.get_random_tip(
-            category=TipCategory.SAFETY, unseen_only=True
-        )
+        tip = tips_manager.get_random_tip(category=TipCategory.SAFETY, unseen_only=True)
         # Should return None when no matches
         assert tip is None
 
@@ -673,9 +656,7 @@ class TestTipsManager:
         tips = tips_manager.get_tips_by_category(
             TipCategory.BEGINNER, difficulty=TipDifficulty.BEGINNER
         )
-        assert all(
-            t.difficulty in [TipDifficulty.BEGINNER, TipDifficulty.ALL] for t in tips
-        )
+        assert all(t.difficulty in [TipDifficulty.BEGINNER, TipDifficulty.ALL] for t in tips)
 
     def test_get_tips_by_category_sorted(self, tips_manager):
         """Test that category tips are sorted by priority."""
@@ -730,9 +711,7 @@ class TestTipsManager:
     def test_get_unseen_tips_with_difficulty_filter(self, tips_manager):
         """Test getting unseen tips with difficulty filter."""
         unseen = tips_manager.get_unseen_tips(difficulty=TipDifficulty.BEGINNER)
-        assert all(
-            t.difficulty in [TipDifficulty.BEGINNER, TipDifficulty.ALL] for t in unseen
-        )
+        assert all(t.difficulty in [TipDifficulty.BEGINNER, TipDifficulty.ALL] for t in unseen)
 
     def test_get_unseen_tips_sorted(self, tips_manager):
         """Test that unseen tips are sorted by priority."""
@@ -772,8 +751,7 @@ class TestTipsManager:
         )
         assert all(t.priority >= 4 for t in high_priority)
         assert all(
-            t.difficulty in [TipDifficulty.BEGINNER, TipDifficulty.ALL]
-            for t in high_priority
+            t.difficulty in [TipDifficulty.BEGINNER, TipDifficulty.ALL] for t in high_priority
         )
 
     def test_get_high_priority_tips_sorted(self, tips_manager):
@@ -935,7 +913,7 @@ class TestEducationIntegration:
         glossary = Glossary()
 
         # Get a tutorial
-        tutorial = tutorial_manager.get_tutorial("first_print")
+        tutorial_manager.get_tutorial("first_print")
 
         # Check if common terms from tutorial exist in glossary
         common_terms = ["coating", "exposure", "developer", "ferric oxalate"]
@@ -947,13 +925,13 @@ class TestEducationIntegration:
     def test_tips_reference_glossary_terms(self):
         """Test that tips can reference glossary terms."""
         tips_manager = TipsManager()
-        glossary = Glossary()
+        Glossary()
 
         # Check some tips have valid related terms
         for tip in tips_manager.tips[:10]:  # Check first 10
             for related_term in tip.related_terms:
                 # Try to find in glossary (may need to replace underscores)
-                term_to_lookup = related_term.replace("_", " ")
+                related_term.replace("_", " ")
                 # Not all related terms must exist in glossary, but common ones should
 
     def test_tutorial_difficulty_progression(self):
@@ -980,6 +958,6 @@ class TestEducationIntegration:
         # For each step, try to get contextual tips
         for step in tutorial.steps[:3]:  # Check first 3 steps
             context = step.action.value
-            tips = tips_manager.get_contextual_tips(context, limit=3)
+            tips_manager.get_contextual_tips(context, limit=3)
             # Most action types should have some tips
             # (though not strictly required)

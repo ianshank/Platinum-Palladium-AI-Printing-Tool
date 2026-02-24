@@ -49,9 +49,6 @@ dependencies = [
 ml = [
     "scikit-learn>=1.3.0",
 ]
-deep = [
-    "torch>=2.0.0",
-]
 llm = [
     "anthropic>=0.39.0",
     "openai>=1.0.0",
@@ -62,12 +59,17 @@ api = [
     "uvicorn[standard]>=0.27.0",
     "python-multipart>=0.0.9",
 ]
+gcp = [
+    "google-cloud-storage>=2.14.0",
+    "google-cloud-aiplatform>=1.38.0",
+    "google-auth>=2.27.0",
+]
 ui = [
     "gradio>=4.0.0",
     "huggingface_hub>=0.25,<1.0",
 ]
 all = [
-    "ptpd-calibration[ml,deep,llm,api,ui]",
+    "ptpd-calibration[ml,llm,api,ui,gcp]",
 ]
 dev = [
     "pytest>=8.0.0",
@@ -76,41 +78,6 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
-]
-test = [
-    # Core testing
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=4.1.0",
-    "pytest-xdist>=3.5.0",      # Parallel test execution
-    "pytest-html>=4.1.0",        # Enhanced HTML reports
-    "pytest-timeout>=2.3.0",     # Test timeouts
-
-    # Selenium E2E testing
-    "selenium>=4.15.0",
-    "pytest-selenium>=4.0.0",
-    "webdriver-manager>=4.0.0",  # Auto-manage browser drivers
-
-    # API testing
-    "httpx>=0.27.0",             # Async HTTP client for API tests
-    "pytest-httpx>=0.30.0",      # HTTPX pytest plugin
-
-    # Performance testing
-    "pytest-benchmark>=4.0.0",   # Benchmarking
-    "locust>=2.20.0",            # Load testing
-
-    # Visual regression testing
-    "pillow>=10.0.0",
-    "pixelmatch>=0.3.0",         # Pixel-level image comparison
-
-    # Test data generation
-    "faker>=22.0.0",             # Fake data generation
-    "factory-boy>=3.3.0",        # Test factories
-
-    # Mocking and fixtures
-    "responses>=0.24.0",         # Mock HTTP requests
-    "pytest-mock>=3.12.0",       # Mocking utilities
-    "freezegun>=1.3.0",          # Time freezing for tests
 ]
 
 [project.scripts]
@@ -138,24 +105,6 @@ include = [
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-v --cov=src/ptpd_calibration --cov-report=term-missing"
-markers = [
-    "unit: Unit tests (fast, isolated)",
-    "integration: Integration tests (slower, real components)",
-    "e2e: End-to-end tests (require running app)",
-    "selenium: Selenium browser tests (require WebDriver)",
-    "api: API endpoint tests",
-    "performance: Performance and benchmark tests",
-    "visual: Visual regression tests",
-    "slow: Tests that take a long time to run",
-    "browser: Tests requiring a browser (Selenium or Playwright)",
-    "functional: Functional tests without browser",
-    "deep: Deep learning tests (require PyTorch)",
-]
-filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning",
-]
-timeout = 300
 
 [tool.ruff]
 target-version = "py310"
@@ -177,8 +126,31 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "B008",   # do not perform function calls in argument defaults
+    "B904",   # raise-without-from (requires AST-aware multi-line fixes)
     "C901",   # too complex
+    "SIM102", # collapsible-if (readability preference)
+    "SIM105", # suppressible-exception (clarity preference)
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: unused arguments are common in fixtures/mocks; B017 is valid for asserting any exception
+"tests/**/*.py" = ["ARG001", "ARG002", "ARG005", "B007", "B017", "E402", "E701", "E741", "SIM102", "SIM105", "SIM117"]
+# Gradio UI: event handlers must accept arguments dictated by Gradio's callback signatures
+"src/ptpd_calibration/ui/**/*.py" = ["ARG001", "ARG002", "ARG005", "B007", "E402"]
+# Education module: tutorial/example code uses simplified patterns
+"src/ptpd_calibration/education/**/*.py" = ["ARG001", "ARG002"]
+# Curves/ML/Detection: abstract interface stubs have params for future implementation
+"src/ptpd_calibration/curves/**/*.py" = ["ARG002", "ARG004"]
+"src/ptpd_calibration/ml/**/*.py" = ["ARG002"]
+"src/ptpd_calibration/detection/**/*.py" = ["ARG002"]
+"src/ptpd_calibration/imaging/split_grade.py" = ["ARG002"]
+"src/ptpd_calibration/monitoring/**/*.py" = ["ARG002"]
+"src/ptpd_calibration/gcp/storage.py" = ["ARG002"]
+"src/ptpd_calibration/agents/**/*.py" = ["ARG002", "SIM102"]
+"src/ptpd_calibration/ai/**/*.py" = ["ARG002"]
+"src/ptpd_calibration/analysis/**/*.py" = ["ARG002"]
+"src/ptpd_calibration/ui/tabs/**/*.py" = ["E701", "ARG005"]
+
 
 [tool.ruff.lint.isort]
 known-first-party = ["ptpd_calibration"]

@@ -1,0 +1,87 @@
+# Digital Negative Workflow for Pt/Pd Printing
+## Category: Domain Knowledge - Workflow
+## Application: Pt/Pd alternative photographic printing
+
+## Overview
+
+A digital negative is a positive-to-negative conversion of a digital image,
+printed onto transparent media (usually Pictorico OHP), designed to produce
+a correct positive print when contact-printed with Pt/Pd chemistry.
+
+## Workflow Steps
+
+### 1. Image Preparation
+- Convert to grayscale (or start with B&W)
+- Resize to final print dimensions at 300-360 DPI
+- Apply desired tonal adjustments in Photoshop/Lightroom
+- Flip image horizontally (emulsion-to-emulsion contact printing)
+
+### 2. Linearization Curve Application
+- Purpose: Compensate for non-linear Pt/Pd response
+- Process: Print step tablet -> coat & expose -> measure densities -> generate curve
+- The curve maps desired print densities to negative densities
+- Apply curve as Photoshop adjustment layer or in QTR/PiezoDN
+
+### 3. Negative Printing
+- **Pictorico OHP Ultra Premium**: Industry standard transparency film
+- **Printer**: Epson P800, P900, P5000, or similar with pigment inks
+- **QTR/PiezoDN**: Bypasses color management for precise ink density control
+- **Print settings**: No color correction, highest quality, matte black ink
+
+### 4. Quality Check
+- Examine negative on light table
+- Check Dmax (darkest area should be opaque)
+- Check highlight end (should show clear separation between steps)
+- Compare to reference negative if available
+
+## Calibration System Integration
+
+### Step Tablet Workflow (This Tool)
+1. Print standard step tablet (Stouffer 21/31) as digital negative
+2. Coat paper with standard chemistry recipe
+3. Expose under standard UV source + time
+4. Process and dry completely
+5. Scan the exposed/developed print
+6. Upload scan to Step Tablet tab
+7. System extracts density readings per step
+8. Curve Generator creates correction curve
+9. Export to QTR (.quad) or Piezography format
+10. Apply curve to future prints
+
+### Re-Calibration Triggers
+- Changed paper type
+- New batch of chemistry
+- New UV light source or bulb replacement
+- Seasonal humidity shifts
+- Changed printer or ink batch
+- Moved darkroom to new location
+
+## PiezoDN Specifics
+
+### What PiezoDN Does
+- Uses dedicated ink channels for UV-dense output
+- Provides better UV opacity than standard CMYK inks
+- Supports per-channel linearization for fine control
+- Works with QuadTone RIP (QTR) on Mac/Windows
+
+### PiezoDN Calibration Steps
+1. Install PiezoDN ink set in Epson printer
+2. Print PiezoDN-specific step tablet
+3. Coat, expose, process on target paper
+4. Scan and measure densities
+5. Generate .quad file using PiezoDN smoother
+6. Load .quad into QTR for printing
+
+## QuadTone RIP (QTR) Basics
+
+### What QTR Does
+- Replaces printer's color management
+- Maps grayscale values to specific ink channel amounts
+- Uses .quad curve files for linearization
+- Supports multiple paper profiles
+
+### QTR Curve Format
+- 256 values mapping input (0-255) to output ink amounts
+- Each ink channel can have independent curve
+- Typically uses Gray, Light Gray channels
+- Can be generated from step tablet measurements

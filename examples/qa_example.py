@@ -5,23 +5,20 @@ Demonstrates all major QA features for platinum/palladium printing.
 """
 
 from datetime import datetime
-from pathlib import Path
 
 import numpy as np
-from PIL import Image
 
 from ptpd_calibration.qa import (
-    NegativeDensityValidator,
-    ChemistryFreshnessTracker,
-    PaperHumidityChecker,
-    UVLightMeterIntegration,
-    QualityReport,
-    AlertSystem,
-    QASettings,
-    SolutionType,
     AlertSeverity,
+    AlertSystem,
     AlertType,
+    ChemistryFreshnessTracker,
+    NegativeDensityValidator,
+    PaperHumidityChecker,
+    QualityReport,
     ReportFormat,
+    SolutionType,
+    UVLightMeterIntegration,
 )
 
 
@@ -42,7 +39,7 @@ def example_density_validation():
     # Validate density range
     analysis = validator.validate_density_range(test_image)
 
-    print(f"\nDensity Range Analysis:")
+    print("\nDensity Range Analysis:")
     print(f"  Min Density: {analysis.min_density:.3f}")
     print(f"  Max Density: {analysis.max_density:.3f}")
     print(f"  Mean Density: {analysis.mean_density:.3f}")
@@ -223,7 +220,7 @@ def example_pre_print_checklist():
 
     # Set up tracking systems
     chemistry_tracker = ChemistryFreshnessTracker()
-    pd_id = chemistry_tracker.register_solution(
+    chemistry_tracker.register_solution(
         SolutionType.PALLADIUM, datetime.now(), 100.0
     )
 
@@ -299,7 +296,7 @@ def example_alert_system():
 
     # Get summary
     summary = alerts.get_alert_summary()
-    print(f"\nAlert Summary:")
+    print("\nAlert Summary:")
     print(f"  Total: {summary['total']}")
     print(f"  Critical: {summary['critical']}")
     print(f"  Error: {summary['error']}")
@@ -307,7 +304,7 @@ def example_alert_system():
     print(f"  Info: {summary['info']}")
 
     # Dismiss an alert
-    print(f"\nDismissing warning alert...")
+    print("\nDismissing warning alert...")
     alerts.dismiss_alert(alert1)
     active = alerts.get_active_alerts()
     print(f"  Active alerts remaining: {len(active)}")

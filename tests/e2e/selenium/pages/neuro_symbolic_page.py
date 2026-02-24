@@ -37,14 +37,12 @@ class NeuroSymbolicPage(BasePage):
         self.click_tab(self.CALIBRATION_TAB)
         self.wait_for_gradio_ready()
         # Look for advanced/neuro-symbolic section
-        try:
+        import contextlib
+
+        with contextlib.suppress(Exception):
             self.click_button(self.ADVANCED_SECTION)
-        except Exception:
-            pass  # Section may already be expanded
-        try:
+        with contextlib.suppress(Exception):
             self.click_button(self.NEURO_SYMBOLIC_SECTION)
-        except Exception:
-            pass
 
     def is_neuro_symbolic_active(self) -> bool:
         """Check if neuro-symbolic features are visible."""
@@ -102,9 +100,7 @@ class NeuroSymbolicPage(BasePage):
         settings = {}
         try:
             # Look for inferred settings display
-            elements = self.find_elements(
-                By.CSS_SELECTOR, ".inferred-setting, .kg-inference"
-            )
+            elements = self.find_elements(By.CSS_SELECTOR, ".inferred-setting, .kg-inference")
             for elem in elements:
                 try:
                     key = elem.find_element(By.CSS_SELECTOR, ".setting-name").text
@@ -120,9 +116,7 @@ class NeuroSymbolicPage(BasePage):
         """Get list of similar papers from knowledge graph."""
         papers = []
         try:
-            elements = self.find_elements(
-                By.CSS_SELECTOR, ".similar-paper, .kg-similar"
-            )
+            elements = self.find_elements(By.CSS_SELECTOR, ".similar-paper, .kg-similar")
             papers = [elem.text for elem in elements]
         except Exception:
             pass
@@ -201,9 +195,7 @@ class NeuroSymbolicPage(BasePage):
         """Get quality metrics for the generated curve."""
         metrics = {}
         try:
-            elements = self.find_elements(
-                By.CSS_SELECTOR, ".quality-metric, .curve-metric"
-            )
+            elements = self.find_elements(By.CSS_SELECTOR, ".quality-metric, .curve-metric")
             for elem in elements:
                 try:
                     name = elem.find_element(By.CSS_SELECTOR, ".metric-name").text
@@ -258,10 +250,10 @@ class NeuroSymbolicPage(BasePage):
 
     def expand_technical_details(self) -> None:
         """Expand the technical details section."""
-        try:
+        import contextlib
+
+        with contextlib.suppress(Exception):
             self.click_button("Technical Details")
-        except Exception:
-            pass
 
     def get_technical_details(self) -> dict:
         """Get technical details about the curve generation."""

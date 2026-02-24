@@ -11,13 +11,13 @@ from numpy.testing import assert_array_almost_equal
 
 from ptpd_calibration.config import NeuroSymbolicSettings
 from ptpd_calibration.neuro_symbolic.symbolic_regression import (
-    OperatorType,
-    ExpressionNode,
-    SymbolicExpression,
-    ExpressionLibrary,
-    DifferentiableSymbolicRegressor,
-    CurveFormulaDiscovery,
     OPERATOR_INFO,
+    CurveFormulaDiscovery,
+    DifferentiableSymbolicRegressor,
+    ExpressionLibrary,
+    ExpressionNode,
+    OperatorType,
+    SymbolicExpression,
 )
 
 
@@ -40,9 +40,7 @@ class TestExpressionNode:
 
         assert node.is_terminal()
         assert node.evaluate(5.0) == pytest.approx(5.0)
-        assert_array_almost_equal(
-            node.evaluate(np.array([1, 2, 3])), np.array([1, 2, 3])
-        )
+        assert_array_almost_equal(node.evaluate(np.array([1, 2, 3])), np.array([1, 2, 3]))
 
     def test_add_operator(self):
         """Test addition operator."""
@@ -328,7 +326,7 @@ class TestExpressionLibrary:
         assert y[-1] > y[0]
         # Should have saturation (decreasing derivative at end)
         deriv = np.diff(y)
-        assert deriv[-1] < deriv[len(deriv)//2]
+        assert deriv[-1] < deriv[len(deriv) // 2]
 
 
 class TestSymbolicExpression:

@@ -11,8 +11,6 @@ Tests coverage:
 """
 
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import pytest
@@ -36,7 +34,6 @@ from ptpd_calibration.qa.quality_assurance import (
     UVLightMeterIntegration,
     UVReading,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -167,7 +164,9 @@ class TestNegativeDensityValidator:
             ("sample_image_good_range", 0.0, 2.0),  # Good range (wider tolerance)
         ],
     )
-    def test_validate_density_range_values(self, density_validator, request, image_fixture, expected_min_range, expected_max_range):
+    def test_validate_density_range_values(
+        self, density_validator, request, image_fixture, expected_min_range, expected_max_range
+    ):
         """Test density range validation with different images."""
         image = request.getfixturevalue(image_fixture)
         analysis = density_validator.validate_density_range(image)
@@ -176,7 +175,9 @@ class TestNegativeDensityValidator:
         assert expected_min_range <= analysis.min_density <= expected_max_range
         assert analysis.density_range >= 0
 
-    def test_validate_density_range_with_pil_image(self, density_validator, sample_image_good_range):
+    def test_validate_density_range_with_pil_image(
+        self, density_validator, sample_image_good_range
+    ):
         """Test validation with PIL Image input."""
         pil_image = Image.fromarray(sample_image_good_range)
         analysis = density_validator.validate_density_range(pil_image)
@@ -193,14 +194,18 @@ class TestNegativeDensityValidator:
         assert isinstance(analysis, DensityAnalysis)
         assert 0.2 <= analysis.mean_density <= 0.4  # ~128 gray should be around 0.3 density
 
-    def test_validate_density_range_blocked_highlights(self, density_validator, sample_image_blocked_highlights):
+    def test_validate_density_range_blocked_highlights(
+        self, density_validator, sample_image_blocked_highlights
+    ):
         """Test detection of blocked highlights."""
         analysis = density_validator.validate_density_range(sample_image_blocked_highlights)
 
         assert analysis.highlight_blocked is True
         assert any("highlight" in w.lower() for w in analysis.warnings)
 
-    def test_validate_density_range_blocked_shadows(self, density_validator, sample_image_blocked_shadows):
+    def test_validate_density_range_blocked_shadows(
+        self, density_validator, sample_image_blocked_shadows
+    ):
         """Test detection of blocked shadows."""
         analysis = density_validator.validate_density_range(sample_image_blocked_shadows)
 
@@ -223,7 +228,9 @@ class TestNegativeDensityValidator:
         assert isinstance(analysis.suggestions, list)
         # Suggestions might be empty for a good image or contain helpful advice
 
-    def test_validate_density_range_zone_distribution(self, density_validator, sample_image_good_range):
+    def test_validate_density_range_zone_distribution(
+        self, density_validator, sample_image_good_range
+    ):
         """Test zone distribution calculation."""
         analysis = density_validator.validate_density_range(sample_image_good_range)
 
@@ -249,9 +256,13 @@ class TestNegativeDensityValidator:
         assert isinstance(message, str)
         assert len(message) > 0
 
-    def test_check_highlight_detail_blocked(self, density_validator, sample_image_blocked_highlights):
+    def test_check_highlight_detail_blocked(
+        self, density_validator, sample_image_blocked_highlights
+    ):
         """Test highlight detail check with blocked highlights."""
-        has_detail, message = density_validator.check_highlight_detail(sample_image_blocked_highlights)
+        has_detail, message = density_validator.check_highlight_detail(
+            sample_image_blocked_highlights
+        )
 
         assert has_detail is False
         assert "blocked" in message.lower()
@@ -281,7 +292,9 @@ class TestNegativeDensityValidator:
         assert len(edges) == 257  # Bin edges is bins + 1
 
     @pytest.mark.parametrize("bins", [64, 128, 512])
-    def test_get_density_histogram_custom_bins(self, density_validator, sample_image_good_range, bins):
+    def test_get_density_histogram_custom_bins(
+        self, density_validator, sample_image_good_range, bins
+    ):
         """Test histogram generation with custom bin counts."""
         hist, edges = density_validator.get_density_histogram(sample_image_good_range, bins=bins)
 
@@ -302,7 +315,9 @@ class TestNegativeDensityValidator:
         self, density_validator, min_d, max_d, range_d, h_blocked, s_blocked, expected_count
     ):
         """Test correction suggestions for various scenarios."""
-        suggestions = density_validator.suggest_corrections(min_d, max_d, range_d, h_blocked, s_blocked)
+        suggestions = density_validator.suggest_corrections(
+            min_d, max_d, range_d, h_blocked, s_blocked
+        )
 
         assert isinstance(suggestions, list)
         assert len(suggestions) >= expected_count
@@ -539,7 +554,9 @@ class TestChemistryFreshnessTracker:
 
         alerts = chemistry_tracker.get_alerts()
 
-        critical_alerts = [a for a in alerts if a["severity"] == "error" and a["type"] == "low_volume"]
+        critical_alerts = [
+            a for a in alerts if a["severity"] == "error" and a["type"] == "low_volume"
+        ]
         assert len(critical_alerts) > 0
 
     def test_recommend_replenishment_sufficient_data(self, chemistry_tracker):
@@ -669,9 +686,9 @@ class TestPaperHumidityChecker:
     @pytest.mark.parametrize(
         "humidity,expected_ready",
         [
-            (50.0, True),   # Ideal
-            (45.0, True),   # Within range
-            (55.0, True),   # Within range
+            (50.0, True),  # Ideal
+            (45.0, True),  # Within range
+            (55.0, True),  # Within range
             (30.0, False),  # Too dry
             (70.0, False),  # Too humid
         ],
@@ -734,9 +751,7 @@ class TestPaperHumidityChecker:
 
     def test_log_ambient_conditions(self, humidity_checker):
         """Test logging ambient conditions."""
-        humidity_checker.log_ambient_conditions(
-            humidity_percent=55.0, temperature_celsius=22.0
-        )
+        humidity_checker.log_ambient_conditions(humidity_percent=55.0, temperature_celsius=22.0)
 
         assert len(humidity_checker.ambient_conditions) == 1
         timestamp, humidity, temp = humidity_checker.ambient_conditions[0]
@@ -888,8 +903,8 @@ class TestUVLightMeterIntegration:
         "target,actual,expected_factor_range",
         [
             (100.0, 100.0, (0.95, 1.05)),  # Perfect match
-            (100.0, 80.0, (1.2, 1.3)),     # Need more exposure
-            (100.0, 120.0, (0.8, 0.9)),    # Need less exposure
+            (100.0, 80.0, (1.2, 1.3)),  # Need more exposure
+            (100.0, 120.0, (0.8, 0.9)),  # Need less exposure
         ],
     )
     def test_calculate_exposure_adjustment(self, uv_meter, target, actual, expected_factor_range):
@@ -933,15 +948,11 @@ class TestUVLightMeterIntegration:
 
         # Earlier readings at 100
         for i in range(5):
-            uv_meter.read_intensity(
-                intensity=100.0, timestamp=base_time + timedelta(days=i)
-            )
+            uv_meter.read_intensity(intensity=100.0, timestamp=base_time + timedelta(days=i))
 
         # Recent readings at 80 (20% decline)
         for i in range(5):
-            uv_meter.read_intensity(
-                intensity=80.0, timestamp=base_time + timedelta(days=5 + i)
-            )
+            uv_meter.read_intensity(intensity=80.0, timestamp=base_time + timedelta(days=5 + i))
 
         needs_replacement, message = uv_meter.check_bulb_degradation(readings_window_hours=168)
 
@@ -952,9 +963,7 @@ class TestUVLightMeterIntegration:
         """Test bulb degradation check with stable readings."""
         # Add consistent readings
         for i in range(10):
-            uv_meter.read_intensity(
-                intensity=100.0, timestamp=datetime.now() - timedelta(hours=i)
-            )
+            uv_meter.read_intensity(intensity=100.0, timestamp=datetime.now() - timedelta(hours=i))
 
         needs_replacement, message = uv_meter.check_bulb_degradation()
 
@@ -1002,13 +1011,9 @@ class TestUVLightMeterIntegration:
     def test_get_readings_history(self, uv_meter):
         """Test getting readings history."""
         # Add reading from 2 hours ago
-        uv_meter.read_intensity(
-            intensity=90.0, timestamp=datetime.now() - timedelta(hours=2)
-        )
+        uv_meter.read_intensity(intensity=90.0, timestamp=datetime.now() - timedelta(hours=2))
         # Add reading from 30 hours ago
-        uv_meter.read_intensity(
-            intensity=95.0, timestamp=datetime.now() - timedelta(hours=30)
-        )
+        uv_meter.read_intensity(intensity=95.0, timestamp=datetime.now() - timedelta(hours=30))
         # Add current reading
         uv_meter.read_intensity(intensity=100.0)
 
@@ -1085,9 +1090,7 @@ class TestQualityReport:
             volume_ml=100.0,
         )
 
-        checklist = quality_report.generate_pre_print_checklist(
-            chemistry_tracker=chemistry_tracker
-        )
+        checklist = quality_report.generate_pre_print_checklist(chemistry_tracker=chemistry_tracker)
 
         assert "chemistry" in checklist["checks"]
         assert checklist["ready_to_print"] is False  # Expired solution
@@ -1096,22 +1099,16 @@ class TestQualityReport:
         """Test pre-print checklist with humidity checker."""
         humidity_checker.measure_paper_humidity(humidity_percent=50.0)
 
-        checklist = quality_report.generate_pre_print_checklist(
-            humidity_checker=humidity_checker
-        )
+        checklist = quality_report.generate_pre_print_checklist(humidity_checker=humidity_checker)
 
         assert "paper_humidity" in checklist["checks"]
         assert checklist["checks"]["paper_humidity"]["status"] == "pass"
 
-    def test_generate_pre_print_checklist_with_bad_humidity(
-        self, quality_report, humidity_checker
-    ):
+    def test_generate_pre_print_checklist_with_bad_humidity(self, quality_report, humidity_checker):
         """Test pre-print checklist with bad humidity."""
         humidity_checker.measure_paper_humidity(humidity_percent=80.0)  # Too humid
 
-        checklist = quality_report.generate_pre_print_checklist(
-            humidity_checker=humidity_checker
-        )
+        checklist = quality_report.generate_pre_print_checklist(humidity_checker=humidity_checker)
 
         assert checklist["ready_to_print"] is False
 
@@ -1362,9 +1359,7 @@ class TestAlertSystem:
 
     def test_dismiss_alert_success(self, alert_system):
         """Test successful alert dismissal."""
-        alert_id = alert_system.add_alert(
-            AlertType.GENERAL, "Test alert", AlertSeverity.WARNING
-        )
+        alert_id = alert_system.add_alert(AlertType.GENERAL, "Test alert", AlertSeverity.WARNING)
 
         success = alert_system.dismiss_alert(alert_id)
 
@@ -1423,12 +1418,8 @@ class TestAlertSystem:
         old_time = datetime.now() - timedelta(hours=5)
         new_time = datetime.now()
 
-        alert_system.add_alert(
-            AlertType.GENERAL, "Old", AlertSeverity.WARNING, timestamp=old_time
-        )
-        alert_system.add_alert(
-            AlertType.GENERAL, "New", AlertSeverity.ERROR, timestamp=new_time
-        )
+        alert_system.add_alert(AlertType.GENERAL, "Old", AlertSeverity.WARNING, timestamp=old_time)
+        alert_system.add_alert(AlertType.GENERAL, "New", AlertSeverity.ERROR, timestamp=new_time)
 
         history = alert_system.get_alert_history()
 
@@ -1493,9 +1484,7 @@ class TestAlertSystem:
 
     def test_get_alert(self, alert_system):
         """Test getting specific alert by ID."""
-        alert_id = alert_system.add_alert(
-            AlertType.GENERAL, "Test alert", AlertSeverity.WARNING
-        )
+        alert_id = alert_system.add_alert(AlertType.GENERAL, "Test alert", AlertSeverity.WARNING)
 
         alert = alert_system.get_alert(alert_id)
 
@@ -1542,7 +1531,7 @@ class TestQualityAssuranceIntegration:
     ):
         """Test complete QA workflow from measurement to report."""
         # Setup all components
-        validator = NegativeDensityValidator(qa_settings)
+        NegativeDensityValidator(qa_settings)
         chemistry = ChemistryFreshnessTracker(qa_settings)
         humidity = PaperHumidityChecker(qa_settings)
         uv = UVLightMeterIntegration(qa_settings)

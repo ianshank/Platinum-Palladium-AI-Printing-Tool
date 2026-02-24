@@ -4,14 +4,12 @@ Multi-Tab Workflow E2E Tests.
 Tests workflows that span multiple tabs and integrate different features.
 """
 
-from pathlib import Path
-
 import pytest
 
+from tests.e2e.selenium.pages.ai_assistant_page import AIAssistantPage
 from tests.e2e.selenium.pages.calibration_wizard_page import CalibrationWizardPage
 from tests.e2e.selenium.pages.chemistry_calculator_page import ChemistryCalculatorPage
 from tests.e2e.selenium.pages.dashboard_page import DashboardPage
-from tests.e2e.selenium.pages.ai_assistant_page import AIAssistantPage
 
 
 @pytest.mark.selenium
@@ -42,8 +40,8 @@ class TestMultiTabWorkflow:
     @pytest.fixture
     def sample_step_tablet(self, tmp_path):
         """Create a sample step tablet image for testing."""
-        from PIL import Image
         import numpy as np
+        from PIL import Image
 
         width, height = 420, 100
         num_patches = 21
@@ -62,9 +60,7 @@ class TestMultiTabWorkflow:
 
         return file_path
 
-    def test_tab_navigation_preserves_state(
-        self, chemistry_page, wizard_page, dashboard_page
-    ):
+    def test_tab_navigation_preserves_state(self, chemistry_page, wizard_page, dashboard_page):
         """Test that navigating between tabs preserves state."""
         # Set up chemistry tab
         chemistry_page.wait_for_gradio_ready()
@@ -104,9 +100,7 @@ class TestMultiTabWorkflow:
 
         assert len(results) > 0
 
-    def test_dashboard_to_calibration_workflow(
-        self, dashboard_page, wizard_page
-    ):
+    def test_dashboard_to_calibration_workflow(self, dashboard_page, wizard_page):
         """Test workflow from dashboard quick action to calibration."""
         dashboard_page.wait_for_gradio_ready()
         dashboard_page.navigate_to_dashboard()
@@ -120,9 +114,7 @@ class TestMultiTabWorkflow:
 
         assert wizard_page.is_wizard_active()
 
-    def test_ai_assisted_calibration_workflow(
-        self, ai_page, wizard_page, sample_step_tablet
-    ):
+    def test_ai_assisted_calibration_workflow(self, ai_page, wizard_page, sample_step_tablet):
         """Test using AI assistance during calibration."""
         # Start with AI assistance
         ai_page.wait_for_gradio_ready()
@@ -172,9 +164,7 @@ class TestMultiTabWorkflow:
 
         assert len(results) > 0
 
-    def test_all_tabs_accessible(
-        self, dashboard_page, wizard_page, chemistry_page, ai_page
-    ):
+    def test_all_tabs_accessible(self, dashboard_page, wizard_page, chemistry_page, ai_page):
         """Test that all tabs are accessible."""
         # Wait for app to load
         dashboard_page.wait_for_gradio_ready()
@@ -192,9 +182,7 @@ class TestMultiTabWorkflow:
         ai_page.navigate_to_assistant()
         assert ai_page.is_assistant_active()
 
-    def test_rapid_tab_switching(
-        self, dashboard_page, wizard_page, chemistry_page
-    ):
+    def test_rapid_tab_switching(self, dashboard_page, wizard_page, chemistry_page):
         """Test rapid switching between tabs."""
         dashboard_page.wait_for_gradio_ready()
 
@@ -206,9 +194,7 @@ class TestMultiTabWorkflow:
         # Should end up on chemistry tab
         assert chemistry_page.is_chemistry_active()
 
-    def test_data_flow_between_tabs(
-        self, wizard_page, chemistry_page, sample_step_tablet
-    ):
+    def test_data_flow_between_tabs(self, wizard_page, chemistry_page, sample_step_tablet):
         """Test that data flows correctly between tabs."""
         # Calibrate for specific paper
         wizard_page.wait_for_gradio_ready()
@@ -229,9 +215,7 @@ class TestMultiTabWorkflow:
         # Should calculate successfully
         assert len(results) > 0
 
-    def test_error_recovery_across_tabs(
-        self, wizard_page, chemistry_page
-    ):
+    def test_error_recovery_across_tabs(self, wizard_page, chemistry_page):
         """Test recovery from errors when switching tabs."""
         wizard_page.wait_for_gradio_ready()
 

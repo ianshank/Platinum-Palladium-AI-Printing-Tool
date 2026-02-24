@@ -3,14 +3,15 @@ Main calibration agent with ReAct-style reasoning.
 """
 
 import json
-from dataclasses import dataclass, field
+from contextlib import suppress
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from ptpd_calibration.config import AgentSettings, LLMSettings, get_settings
 from ptpd_calibration.agents.memory import AgentMemory
-from ptpd_calibration.agents.planning import Plan, Planner, PlanStatus
-from ptpd_calibration.agents.tools import ToolRegistry, ToolResult, create_calibration_tools
+from ptpd_calibration.agents.planning import Plan, Planner
+from ptpd_calibration.agents.tools import ToolResult, create_calibration_tools
+from ptpd_calibration.config import AgentSettings, LLMSettings, get_settings
 from ptpd_calibration.llm.client import LLMClient, create_client
 from ptpd_calibration.llm.prompts import SYSTEM_PROMPT
 from ptpd_calibration.ml.database import CalibrationDatabase
@@ -20,10 +21,10 @@ from ptpd_calibration.ml.database import CalibrationDatabase
 class AgentConfig:
     """Configuration for the calibration agent."""
 
-    llm_settings: Optional[LLMSettings] = None
-    agent_settings: Optional[AgentSettings] = None
-    memory_path: Optional[Path] = None
-    database: Optional[CalibrationDatabase] = None
+    llm_settings: LLMSettings | None = None
+    agent_settings: AgentSettings | None = None
+    memory_path: Path | None = None
+    database: CalibrationDatabase | None = None
     predictor: Any = None
 
 
@@ -33,9 +34,9 @@ class ReasoningStep:
 
     step_type: str  # "thought", "action", "observation", "reflection"
     content: str
-    tool_name: Optional[str] = None
-    tool_args: Optional[dict] = None
-    tool_result: Optional[ToolResult] = None
+    tool_name: str | None = None
+    tool_args: dict | None = None
+    tool_result: ToolResult | None = None
 
 
 class CalibrationAgent:
@@ -60,7 +61,7 @@ class CalibrationAgent:
         self.llm_settings = config.llm_settings or get_settings().llm
 
         # Initialize components
-        self.client: Optional[LLMClient] = None
+        self.client: LLMClient | None = None
         self.tools = create_calibration_tools(config.database, config.predictor)
         self.memory = AgentMemory(
             storage_path=config.memory_path,
@@ -70,7 +71,7 @@ class CalibrationAgent:
         self.planner = Planner(max_steps=self.settings.max_plan_steps)
 
         # State
-        self._current_plan: Optional[Plan] = None
+        self._current_plan: Plan | None = None
         self._reasoning_trace: list[ReasoningStep] = []
         self._iteration_count = 0
 
@@ -110,9 +111,7 @@ class CalibrationAgent:
             thought, action = await self._think_and_act()
 
             # Record thought
-            self._reasoning_trace.append(
-                ReasoningStep(step_type="thought", content=thought)
-            )
+            self._reasoning_trace.append(ReasoningStep(step_type="thought", content=thought))
 
             if action is None:
                 # Agent decided to finish
@@ -133,17 +132,19 @@ class CalibrationAgent:
             )
 
             # Reflect if enabled
-            if self.settings.enable_reflection:
-                if self._iteration_count % self.settings.reflection_frequency == 0:
-                    reflection = await self._reflect()
-                    self._reasoning_trace.append(
-                        ReasoningStep(step_type="reflection", content=reflection)
-                    )
+            if (
+                self.settings.enable_reflection
+                and self._iteration_count % self.settings.reflection_frequency == 0
+            ):
+                reflection = await self._reflect()
+                self._reasoning_trace.append(
+                    ReasoningStep(step_type="reflection", content=reflection)
+                )
 
         # Generate final response
         return await self._generate_response(task)
 
-    async def _think_and_act(self) -> tuple[str, Optional[dict]]:
+    async def _think_and_act(self) -> tuple[str, dict | None]:
         """
         Generate thought and decide on action.
 
@@ -169,6 +170,9 @@ Example:
 THOUGHT: I need to analyze the density measurements to understand the calibration quality.
 ACTION: {{"tool": "analyze_densities", "args": {{"densities": [0.1, 0.3, 0.5, 0.8, 1.2]}}}}"""
 
+        if self.client is None:
+            raise RuntimeError("LLM client not configured")
+
         response = await self.client.complete(
             messages=[{"role": "user", "content": prompt}],
             system=SYSTEM_PROMPT,
@@ -192,19 +196,20 @@ ACTION: {{"tool": "analyze_densities", "args": {{"densities": [0.1, 0.3, 0.5, 0.
                         start = action_str.find("{")
                         end = action_str.rfind("}") + 1
                         if start >= 0 and end > start:
-                            try:
+                            with suppress(json.JSONDecodeError):
                                 action = json.loads(action_str[start:end])
-                            except json.JSONDecodeError:
-                                pass
 
         return thought, action
 
-    async def _execute_action(self, action: dict) -> Optional[ToolResult]:
+    async def _execute_action(self, action: dict) -> ToolResult | None:
         """Execute a tool action."""
         tool_name = action.get("tool")
         tool_args = action.get("args", {})
 
-        tool = self.tools.get(tool_name)
+        if tool_name is None:
+            return ToolResult(success=False, error="No tool name specified")
+
+        tool = self.tools.get(str(tool_name))
         if not tool:
             return ToolResult(success=False, error=f"Unknown tool: {tool_name}")
 
@@ -222,9 +227,7 @@ ACTION: {{"tool": "analyze_densities", "args": {{"densities": [0.1, 0.3, 0.5, 0.
         result = await tool.execute(**tool_args)
 
         # Add to working memory
-        self.memory.add_to_working_memory(
-            f"Tool {tool_name}: {result.to_string()[:200]}"
-        )
+        self.memory.add_to_working_memory(f"Tool {tool_name}: {result.to_string()[:200]}")
 
         # Update plan
         if self._current_plan and self._current_plan.current_step:
@@ -251,6 +254,9 @@ Reflect on the progress so far:
 
 Respond with a brief reflection."""
 
+        if self.client is None:
+            raise RuntimeError("LLM client not configured")
+
         reflection = await self.client.complete(
             messages=[{"role": "user", "content": prompt}],
             system=SYSTEM_PROMPT,
@@ -259,6 +265,8 @@ Respond with a brief reflection."""
 
         # Check if plan needs adaptation
         if "adapt" in reflection.lower() or "change" in reflection.lower():
+            if self._current_plan is None:
+                return reflection
             adaptation = self.planner.suggest_adaptation(self._current_plan, reflection)
             if adaptation:
                 self._current_plan.adapt(reflection, adaptation)
@@ -276,6 +284,9 @@ Here's what I did:
 {trace_summary}
 
 Please provide a clear, helpful final response to the user summarizing the results and any recommendations."""
+
+        if self.client is None:
+            raise RuntimeError("LLM client not configured")
 
         response = await self.client.complete(
             messages=[{"role": "user", "content": prompt}],
@@ -295,14 +306,12 @@ Please provide a clear, helpful final response to the user summarizing the resul
         # Working memory
         working = self.memory.get_working_memory()
         if working:
-            parts.append(f"Working memory:\n" + "\n".join(f"- {w}" for w in working[-5:]))
+            parts.append("Working memory:\n" + "\n".join(f"- {w}" for w in working[-5:]))
 
         # Recent reasoning
         if self._reasoning_trace:
             recent = self._reasoning_trace[-3:]
-            trace_str = "\n".join(
-                f"[{s.step_type.upper()}] {s.content[:100]}" for s in recent
-            )
+            trace_str = "\n".join(f"[{s.step_type.upper()}] {s.content[:100]}" for s in recent)
             parts.append(f"Recent reasoning:\n{trace_str}")
 
         return "\n\n".join(parts)
@@ -311,9 +320,7 @@ Please provide a clear, helpful final response to the user summarizing the resul
         """Format available tools for prompt."""
         tool_list = []
         for tool in self.tools.list_tools():
-            params = ", ".join(
-                f"{p.name}: {p.type}" for p in tool.parameters if p.required
-            )
+            params = ", ".join(f"{p.name}: {p.type}" for p in tool.parameters if p.required)
             tool_list.append(f"- {tool.name}({params}): {tool.description}")
         return "\n".join(tool_list)
 
@@ -345,7 +352,7 @@ Please provide a clear, helpful final response to the user summarizing the resul
             for s in self._reasoning_trace
         ]
 
-    def get_plan_status(self) -> Optional[dict]:
+    def get_plan_status(self) -> dict | None:
         """Get current plan status."""
         if not self._current_plan:
             return None
@@ -361,10 +368,10 @@ Please provide a clear, helpful final response to the user summarizing the resul
 
 
 def create_agent(
-    api_key: Optional[str] = None,
-    database: Optional[CalibrationDatabase] = None,
+    api_key: str | None = None,
+    database: CalibrationDatabase | None = None,
     predictor: Any = None,
-    memory_path: Optional[Path] = None,
+    memory_path: Path | None = None,
 ) -> CalibrationAgent:
     """
     Create a calibration agent.

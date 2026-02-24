@@ -3,28 +3,26 @@ Tests for curve generation and export.
 """
 
 import json
-import tempfile
-from pathlib import Path
 
 import numpy as np
 import pytest
 
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
+from ptpd_calibration.curves.analysis import CurveAnalyzer
+from ptpd_calibration.curves.export import (
+    CSVExporter,
+    JSONExporter,
+    PiezographyExporter,
+    QTRExporter,
+    load_curve,
+    save_curve,
+)
 from ptpd_calibration.curves.generator import (
     CurveGenerator,
     TargetCurve,
     generate_linearization_curve,
 )
-from ptpd_calibration.curves.export import (
-    QTRExporter,
-    PiezographyExporter,
-    CSVExporter,
-    JSONExporter,
-    save_curve,
-    load_curve,
-)
-from ptpd_calibration.curves.analysis import CurveAnalyzer
 
 
 class TestTargetCurve:
@@ -58,7 +56,9 @@ class TestTargetCurve:
         # Should have S-curve characteristics
         mid_idx = 5
         # Midpoint should be slightly different from linear
-        assert target.output_values[mid_idx] != pytest.approx(target.input_values[mid_idx], abs=0.01)
+        assert target.output_values[mid_idx] != pytest.approx(
+            target.input_values[mid_idx], abs=0.01
+        )
 
 
 class TestCurveGenerator:
@@ -69,7 +69,7 @@ class TestCurveGenerator:
         """Generate sample density measurements."""
         # Simulate typical Pt/Pd response (toe, linear, shoulder)
         steps = np.linspace(0, 1, 21)
-        densities = 0.1 + 2.0 * (steps ** 0.8)  # Non-linear response
+        densities = 0.1 + 2.0 * (steps**0.8)  # Non-linear response
         return list(densities)
 
     def test_generate_linear_curve(self, sample_densities):
@@ -167,7 +167,7 @@ class TestCurveExporters:
         assert "## QuadToneRIP" in content
         assert "# K Curve" in content
         # Should have numeric values (256 points)
-        lines = [l for l in content.split("\n") if l and not l.startswith("#")]
+        lines = [line for line in content.split("\n") if line and not line.startswith("#")]
         assert len(lines) >= 256
 
     def test_qtr_quad_export(self, sample_curve, tmp_path):
@@ -260,7 +260,7 @@ class TestCurveAnalyzer:
         """Test linearity analysis with non-linear response."""
         # Create non-linear response (typical film/paper curve)
         steps = np.linspace(0, 1, 21)
-        densities = list(0.1 + 2.0 * (steps ** 1.5))
+        densities = list(0.1 + 2.0 * (steps**1.5))
 
         analysis = CurveAnalyzer.analyze_linearity(densities)
 
@@ -309,7 +309,11 @@ class TestCurveAnalyzer:
         assert "num_points" in analysis
         assert "is_monotonic" in analysis
         assert analysis["is_monotonic"]
-        assert analysis["shape"] in ["approximately linear", "convex (lifts midtones)", "concave (darkens midtones)"]
+        assert analysis["shape"] in [
+            "approximately linear",
+            "convex (lifts midtones)",
+            "concave (darkens midtones)",
+        ]
 
 
 class TestConvenienceFunctions:

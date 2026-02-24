@@ -4,8 +4,8 @@ import pytest
 
 from ptpd_calibration.exposure import (
     ExposureCalculator,
-    ExposureSettings,
     ExposureResult,
+    ExposureSettings,
     LightSource,
 )
 
@@ -112,7 +112,7 @@ class TestExposureCalculator:
 
         assert "min" in formatted.lower()
 
-    def test_format_time_hours(self, calculator):
+    def test_format_time_hours(self, calculator):  # noqa: ARG002
         """Test time formatting for very long exposures."""
         # Force long exposure
         settings = ExposureSettings(
@@ -230,7 +230,7 @@ class TestExposureCalculator:
         assert result.light_source_adjustment > 0
         assert result.distance_adjustment > 0
 
-    def test_warnings_for_long_exposure(self, calculator):
+    def test_warnings_for_long_exposure(self, calculator):  # noqa: ARG002
         """Test warnings for very long exposure."""
         settings = ExposureSettings(base_exposure_minutes=30.0)
         calc = ExposureCalculator(settings)

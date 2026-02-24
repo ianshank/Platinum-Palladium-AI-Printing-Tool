@@ -8,8 +8,8 @@ model training to prediction and evaluation.
 import importlib.util
 import json
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import numpy as np
 import pytest
@@ -85,7 +85,7 @@ class TestSyntheticDataGeneration:
         records1 = db1.get_all_records()
         records2 = db2.get_all_records()
 
-        for r1, r2 in zip(records1, records2):
+        for r1, r2 in zip(records1, records2, strict=True):
             assert r1.paper_type == r2.paper_type
             assert r1.metal_ratio == r2.metal_ratio
             np.testing.assert_array_almost_equal(
@@ -121,7 +121,7 @@ class TestSyntheticDataGeneration:
         generator = SyntheticDataGenerator()
         db = generator.generate_database(num_records=100)
 
-        paper_types = set(r.paper_type for r in db.get_all_records())
+        paper_types = {r.paper_type for r in db.get_all_records()}
         assert len(paper_types) >= 3, "Should generate data for multiple paper types"
 
     def test_exposure_series_generation(self):
@@ -276,9 +276,7 @@ class TestPredictorE2E:
         diffs = np.diff(result.curve)
         assert np.all(diffs >= -0.01), "Curve should be monotonically increasing"
 
-    def test_predictor_save_and_load(
-        self, temp_output_dir: Path, test_record: CalibrationRecord
-    ):
+    def test_predictor_save_and_load(self, temp_output_dir: Path, test_record: CalibrationRecord):
         """Test saving and loading a trained predictor."""
         from ptpd_calibration.config import DeepLearningSettings
         from ptpd_calibration.ml.deep.predictor import DeepCurvePredictor

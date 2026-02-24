@@ -5,11 +5,11 @@ import pytest
 from PIL import Image
 
 from ptpd_calibration.proofing import (
-    SoftProofer,
-    ProofSettings,
-    ProofResult,
-    PaperSimulation,
     PAPER_PRESETS,
+    PaperSimulation,
+    ProofResult,
+    ProofSettings,
+    SoftProofer,
 )
 
 
@@ -239,7 +239,7 @@ class TestPaperPresets:
 
     def test_presets_have_required_fields(self):
         """Test presets have all required fields."""
-        for preset, data in PAPER_PRESETS.items():
+        for _preset, data in PAPER_PRESETS.items():
             assert "white_rgb" in data
             assert "dmax" in data
             assert "dmin" in data
@@ -247,7 +247,7 @@ class TestPaperPresets:
 
     def test_preset_white_rgb_valid(self):
         """Test preset white RGB values are valid."""
-        for preset, data in PAPER_PRESETS.items():
+        for _preset, data in PAPER_PRESETS.items():
             rgb = data["white_rgb"]
             assert len(rgb) == 3
             for value in rgb:
@@ -255,10 +255,10 @@ class TestPaperPresets:
 
     def test_preset_dmax_valid(self):
         """Test preset Dmax values are valid."""
-        for preset, data in PAPER_PRESETS.items():
+        for _preset, data in PAPER_PRESETS.items():
             assert 1.0 <= data["dmax"] <= 2.0
 
     def test_preset_dmin_valid(self):
         """Test preset Dmin values are valid."""
-        for preset, data in PAPER_PRESETS.items():
+        for _preset, data in PAPER_PRESETS.items():
             assert 0.0 <= data["dmin"] <= 0.2

@@ -5,12 +5,11 @@ import pytest
 
 from ptpd_calibration.curves import (
     AutoLinearizer,
-    LinearizationMethod,
-    TargetResponse,
     LinearizationConfig,
+    LinearizationMethod,
     LinearizationResult,
+    TargetResponse,
 )
-from ptpd_calibration.core.models import CurveData
 
 
 @pytest.fixture

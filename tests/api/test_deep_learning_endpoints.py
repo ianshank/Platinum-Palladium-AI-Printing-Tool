@@ -224,7 +224,9 @@ class TestDeepLearningStatusEndpoint:
 class TestDeepLearningTrainEndpoint:
     """Tests for /api/deep/train endpoint."""
 
-    def test_train_without_pytorch_returns_error(self, client: Any, train_request_data: dict) -> None:
+    def test_train_without_pytorch_returns_error(
+        self, client: Any, train_request_data: dict
+    ) -> None:
         """Test training without PyTorch returns 503."""
         with patch.dict("sys.modules", {"torch": None}):
             response = client.post("/api/deep/train", json=train_request_data)
@@ -891,8 +893,7 @@ class TestDeepLearningBatchEndpoints:
         """Test batch quality assessment."""
         request_data = {
             "images": [
-                {"id": f"img_{i}", "image_base64": img}
-                for i, img in enumerate(batch_images_base64)
+                {"id": f"img_{i}", "image_base64": img} for i, img in enumerate(batch_images_base64)
             ],
         }
 

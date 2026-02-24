@@ -98,15 +98,15 @@ class TestCyanotypeWorkflow:
 
         cyanotype_page.navigate_to_cyanotype()
 
+        import contextlib
+
         for paper in paper_types:
-            try:
-                results = cyanotype_page.calculate_chemistry_recipe(
+            with contextlib.suppress(Exception):
+                _ = cyanotype_page.calculate_chemistry_recipe(
                     width=8.0,
                     height=10.0,
                     paper_type=paper,
                 )
-            except Exception:
-                pass  # Some paper types may not be available
 
     def test_concentration_factor(self, cyanotype_page):
         """Test concentration factor affects chemistry volume."""

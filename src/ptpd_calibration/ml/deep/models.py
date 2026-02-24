@@ -13,7 +13,7 @@ tone curves from calibration data:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -39,9 +39,9 @@ class ModelOutput:
     """Output from curve prediction models."""
 
     curve: np.ndarray  # The predicted curve as numpy array
-    control_points: Optional[np.ndarray] = None  # Optional control points
-    uncertainty: Optional[float] = None  # Prediction uncertainty
-    metadata: Optional[dict] = None  # Additional output metadata
+    control_points: np.ndarray | None = None  # Optional control points
+    uncertainty: float | None = None  # Prediction uncertainty
+    metadata: dict | None = None  # Additional output metadata
 
 
 def _check_torch() -> None:
@@ -163,7 +163,7 @@ class CurveMLP(nn.Module):
         num_features: int,
         num_control_points: int = 16,
         lut_size: int = 256,
-        hidden_dims: Optional[list[int]] = None,
+        hidden_dims: list[int] | None = None,
         dropout_rate: float = 0.1,
         use_batch_norm: bool = True,
     ):
@@ -228,7 +228,7 @@ class CurveMLP(nn.Module):
 
     def forward(
         self, x: torch.Tensor, return_control_points: bool = False
-    ) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
         """
         Forward pass.
 
@@ -256,9 +256,7 @@ class CurveMLP(nn.Module):
         return lut, None
 
     @classmethod
-    def from_settings(
-        cls, num_features: int, settings: DeepLearningSettings
-    ) -> "CurveMLP":
+    def from_settings(cls, num_features: int, settings: DeepLearningSettings) -> CurveMLP:
         """
         Create CurveMLP from settings.
 
@@ -290,7 +288,7 @@ class CurveCNN(nn.Module):
         self,
         num_features: int,
         lut_size: int = 256,
-        channels: Optional[list[int]] = None,
+        channels: list[int] | None = None,
         kernel_size: int = 3,
         dropout_rate: float = 0.1,
     ):
@@ -463,7 +461,7 @@ class ContentAwareCurveNet(nn.Module):
         """
         # Encoder path
         skips = []
-        for encoder, pool in zip(self.encoders, self.pools):
+        for encoder, pool in zip(self.encoders, self.pools, strict=True):
             x = encoder(x)
             skips.append(x)
             x = pool(x)
@@ -473,7 +471,7 @@ class ContentAwareCurveNet(nn.Module):
 
         # Decoder path
         skips = skips[::-1]
-        for upconv, decoder, skip in zip(self.upconvs, self.decoders, skips):
+        for upconv, decoder, skip in zip(self.upconvs, self.decoders, skips, strict=True):
             x = upconv(x)
             # Handle size mismatch
             if x.shape != skip.shape:
@@ -540,7 +538,7 @@ class UniformityCorrectionNet(nn.Module):
         """Create 2D Gaussian kernel."""
         size = self.kernel_size
         x = torch.arange(size, dtype=torch.float32) - size // 2
-        gauss_1d = torch.exp(-x**2 / (2 * self.sigma**2))
+        gauss_1d = torch.exp(-(x**2) / (2 * self.sigma**2))
         gauss_2d = gauss_1d.unsqueeze(0) * gauss_1d.unsqueeze(1)
         gauss_2d = gauss_2d / gauss_2d.sum()
         return gauss_2d.unsqueeze(0).unsqueeze(0)
@@ -569,9 +567,7 @@ class UniformityCorrectionNet(nn.Module):
 
         return correction
 
-    def apply_correction(
-        self, image: torch.Tensor, correction_map: torch.Tensor
-    ) -> torch.Tensor:
+    def apply_correction(self, image: torch.Tensor, correction_map: torch.Tensor) -> torch.Tensor:
         """
         Apply correction map to image.
 

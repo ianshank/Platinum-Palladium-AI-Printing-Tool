@@ -15,6 +15,10 @@ class ChemistryType(str, Enum):
     ZIATYPE = "ziatype"
     NA2_PROCESS = "na2_process"
 
+    # Aliases for common usage
+    PLATINUM = "pure_platinum"
+    PALLADIUM = "pure_palladium"
+
     # Iron-based processes
     CYANOTYPE = "cyanotype"
     CYANOTYPE_NEW = "cyanotype_new"  # Modern "new" cyanotype formula
@@ -95,6 +99,9 @@ class CurveType(str, Enum):
     PAPER_WHITE = "paper_white"
     AESTHETIC = "aesthetic"
     CUSTOM = "custom"
+    MCTS_OPTIMIZED = "mcts_optimized"
+    SPLINE = "spline"
+    POLYNOMIAL = "polynomial"
 
 
 class MeasurementUnit(str, Enum):

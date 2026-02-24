@@ -4,13 +4,10 @@ Transfer learning for new papers and chemistries.
 Enables bootstrapping calibrations from similar known materials.
 """
 
-from typing import Optional
-
 import numpy as np
 
 from ptpd_calibration.core.models import CalibrationRecord
 from ptpd_calibration.ml.database import CalibrationDatabase
-
 
 # Paper characteristic database for similarity matching
 PAPER_CHARACTERISTICS = {
@@ -76,8 +73,8 @@ class TransferLearner:
     def find_similar_papers(
         self,
         paper_type: str,
-        paper_weight: Optional[int] = None,
-        paper_sizing: Optional[str] = None,
+        paper_weight: int | None = None,
+        paper_sizing: str | None = None,
         top_k: int = 5,
     ) -> list[tuple[str, float]]:
         """
@@ -116,9 +113,9 @@ class TransferLearner:
             # Adjust for weight if provided
             if paper_weight and known_chars.get("weight_range"):
                 w_min, w_max = known_chars["weight_range"]
-                if w_min <= paper_weight <= w_max:
+                if int(w_min) <= paper_weight <= int(w_max):
                     score += 0.1
-                elif abs(paper_weight - (w_min + w_max) / 2) < 50:
+                elif abs(paper_weight - (int(w_min) + int(w_max)) / 2) < 50:
                     score += 0.05
 
             similarities.append((known_paper, score))
@@ -261,8 +258,8 @@ class TransferLearner:
             "mitsumata": 0.88,
         }
 
-        source_factor = fiber_factors.get(source_fiber, 1.0)
-        target_factor = fiber_factors.get(target_fiber, 1.0)
+        source_factor = fiber_factors.get(str(source_fiber), 1.0)
+        target_factor = fiber_factors.get(str(target_fiber), 1.0)
 
         if source_factor > 0:
             adjustment *= target_factor / source_factor
@@ -295,9 +292,12 @@ class TransferLearner:
                 score += 0.15
 
         # Sizing
-        if query_chars.get("sizing") and known_chars.get("sizing"):
-            if query_chars["sizing"] == known_chars["sizing"]:
-                score += 0.2
+        if (
+            query_chars.get("sizing")
+            and known_chars.get("sizing")
+            and query_chars["sizing"] == known_chars["sizing"]
+        ):
+            score += 0.2
 
         # Characteristics overlap
         query_chars_set = set(query_chars.get("characteristics", []))

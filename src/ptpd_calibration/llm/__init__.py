@@ -7,9 +7,10 @@ from ptpd_calibration.llm.assistant import (
     create_assistant,
 )
 from ptpd_calibration.llm.client import (
-    LLMClient,
     AnthropicClient,
+    LLMClient,
     OpenAIClient,
+    VertexAIClient,
 )
 from ptpd_calibration.llm.prompts import (
     SYSTEM_PROMPT,
@@ -26,6 +27,7 @@ __all__ = [
     "LLMClient",
     "AnthropicClient",
     "OpenAIClient",
+    "VertexAIClient",
     # Prompts
     "SYSTEM_PROMPT",
     "get_analysis_prompt",

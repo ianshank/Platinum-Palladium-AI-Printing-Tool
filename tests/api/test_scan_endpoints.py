@@ -4,9 +4,6 @@ Scan and Analysis Endpoint Tests.
 Tests for step tablet upload and density analysis endpoints.
 """
 
-import io
-from pathlib import Path
-
 import pytest
 
 

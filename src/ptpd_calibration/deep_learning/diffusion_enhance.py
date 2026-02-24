@@ -16,7 +16,7 @@ Dependencies are lazily loaded to avoid import errors.
 
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -26,7 +26,6 @@ from ptpd_calibration.deep_learning.models import (
     EnhancementRegion,
 )
 from ptpd_calibration.deep_learning.types import (
-    ControlNetType,
     EnhancementMode,
     ImageArray,
     Mask,
@@ -77,8 +76,8 @@ class DiffusionEnhancer:
 
     def __init__(
         self,
-        settings: Optional[DiffusionSettings] = None,
-        device: Optional[str] = None,
+        settings: DiffusionSettings | None = None,
+        device: str | None = None,
     ):
         """
         Initialize the diffusion enhancer.
@@ -143,10 +142,10 @@ class DiffusionEnhancer:
         try:
             from diffusers import (
                 AutoPipelineForImage2Image,
-                AutoPipelineForInpainting,
-                DPMSolverMultistepScheduler,
-                EulerAncestralDiscreteScheduler,
-                EulerDiscreteScheduler,
+                AutoPipelineForInpainting,  # noqa: F401 - imported for availability check
+                DPMSolverMultistepScheduler,  # noqa: F401 - imported for availability check
+                EulerAncestralDiscreteScheduler,  # noqa: F401 - imported for availability check
+                EulerDiscreteScheduler,  # noqa: F401 - imported for availability check
             )
         except ImportError as e:
             raise ImportError(
@@ -203,8 +202,7 @@ class DiffusionEnhancer:
             from diffusers import AutoPipelineForInpainting
         except ImportError as e:
             raise ImportError(
-                "diffusers is required for inpainting. "
-                "Install with: pip install diffusers>=0.25.0"
+                "diffusers is required for inpainting. Install with: pip install diffusers>=0.25.0"
             ) from e
 
         # Use SDXL inpainting model
@@ -251,12 +249,8 @@ class DiffusionEnhancer:
             "unipc": UniPCMultistepScheduler,
         }
 
-        scheduler_class = scheduler_map.get(
-            self.settings.scheduler.value, EulerDiscreteScheduler
-        )
-        self._pipeline.scheduler = scheduler_class.from_config(
-            self._pipeline.scheduler.config
-        )
+        scheduler_class = scheduler_map.get(self.settings.scheduler.value, EulerDiscreteScheduler)
+        self._pipeline.scheduler = scheduler_class.from_config(self._pipeline.scheduler.config)
 
     def _load_lora(self) -> None:
         """Load custom LoRA weights for Pt/Pd aesthetic."""
@@ -281,15 +275,15 @@ class DiffusionEnhancer:
             return
 
         try:
-            from diffusers import (
-                ControlNetModel,
-                StableDiffusionXLControlNetPipeline,
-            )
             from controlnet_aux import (
                 CannyDetector,
                 HEDdetector,
                 LineartDetector,
                 MidasDetector,
+            )
+            from diffusers import (
+                ControlNetModel,
+                StableDiffusionXLControlNetPipeline,
             )
         except ImportError as e:
             raise ImportError(
@@ -339,9 +333,7 @@ class DiffusionEnhancer:
             "softedge": HEDdetector,
             "lineart": LineartDetector,
         }
-        processor_class = processor_map.get(
-            self.settings.controlnet_type.value, CannyDetector
-        )
+        processor_class = processor_map.get(self.settings.controlnet_type.value, CannyDetector)
         self._controlnet_processor = processor_class()
 
     def _numpy_to_pil(self, image: ImageArray) -> Any:
@@ -367,12 +359,12 @@ class DiffusionEnhancer:
     def enhance(
         self,
         image: ImageArray,
-        prompt: Optional[str] = None,
-        negative_prompt: Optional[str] = None,
-        strength: Optional[float] = None,
-        guidance_scale: Optional[float] = None,
-        num_inference_steps: Optional[int] = None,
-        use_controlnet: Optional[bool] = None,
+        prompt: str | None = None,
+        negative_prompt: str | None = None,
+        strength: float | None = None,
+        guidance_scale: float | None = None,
+        num_inference_steps: int | None = None,
+        use_controlnet: bool | None = None,
     ) -> DiffusionEnhancementResult:
         """
         Enhance image tonal range using diffusion models.
@@ -425,8 +417,7 @@ class DiffusionEnhancer:
 
         if negative_prompt is None:
             negative_prompt = (
-                "blurry, noisy, low quality, digital artifacts, "
-                "oversaturated, harsh contrast"
+                "blurry, noisy, low quality, digital artifacts, oversaturated, harsh contrast"
             )
 
         # Convert to PIL
@@ -490,10 +481,10 @@ class DiffusionEnhancer:
         self,
         image: ImageArray,
         mask: Mask,
-        prompt: Optional[str] = None,
-        negative_prompt: Optional[str] = None,
-        num_inference_steps: Optional[int] = None,
-        guidance_scale: Optional[float] = None,
+        prompt: str | None = None,
+        negative_prompt: str | None = None,
+        num_inference_steps: int | None = None,
+        guidance_scale: float | None = None,
     ) -> DiffusionEnhancementResult:
         """
         Inpaint defects or unwanted areas using diffusion models.
@@ -617,8 +608,8 @@ class DiffusionEnhancer:
         self,
         image: ImageArray,
         style: str,
-        strength: Optional[float] = None,
-        num_inference_steps: Optional[int] = None,
+        strength: float | None = None,
+        num_inference_steps: int | None = None,
     ) -> DiffusionEnhancementResult:
         """
         Transfer master printer aesthetic to image.
@@ -654,9 +645,7 @@ class DiffusionEnhancer:
         # Build prompt from template
         prompt = self.settings.style_prompt_template.format(style=style)
 
-        negative_prompt = (
-            "modern digital look, HDR, oversaturated, harsh, artificial"
-        )
+        negative_prompt = "modern digital look, HDR, oversaturated, harsh, artificial"
 
         # Convert to PIL
         pil_image = self._numpy_to_pil(image)
@@ -700,10 +689,7 @@ class DiffusionEnhancer:
 
     def _get_mask_bbox(self, mask: Mask) -> tuple[int, int, int, int]:
         """Get bounding box of mask (x, y, width, height)."""
-        if mask.max() <= 1.0:
-            mask = mask > 0.5
-        else:
-            mask = mask > 127
+        mask = mask > 0.5 if mask.max() <= 1.0 else mask > 127
 
         rows = np.any(mask, axis=1)
         cols = np.any(mask, axis=0)

@@ -10,29 +10,28 @@ and process-specific characteristics for:
 - Kallitype
 """
 
-from ptpd_calibration.exposure.calculator import (
-    ExposureCalculator,
-    LightSource,
-    ExposureResult,
-    ExposureSettings,
-    LIGHT_SOURCE_SPEEDS,
-)
-
 from ptpd_calibration.exposure.alternative_calculators import (
+    ENLARGER_LIGHT_SPEEDS,
+    UV_SOURCE_SPEEDS,
     # Cyanotype
     CyanotypeExposureCalculator,
     CyanotypeExposureResult,
-    UVSource,
-    UV_SOURCE_SPEEDS,
+    EnlargerLightSource,
+    # Kallitype
+    KallitypeExposureCalculator,
     # Silver Gelatin
     SilverGelatinExposureCalculator,
     SilverGelatinExposureResult,
-    EnlargerLightSource,
-    ENLARGER_LIGHT_SPEEDS,
+    UVSource,
     # Van Dyke
     VanDykeExposureCalculator,
-    # Kallitype
-    KallitypeExposureCalculator,
+)
+from ptpd_calibration.exposure.calculator import (
+    LIGHT_SOURCE_SPEEDS,
+    ExposureCalculator,
+    ExposureResult,
+    ExposureSettings,
+    LightSource,
 )
 
 __all__ = [

@@ -5,7 +5,7 @@ Provides analysis of calibration curves and measurement quality.
 """
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any
 
 import numpy as np
 
@@ -30,7 +30,7 @@ class CurveComparison:
     delta_e_mean: float
     delta_e_max: float
     correlation: float
-    significant_differences: list[tuple[float, float, float]]  # (input, delta, region)
+    significant_differences: list[tuple[float, float, str]]  # (input, delta, region)
 
 
 class CurveAnalyzer:
@@ -43,7 +43,7 @@ class CurveAnalyzer:
     @staticmethod
     def analyze_linearity(
         measured_densities: list[float],
-        target_densities: Optional[list[float]] = None,
+        target_densities: list[float] | None = None,
     ) -> LinearityAnalysis:
         """
         Analyze linearity of measured densities.
@@ -147,7 +147,7 @@ class CurveAnalyzer:
         # Find significant differences (> 5%)
         threshold = 0.05
         significant = []
-        for i, (xi, di) in enumerate(zip(x, deltas)):
+        for _i, (xi, di) in enumerate(zip(x, deltas, strict=False)):
             if di > threshold:
                 if xi < 0.2:
                     region = "highlights"
@@ -169,14 +169,14 @@ class CurveAnalyzer:
     @staticmethod
     def suggest_adjustments(
         measured_densities: list[float],
-        target_densities: Optional[list[float]] = None,
+        _target_densities: list[float] | None = None,
     ) -> list[str]:
         """
         Generate suggestions for process adjustments.
 
         Args:
             measured_densities: Measured density values.
-            target_densities: Optional target densities.
+            _target_densities: Optional target densities (reserved for future use).
 
         Returns:
             List of adjustment suggestions.
@@ -338,7 +338,7 @@ class CurveAnalyzer:
         current_dmax = max(measured_densities)
         current_dmin = min(measured_densities)
 
-        suggestions = {}
+        suggestions: dict[str, Any] = {}
 
         # Estimate exposure adjustment for target Dmax
         if current_dmax > 0:
@@ -365,8 +365,7 @@ class CurveAnalyzer:
         elif current_range > target_range * 1.2:
             suggestions["contrast"] = "decrease"
             suggestions["contrast_suggestion"] = (
-                "Consider reducing Na2 or switching to pure palladium "
-                "for lower contrast."
+                "Consider reducing Na2 or switching to pure palladium for lower contrast."
             )
         else:
             suggestions["contrast"] = "good"

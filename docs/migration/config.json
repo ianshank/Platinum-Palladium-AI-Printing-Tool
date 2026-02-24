@@ -1,0 +1,105 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "Platinum-Palladium AI Printing Tool",
+    "description": "Migration from Gradio to React + Zustand",
+    "repository": "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool"
+  },
+  "migration": {
+    "phase": "Phase 1: Project Setup",
+    "startDate": "2026-01-24",
+    "targetCompletion": null,
+    "currentSprint": 1
+  },
+  "quality": {
+    "testCoverage": {
+      "target": 80,
+      "current": 0,
+      "minimum": 70
+    },
+    "accessibility": {
+      "standard": "WCAG 2.1 AA",
+      "allowedViolations": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 5,
+        "minor": 10
+      }
+    },
+    "performance": {
+      "firstContentfulPaint": 1500,
+      "timeToInteractive": 3000,
+      "bundleSizeKB": 500,
+      "renderTimeMs": 16
+    }
+  },
+  "paths": {
+    "frontend": "frontend",
+    "backend": "src/ptpd_calibration",
+    "legacy": "src/ptpd_calibration/ui",
+    "migration": "migration",
+    "tests": "tests"
+  },
+  "api": {
+    "baseUrl": "http://localhost:8000",
+    "version": "v1",
+    "timeout": 30000,
+    "retryAttempts": 3,
+    "retryDelay": 1000
+  },
+  "features": {
+    "darkMode": true,
+    "offlineMode": false,
+    "i18n": false,
+    "analytics": false,
+    "devtools": true
+  },
+  "logging": {
+    "level": "debug",
+    "enableConsole": true,
+    "enableRemote": false,
+    "maxLogSize": 1000
+  },
+  "components": {
+    "priority": {
+      "critical": [
+        "Layout",
+        "Tabs",
+        "CurveDisplay",
+        "CurveEditor",
+        "StepTabletAnalysis",
+        "CalibrationWizard"
+      ],
+      "high": [
+        "Dashboard",
+        "ChemistryCalculator",
+        "AIAssistant",
+        "ImageUpload",
+        "ImagePreview"
+      ],
+      "medium": [
+        "SessionLog",
+        "Settings",
+        "ExportPanel",
+        "Histogram"
+      ],
+      "low": []
+    }
+  },
+  "dependencies": {
+    "react": "^18.3.0",
+    "typescript": "^5.4.0",
+    "zustand": "^4.5.0",
+    "vite": "^5.4.0",
+    "tailwindcss": "^3.4.0",
+    "vitest": "^2.0.0",
+    "playwright": "^1.45.0"
+  },
+  "agents": {
+    "coordinator": "migration-coordinator",
+    "uiMigration": "ui-migration-agent",
+    "testing": "testing-agent",
+    "gapRemediation": "gap-remediation-agent",
+    "documentation": "documentation-agent"
+  }
+}

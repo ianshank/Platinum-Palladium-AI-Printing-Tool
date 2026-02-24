@@ -10,13 +10,13 @@ Provides REST API endpoints for:
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 # Check essential dependencies
 try:
     import torch
+
     TORCH_AVAILABLE = True
     TORCH_VERSION = torch.__version__
 except ImportError:
@@ -25,19 +25,25 @@ except ImportError:
 
 # Check API dependencies
 try:
-    from fastapi import APIRouter, HTTPException, BackgroundTasks
+    from fastapi import APIRouter, BackgroundTasks, HTTPException
     from pydantic import BaseModel, Field
+
     API_AVAILABLE = True
 except ImportError:
     API_AVAILABLE = False
+
     # Define dummy bases to prevent ImportErrors on module load if dependencies missing
-    class BaseModel: pass  
-    def Field(*args, **kwargs): return None
+    class BaseModel:
+        pass
+
+    def Field(*_args, **_kwargs):
+        return None
 
 
 # =============================================================================
 # Pydantic Models (Top-level for introspection)
 # =============================================================================
+
 
 class TrainRequest(BaseModel):
     """Request to train a deep learning model."""
@@ -46,9 +52,7 @@ class TrainRequest(BaseModel):
     num_epochs: int = Field(default=50, ge=1, le=1000, description="Number of training epochs")
     batch_size: int = Field(default=32, ge=1, le=256, description="Training batch size")
     learning_rate: float = Field(default=1e-3, ge=1e-6, le=1.0, description="Learning rate")
-    use_synthetic_data: bool = Field(
-        default=False, description="Generate synthetic training data"
-    )
+    use_synthetic_data: bool = Field(default=False, description="Generate synthetic training data")
     num_synthetic_samples: int = Field(
         default=200, ge=50, le=5000, description="Number of synthetic samples"
     )
@@ -57,9 +61,7 @@ class TrainRequest(BaseModel):
     use_ensemble: bool = Field(default=False, description="Use ensemble of models")
     device: str = Field(default="cpu", description="Device to train on (cpu/cuda)")
     num_control_points: int = Field(default=16, ge=4, le=64, description="Number of control points")
-    hidden_dims: list[int] = Field(
-        default=[128, 256, 128], description="Hidden layer dimensions"
-    )
+    hidden_dims: list[int] = Field(default=[128, 256, 128], description="Hidden layer dimensions")
     early_stopping_patience: int = Field(
         default=10, ge=1, le=100, description="Early stopping patience"
     )
@@ -74,10 +76,8 @@ class PredictRequest(BaseModel):
     exposure_time: float = Field(default=180.0, ge=1.0, description="Exposure time (seconds)")
     contrast_agent: str = Field(default="na2", description="Contrast agent type")
     contrast_amount: float = Field(default=5.0, ge=0.0, description="Contrast agent amount")
-    humidity: Optional[float] = Field(default=50.0, ge=0.0, le=100.0, description="Humidity %")
-    temperature: Optional[float] = Field(
-        default=21.0, ge=-20.0, le=50.0, description="Temperature °C"
-    )
+    humidity: float | None = Field(default=50.0, ge=0.0, le=100.0, description="Humidity %")
+    temperature: float | None = Field(default=21.0, ge=-20.0, le=50.0, description="Temperature °C")
     return_uncertainty: bool = Field(default=True, description="Return uncertainty estimate")
 
 
@@ -97,14 +97,15 @@ class TrainingSummary(BaseModel):
     model_name: str
     status: str
     epochs_completed: int = 0
-    best_val_loss: Optional[float] = None
-    training_time: Optional[float] = None
-    error: Optional[str] = None
+    best_val_loss: float | None = None
+    training_time: float | None = None
+    error: str | None = None
 
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def determine_chemistry_type(metal_ratio: float):
     """
@@ -130,6 +131,7 @@ def determine_chemistry_type(metal_ratio: float):
 # Router Factory
 # =============================================================================
 
+
 def create_deep_learning_router(database, model_storage: dict):  # type: ignore[no-untyped-def]
     """
     Create the deep learning API router.
@@ -142,9 +144,7 @@ def create_deep_learning_router(database, model_storage: dict):  # type: ignore[
         FastAPI APIRouter with deep learning endpoints.
     """
     if not API_AVAILABLE:
-        raise ImportError(
-            "FastAPI is required. Install with: pip install ptpd-calibration[api]"
-        )
+        raise ImportError("FastAPI is required. Install with: pip install ptpd-calibration[api]")
 
     router = APIRouter(prefix="/api/deep", tags=["deep-learning"])
 
@@ -157,7 +157,9 @@ def create_deep_learning_router(database, model_storage: dict):  # type: ignore[
         return {
             "torch_available": TORCH_AVAILABLE,
             "torch_version": TORCH_VERSION,
-            "cuda_available": TORCH_AVAILABLE and torch.cuda.is_available() if TORCH_AVAILABLE else False,
+            "cuda_available": TORCH_AVAILABLE and torch.cuda.is_available()
+            if TORCH_AVAILABLE
+            else False,
             "models_loaded": list(model_storage.keys()),
             "database_records": len(database) if database else 0,
             "training_in_progress": [
@@ -183,12 +185,14 @@ def create_deep_learning_router(database, model_storage: dict):  # type: ignore[
             )
 
         # Check if already training
-        if request.model_name in training_status:
-            if training_status[request.model_name].status == "training":
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"Model '{request.model_name}' is already being trained",
-                )
+        if (
+            request.model_name in training_status
+            and training_status[request.model_name].status == "training"
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Model '{request.model_name}' is already being trained",
+            )
 
         # Initialize training status
         training_status[request.model_name] = TrainingSummary(
@@ -254,7 +258,9 @@ def create_deep_learning_router(database, model_storage: dict):  # type: ignore[
             predictor = model_storage[request.model_name]
 
             # Create calibration record from request
-            contrast_agent = ContrastAgent.NA2 if request.contrast_agent.lower() == "na2" else ContrastAgent.NONE
+            contrast_agent = (
+                ContrastAgent.NA2 if request.contrast_agent.lower() == "na2" else ContrastAgent.NONE
+            )
             chemistry_type = determine_chemistry_type(request.metal_ratio)
 
             record = CalibrationRecord(
@@ -275,7 +281,9 @@ def create_deep_learning_router(database, model_storage: dict):  # type: ignore[
             return {
                 "success": True,
                 "curve": result.curve.tolist(),
-                "control_points": result.control_points.tolist() if result.control_points is not None else None,
+                "control_points": result.control_points.tolist()
+                if result.control_points is not None
+                else None,
                 "uncertainty": result.uncertainty,
                 "confidence": result.confidence,
                 "lut_size": len(result.curve),
@@ -286,7 +294,7 @@ def create_deep_learning_router(database, model_storage: dict):  # type: ignore[
             raise HTTPException(
                 status_code=500,
                 detail="Prediction failed. Check server logs for details.",
-            )
+            ) from None
 
     @router.post("/suggest-adjustments")
     async def suggest_adjustments(request: SuggestAdjustmentsRequest):
@@ -341,19 +349,21 @@ def create_deep_learning_router(database, model_storage: dict):  # type: ignore[
             raise HTTPException(
                 status_code=500,
                 detail="Failed to generate suggestions. Check server logs for details.",
-            )
+            ) from None
 
     @router.get("/models")
     async def list_models():
         """List all available trained models."""
         models = []
         for name, predictor in model_storage.items():
-            models.append({
-                "name": name,
-                "is_trained": predictor.is_trained,
-                "num_features": predictor.encoder.num_features if predictor.encoder else None,
-                "lut_size": predictor.settings.lut_size,
-            })
+            models.append(
+                {
+                    "name": name,
+                    "is_trained": predictor.is_trained,
+                    "num_features": predictor.encoder.num_features if predictor.encoder else None,
+                    "lut_size": predictor.settings.lut_size,
+                }
+            )
 
         return {"models": models}
 
@@ -374,7 +384,7 @@ def create_deep_learning_router(database, model_storage: dict):  # type: ignore[
     @router.post("/generate-synthetic")
     async def generate_synthetic_data(
         num_samples: int = 100,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ):
         """
         Generate synthetic calibration data and add to database.
@@ -385,7 +395,10 @@ def create_deep_learning_router(database, model_storage: dict):  # type: ignore[
             raise HTTPException(status_code=503, detail="PyTorch is not available.")
 
         try:
-            from ptpd_calibration.ml.deep.synthetic_data import SyntheticDataGenerator, SyntheticDataConfig
+            from ptpd_calibration.ml.deep.synthetic_data import (
+                SyntheticDataConfig,
+                SyntheticDataGenerator,
+            )
 
             config = SyntheticDataConfig(num_records=num_samples, seed=seed)
             generator = SyntheticDataGenerator(config)
@@ -407,7 +420,7 @@ def create_deep_learning_router(database, model_storage: dict):  # type: ignore[
             raise HTTPException(
                 status_code=500,
                 detail="Failed to generate synthetic data. Check server logs for details.",
-            )
+            ) from None
 
     return router
 
@@ -478,6 +491,6 @@ async def _train_model_task(
         training_status[model_name].best_val_loss = stats.get("best_val_loss")
 
     except Exception as e:
-        logger.error(f"Training failed for {model_name}: {e}")
+        logger.error("Training failed for %s: %s", model_name, e)
         training_status[model_name].status = "failed"
         training_status[model_name].error = str(e)

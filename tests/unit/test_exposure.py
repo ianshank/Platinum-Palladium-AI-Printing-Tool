@@ -7,11 +7,11 @@ Tests UV exposure time calculations for alternative printing.
 import pytest
 
 from ptpd_calibration.exposure.calculator import (
-    LightSource,
-    ExposureSettings,
-    ExposureResult,
-    ExposureCalculator,
     LIGHT_SOURCE_SPEEDS,
+    ExposureCalculator,
+    ExposureResult,
+    ExposureSettings,
+    LightSource,
 )
 
 
@@ -209,7 +209,9 @@ class TestExposureCalculator:
     def test_calculate_with_distance(self, calculator):
         """Increased distance should increase exposure (inverse square)."""
         base_result = calculator.calculate(negative_density=1.6)
-        far_result = calculator.calculate(negative_density=1.6, distance_inches=8.0)  # Double distance
+        far_result = calculator.calculate(
+            negative_density=1.6, distance_inches=8.0
+        )  # Double distance
 
         # Double distance = 4x exposure (inverse square)
         assert far_result.exposure_minutes == pytest.approx(

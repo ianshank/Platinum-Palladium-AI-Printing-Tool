@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def generate_plot():
     """
     Generates and saves a sample calibration curve plot.

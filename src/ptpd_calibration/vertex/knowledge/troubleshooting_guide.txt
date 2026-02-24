@@ -1,0 +1,72 @@
+# Pt/Pd Printing Troubleshooting Guide
+## Category: Domain Knowledge - Troubleshooting
+## Application: Pt/Pd alternative photographic printing
+
+## Highlight Problems
+
+### Highlights are blocked / no paper white
+- **Cause**: Over-exposure or over-development
+- **Fix**: Reduce exposure time by 10-20%, check negative curve highlights
+- **Digital neg fix**: Increase highlight separation in curve editor
+
+### Highlights are muddy / flat
+- **Cause**: Insufficient contrast in negative or sensitizer
+- **Fix**: Increase Solution B ratio, add H2O2, or adjust digital negative curve
+- **Check**: Humidity too high can cause flat highlights in DOP
+
+## Shadow Problems
+
+### Shadows lack depth / weak Dmax
+- **Cause**: Under-exposure, insufficient metal in coating, or clearing issues
+- **Fix**: Increase exposure, add more Pt/Pd drops, check clearing bath freshness
+- **Chemistry**: Na2 Pt/Pd salt gives better Dmax than chloride salts
+
+### Shadows are grainy / mottled
+- **Cause**: Too much contrast agent (chlorate), uneven coating, or contaminated chemistry
+- **Fix**: Reduce chlorate concentration, use rod coating instead of brush, filter solutions
+- **Paper**: Some papers show more grain than others (Bergger > Hahnemühle)
+
+## Coating Problems
+
+### Uneven coating / streaks
+- **Cause**: Brush technique, insufficient solution, paper absorption issues
+- **Fix**: Use glass rod (Puddle Pusher), ensure paper is properly humidified
+- **Amount**: 1.0-1.4 mL for 8x10 is standard, more for textured papers
+
+### Orange/brown staining in highlights after clearing
+- **Cause**: Insufficient clearing, iron residue
+- **Fix**: Fresh clearing baths (citric acid 5% or EDTA), extend clearing time
+- **Protocol**: 3 baths x 5 minutes each, agitate continuously
+
+### Coating dries too fast
+- **Cause**: Low humidity, paper too absorbent
+- **Fix**: Pre-humidify paper, increase room humidity, add glycerin (1 drop)
+
+## Calibration Problems
+
+### Step tablet readings are inconsistent
+- **Cause**: Scanner not calibrated, uneven lighting, wet prints
+- **Fix**: Calibrate scanner with IT8 target, ensure prints are completely dry
+- **Scan settings**: 16-bit grayscale, 600-1200 DPI, no auto-corrections
+
+### Digital negative doesn't match screen
+- **Cause**: Linearization curve needs updating, monitor not calibrated
+- **Fix**: Re-run step tablet -> curve generation workflow
+- **PiezoDN**: Ensure correct .quad profile is loaded for your paper/chemistry combo
+
+### Curve shifts after paper change
+- **Cause**: Different papers absorb differently, affecting tone mapping
+- **Fix**: Create separate calibration curves per paper type
+- **Best practice**: Maintain curve library per paper/chemistry/exposure combination
+
+## Environmental Problems
+
+### Inconsistent results day-to-day
+- **Cause**: Humidity and temperature fluctuations
+- **Fix**: Control darkroom environment (hygrometer + humidifier/dehumidifier)
+- **Target**: 50-60% RH, 68-72°F for DOP; 60-70% RH for Malde-Ware
+
+### Prints darken after drying (DOP only)
+- **Cause**: Normal dry-down effect in develop-out process
+- **Fix**: Account for 5-10% dry-down in exposure/curve calculations
+- **Note**: Malde-Ware POP has minimal dry-down

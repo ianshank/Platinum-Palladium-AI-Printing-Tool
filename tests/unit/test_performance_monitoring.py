@@ -12,19 +12,18 @@ Tests cover:
 - Edge cases (empty metrics, etc.)
 """
 
+import pytest
+
+pytest.importorskip("ptpd_calibration.monitoring")
+
 import concurrent.futures
-import csv
 import json
 import tempfile
 import threading
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-
-import numpy as np
-import psutil
-import pytest
+from unittest.mock import Mock, patch
 
 from ptpd_calibration.monitoring.performance import (
     APIMetric,
@@ -38,7 +37,6 @@ from ptpd_calibration.monitoring.performance import (
     ResourceMonitor,
     ResourceUsage,
 )
-
 
 # ============================================================================
 # PerformanceMonitor Tests
@@ -98,9 +96,8 @@ class TestPerformanceMonitor:
         """Test timer context manager handles exceptions."""
         monitor = PerformanceMonitor()
 
-        with pytest.raises(ValueError):
-            with monitor.timer("error_test"):
-                raise ValueError("Test error")
+        with pytest.raises(ValueError), monitor.timer("error_test"):
+            raise ValueError("Test error")
 
         # Timer should still record the metric
         metrics = monitor.get_metrics("error_test")
@@ -138,7 +135,7 @@ class TestPerformanceMonitor:
         monitor = PerformanceMonitor()
 
         # Record metrics at different times
-        start = datetime.now()
+        datetime.now()
         monitor.record_metric("test", 1, "count")
 
         time.sleep(0.1)
@@ -146,7 +143,7 @@ class TestPerformanceMonitor:
         monitor.record_metric("test", 2, "count")
 
         time.sleep(0.1)
-        end = datetime.now()
+        datetime.now()
         monitor.record_metric("test", 3, "count")
 
         # Get all metrics
@@ -154,8 +151,9 @@ class TestPerformanceMonitor:
         assert len(all_metrics) == 3
 
         # Get only middle metric
-        middle_metrics = monitor.get_metrics("test", (middle - timedelta(seconds=0.05),
-                                                        middle + timedelta(seconds=0.05)))
+        middle_metrics = monitor.get_metrics(
+            "test", (middle - timedelta(seconds=0.05), middle + timedelta(seconds=0.05))
+        )
         assert len(middle_metrics) == 1
         assert middle_metrics[0].value == 2.0
 
@@ -246,7 +244,7 @@ class TestPerformanceMonitor:
 
         monitor.record_metric("test", 10.0, "ms")
 
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             path = Path(f.name)
 
         try:
@@ -267,7 +265,7 @@ class TestPerformanceMonitor:
         monitor.record_metric("test2", 20.0, "s")
 
         csv_str = monitor.export_metrics(format="csv")
-        lines = csv_str.strip().split('\n')
+        lines = csv_str.strip().split("\n")
 
         assert len(lines) == 3  # header + 2 data rows
         assert "metric_name" in lines[0]
@@ -280,7 +278,7 @@ class TestPerformanceMonitor:
 
         monitor.record_metric("test", 10.0, "ms")
 
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv") as f:
             path = Path(f.name)
 
         try:
@@ -363,7 +361,7 @@ class TestPerformanceMonitor:
         monitor = PerformanceMonitor()
         errors = []
 
-        def worker(thread_id):
+        def worker(_thread_id):
             try:
                 for i in range(100):
                     monitor.record_metric("shared_metric", i, "count")
@@ -429,7 +427,7 @@ class TestImageProcessingProfiler:
             profiler.profile_operation(failing_func)
 
         # Should still record metrics
-        metrics = profiler.monitor.get_metrics("failing_func_wall_time")
+        profiler.monitor.get_metrics("failing_func_wall_time")
         # The metric might not be recorded if error happens before recording
         # Just ensure no crash occurred
 
@@ -509,15 +507,15 @@ class TestImageProcessingProfiler:
         profiler = ImageProcessingProfiler()
 
         # Create a slow operation with high variance
-        for i in range(10):
+        for _i in range(10):
             # Most operations are fast
             profiler.monitor.record_metric("fast_op_wall_time", 0.01, "seconds")
-        for i in range(2):
+        for _i in range(2):
             # Some operations are very slow
             profiler.monitor.record_metric("fast_op_wall_time", 0.5, "seconds")
 
         # Create a consistent fast operation
-        for i in range(10):
+        for _i in range(10):
             profiler.monitor.record_metric("consistent_op_wall_time", 0.01, "seconds")
 
         bottlenecks = profiler.identify_bottlenecks(["fast_op", "consistent_op"])
@@ -593,9 +591,8 @@ class TestAPIPerformanceTracker:
         """Test track context manager with error."""
         tracker = APIPerformanceTracker()
 
-        with pytest.raises(ValueError):
-            with tracker.track("/api/fail", "POST"):
-                raise ValueError("Test error")
+        with pytest.raises(ValueError), tracker.track("/api/fail", "POST"):
+            raise ValueError("Test error")
 
         assert len(tracker._requests) == 1
         req = tracker._requests[0]
@@ -632,7 +629,7 @@ class TestAPIPerformanceTracker:
 
         assert stats["count"] == 3
         assert stats["error_count"] == 1
-        assert stats["error_rate"] == pytest.approx(1/3)
+        assert stats["error_rate"] == pytest.approx(1 / 3)
 
     def test_get_endpoint_stats_no_data(self):
         """Test endpoint stats with no data."""
@@ -644,7 +641,7 @@ class TestAPIPerformanceTracker:
         """Test endpoint stats with time range filter."""
         tracker = APIPerformanceTracker()
 
-        start = datetime.now()
+        datetime.now()
         tracker.track_request("/api/test", 0.1, 200, "GET")
 
         time.sleep(0.1)
@@ -652,12 +649,11 @@ class TestAPIPerformanceTracker:
         tracker.track_request("/api/test", 0.1, 200, "GET")
 
         time.sleep(0.1)
-        end = datetime.now()
+        datetime.now()
 
         # Get only middle request
         stats = tracker.get_endpoint_stats(
-            "/api/test",
-            (middle - timedelta(seconds=0.05), middle + timedelta(seconds=0.05))
+            "/api/test", (middle - timedelta(seconds=0.05), middle + timedelta(seconds=0.05))
         )
 
         assert stats["count"] == 1
@@ -694,7 +690,7 @@ class TestAPIPerformanceTracker:
         tracker = APIPerformanceTracker()
 
         # Track various requests
-        for i in range(10):
+        for _i in range(10):
             tracker.track_request("/api/fast", 0.05, 200, "GET")
             tracker.track_request("/api/slow", 0.5, 200, "GET")
 
@@ -888,28 +884,14 @@ class TestCacheManager:
 
     def test_cache_stats_properties(self):
         """Test CacheStats properties."""
-        stats = CacheStats(
-            hits=7,
-            misses=3,
-            evictions=2,
-            expirations=1,
-            size=50,
-            max_size=100
-        )
+        stats = CacheStats(hits=7, misses=3, evictions=2, expirations=1, size=50, max_size=100)
 
         assert stats.hit_rate == pytest.approx(0.7)
         assert stats.miss_rate == pytest.approx(0.3)
 
     def test_cache_stats_no_requests(self):
         """Test CacheStats with no requests."""
-        stats = CacheStats(
-            hits=0,
-            misses=0,
-            evictions=0,
-            expirations=0,
-            size=0,
-            max_size=100
-        )
+        stats = CacheStats(hits=0, misses=0, evictions=0, expirations=0, size=0, max_size=100)
 
         assert stats.hit_rate == 0.0
         # When total is 0, miss_rate = 1.0 - hit_rate = 1.0 - 0.0 = 1.0
@@ -976,11 +958,7 @@ class TestResourceMonitor:
 
     def test_init(self):
         """Test ResourceMonitor initialization."""
-        monitor = ResourceMonitor(
-            cpu_threshold=75.0,
-            memory_threshold=85.0,
-            disk_threshold=95.0
-        )
+        monitor = ResourceMonitor(cpu_threshold=75.0, memory_threshold=85.0, disk_threshold=95.0)
 
         assert monitor.cpu_threshold == 75.0
         assert monitor.memory_threshold == 85.0
@@ -1039,34 +1017,30 @@ class TestResourceMonitor:
 
     def test_get_alerts_for_high_usage_none(self):
         """Test alerts when usage is normal."""
-        monitor = ResourceMonitor(
-            cpu_threshold=99.0,
-            memory_threshold=99.0,
-            disk_threshold=99.0
-        )
+        monitor = ResourceMonitor(cpu_threshold=99.0, memory_threshold=99.0, disk_threshold=99.0)
 
         alerts = monitor.get_alerts_for_high_usage()
 
         # With very high thresholds, should get no alerts
         assert isinstance(alerts, list)
 
-    @patch('psutil.cpu_percent')
-    @patch('psutil.virtual_memory')
-    @patch('psutil.disk_usage')
+    @patch("psutil.cpu_percent")
+    @patch("psutil.virtual_memory")
+    @patch("psutil.disk_usage")
     def test_get_alerts_for_high_usage_cpu(self, mock_disk, mock_mem, mock_cpu):
         """Test CPU usage alert."""
         mock_cpu.return_value = 90.0
         mock_mem.return_value = Mock(
             percent=50.0,
-            used=1024*1024*1024,
-            available=1024*1024*1024,
-            total=2*1024*1024*1024
+            used=1024 * 1024 * 1024,
+            available=1024 * 1024 * 1024,
+            total=2 * 1024 * 1024 * 1024,
         )
         mock_disk.return_value = Mock(
             percent=50.0,
-            used=100*1024*1024*1024,
-            free=100*1024*1024*1024,
-            total=200*1024*1024*1024
+            used=100 * 1024 * 1024 * 1024,
+            free=100 * 1024 * 1024 * 1024,
+            total=200 * 1024 * 1024 * 1024,
         )
 
         monitor = ResourceMonitor(cpu_threshold=80.0)
@@ -1077,23 +1051,23 @@ class TestResourceMonitor:
         assert cpu_alerts[0]["usage"] == 90.0
         assert cpu_alerts[0]["severity"] == "warning"
 
-    @patch('psutil.cpu_percent')
-    @patch('psutil.virtual_memory')
-    @patch('psutil.disk_usage')
+    @patch("psutil.cpu_percent")
+    @patch("psutil.virtual_memory")
+    @patch("psutil.disk_usage")
     def test_get_alerts_critical_severity(self, mock_disk, mock_mem, mock_cpu):
         """Test critical severity alerts."""
         mock_cpu.return_value = 96.0
         mock_mem.return_value = Mock(
             percent=50.0,
-            used=1024*1024*1024,
-            available=1024*1024*1024,
-            total=2*1024*1024*1024
+            used=1024 * 1024 * 1024,
+            available=1024 * 1024 * 1024,
+            total=2 * 1024 * 1024 * 1024,
         )
         mock_disk.return_value = Mock(
             percent=50.0,
-            used=100*1024*1024*1024,
-            free=100*1024*1024*1024,
-            total=200*1024*1024*1024
+            used=100 * 1024 * 1024 * 1024,
+            free=100 * 1024 * 1024 * 1024,
+            total=200 * 1024 * 1024 * 1024,
         )
 
         monitor = ResourceMonitor(cpu_threshold=80.0)
@@ -1128,9 +1102,7 @@ class TestPerformanceReport:
         resource_monitor = ResourceMonitor()
 
         report = PerformanceReport(
-            monitor=monitor,
-            api_tracker=api_tracker,
-            resource_monitor=resource_monitor
+            monitor=monitor, api_tracker=api_tracker, resource_monitor=resource_monitor
         )
 
         assert report.monitor is monitor
@@ -1245,8 +1217,7 @@ class TestPerformanceReport:
         period2_end = datetime.now()
 
         comparison = report_gen.compare_performance(
-            (period1_start, period1_end),
-            (period2_start, period2_end)
+            (period1_start, period1_end), (period2_start, period2_end)
         )
 
         assert "period1" in comparison
@@ -1273,8 +1244,7 @@ class TestPerformanceReport:
         period2_end = datetime.now()
 
         comparison = report_gen.compare_performance(
-            (period1_start, period1_end),
-            (period2_start, period2_end)
+            (period1_start, period1_end), (period2_start, period2_end)
         )
 
         assert comparison["changes"]["op1"]["direction"] == "improved"
@@ -1298,7 +1268,7 @@ class TestPerformanceReport:
 
         report = {"test": "data"}
 
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             path = Path(f.name)
 
         try:
@@ -1331,7 +1301,7 @@ class TestPerformanceReport:
         monitor.record_metric("op1", 10.0, "ms")
         report = report_gen.generate_daily_report()
 
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv") as f:
             path = Path(f.name)
 
         try:
@@ -1363,10 +1333,7 @@ class TestPerformanceMetric:
     def test_create_metric(self):
         """Test creating a performance metric."""
         metric = PerformanceMetric(
-            metric_name="test_op",
-            value=123.45,
-            unit="ms",
-            metadata={"key": "value"}
+            metric_name="test_op", value=123.45, unit="ms", metadata={"key": "value"}
         )
 
         assert metric.metric_name == "test_op"
@@ -1378,22 +1345,13 @@ class TestPerformanceMetric:
     def test_metric_with_custom_timestamp(self):
         """Test metric with custom timestamp."""
         ts = datetime(2023, 1, 1, 12, 0, 0)
-        metric = PerformanceMetric(
-            metric_name="test",
-            value=10.0,
-            unit="s",
-            timestamp=ts
-        )
+        metric = PerformanceMetric(metric_name="test", value=10.0, unit="s", timestamp=ts)
 
         assert metric.timestamp == ts
 
     def test_metric_default_metadata(self):
         """Test metric with default empty metadata."""
-        metric = PerformanceMetric(
-            metric_name="test",
-            value=10.0,
-            unit="s"
-        )
+        metric = PerformanceMetric(metric_name="test", value=10.0, unit="s")
 
         assert metric.metadata == {}
 
@@ -1410,7 +1368,7 @@ class TestResourceUsage:
             memory_available_mb=4096.0,
             disk_percent=70.0,
             disk_used_gb=500.0,
-            disk_free_gb=200.0
+            disk_free_gb=200.0,
         )
 
         assert usage.cpu_percent == 45.5
@@ -1428,7 +1386,7 @@ class TestResourceUsage:
             disk_used_gb=500.0,
             disk_free_gb=200.0,
             gpu_percent=80.0,
-            gpu_memory_mb=4096.0
+            gpu_memory_mb=4096.0,
         )
 
         assert usage.gpu_percent == 80.0
@@ -1440,12 +1398,7 @@ class TestAPIMetric:
 
     def test_create_api_metric(self):
         """Test creating an API metric."""
-        metric = APIMetric(
-            endpoint="/api/test",
-            duration_ms=123.45,
-            status_code=200,
-            method="POST"
-        )
+        metric = APIMetric(endpoint="/api/test", duration_ms=123.45, status_code=200, method="POST")
 
         assert metric.endpoint == "/api/test"
         assert metric.duration_ms == 123.45
@@ -1456,10 +1409,7 @@ class TestAPIMetric:
     def test_api_metric_with_error(self):
         """Test API metric with error."""
         metric = APIMetric(
-            endpoint="/api/fail",
-            duration_ms=50.0,
-            status_code=500,
-            error="Internal server error"
+            endpoint="/api/fail", duration_ms=50.0, status_code=500, error="Internal server error"
         )
 
         assert metric.status_code == 500
@@ -1478,14 +1428,12 @@ class TestIntegration:
         """Test complete monitoring workflow."""
         # Setup components
         monitor = PerformanceMonitor()
-        profiler = ImageProcessingProfiler(monitor=monitor)
+        ImageProcessingProfiler(monitor=monitor)
         api_tracker = APIPerformanceTracker()
         cache = CacheManager()
         resource_monitor = ResourceMonitor()
         report_gen = PerformanceReport(
-            monitor=monitor,
-            api_tracker=api_tracker,
-            resource_monitor=resource_monitor
+            monitor=monitor, api_tracker=api_tracker, resource_monitor=resource_monitor
         )
 
         # Simulate some operations
@@ -1549,8 +1497,7 @@ class TestIntegration:
         period2_end = datetime.now()
 
         comparison = report_gen.compare_performance(
-            (period1_start, period1_end),
-            (period2_start, period2_end)
+            (period1_start, period1_end), (period2_start, period2_end)
         )
 
         assert comparison["changes"]["api_call"]["direction"] == "degraded"
@@ -1708,10 +1655,7 @@ class TestEdgeCases:
     def test_performance_metric_serialization(self):
         """Test that performance metrics can be serialized."""
         metric = PerformanceMetric(
-            metric_name="test",
-            value=10.0,
-            unit="ms",
-            metadata={"key": "value"}
+            metric_name="test", value=10.0, unit="ms", metadata={"key": "value"}
         )
 
         # Should be able to convert to dict

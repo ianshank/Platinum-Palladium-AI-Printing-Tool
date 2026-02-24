@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 try:
-    import pytest_benchmark
+    import pytest_benchmark  # noqa: F401
 
     BENCHMARK_AVAILABLE = True
 except ImportError:
@@ -62,7 +62,7 @@ class TestImageProcessingPerformance:
         )
 
     @pytest.mark.skipif(not BENCHMARK_AVAILABLE, reason="pytest-benchmark not installed")
-    def test_load_image(self, benchmark, processor, small_image):
+    def test_load_image(self, benchmark, processor, small_image):  # noqa: ARG002
         """Benchmark image loading."""
         from PIL import Image
 
@@ -164,8 +164,8 @@ class TestImagePerformanceThresholds:
 
         from PIL import Image
 
-        from ptpd_calibration.imaging import ImageProcessor
         from ptpd_calibration.core.models import CurveData
+        from ptpd_calibration.imaging import ImageProcessor
 
         # Create test image
         img_array = np.random.randint(0, 255, (600, 800), dtype=np.uint8)

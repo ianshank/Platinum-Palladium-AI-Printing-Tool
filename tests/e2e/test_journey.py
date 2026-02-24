@@ -4,15 +4,15 @@ Browser-based E2E test using Playwright.
 This test requires Playwright to be installed. If not installed, it will be skipped.
 """
 
-import pytest
-from pathlib import Path
 import numpy as np
+import pytest
 from PIL import Image
 
 # Skip this entire module if playwright is not installed
 pytest.importorskip("playwright", reason="Playwright not installed - skipping browser tests")
 
 from playwright.sync_api import Page, expect
+
 
 @pytest.mark.skip(reason="Playwright selectors pending update for hierarchical navigation")
 def test_full_calibration_flow(page: Page, app_url, tmp_path):
@@ -25,7 +25,7 @@ def test_full_calibration_flow(page: Page, app_url, tmp_path):
     """
     # 1. Navigate to app
     page.goto(app_url)
-    
+
     # Wait for title
     expect(page.get_by_role("heading", name="Pt/Pd Calibration Studio")).to_be_visible()
 

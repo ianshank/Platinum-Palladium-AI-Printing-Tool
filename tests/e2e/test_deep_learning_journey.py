@@ -5,10 +5,6 @@ These tests simulate complete AI-powered workflows as a user would experience th
 testing the integration of multiple deep learning components.
 """
 
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock
-
 import numpy as np
 import pytest
 from PIL import Image
@@ -51,12 +47,12 @@ class TestDeepLearningCalibrationJourney:
         """
         from ptpd_calibration.deep_learning.config import (
             DetectionModelSettings,
-            NeuralCurveSettings,
             ImageQualitySettings,
+            NeuralCurveSettings,
         )
         from ptpd_calibration.deep_learning.models import (
-            DeepDetectionResult,
             CurvePredictionResult,
+            DeepDetectionResult,
             ImageQualityResult,
         )
 
@@ -72,8 +68,8 @@ class TestDeepLearningCalibrationJourney:
 
         # Step 2: Test deep learning types can be instantiated
         from ptpd_calibration.deep_learning.types import (
-            DetectionBackend,
             CurvePredictorArchitecture,
+            DetectionBackend,
             IQAMetric,
         )
 
@@ -87,7 +83,7 @@ class TestDeepLearningCalibrationJourney:
         assert image_path.exists()
 
         # Step 4: Create mock detection result (without actual model)
-        mock_patches = [
+        _ = [
             {
                 "zone_number": i,
                 "bbox": [i * 24, 30, 24, 128],
@@ -95,7 +91,7 @@ class TestDeepLearningCalibrationJourney:
                 "density": 0.1 + (i * 0.075),
             }
             for i in range(21)
-        ]
+        ]  # Mock patches used to verify structure
 
         detection_result = DeepDetectionResult(
             patches=[],  # Would be populated by actual detector
@@ -127,7 +123,7 @@ class TestDeepLearningCalibrationJourney:
         )
         assert quality_result.overall_score > 0
 
-    def test_ai_enhanced_workflow_with_fallback(self, sample_step_tablet, tmp_path):
+    def test_ai_enhanced_workflow_with_fallback(self, sample_step_tablet, tmp_path):  # noqa: ARG002
         """
         Test that AI workflow gracefully falls back when models unavailable.
         """
@@ -175,10 +171,10 @@ class TestDefectDetectionJourney:
         """
         from ptpd_calibration.deep_learning.config import DefectDetectionSettings
         from ptpd_calibration.deep_learning.models import (
-            DetectedDefect,
             DefectDetectionResult,
+            DetectedDefect,
         )
-        from ptpd_calibration.deep_learning.types import DefectType, DefectSeverity
+        from ptpd_calibration.deep_learning.types import DefectSeverity, DefectType
 
         # Step 1: Configure defect detection
         settings = DefectDetectionSettings(device="cpu")
@@ -295,7 +291,9 @@ class TestRecipeRecommendationJourney:
 
         # Step 3: Verify recommendations
         assert len(result.recommendations) == 2
-        assert result.recommendations[0].similarity_score > result.recommendations[1].similarity_score
+        assert (
+            result.recommendations[0].similarity_score > result.recommendations[1].similarity_score
+        )
         assert all(r.confidence > 0.5 for r in result.recommendations)
 
         # Step 4: Check recipe categories
@@ -327,13 +325,12 @@ class TestPrintComparisonJourney:
         """
         from ptpd_calibration.deep_learning.config import PrintComparisonSettings
         from ptpd_calibration.deep_learning.models import (
-            ZoneComparison,
             PrintComparisonResult,
+            ZoneComparison,
         )
         from ptpd_calibration.deep_learning.types import (
-            PerceptualMetric,
-            ComparisonMode,
             ComparisonResult,
+            PerceptualMetric,
         )
 
         # Step 1: Configure comparison
@@ -435,7 +432,7 @@ class TestMultiModalAssistantJourney:
         """
         from ptpd_calibration.deep_learning.config import MultiModalSettings
         from ptpd_calibration.deep_learning.models import MultiModalResponse
-        from ptpd_calibration.deep_learning.types import VisionLanguageModel, ToolType
+        from ptpd_calibration.deep_learning.types import ToolType, VisionLanguageModel
 
         # Step 1: Configure assistant
         settings = MultiModalSettings()
@@ -531,9 +528,7 @@ class TestDiffusionEnhancementJourney:
         # Stains
         y, x = np.ogrid[150:180, 100:130]
         mask = (x - 115) ** 2 + (y - 165) ** 2 <= 15**2
-        arr[150:180, 100:130][mask] = (
-            arr[150:180, 100:130][mask] * 0.6
-        ).astype(np.uint8)
+        arr[150:180, 100:130][mask] = (arr[150:180, 100:130][mask] * 0.6).astype(np.uint8)
         # Fading
         arr[:50, :] = (arr[:50, :] * 0.7).astype(np.uint8)
 
@@ -605,15 +600,15 @@ class TestDiffusionEnhancementJourney:
 class TestIntegratedAIWorkflow:
     """Test complex integrated AI workflows."""
 
-    def test_complete_ai_enhanced_calibration(self, tmp_path):
+    def test_complete_ai_enhanced_calibration(self, tmp_path):  # noqa: ARG002
         """
         Complete AI Journey: Detection → Curve Prediction → Quality Check →
         Recipe Recommendation → Exposure Prediction
         """
         from ptpd_calibration.deep_learning.config import get_deep_learning_settings
         from ptpd_calibration.deep_learning.models import (
-            DeepDetectionResult,
             CurvePredictionResult,
+            DeepDetectionResult,
             ImageQualityResult,
             RecipeRecommendation,
             UVExposurePrediction,
@@ -702,10 +697,13 @@ class TestIntegratedAIWorkflow:
             "total_ai_time_ms": total_processing_time,
         }
 
-        assert all(k in summary for k in [
-            "detection_model",
-            "curve_model",
-            "quality_score",
-            "recommended_recipe",
-            "predicted_exposure",
-        ])
+        assert all(
+            k in summary
+            for k in [
+                "detection_model",
+                "curve_model",
+                "quality_score",
+                "recommended_recipe",
+                "predicted_exposure",
+            ]
+        )
