@@ -22,7 +22,7 @@ describe('ScanUpload', () => {
   it('renders dropzone area', () => {
     renderWithProviders(<ScanUpload />);
     expect(
-      screen.getByText(/click to upload or drag and drop/i)
+      screen.getByText(/click or drag scan image/i)
     ).toBeInTheDocument();
   });
 

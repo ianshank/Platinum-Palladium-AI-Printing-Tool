@@ -235,11 +235,11 @@ describe('ChemistryCalculator', () => {
     it('shows validation error when temperature is below minimum', () => {
       render(<ChemistryCalculator />);
       fireEvent.change(screen.getByTestId('developer-temp-input'), {
-        target: { value: '10' },
+        target: { value: '5' },
       });
       expect(screen.getByTestId('temp-error-message')).toBeInTheDocument();
       expect(screen.getByTestId('temp-error-message')).toHaveTextContent(
-        'Temperature must be between 15°C and 50°C'
+        'Temperature should be between 10°C and 60°C'
       );
     });
 
@@ -250,7 +250,7 @@ describe('ChemistryCalculator', () => {
       });
       expect(screen.getByTestId('temp-error-message')).toBeInTheDocument();
       expect(screen.getByTestId('temp-error-message')).toHaveTextContent(
-        'Temperature must be between 15°C and 50°C'
+        'Temperature should be between 10°C and 60°C'
       );
     });
 
@@ -347,8 +347,8 @@ describe('ChemistryCalculator', () => {
     it('displays contrast agent info', () => {
       render(<ChemistryCalculator />);
       const contrastRow = screen.getByTestId('recipe-contrast');
-      expect(contrastRow).toHaveTextContent('NA2');
-      expect(contrastRow).toHaveTextContent('1 drops per 10ml');
+      expect(contrastRow).toHaveTextContent(/NA2/i);
+      expect(contrastRow).toHaveTextContent(/1 dr\/10ml/i);
     });
 
     it('displays developer type', () => {

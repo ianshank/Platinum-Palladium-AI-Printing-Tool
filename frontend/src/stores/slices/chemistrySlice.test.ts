@@ -124,17 +124,15 @@ describe('chemistrySlice', () => {
     });
 
     it('setDeveloper clamps temperature to minimum', () => {
-      store.getState().chemistry.setDeveloper({ temperatureC: 10 });
-
+      store.getState().chemistry.setDeveloper({ temperatureC: 5 });
       const dev = store.getState().chemistry.developer;
-      expect(dev.temperatureC).toBe(15); // Clamped to TEMPERATURE_MIN
+      expect(dev.temperatureC).toBe(10); // Clamped to TEMPERATURE_MIN (10)
     });
 
     it('setDeveloper clamps temperature to maximum', () => {
       store.getState().chemistry.setDeveloper({ temperatureC: 100 });
-
       const dev = store.getState().chemistry.developer;
-      expect(dev.temperatureC).toBe(50); // Clamped to TEMPERATURE_MAX
+      expect(dev.temperatureC).toBe(60); // Clamped to TEMPERATURE_MAX (60)
     });
 
     it('setDeveloper accepts valid temperature in range', () => {
@@ -145,11 +143,11 @@ describe('chemistrySlice', () => {
     });
 
     it('setDeveloper accepts boundary temperatures', () => {
-      store.getState().chemistry.setDeveloper({ temperatureC: 15 });
-      expect(store.getState().chemistry.developer.temperatureC).toBe(15);
+      store.getState().chemistry.setDeveloper({ temperatureC: 10 });
+      expect(store.getState().chemistry.developer.temperatureC).toBe(10);
 
-      store.getState().chemistry.setDeveloper({ temperatureC: 50 });
-      expect(store.getState().chemistry.developer.temperatureC).toBe(50);
+      store.getState().chemistry.setDeveloper({ temperatureC: 60 });
+      expect(store.getState().chemistry.developer.temperatureC).toBe(60);
     });
 
     it('setDeveloper marks recipe as stale', () => {

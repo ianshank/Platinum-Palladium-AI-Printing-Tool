@@ -14,6 +14,8 @@ vi.mock('lucide-react', () => ({
   Settings: () => <span data-testid="icon-settings" />,
   Menu: () => <span data-testid="icon-menu" />,
   X: () => <span data-testid="icon-close" />,
+  Sun: () => <span data-testid="icon-sun" />,
+  Moon: () => <span data-testid="icon-moon" />,
 }));
 
 vi.mock('@/lib/utils', () => ({
@@ -151,7 +153,7 @@ describe('Layout', () => {
   it('calls toggleSidebar on menu button click', () => {
     renderLayout();
 
-    const menuBtn = screen.getByLabelText('Open sidebar');
+    const menuBtn = screen.getByLabelText('Collapse sidebar');
     fireEvent.click(menuBtn);
 
     expect(mockToggleSidebar).toHaveBeenCalledTimes(1);

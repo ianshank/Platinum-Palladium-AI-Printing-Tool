@@ -172,7 +172,26 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
         )}
       >
         {/* Top bar */}
-        <header className="flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6">
+        <header className="flex h-16 items-center justify-between border-b bg-card px-4 lg:px-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={toggleSidebar}
+              aria-label="Open sidebar"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <h1 className="text-lg font-semibold tracking-tight">
+              {NAV_ITEMS.find((item) =>
+                item.path === '/'
+                  ? location.pathname === '/'
+                  : location.pathname.startsWith(item.path)
+              )?.label || 'Pt/Pd Tool'}
+            </h1>
+          </div>
+
           {/* Actions */}
           <div className="flex items-center gap-2">
             <Button

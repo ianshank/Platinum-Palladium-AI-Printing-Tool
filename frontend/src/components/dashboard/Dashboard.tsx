@@ -362,11 +362,10 @@ export const Dashboard: FC<DashboardProps> = ({
 
   return (
     <div className={cn('space-y-8', className)} data-testid="dashboard">
-      {/* Header with refresh */}
+      {/* Header with refresh (Title moved to Layout) */}
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-baseline gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
             {isLoading && (
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             )}

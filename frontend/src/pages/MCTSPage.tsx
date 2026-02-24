@@ -50,10 +50,7 @@ export const MCTSPage: FC = () => {
     <div className="flex flex-col gap-6 p-6" data-testid="mcts-page">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          MCTS Calibration Search
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-0 text-sm text-muted-foreground">
           Use Monte Carlo Tree Search to find optimal calibration parameters
           based on your paper type, UV source, and target aesthetics.
         </p>

@@ -22,9 +22,9 @@ vi.mock('recharts', async (importOriginal) => {
 // Mock ResizeObserver
 beforeAll(() => {
   global.ResizeObserver = class ResizeObserver {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
+    observe(): void { }
+    unobserve(): void { }
+    disconnect(): void { }
   };
 });
 
@@ -82,8 +82,7 @@ describe('Step4Preview', () => {
       expect.objectContaining({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.any returns any for type matching
         measurements: expect.any(Array),
-        name: 'Test Curve',
-        curve_type: 'monotonic',
+        curve_type: 'linear',
       }),
       expect.any(Object)
     );

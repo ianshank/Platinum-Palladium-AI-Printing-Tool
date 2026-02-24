@@ -73,6 +73,9 @@ describe('CalibrationWizard', () => {
     const paperInput = screen.getByPlaceholderText(/Arches Platine/i);
     await userEvent.type(paperInput, 'Test Paper');
 
+    const exposureInput = screen.getByLabelText(/Exposure Time/i);
+    await userEvent.type(exposureInput, '180');
+
     // Click Next
     await userEvent.click(screen.getByRole('button', { name: /next/i }));
 
