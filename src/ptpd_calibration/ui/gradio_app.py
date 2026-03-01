@@ -2,6 +2,11 @@
 Gradio-based user interface for PTPD Calibration System.
 
 Provides comprehensive curve display, step wedge analysis, and calibration tools.
+
+Uses template system for:
+- Structured logging with operation context
+- Error handling with boundaries
+- User-friendly error messages
 """
 
 from pathlib import Path
@@ -68,9 +73,12 @@ def create_gradio_app(share: bool = False):
     Returns:
         Gradio Blocks interface.
     """
+    _ui_logger.info("Creating Gradio application", share=share)
+
     try:
         import gradio as gr
     except ImportError:
+        _ui_logger.error("Gradio not installed")
         raise ImportError(
             "Gradio is required for UI. Install with: pip install ptpd-calibration[ui]"
         )
@@ -4314,6 +4322,10 @@ def create_gradio_app(share: bool = False):
 
             build_about_tab(tab_label="ℹ️ About")
 
+    _ui_logger.info(
+        "Gradio application created",
+        tabs=["Dashboard", "Calibration", "Image Prep", "Darkroom", "AI Tools", "About"],
+    )
     return app
 
 
@@ -4326,8 +4338,23 @@ def launch_ui(share: bool = True, port: int = 7860, server_name: str = "0.0.0.0"
         port: Port to run on.
         server_name: Server name to bind to.
     """
-    app = create_gradio_app(share=share)
-    app.launch(share=share, server_port=port, server_name=server_name, show_api=False)
+    _ui_logger.info(
+        "Launching Gradio UI",
+        share=share,
+        port=port,
+        server_name=server_name,
+    )
+
+    try:
+        app = create_gradio_app(share=share)
+        app.launch(share=share, server_port=port, server_name=server_name, show_api=False)
+    except Exception as e:
+        _ui_logger.error(
+            "Failed to launch Gradio UI",
+            error=str(e),
+            exc_info=True,
+        )
+        raise
 
 
 if __name__ == "__main__":
