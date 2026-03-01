@@ -31,4 +31,4 @@ pnpm test -- --run src/components/calibration/
 - `../wizard/` — Step components rendered by CalibrationWizard
 - `../../stores/slices/calibrationSlice.ts` — Calibration state
 - `../../stores/slices/imageSlice.ts` — Uploaded image state
-- Backend: `src/ptpd_calibration/detection/` — Step tablet detection
+- Backend: `../../../../src/ptpd_calibration/detection/` — Step tablet detection

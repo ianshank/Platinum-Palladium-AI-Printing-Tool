@@ -14,7 +14,7 @@ Custom React hooks for domain logic and UI orchestration. These compose API hook
 ## Conventions
 - **Naming**: `use{Feature}.ts` — always prefixed with `use`
 - **Dependency direction**: Hooks here may import from `api/hooks.ts` but NOT vice versa
-- **Co-located tests**: Each hook has `use{Feature}.test.ts` beside it
+- **Co-located tests**: Prefer placing `use{Feature}.test.ts` beside each hook; new hooks should follow this pattern
 - **Typed returns**: Export explicit return type interfaces (e.g., `UseChatReturn`, `UseUndoRedoReturn`)
 
 ## Testing

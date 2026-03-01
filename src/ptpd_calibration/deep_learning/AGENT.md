@@ -34,7 +34,7 @@ Skip DL tests if PyTorch not installed: `@pytest.mark.skipif(not HAS_TORCH, ...)
 ## Pitfalls
 - NEVER add `torch` or `torchvision` to core dependencies — they are optional extras
 - Model loading can be slow — cache loaded models, don't reload per request
-- Training jobs should use Celery task queue for background processing
+- Training jobs should use a background task queue/worker for asynchronous processing (e.g., a job scheduler or task queue system)
 - Memory: Large models + large images can exhaust RAM — check before loading
 
 ## Related

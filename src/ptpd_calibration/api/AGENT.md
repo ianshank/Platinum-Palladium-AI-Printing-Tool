@@ -11,14 +11,14 @@ FastAPI server providing REST endpoints for the Pt/Pd calibration system. Consum
 
 ## Endpoint Groups
 All endpoints are prefixed with `/api/`:
-- `/health` — Health check (GET)
-- `/analyze` — Density analysis (POST)
-- `/scan/upload` — Step tablet scan upload (POST, multipart)
-- `/curves/*` — Curve CRUD, generation, modification, export, quad upload/parse, enhance, smooth, blend
-- `/calibrations` — Calibration records (GET list, POST create, GET by id)
-- `/chat/*` — LLM chat, recipe suggestions, troubleshooting
-- `/statistics` — System statistics (GET)
-- `/export/*` — Negative TIFF, curve file, profile JSON exports
+- `/api/health` — Health check (GET)
+- `/api/analyze` — Density analysis (POST)
+- `/api/scan/upload` — Step tablet scan upload (POST, multipart)
+- `/api/curves/*` — Curve CRUD, generation, modification, export, quad upload/parse, enhance, smooth, blend
+- `/api/calibrations` — Calibration records (GET list, POST create, GET by id)
+- `/api/chat/*` — LLM chat, recipe suggestions, troubleshooting
+- `/api/statistics` — System statistics (GET)
+- `/api/export/*` — Negative TIFF, curve file, profile JSON exports
 
 See CLAUDE.md "Backend API Integration" for full endpoint table.
 
@@ -36,7 +36,7 @@ pytest tests/integration/ -v  # API integration tests
 ```
 
 ## Pitfalls
-- Do NOT add endpoints without corresponding frontend types in `frontend/src/types/models.ts`
+- Do NOT add endpoints without corresponding frontend types in `../../../frontend/src/types/models.ts`
 - Deep learning router import is wrapped in try/except — PyTorch is optional
 - Upload directory defaults to temp dir if not configured
 
@@ -44,4 +44,4 @@ pytest tests/integration/ -v  # API integration tests
 - `../core/` — Pydantic models and types shared across all modules
 - `../curves/` — Curve generation logic called by endpoints
 - `../detection/` — Step tablet reader used by scan upload
-- Frontend: `frontend/src/api/client.ts` — TypeScript API client must mirror these endpoints
+- Frontend: `../../../frontend/src/api/client.ts` — TypeScript API client must mirror these endpoints

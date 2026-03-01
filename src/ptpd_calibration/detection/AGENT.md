@@ -14,7 +14,7 @@ Step tablet detection and density extraction from scanned prints. Uses OpenCV fo
 1. `scanner.py` — Preprocess image (denoise, normalize, color correct)
 2. `detector.py` — Find patch bounding boxes via contour analysis
 3. `extractor.py` — Sample RGB/LAB values within patches, compute density
-4. `reader.py` — Orchestrate pipeline, return `StepTabletScan` with `PatchData` array
+4. `reader.py` — Orchestrate pipeline, return `StepTabletResult` (wrapping `ExtractionResult` and `DensityMeasurement`s)
 
 ## Conventions
 - **OpenCV + NumPy**: All image operations use `cv2` and `np.ndarray`
@@ -35,7 +35,7 @@ Test fixtures in `tests/fixtures/` contain sample step tablet images.
 - Large images can be slow — downsample for detection, full-res for extraction
 
 ## Related
-- `../core/models.py` — `PatchData`, `StepTabletScan`, `DensityMeasurement`
+- `../core/models.py` — `PatchData`, `StepTabletResult`, `ExtractionResult`
 - `../api/server.py` — `/api/scan/upload` calls `StepTabletReader`
 - `../curves/generator.py` — Consumes density measurements for curve generation
-- Frontend: `frontend/src/components/calibration/ScanUpload.tsx` — Upload UI
+- Frontend: `../../../frontend/src/components/calibration/ScanUpload.tsx` — Upload UI

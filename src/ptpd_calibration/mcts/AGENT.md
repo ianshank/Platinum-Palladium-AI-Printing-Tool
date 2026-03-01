@@ -19,7 +19,7 @@ Monte Carlo Tree Search engine for intelligent calibration optimization. Uses si
 ## Conventions
 - **Physics-grounded**: Constraints in `constraints.py` encode real printing physics — do not relax without domain expertise
 - **Optional PyTorch**: `networks.py` and `training.py` use lazy imports — MCTS works without neural networks (pure UCT)
-- **Reproducibility**: All random operations use seeded `np.random.Generator` for deterministic testing
+- **Reproducibility**: MCTS randomness is driven by Python's standard `random` module as used in `engine.py`, `training.py`, and `tree.py`. For deterministic testing, ensure the random seed is set consistently (e.g., during experiment setup or via configuration) before running searches.
 - **Config-driven**: Hyperparameters in `config.py` — never hardcode search parameters in engine code
 
 ## Testing
@@ -36,5 +36,5 @@ pytest tests/integration/ -v -k "mcts"
 ## Related
 - `../api/mcts_router.py` — API endpoints for MCTS operations
 - `../core/models.py` — Shared data models
-- Frontend: `frontend/src/components/mcts/` — MCTS UI components
-- Frontend: `frontend/src/api/mcts.ts` — MCTS API client
+- Frontend: `../../../frontend/src/components/mcts/` — MCTS UI components
+- Frontend: `../../../frontend/src/api/mcts.ts` — MCTS API client

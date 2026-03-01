@@ -25,7 +25,7 @@ Curve generation, modification, export, and AI enhancement for calibration curve
 pytest tests/unit/ -v -k "curve"
 pytest tests/integration/ -v -k "curve"
 ```
-Equivalence tests: `migration/equivalence-tests/` compares legacy vs new curve output within tolerance of 0.001.
+Equivalence tests (when present) should compare legacy vs new curve output within a tolerance of 0.001.
 
 ## Pitfalls
 - Do NOT break the `save_curve()` / `load_quad_file()` format — third-party tools (QuadTone RIP) depend on exact formatting
@@ -36,4 +36,4 @@ Equivalence tests: `migration/equivalence-tests/` compares legacy vs new curve o
 - `../core/models.py` — `CurveData`, `DensityMeasurement` models
 - `../api/server.py` — `/api/curves/*` endpoints call these functions
 - `../detection/` — Produces measurements that feed into curve generation
-- Frontend: `frontend/src/components/curves/` — CurveEditor visualizes and edits these curves
+- Frontend: `../../../frontend/src/components/curves/` — CurveEditor visualizes and edits these curves

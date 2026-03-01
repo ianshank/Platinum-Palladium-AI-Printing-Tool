@@ -43,4 +43,4 @@ pytest tests/sanity/ -v             # Quick CI smoke tests
 ## Related
 - `../src/ptpd_calibration/` — Source code under test
 - `../frontend/src/__tests__/` — Frontend test suite (Vitest, not pytest)
-- `../migration/equivalence-tests/` — Legacy-vs-new comparison tests
+- Legacy-vs-new comparison tests (migration comparison suite, if available)

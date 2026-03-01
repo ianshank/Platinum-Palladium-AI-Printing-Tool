@@ -36,4 +36,4 @@ pytest tests/unit/ -v -k "imaging or processor or histogram"
 - `../detection/` — Uses imaging utilities for scan preprocessing
 - `../curves/` — Curves are applied to images via LUT operations
 - `../api/server.py` — `/api/export/negative` uses processor for TIFF generation
-- Frontend: `frontend/src/components/preview/` — Image preview in browser
+- Frontend: `../../../frontend/src/components/preview/` — Image preview in browser

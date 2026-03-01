@@ -4,7 +4,7 @@
 Shared data models, types, and base services used across the entire backend. This is the foundation layer — everything else depends on it.
 
 ## Key Files
-- `models.py` — Pydantic models: `PatchData`, `DensityMeasurement`, `CalibrationRecord`, `CurveData`, `StepTabletScan`, etc.
+- `models.py` — Pydantic models: `PatchData`, `DensityMeasurement`, `CalibrationRecord`, `CurveData`, `StepTabletResult`, etc.
 - `types.py` — Enums and type aliases: `ChemistryType`, `CurveType`, `ContrastAgent`, `DeveloperType`, `MeasurementUnit`, `PaperSizing`
 - `base_service.py` — Abstract base service class for dependency injection
 - `events.py` — Event system for cross-module communication
@@ -36,5 +36,5 @@ pytest tests/unit/ -v -k "model or type"
 ## Related
 - `../api/` — Endpoints use these models for request/response serialization
 - `../curves/` — Curve algorithms operate on `CurveData`, `DensityMeasurement`
-- `../detection/` — Scanner produces `PatchData`, `StepTabletScan`
-- Frontend: `frontend/src/types/models.ts` — TypeScript mirror
+- `../detection/` — Scanner produces `PatchData`, `StepTabletResult`
+- Frontend: `../../../frontend/src/types/models.ts` — TypeScript mirror

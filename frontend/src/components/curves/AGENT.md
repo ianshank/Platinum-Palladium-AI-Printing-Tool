@@ -34,4 +34,4 @@ Canvas interactions require `fireEvent.mouseDown/mouseMove/mouseUp` sequences.
 - `../../hooks/useUndoRedo.ts` — Edit history management
 - `../../stores/slices/curveSlice.ts` — Curve state
 - `../../pages/CurvesPage.tsx` — Parent page composing curve components
-- Backend: `src/ptpd_calibration/curves/` — Curve algorithms
+- Backend: `../../../../src/ptpd_calibration/curves/` — Curve algorithms

@@ -4,15 +4,15 @@
 Multi-provider LLM integration for AI-powered features: chat assistant, recipe suggestions, troubleshooting, and curve enhancement.
 
 ## Key Files
-- `client.py` — Multi-provider LLM client supporting Anthropic Claude and OpenAI GPT
+- `client.py` — Multi-provider LLM client supporting Anthropic Claude, OpenAI GPT, and Vertex AI (e.g., Gemini)
 - `assistant.py` — Chat assistant orchestration: context building, conversation history, domain-aware responses
 - `prompts.py` — Prompt templates for different use cases (calibration help, recipe suggestions, troubleshooting)
 - `__init__.py` — Package exports
 
 ## Conventions
 - **Provider-agnostic**: `client.py` abstracts provider differences — components use a unified interface
-- **API keys from config**: Never hardcode keys. Load via `PTPD_ANTHROPIC_API_KEY` / `PTPD_OPENAI_API_KEY` env vars
-- **Provider selection**: `PTPD_LLM_PROVIDER` env var (`anthropic` or `openai`) — see CLAUDE.md "Environment Variables"
+- **API keys from config**: Never hardcode keys. Load via `PTPD_LLM_ANTHROPIC_API_KEY` / `PTPD_LLM_OPENAI_API_KEY` (or a generic `PTPD_LLM_API_KEY`) env vars
+- **Provider selection**: `PTPD_LLM_PROVIDER` env var (`anthropic`, `openai`, or `vertex`) — see CLAUDE.md "Environment Variables"
 - **Prompt templates**: Structured templates in `prompts.py` — domain-specific context about Pt/Pd printing is embedded
 
 ## Key Features
@@ -36,5 +36,5 @@ Tests should mock LLM API calls — never call real APIs in tests.
 ## Related
 - `../curves/ai_enhance.py` — Uses LLM client for curve enhancement
 - `../api/server.py` — `/api/chat/*` endpoints call assistant functions
-- Frontend: `frontend/src/components/assistant/` — Chat UI
-- Frontend: `frontend/src/hooks/useChat.ts` — Chat orchestration hook
+- Frontend: `../../../frontend/src/components/assistant/` — Chat UI
+- Frontend: `../../../frontend/src/hooks/useChat.ts` — Chat orchestration hook

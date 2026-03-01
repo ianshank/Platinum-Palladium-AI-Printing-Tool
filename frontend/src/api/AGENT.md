@@ -40,4 +40,4 @@ Tests use `createTestQueryClient()` from `@/test-utils` — no actual network ca
 - `../types/models.ts` — Response/request type definitions
 - `../stores/` — Mutations often update store state on success
 - `../hooks/` — Domain hooks compose API hooks with store logic
-- Backend: `src/ptpd_calibration/api/server.py` — endpoint implementations
+- Backend: `../../../src/ptpd_calibration/api/server.py` — endpoint implementations
