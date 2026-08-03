@@ -1,3 +1,9 @@
+"""
+Tests for session logger module.
+
+Tests print session logging, record management, and statistics.
+"""
+
 from datetime import datetime, timedelta
 from uuid import uuid4
 
@@ -363,7 +369,7 @@ class TestSessionLogger:
         result = logger.end_session()
         assert result is None
 
-    def test_save_and_load_session(self, logger, tmp_path):
+    def test_save_and_load_session(self, logger, tmp_path):  # noqa: ARG002
         """Should save and load session."""
         session = PrintSession(name="Save Load Test")
         session.add_record(
@@ -438,7 +444,7 @@ class TestSessionLogger:
     def test_search_records_limit(self, logger):
         """Should respect search limit."""
         session = PrintSession(name="Search Limit")
-        for _i in range(10):
+        for _ in range(10):
             session.add_record(PrintRecord(paper_type="Test Paper"))
         logger.save_session(session)
 

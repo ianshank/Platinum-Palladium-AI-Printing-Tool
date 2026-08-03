@@ -269,10 +269,10 @@ class CurveGenerator:
         y0, y1 = measured[idx - 1], measured[idx]
 
         if y1 == y0:
-            return x0
+            return float(x0)
 
         t = (target_value - y0) / (y1 - y0)
-        return x0 + t * (x1 - x0)
+        return float(x0 + t * (x1 - x0))
 
     def _interpolate_curve(self, values: np.ndarray, num_points: int) -> np.ndarray:
         """Interpolate curve to specified number of points."""

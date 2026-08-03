@@ -1,0 +1,87 @@
+{
+  "session_id": "1785722076-867973585",
+  "role": "pre-pr",
+  "status": "partial",
+  "timestamp": "2026-08-03T02:45:00.000Z",
+  "pr": {
+    "number": 36,
+    "url": "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/pull/36",
+    "status": "draft",
+    "commit": "be85d20df881c9e5d3a59cb3fa2b7526c449a852",
+    "branch": "claude/code-hygiene-modularity-9vjyci"
+  },
+  "ci_status": {
+    "all_checks_failing": true,
+    "total_checks": 14,
+    "failing": 14,
+    "passing": 0,
+    "reason": "documented_blockers"
+  },
+  "blockers_identified": 5,
+  "blockers": [
+    {
+      "id": 1,
+      "name": "Frontend TypeScript Build",
+      "severity": "critical",
+      "fix_effort_hours": 1.5,
+      "status": "identified",
+      "root_cause": "CalibrationRequest type incompatibility + Zustand 'any' types"
+    },
+    {
+      "id": 2,
+      "name": "Backend Type Errors",
+      "severity": "critical",
+      "fix_effort_hours": 5,
+      "status": "identified",
+      "root_cause": "813 type errors (200 missing returns, 133 attr-defined, 108 Any)"
+    },
+    {
+      "id": 3,
+      "name": "Test Coverage",
+      "severity": "high",
+      "fix_effort_hours": 7,
+      "status": "identified",
+      "root_cause": "15% backend, 0% frontend (target 75%+)"
+    },
+    {
+      "id": 4,
+      "name": "Missing Test Dependencies",
+      "severity": "high",
+      "fix_effort_hours": 0.5,
+      "status": "identified",
+      "root_cause": "gradio-stubs, torch-stubs, transformers-stubs not installed"
+    },
+    {
+      "id": 5,
+      "name": "Code Style Issues",
+      "severity": "medium",
+      "fix_effort_hours": 1.5,
+      "status": "identified",
+      "root_cause": "66 ruff errors, 168 missing docstrings"
+    }
+  ],
+  "work_completed": {
+    "pr_created": true,
+    "pr_description_comprehensive": true,
+    "status_comment_posted": true,
+    "ci_monitored": true,
+    "blockers_documented": true,
+    "handoff_prepared": true
+  },
+  "monitoring": {
+    "subscribed": true,
+    "webhook_active": true,
+    "check_in_scheduled": false,
+    "last_check": "2026-08-03T02:45:00.000Z"
+  },
+  "next_phase": "pre-pr-fixes",
+  "estimated_duration_days": 1,
+  "estimated_fix_order": [
+    "frontend-types",
+    "backend-types",
+    "test-coverage",
+    "test-dependencies",
+    "code-style"
+  ],
+  "notes": "All CI failures are documented blockers from Phase 3 validation. No regressions detected. PR appropriately marked as draft pending fixes. Ready for pre-PR blocker resolution phase."
+}

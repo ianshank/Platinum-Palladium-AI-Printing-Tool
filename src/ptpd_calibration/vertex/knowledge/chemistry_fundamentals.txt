@@ -1,0 +1,66 @@
+# Platinum/Palladium Chemistry Fundamentals
+## Category: Domain Knowledge - Chemistry
+## Application: Pt/Pd alternative photographic printing
+
+## Sensitizer Components
+
+### Ferric Oxalate (FO)
+- Solution A: Plain 27% ferric oxalate in distilled water
+- Solution B (for Pt): 27% FO + 0.3% potassium chlorate (contrast agent)
+- Solution B (for Pd): 27% FO + 0.6% potassium chlorate
+- Higher chlorate = higher contrast but increased grain risk
+- Shelf life: 6-12 months in amber glass, refrigerated
+
+### Platinum Salt
+- Potassium tetrachloroplatinate(II), K2PtCl4
+- Typically used as 15-20% aqueous solution
+- Produces neutral to cool black tones
+- More expensive than palladium
+
+### Palladium Salt
+- Sodium tetrachloropalladate(II), Na2PdCl4 (Malde-Ware method)
+- Or Palladium chloride PdCl2 + NaCl (traditional)
+- 15-20% aqueous solution
+- Produces warm brown tones
+- Less expensive than platinum
+
+## Common Ratios and Their Tonal Effects
+
+| Pt:Pd Ratio | Tone             | Notes                                |
+|-------------|------------------|--------------------------------------|
+| 100:0       | Neutral black    | Expensive, needs Pd catalyst drop    |
+| 80:20       | Cool neutral     | Most "platinum print" look           |
+| 50:50       | Neutral-warm     | Cone Editions standard, good balance |
+| 20:80       | Warm brown       | More economical                      |
+| 0:100       | Warm sepia-brown | Least expensive, most warmth         |
+
+## Contrast Control Methods
+
+1. **A/B Ratio Method**: Vary Solution A (no chlorate) vs Solution B (with chlorate)
+2. **Hydrogen Peroxide**: 1-3 drops of 3% H2O2 per coating, mild contrast increase
+3. **Dichromate**: Potassium or ammonium dichromate, strong contrast but toxic
+4. **Na2 Method**: Sodium hexachloroplatinate, gentler contrast control
+5. **Negative density range**: Primary contrast control through digital negative
+
+## Bostick-Sullivan Formula Reference
+
+### Standard Coating (8x10 inch print)
+- Ferric Oxalate: 12-14 drops (A+B combined)
+- Platinum/Palladium solution: 12-14 drops
+- Total: ~24-28 drops (~1.2-1.4 mL)
+- Contrast agent (optional): 1-3 drops H2O2
+
+### Malde-Ware Method (Ammonium-based, printing-out)
+- Ammonium ferric oxalate: 0.6-0.8 mL
+- Pt/Pd solution: 0.4-0.6 mL
+- No separate development step needed
+- Superior dMax, smoother tones
+- More sensitive to humidity
+
+## Safety Considerations
+- Ferric oxalate: mild irritant, stains skin yellow (temporary)
+- Platinum/palladium salts: potential sensitizer, wear gloves
+- Potassium dichromate: toxic and carcinogenic, use with extreme caution
+- Potassium chlorate: oxidizer, handle carefully
+- Always work in well-ventilated area
+- Wear nitrile gloves and eye protection

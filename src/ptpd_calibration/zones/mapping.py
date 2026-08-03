@@ -69,7 +69,7 @@ class ZoneMapping:
     paper_dmax: float = 1.6
     paper_dmin: float = 0.08
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize default zone densities if not provided."""
         if not self.zone_densities:
             self.zone_densities = self._calculate_default_densities()

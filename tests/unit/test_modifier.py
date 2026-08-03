@@ -349,7 +349,7 @@ class TestMonotonicity:
 class TestResample:
     """Tests for curve resampling."""
 
-    def test_resample_upsample(self, linear_curve):
+    def test_resample_upsample(self, linear_curve):  # noqa: ARG002
         """Test upsampling a curve."""
         # Create a smaller curve first
         inputs = list(np.linspace(0, 1, 10))

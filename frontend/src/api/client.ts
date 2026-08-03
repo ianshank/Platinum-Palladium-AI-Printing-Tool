@@ -3,7 +3,12 @@
  * Configured Axios instance with interceptors for authentication, error handling, and logging
  */
 
-import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import axios, {
+  type AxiosError,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+} from 'axios';
 import { config, isDev } from '@/config';
 import { logger } from '@/lib/logger';
 import type {
@@ -20,8 +25,10 @@ import type {
   CurveSmoothingResponse,
   CurveSmoothRequest,
   EnforceMonotonicityResponse,
+  QuadParseResponse,
+  QuadUploadResponse,
   ScanUploadResponse,
-  StatisticsResponse
+  StatisticsResponse,
 } from '@/types/models';
 
 /**
@@ -48,7 +55,8 @@ function createApiClient(): AxiosInstance {
   // Request interceptor for logging
   client.interceptors.request.use(
     (requestConfig) => {
-      const { method, url, data } = requestConfig;
+      const { method, url } = requestConfig;
+      const data = requestConfig.data as unknown;
       logger.debug('API Request', {
         method: method?.toUpperCase(),
         url,
@@ -109,9 +117,7 @@ export const apiClient = createApiClient();
 /**
  * Type-safe API request helper
  */
-export async function apiRequest<T>(
-  config: AxiosRequestConfig
-): Promise<T> {
+export async function apiRequest<T>(config: AxiosRequestConfig): Promise<T> {
   const response = await apiClient.request<T>(config);
   return response.data;
 }
@@ -122,12 +128,19 @@ export async function apiRequest<T>(
 export const api = {
   // Health check
   health: {
-    check: () => apiRequest<{ status: string }>({ method: 'GET', url: '/api/health' }),
+    check: () =>
+      apiRequest<{ status: string }>({ method: 'GET', url: '/api/health' }),
   },
 
   // Curves
   curves: {
-    generate: (data: { measurements: number[]; type?: string; name?: string; paper_type?: string; chemistry?: string }) =>
+    generate: (data: {
+      measurements: number[];
+      type?: string;
+      name?: string;
+      paper_type?: string;
+      chemistry?: string;
+    }) =>
       apiRequest<CurveGenerationResponse>({
         method: 'POST',
         url: '/api/curves/generate',
@@ -154,7 +167,14 @@ export const api = {
         data,
       }),
 
-    enhance: (data: { name: string; input_values: number[]; output_values: number[]; goal: string; additional_context?: string; paper_type?: string }) =>
+    enhance: (data: {
+      name: string;
+      input_values: number[];
+      output_values: number[];
+      goal: string;
+      additional_context?: string;
+      paper_type?: string;
+    }) =>
       apiRequest<CurveEnhanceResponse>({
         method: 'POST',
         url: '/api/curves/enhance',
@@ -165,21 +185,45 @@ export const api = {
       apiRequest<EnforceMonotonicityResponse>({
         method: 'POST',
         url: `/api/curves/${curveId}/enforce-monotonicity`,
-        params: { direction }
+        params: { direction },
       }),
 
     export: (data: { curveId: string; format: string }) =>
       apiRequest<Blob>({
         method: 'POST',
-        url: '/api/curves/export',
-        data,
+        url: `/api/curves/${data.curveId}/export`,
+        params: { format: data.format },
         responseType: 'blob',
+      }),
+
+    uploadQuad: (file: File, channel: string) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('channel', channel);
+
+      return apiRequest<QuadUploadResponse>({
+        method: 'POST',
+        url: '/api/curves/upload-quad',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    },
+
+    parseQuad: (content: string, name: string, channel: string) =>
+      apiRequest<QuadParseResponse>({
+        method: 'POST',
+        url: '/api/curves/parse-quad',
+        data: { content, name, channel },
       }),
   },
 
   // Scan / Step Tablet
   scan: {
-    upload: (file: File, tabletType: string = 'stouffer_21', onProgress?: (progress: number) => void) => {
+    upload: (
+      file: File,
+      tabletType: string = 'stouffer_21',
+      onProgress?: (progress: number) => void
+    ) => {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('tablet_type', tabletType);
@@ -204,7 +248,7 @@ export const api = {
       apiRequest<CalibrationListResponse>({
         method: 'GET',
         url: '/api/calibrations',
-        params: { paper_type: paperType, limit }
+        params: { paper_type: paperType, limit },
       }),
 
     create: (data: Omit<CalibrationRecord, 'id' | 'timestamp'>) =>
@@ -230,7 +274,7 @@ export const api = {
         data,
       }),
 
-    recipe: (data: { paper_type: string; characteristics: string[] }) =>
+    recipe: (data: { paper_type: string; characteristics: string }) =>
       apiRequest<ChatResponse>({
         method: 'POST',
         url: '/api/chat/recipe',

@@ -2,8 +2,8 @@
 Main calibration agent with ReAct-style reasoning.
 """
 
-import contextlib
 import json
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -132,12 +132,14 @@ class CalibrationAgent:
             )
 
             # Reflect if enabled
-            if self.settings.enable_reflection:
-                if self._iteration_count % self.settings.reflection_frequency == 0:
-                    reflection = await self._reflect()
-                    self._reasoning_trace.append(
-                        ReasoningStep(step_type="reflection", content=reflection)
-                    )
+            if (
+                self.settings.enable_reflection
+                and self._iteration_count % self.settings.reflection_frequency == 0
+            ):
+                reflection = await self._reflect()
+                self._reasoning_trace.append(
+                    ReasoningStep(step_type="reflection", content=reflection)
+                )
 
         # Generate final response
         return await self._generate_response(task)
@@ -168,6 +170,9 @@ Example:
 THOUGHT: I need to analyze the density measurements to understand the calibration quality.
 ACTION: {{"tool": "analyze_densities", "args": {{"densities": [0.1, 0.3, 0.5, 0.8, 1.2]}}}}"""
 
+        if self.client is None:
+            raise RuntimeError("LLM client not configured")
+
         response = await self.client.complete(
             messages=[{"role": "user", "content": prompt}],
             system=SYSTEM_PROMPT,
@@ -191,7 +196,7 @@ ACTION: {{"tool": "analyze_densities", "args": {{"densities": [0.1, 0.3, 0.5, 0.
                         start = action_str.find("{")
                         end = action_str.rfind("}") + 1
                         if start >= 0 and end > start:
-                            with contextlib.suppress(json.JSONDecodeError):
+                            with suppress(json.JSONDecodeError):
                                 action = json.loads(action_str[start:end])
 
         return thought, action
@@ -201,7 +206,10 @@ ACTION: {{"tool": "analyze_densities", "args": {{"densities": [0.1, 0.3, 0.5, 0.
         tool_name = action.get("tool")
         tool_args = action.get("args", {})
 
-        tool = self.tools.get(tool_name)
+        if tool_name is None:
+            return ToolResult(success=False, error="No tool name specified")
+
+        tool = self.tools.get(str(tool_name))
         if not tool:
             return ToolResult(success=False, error=f"Unknown tool: {tool_name}")
 
@@ -246,6 +254,9 @@ Reflect on the progress so far:
 
 Respond with a brief reflection."""
 
+        if self.client is None:
+            raise RuntimeError("LLM client not configured")
+
         reflection = await self.client.complete(
             messages=[{"role": "user", "content": prompt}],
             system=SYSTEM_PROMPT,
@@ -254,6 +265,8 @@ Respond with a brief reflection."""
 
         # Check if plan needs adaptation
         if "adapt" in reflection.lower() or "change" in reflection.lower():
+            if self._current_plan is None:
+                return reflection
             adaptation = self.planner.suggest_adaptation(self._current_plan, reflection)
             if adaptation:
                 self._current_plan.adapt(reflection, adaptation)
@@ -271,6 +284,9 @@ Here's what I did:
 {trace_summary}
 
 Please provide a clear, helpful final response to the user summarizing the results and any recommendations."""
+
+        if self.client is None:
+            raise RuntimeError("LLM client not configured")
 
         response = await self.client.complete(
             messages=[{"role": "user", "content": prompt}],

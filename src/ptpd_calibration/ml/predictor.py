@@ -4,6 +4,7 @@ ML-based curve prediction from calibration parameters.
 
 import pickle
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -87,6 +88,8 @@ class CurvePredictor:
 
         # Create and train model
         self.model = self._create_model()
+        if self.model is None:
+            raise RuntimeError("Model not trained")
         self.model.fit(X_train, y_train)
         self.is_trained = True
 
@@ -121,6 +124,8 @@ class CurvePredictor:
             Tuple of (predicted densities, uncertainty).
         """
         if not self.is_trained:
+            raise RuntimeError("Model not trained")
+        if self.model is None:
             raise RuntimeError("Model not trained")
 
         # Prepare features
@@ -220,7 +225,7 @@ class CurvePredictor:
 
         return predictor
 
-    def _create_model(self):
+    def _create_model(self) -> Any:
         """Create the ML model based on settings."""
         try:
             if self.model_type == "gradient_boosting":

@@ -154,10 +154,10 @@ class TestSplitGradeSettings:
 
     def test_grade_validation_out_of_range(self):
         """Test that grades outside valid range raise errors."""
-        with pytest.raises(Exception):  # Pydantic ValidationError
+        with pytest.raises(ValueError):
             SplitGradeSettings(shadow_grade=-0.1)
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(shadow_grade=5.1)
 
     def test_exposure_ratio_validation(self):
@@ -168,10 +168,10 @@ class TestSplitGradeSettings:
         settings = SplitGradeSettings(shadow_exposure_ratio=1.0)
         assert settings.shadow_exposure_ratio == 1.0
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(shadow_exposure_ratio=-0.1)
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(shadow_exposure_ratio=1.1)
 
     def test_threshold_order_validation(self):
@@ -196,10 +196,10 @@ class TestSplitGradeSettings:
         settings = SplitGradeSettings(blend_gamma=4.0)
         assert settings.blend_gamma == 4.0
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(blend_gamma=0.4)
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(blend_gamma=4.1)
 
     def test_platinum_ratio_validation(self):
@@ -210,15 +210,15 @@ class TestSplitGradeSettings:
         settings = SplitGradeSettings(platinum_ratio=1.0)
         assert settings.platinum_ratio == 1.0
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(platinum_ratio=-0.1)
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SplitGradeSettings(platinum_ratio=1.1)
 
     def test_all_blend_modes(self):
         """Test all blend mode options."""
-        for mode in BlendMode:
+        for mode in list(BlendMode):
             settings = SplitGradeSettings(blend_mode=mode)
             assert settings.blend_mode == mode
 
@@ -597,7 +597,7 @@ class TestSplitGradeSimulatorMasks:
         # Lower threshold should select more pixels
         assert np.sum(mask_low > 0.5) > np.sum(mask_high > 0.5)
 
-    def test_mask_blur_effect(self, simulator, step_wedge_image):
+    def test_mask_blur_effect(self, simulator, step_wedge_image):  # noqa: ARG002
         """Test that blur smooths mask transitions."""
         # Create simulator with no blur
         no_blur_sim = SplitGradeSimulator(SplitGradeSettings(mask_blur_radius=0.0))
@@ -610,7 +610,7 @@ class TestSplitGradeSimulatorMasks:
         # Blurred mask should be smoother (less variation)
         assert np.std(mask_blur) < np.std(mask_no_blur)
 
-    def test_mask_feather_effect(self, simulator, linear_gradient):
+    def test_mask_feather_effect(self, simulator, linear_gradient):  # noqa: ARG002
         """Test that feathering affects mask values."""
         no_feather_sim = SplitGradeSimulator(
             SplitGradeSettings(mask_feather_amount=0.0, mask_blur_radius=0.0)
@@ -1150,13 +1150,13 @@ class TestSplitGradeIntegration:
         simulator = SplitGradeSimulator()
         results = {}
 
-        for mode in BlendMode:
+        for mode in list(BlendMode):
             settings = SplitGradeSettings(blend_mode=mode)
             result = simulator.simulate_split_grade(normal_contrast_image, settings)
             results[mode] = result
 
         # All should produce valid results
-        for mode, result in results.items():
+        for _mode, result in results.items():
             assert result.shape == normal_contrast_image.shape
             assert np.all(result >= 0.0)
             assert np.all(result <= 1.0)

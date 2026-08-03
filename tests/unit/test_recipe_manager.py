@@ -461,21 +461,21 @@ class TestRecipeManager:
         result = recipe_manager.delete_recipe(fake_id)
         assert result is False
 
-    def test_list_recipes_no_filters(self, recipe_manager, multiple_recipes):
+    def test_list_recipes_no_filters(self, recipe_manager, multiple_recipes):  # noqa: ARG002
         """Test listing all recipes without filters."""
         recipes = recipe_manager.list_recipes()
 
         assert len(recipes) == 4
         assert all(isinstance(r, PrintRecipe) for r in recipes)
 
-    def test_list_recipes_filter_by_paper_type(self, recipe_manager, multiple_recipes):
+    def test_list_recipes_filter_by_paper_type(self, recipe_manager, multiple_recipes):  # noqa: ARG002
         """Test filtering recipes by paper type."""
         recipes = recipe_manager.list_recipes({"paper_type": "Arches Platine"})
 
         assert len(recipes) == 2
         assert all(r.paper_type == "Arches Platine" for r in recipes)
 
-    def test_list_recipes_filter_by_tags(self, recipe_manager, multiple_recipes):
+    def test_list_recipes_filter_by_tags(self, recipe_manager, multiple_recipes):  # noqa: ARG002
         """Test filtering recipes by tags."""
         recipes = recipe_manager.list_recipes({"tags": ["standard"]})
 
@@ -500,28 +500,28 @@ class TestRecipeManager:
         assert len(recipes) == 1
         assert recipes[0].chemistry_type == ChemistryType.PURE_PLATINUM
 
-    def test_search_recipes_by_name(self, recipe_manager, multiple_recipes):
+    def test_search_recipes_by_name(self, recipe_manager, multiple_recipes):  # noqa: ARG002
         """Test full-text search by recipe name."""
         results = recipe_manager.search_recipes("Bergger")
 
         assert len(results) == 1
         assert results[0].name == "Bergger High Contrast"
 
-    def test_search_recipes_by_paper_type(self, recipe_manager, multiple_recipes):
+    def test_search_recipes_by_paper_type(self, recipe_manager, multiple_recipes):  # noqa: ARG002
         """Test search by paper type."""
         results = recipe_manager.search_recipes("arches")
 
         assert len(results) == 2
         assert all("Arches" in r.paper_type for r in results)
 
-    def test_search_recipes_by_tags(self, recipe_manager, multiple_recipes):
+    def test_search_recipes_by_tags(self, recipe_manager, multiple_recipes):  # noqa: ARG002
         """Test search by tags."""
         results = recipe_manager.search_recipes("warm")
 
         assert len(results) == 1
         assert "warm" in results[0].tags
 
-    def test_search_recipes_case_insensitive(self, recipe_manager, multiple_recipes):
+    def test_search_recipes_case_insensitive(self, recipe_manager, multiple_recipes):  # noqa: ARG002
         """Test that search is case-insensitive."""
         results1 = recipe_manager.search_recipes("ARCHES")
         results2 = recipe_manager.search_recipes("arches")
@@ -529,7 +529,7 @@ class TestRecipeManager:
 
         assert len(results1) == len(results2) == len(results3) == 2
 
-    def test_search_recipes_no_matches(self, recipe_manager, multiple_recipes):
+    def test_search_recipes_no_matches(self, recipe_manager, multiple_recipes):  # noqa: ARG002
         """Test search with no matches returns empty list."""
         results = recipe_manager.search_recipes("nonexistent")
         assert results == []
@@ -674,7 +674,7 @@ class TestRecipeManager:
         with pytest.raises(ValueError, match="not found"):
             recipe_manager.compare_recipes([fake_id])
 
-    def test_suggest_similar_recipes_by_paper(self, recipe_manager, multiple_recipes):
+    def test_suggest_similar_recipes_by_paper(self, recipe_manager, multiple_recipes):  # noqa: ARG002
         """Test suggesting similar recipes by paper type."""
         params = {"paper_type": "Arches Platine"}
         suggestions = recipe_manager.suggest_similar_recipes(params, limit=10)
@@ -691,7 +691,7 @@ class TestRecipeManager:
         assert len(arches_suggestions) == 2
         assert all(s[1] > 0.5 for s in arches_suggestions)
 
-    def test_suggest_similar_recipes_by_ratio(self, recipe_manager, multiple_recipes):
+    def test_suggest_similar_recipes_by_ratio(self, recipe_manager, multiple_recipes):  # noqa: ARG002
         """Test suggesting similar recipes by Pt/Pd ratio."""
         params = {"pt_pd_ratio": 0.5}
         suggestions = recipe_manager.suggest_similar_recipes(params, limit=10)
@@ -717,7 +717,7 @@ class TestRecipeManager:
         # Very high threshold should yield few or no results
         assert all(s[1] >= 0.9 for s in suggestions)
 
-    def test_suggest_similar_recipes_limit(self, recipe_manager, multiple_recipes):
+    def test_suggest_similar_recipes_limit(self, recipe_manager, multiple_recipes):  # noqa: ARG002
         """Test limiting number of suggestions."""
         params = {"paper_type": "Arches Platine"}
         suggestions = recipe_manager.suggest_similar_recipes(params, limit=1)
@@ -926,10 +926,10 @@ class TestWorkflowAutomation:
         """Test registering multiple callbacks for same job."""
         calls = []
 
-        def callback1(job):
+        def callback1(_job):
             calls.append(1)
 
-        def callback2(job):
+        def callback2(_job):
             calls.append(2)
 
         steps = [WorkflowStep(name="Step", action="test")]

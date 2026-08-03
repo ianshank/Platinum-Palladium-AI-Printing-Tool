@@ -1,4 +1,3 @@
-
 import styled, { useTheme } from 'styled-components';
 import { useStore } from '@/stores';
 import { tabletConfig } from '@/config/tablet.config';
@@ -32,8 +31,6 @@ const Label = styled.label`
   font-weight: ${({ theme }) => theme.typography.fontWeight.medium};
   color: ${({ theme }) => theme.colors.text.primary};
 `;
-
-
 
 const Input = styled.input`
   padding: ${({ theme }) => theme.spacing[3]};
@@ -73,7 +70,7 @@ const OptionCard = styled.label<{ $selected: boolean }>`
     $selected ? theme.colors.background.tertiary : 'transparent'};
   border: 1px solid
     ${({ theme, $selected }) =>
-    $selected ? theme.colors.accent.primary : theme.colors.border.default};
+      $selected ? theme.colors.accent.primary : theme.colors.border.default};
   border-radius: ${({ theme }) => theme.radii.md};
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
@@ -109,27 +106,45 @@ export function Step3Configure() {
 
   // Store
   const currentCalibration = useStore((state) => state.calibration.current);
-  const saveCalibration = useStore((state) => state.calibration.saveCalibration);
-  const updateCalibrationMetadata = useStore((state) => state.calibration.updateMetadata);
+  const saveCalibration = useStore(
+    (state) => state.calibration.saveCalibration
+  );
+  const updateCalibrationMetadata = useStore(
+    (state) => state.calibration.updateMetadata
+  );
 
-  const linearizationMode = currentCalibration?.metadata?.linearizationMode ?? 'linear';
-  const targetResponse = currentCalibration?.metadata?.targetResponse ?? tabletConfig.defaults.exportFormat;
-  const curveStrategy = currentCalibration?.metadata?.curveStrategy ?? 'monotonic';
+  const linearizationMode =
+    currentCalibration?.metadata?.linearizationMode ?? 'linear';
+  const targetResponse =
+    currentCalibration?.metadata?.targetResponse ??
+    tabletConfig.defaults.exportFormat;
+  const curveStrategy =
+    currentCalibration?.metadata?.curveStrategy ?? 'monotonic';
   const curveName = currentCalibration?.name || '';
   const notes = currentCalibration?.notes || '';
 
   const nextStep = useStore((state) => state.calibration.nextStep);
   const prevStep = useStore((state) => state.calibration.previousStep);
 
-  const setConfiguration = (config: { curveName?: string; notes?: string; linearizationMode?: string; targetResponse?: string; curveStrategy?: string }) => {
+  const setConfiguration = (config: {
+    curveName?: string;
+    notes?: string;
+    linearizationMode?: string;
+    targetResponse?: string;
+    curveStrategy?: string;
+  }) => {
     if (config.curveName !== undefined || config.notes !== undefined) {
       saveCalibration(config.curveName ?? curveName, config.notes ?? notes);
     }
-    if (config.linearizationMode || config.targetResponse || config.curveStrategy) {
+    if (
+      config.linearizationMode ||
+      config.targetResponse ||
+      config.curveStrategy
+    ) {
       updateCalibrationMetadata?.({
         linearizationMode: config.linearizationMode ?? linearizationMode,
         targetResponse: config.targetResponse ?? targetResponse,
-        curveStrategy: config.curveStrategy ?? curveStrategy
+        curveStrategy: config.curveStrategy ?? curveStrategy,
       });
     }
   };
@@ -167,10 +182,7 @@ export function Step3Configure() {
         <SectionTitle>Linearization Method</SectionTitle>
         <Grid>
           {tabletConfig.linearizationMethods.slice(0, 3).map((method) => (
-            <OptionCard
-              key={method.id}
-              $selected={curveStrategy === method.id}
-            >
+            <OptionCard key={method.id} $selected={curveStrategy === method.id}>
               <input
                 type="radio"
                 name="curveStrategy"
@@ -208,7 +220,13 @@ export function Step3Configure() {
       </SectionContainer>
 
       {/* Navigation */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginTop: '2rem',
+        }}
+      >
         <button
           onClick={prevStep}
           style={{

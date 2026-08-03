@@ -98,7 +98,7 @@ class ActiveLearner:
             "variation": best_variation,
             "rationale": rationale,
             "score": best_score,
-            "all_scores": list(zip(variations, scores, strict=False)),
+            "all_scores": list(zip(variations, scores, strict=True)),
         }
 
     def suggest_exposure_bracket(

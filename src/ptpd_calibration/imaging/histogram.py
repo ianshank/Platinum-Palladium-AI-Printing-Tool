@@ -12,6 +12,7 @@ Provides comprehensive histogram analysis including:
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from PIL import Image
@@ -146,7 +147,7 @@ class HistogramAnalyzer:
             HistogramResult with complete analysis
         """
         # Load image
-        if isinstance(image, (str, Path)):
+        if isinstance(image, str | Path):
             img = Image.open(image)
         elif isinstance(image, np.ndarray):
             if image.ndim == 2:
@@ -366,7 +367,7 @@ class HistogramAnalyzer:
         scale: HistogramScale = HistogramScale.LINEAR,
         show_zones: bool = True,
         show_rgb: bool = True,
-    ):
+    ) -> Any:
         """Create a matplotlib figure for the histogram.
 
         Args:
@@ -471,7 +472,7 @@ class HistogramAnalyzer:
         ax2.grid(True, alpha=0.3, axis="y")
 
         # Add percentage labels on bars
-        for bar, pct in zip(bars, zone_pcts, strict=False):
+        for bar, pct in zip(bars, zone_pcts, strict=True):
             if pct > 1:
                 ax2.text(
                     bar.get_x() + bar.get_width() / 2,

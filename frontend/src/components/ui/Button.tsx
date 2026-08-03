@@ -1,4 +1,4 @@
-import { type ButtonHTMLAttributes, forwardRef } from 'react';
+import { type ButtonHTMLAttributes, forwardRef, type MouseEvent } from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
@@ -10,9 +10,12 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        destructive:
+          'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        outline:
+          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+        secondary:
+          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
         success: 'bg-success text-success-foreground hover:bg-success/90',
@@ -33,8 +36,9 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  extends
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  VariantProps<typeof buttonVariants> {
   /** Render as a different element (Slot pattern) */
   asChild?: boolean;
   /** Show loading spinner */
@@ -64,9 +68,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const Comp = asChild ? Slot : 'button';
 
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
       if (isLoading || disabled) {
         e.preventDefault();
+        e.stopPropagation();
         return;
       }
       logger.debug('Button clicked', { variant, size });
@@ -77,8 +82,19 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        disabled={disabled || isLoading}
+        disabled={asChild ? undefined : disabled || isLoading}
+        aria-disabled={disabled || isLoading}
+        tabIndex={disabled || isLoading ? -1 : undefined}
         onClick={handleClick}
+        onKeyDown={(e) => {
+          if (disabled || isLoading) {
+            e.preventDefault();
+            return;
+          }
+          if (e.key === 'Enter' || e.key === ' ') {
+            handleClick(e as unknown as MouseEvent<HTMLButtonElement>);
+          }
+        }}
         aria-busy={isLoading}
         {...props}
       >

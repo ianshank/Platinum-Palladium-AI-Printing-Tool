@@ -5,6 +5,9 @@ Verifies that curve files (.quad) can be loaded, displayed, and statistics gener
 """
 
 import pytest
+
+pytest.importorskip("playwright")
+
 from playwright.sync_api import Page, expect
 
 # UTF-8 .quad content
@@ -38,7 +41,7 @@ def curve_files(tmp_path):
 
 @pytest.mark.browser
 @pytest.mark.skip(reason="Playwright selectors pending update for hierarchical navigation")
-def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):
+def test_curve_loading(page: Page, app_url, curve_files, ensure_app_running):  # noqa: ARG001
     """
     Test loading curve files:
     1. Upload UTF-8 file

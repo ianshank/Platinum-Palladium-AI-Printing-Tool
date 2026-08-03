@@ -5,7 +5,7 @@ Parses QuadTone RIP profile files with full metadata extraction
 and multi-channel curve support.
 """
 
-import contextlib
+from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -141,7 +141,7 @@ class QuadFileParser:
     GENERAL_SECTION = "General"
     CHANNEL_SECTIONS = ["K", "C", "M", "Y", "LC", "LM", "LK", "LLK", "PK", "MK"]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the parser."""
         self._current_section: str | None = None
         self._profile: QuadProfile | None = None
@@ -213,6 +213,7 @@ class QuadFileParser:
 
     def _parse_content(self, content: str) -> None:
         """Parse the file content."""
+        assert self._profile is not None
         lines = content.split("\n")
 
         # Check for simple format (starts with ## QuadToneRIP)
@@ -242,12 +243,14 @@ class QuadFileParser:
                     self._profile.raw_sections[section_name] = {}
 
                 # Initialize channel if it's a known channel section
-                if section_name.upper() in self.CHANNEL_SECTIONS:
-                    if section_name.upper() not in self._profile.channels:
-                        self._profile.channels[section_name.upper()] = ChannelCurve(
-                            name=section_name.upper(),
-                            values=[0] * 256,
-                        )
+                if (
+                    section_name.upper() in self.CHANNEL_SECTIONS
+                    and section_name.upper() not in self._profile.channels
+                ):
+                    self._profile.channels[section_name.upper()] = ChannelCurve(
+                        name=section_name.upper(),
+                        values=[0] * 256,
+                    )
                 continue
 
             # Parse key=value pairs
@@ -256,6 +259,7 @@ class QuadFileParser:
 
     def _parse_simple_format(self, lines: list[str]) -> None:
         """Parse the simple list-based QuadToneRIP format."""
+        assert self._profile is not None
         current_channel = None
         value_index = 0
 
@@ -303,6 +307,7 @@ class QuadFileParser:
 
     def _parse_key_value(self, line: str) -> None:
         """Parse a key=value line."""
+        assert self._profile is not None
         # Split on first = only
         parts = line.split("=", 1)
         if len(parts) != 2:
@@ -323,18 +328,19 @@ class QuadFileParser:
 
     def _parse_general_setting(self, key: str, value: str) -> None:
         """Parse a general section setting."""
+        assert self._profile is not None
         key_lower = key.lower()
 
         if key_lower == "profilename":
             self._profile.profile_name = value
         elif key_lower == "resolution":
-            with contextlib.suppress(ValueError):
+            with suppress(ValueError):
                 self._profile.resolution = int(value)
         elif key_lower == "inklimit":
-            with contextlib.suppress(ValueError):
+            with suppress(ValueError):
                 self._profile.ink_limit = float(value)
         elif key_lower == "grayinklimit":
-            with contextlib.suppress(ValueError):
+            with suppress(ValueError):
                 self._profile.gray_ink_limit = float(value)
         elif key_lower == "linearizationtype":
             self._profile.linearization_type = value
@@ -347,6 +353,7 @@ class QuadFileParser:
 
     def _parse_channel_value(self, channel: str, key: str, value: str) -> None:
         """Parse a channel curve value."""
+        assert self._profile is not None
         # Check if key is a numeric index
         if key.isdigit():
             try:
@@ -360,6 +367,7 @@ class QuadFileParser:
 
     def _post_process(self) -> None:
         """Post-process the parsed profile."""
+        assert self._profile is not None
         # Ensure all standard channels exist (even if empty)
         for channel_name in ["K", "C", "M", "Y", "LC", "LM", "LK"]:
             if channel_name not in self._profile.channels:

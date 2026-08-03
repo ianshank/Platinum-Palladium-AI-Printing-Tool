@@ -5,6 +5,7 @@ Provides analysis of calibration curves and measurement quality.
 """
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -29,7 +30,7 @@ class CurveComparison:
     delta_e_mean: float
     delta_e_max: float
     correlation: float
-    significant_differences: list[tuple[float, float, float]]  # (input, delta, region)
+    significant_differences: list[tuple[float, float, str]]  # (input, delta, region)
 
 
 class CurveAnalyzer:
@@ -168,14 +169,14 @@ class CurveAnalyzer:
     @staticmethod
     def suggest_adjustments(
         measured_densities: list[float],
-        target_densities: list[float] | None = None,
+        _target_densities: list[float] | None = None,
     ) -> list[str]:
         """
         Generate suggestions for process adjustments.
 
         Args:
             measured_densities: Measured density values.
-            target_densities: Optional target densities.
+            _target_densities: Optional target densities (reserved for future use).
 
         Returns:
             List of adjustment suggestions.
@@ -337,7 +338,7 @@ class CurveAnalyzer:
         current_dmax = max(measured_densities)
         current_dmin = min(measured_densities)
 
-        suggestions = {}
+        suggestions: dict[str, Any] = {}
 
         # Estimate exposure adjustment for target Dmax
         if current_dmax > 0:

@@ -27,6 +27,7 @@ export interface ChemistryRecipe {
     concentration: number;
     temperatureC: number;
   };
+  isStale?: boolean;
 }
 
 export interface ChemistrySlice {
@@ -63,6 +64,10 @@ export const STANDARD_PAPER_SIZES: PaperSize[] = [
   { name: 'A3', widthInches: 11.69, heightInches: 16.54 },
 ];
 
+// Developer temperature constraints (°C)
+export const TEMPERATURE_MIN = 15;
+export const TEMPERATURE_MAX = 50;
+
 const initialState = {
   paperSize: STANDARD_PAPER_SIZES[2]!, // 8x10 default
   customSizes: [] as PaperSize[],
@@ -80,8 +85,8 @@ const initialState = {
 // Coating constants (ml per square inch)
 const COATING_FACTORS: Record<ChemistrySlice['coatingMethod'], number> = {
   brush: 0.035,
-  rod: 0.030,
-  puddle: 0.040,
+  rod: 0.03,
+  puddle: 0.04,
 };
 
 export const createChemistrySlice: StateCreator<
@@ -96,7 +101,10 @@ export const createChemistrySlice: StateCreator<
     logger.debug('Chemistry: setPaperSize', { size: size.name });
     set((state) => {
       state.chemistry.paperSize = size;
-      state.chemistry.recipe = null; // Clear recipe when size changes
+      // Mark recipe as stale when input changes instead of clearing
+      if (state.chemistry.recipe) {
+        state.chemistry.recipe.isStale = true;
+      }
     });
   },
 
@@ -121,7 +129,9 @@ export const createChemistrySlice: StateCreator<
     logger.debug('Chemistry: setMetalRatio', { ratio: clampedRatio });
     set((state) => {
       state.chemistry.metalRatio = clampedRatio;
-      state.chemistry.recipe = null;
+      if (state.chemistry.recipe) {
+        state.chemistry.recipe.isStale = true;
+      }
     });
   },
 
@@ -129,7 +139,9 @@ export const createChemistrySlice: StateCreator<
     logger.debug('Chemistry: setCoatingMethod', { method });
     set((state) => {
       state.chemistry.coatingMethod = method;
-      state.chemistry.recipe = null;
+      if (state.chemistry.recipe) {
+        state.chemistry.recipe.isStale = true;
+      }
     });
   },
 
@@ -138,23 +150,38 @@ export const createChemistrySlice: StateCreator<
     logger.debug('Chemistry: setContrastLevel', { level: clampedLevel });
     set((state) => {
       state.chemistry.contrastLevel = clampedLevel;
-      state.chemistry.recipe = null;
+      if (state.chemistry.recipe) {
+        state.chemistry.recipe.isStale = true;
+      }
     });
   },
 
   setDeveloper: (developer) => {
     logger.debug('Chemistry: setDeveloper', developer);
     set((state) => {
-      state.chemistry.developer = {
+      const updatedDeveloper = {
         ...state.chemistry.developer,
         ...developer,
       };
-      state.chemistry.recipe = null;
+
+      // Validate temperature is within acceptable range
+      if (updatedDeveloper.temperatureC !== undefined) {
+        updatedDeveloper.temperatureC = Math.max(
+          TEMPERATURE_MIN,
+          Math.min(TEMPERATURE_MAX, updatedDeveloper.temperatureC)
+        );
+      }
+
+      state.chemistry.developer = updatedDeveloper;
+      if (state.chemistry.recipe) {
+        state.chemistry.recipe.isStale = true;
+      }
     });
   },
 
   calculateRecipe: () => {
-    const { paperSize, metalRatio, coatingMethod, contrastLevel, developer } = get().chemistry;
+    const { paperSize, metalRatio, coatingMethod, contrastLevel, developer } =
+      get().chemistry;
 
     logger.debug('Chemistry: calculateRecipe', {
       paperSize: paperSize.name,
@@ -194,9 +221,13 @@ export const createChemistrySlice: StateCreator<
       ferricOxalateMl: Math.round(ferricOxalateMl * 100) / 100,
       ...(contrastAgent && { contrastAgent }),
       developer: { ...developer },
+      isStale: false, // Fresh recipe
     };
 
-    logger.info('Chemistry: recipe calculated', recipe as unknown as Record<string, unknown>);
+    logger.info(
+      'Chemistry: recipe calculated',
+      recipe as unknown as Record<string, unknown>
+    );
 
     set((state) => {
       state.chemistry.recipe = recipe;

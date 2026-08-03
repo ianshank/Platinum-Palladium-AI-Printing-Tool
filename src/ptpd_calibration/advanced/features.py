@@ -293,8 +293,10 @@ class AlternativeProcessSimulator:
                 gamma=0.95,
                 contrast=0.9,
                 shadow_color=pigment_color,
-                midtone_color=cast(
-                    tuple[int, int, int], tuple(int(c * 1.8) for c in pigment_color)
+                midtone_color=(
+                    int(pigment_color[0] * 1.8),
+                    int(pigment_color[1] * 1.8),
+                    int(pigment_color[2] * 1.8),
                 ),
                 highlight_color=(245, 240, 232),
                 dmax=1.4,
@@ -334,6 +336,93 @@ class AlternativeProcessSimulator:
             )
 
         return self._apply_process_simulation(image, params, "Salt Print")
+
+    def simulate_silver_gelatin(
+        self,
+        image: Image.Image | np.ndarray,
+        tone: str = "neutral",
+        params: AlternativeProcessParams | None = None,
+    ) -> Image.Image:
+        """Simulate silver gelatin print.
+
+        Silver gelatin prints are the classic black-and-white photographic
+        print. Tone can be neutral, warm, or cool depending on chemistry.
+
+        Args:
+            image: Input image to simulate
+            tone: Tone variant — "neutral", "warm", or "cool"
+            params: Optional custom parameters
+
+        Returns:
+            Simulated silver gelatin image
+        """
+        if params is None:
+            if tone == "warm":
+                params = AlternativeProcessParams(
+                    gamma=1.0,
+                    contrast=1.1,
+                    shadow_color=(10, 8, 6),
+                    midtone_color=(100, 95, 88),
+                    highlight_color=(248, 245, 240),
+                    dmax=2.2,
+                    dmin=0.06,
+                    stain_level=0.02,
+                )
+            elif tone == "cool":
+                params = AlternativeProcessParams(
+                    gamma=1.0,
+                    contrast=1.1,
+                    shadow_color=(5, 6, 10),
+                    midtone_color=(88, 92, 100),
+                    highlight_color=(240, 242, 248),
+                    dmax=2.2,
+                    dmin=0.05,
+                    stain_level=0.01,
+                )
+            else:  # neutral
+                params = AlternativeProcessParams(
+                    gamma=1.0,
+                    contrast=1.1,
+                    shadow_color=(8, 8, 8),
+                    midtone_color=(95, 95, 95),
+                    highlight_color=(245, 245, 245),
+                    dmax=2.2,
+                    dmin=0.05,
+                    stain_level=0.01,
+                )
+
+        return self._apply_process_simulation(image, params, "Silver Gelatin")
+
+    def simulate_argyrotype(
+        self,
+        image: Image.Image | np.ndarray,
+        params: AlternativeProcessParams | None = None,
+    ) -> Image.Image:
+        """Simulate argyrotype print (silver-based alternative process).
+
+        Argyrotypes produce warm brown-gray tones similar to Van Dyke but
+        with finer grain and better archival stability.
+
+        Args:
+            image: Input image to simulate
+            params: Optional custom parameters
+
+        Returns:
+            Simulated argyrotype image
+        """
+        if params is None:
+            params = AlternativeProcessParams(
+                gamma=1.05,
+                contrast=1.0,
+                shadow_color=(20, 16, 12),
+                midtone_color=(130, 110, 90),
+                highlight_color=(235, 225, 210),
+                dmax=1.75,
+                dmin=0.14,
+                stain_level=0.06,
+            )
+
+        return self._apply_process_simulation(image, params, "Argyrotype")
 
     def _apply_process_simulation(
         self,
@@ -905,7 +994,7 @@ class QRMetadataGenerator:
             )
 
         # Load image if path
-        if isinstance(qr_image, (str, Path)):
+        if isinstance(qr_image, str | Path):
             qr_image = Image.open(qr_image)
 
         # Decode QR code
@@ -1174,12 +1263,22 @@ class StyleTransfer:
             highlight_mask = arr > highlight_val - 0.05
 
             if shadow_mask.any():
-                shadow_color = tuple(int(c * 255) for c in rgb_arr[shadow_mask].mean(axis=0))
+                shadow_rgb = rgb_arr[shadow_mask].mean(axis=0)
+                shadow_color = (
+                    int(shadow_rgb[0] * 255),
+                    int(shadow_rgb[1] * 255),
+                    int(shadow_rgb[2] * 255),
+                )
             else:
                 shadow_color = (20, 18, 16)
 
             if highlight_mask.any():
-                highlight_color = tuple(int(c * 255) for c in rgb_arr[highlight_mask].mean(axis=0))
+                highlight_rgb = rgb_arr[highlight_mask].mean(axis=0)
+                highlight_color = (
+                    int(highlight_rgb[0] * 255),
+                    int(highlight_rgb[1] * 255),
+                    int(highlight_rgb[2] * 255),
+                )
             else:
                 highlight_color = (245, 240, 235)
         else:

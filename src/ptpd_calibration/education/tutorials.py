@@ -87,7 +87,7 @@ class UserProgress(BaseModel):
 
 
 # Tutorial content database
-TUTORIALS_DATA = {
+TUTORIALS_DATA: dict[str, dict[str, Any]] = {
     "first_print": {
         "display_name": "Your First Platinum/Palladium Print",
         "description": (

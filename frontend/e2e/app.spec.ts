@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('Application', () => {
   test.beforeEach(async ({ page }) => {
@@ -70,8 +70,9 @@ test.describe('Application', () => {
 test.describe('Dashboard', () => {
   test('displays dashboard content', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    await expect(page.getByText('Overview and metrics')).toBeVisible();
+    // Scope to main content to avoid matching the duplicate h1 in the Layout header
+    await expect(page.locator('main').getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    await expect(page.getByText('Overview of your calibration system')).toBeVisible();
   });
 });
 
@@ -91,11 +92,14 @@ test.describe('Accessibility', () => {
   test('focus is visible on interactive elements', async ({ page }) => {
     await page.goto('/');
 
+    // Establish page focus before keyboard navigation
+    await page.locator('body').click();
+
     // Tab to first focusable element
     await page.keyboard.press('Tab');
 
     // Check that focused element has visible focus ring
-    const focusedElement = page.locator(':focus');
+    const focusedElement = page.locator(':focus-visible');
     await expect(focusedElement).toBeVisible();
   });
 });

@@ -15,25 +15,37 @@ vi.mock('@/api/client', () => ({
 
 // Mock child components
 vi.mock('./ScanUpload', () => ({
-    ScanUpload: ({ onUploadComplete }: any) => (
-        <div data-testid="scan-upload-mock">
-            <button onClick={() => onUploadComplete({
-                extraction_id: 'mock-extraction-id',
-                densities: [0.1, 0.5, 0.9],
-                success: true
-            })}>
-                Simulate Upload
-            </button>
-        </div>
-    ),
+   
+  ScanUpload: ({ onUploadComplete }: any) => (
+    <div data-testid="scan-upload-mock">
+      <button
+        onClick={
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call -- mock callback with test data
+          () => onUploadComplete({
+            success: true,
+            extraction_id: 'mock-extraction-id',
+            num_patches: 21,
+            densities: [
+              0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2,
+              1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0,
+            ],
+            quality: 0.95,
+            warnings: [],
+          })
+        }
+      >
+        Simulate Upload
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock('@/components/curves/CurveEditor', () => ({
-    CurveEditor: ({ initialCurve }: any) => (
-        <div data-testid="curve-editor-mock">
-            Curve Editor: {initialCurve.name}
-        </div>
-    ),
+   
+  CurveEditor: ({ initialCurve }: any) => (
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- accessing mock prop
+    <div data-testid="curve-editor-mock">Curve Editor: {initialCurve.name}</div>
+  ),
 }));
 
 describe('CalibrationWizard', () => {

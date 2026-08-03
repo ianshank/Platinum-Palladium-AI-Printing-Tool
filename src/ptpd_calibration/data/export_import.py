@@ -75,11 +75,11 @@ class DataExporter:
             ImportError: If PyYAML is not installed
         """
         try:
-            import yaml
-        except ImportError:
+            import yaml  # type: ignore[import-untyped]
+        except ImportError as err:
             raise ImportError(
                 "PyYAML is required for YAML export. Install with: pip install pyyaml"
-            )
+            ) from err
 
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -154,7 +154,7 @@ class DataExporter:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         # Get all unique keys from all records
-        all_keys = set()
+        all_keys: set[str] = set()
         for record in data:
             all_keys.update(record.keys())
 
@@ -171,9 +171,9 @@ class DataExporter:
                     value = record.get(key)
                     if value is None:
                         row[key] = ""
-                    elif isinstance(value, (list, dict)):
+                    elif isinstance(value, list | dict):
                         row[key] = json.dumps(value)
-                    elif isinstance(value, (datetime, UUID)):
+                    elif isinstance(value, datetime | UUID):
                         row[key] = str(value)
                     else:
                         row[key] = value
@@ -308,7 +308,7 @@ class DataExporter:
         """Custom JSON serializer for non-standard types."""
         if isinstance(obj, datetime):
             return obj.isoformat()
-        elif isinstance(obj, (UUID, Path)):
+        elif isinstance(obj, UUID | Path):
             return str(obj)
         elif hasattr(obj, "model_dump"):
             return obj.model_dump()
@@ -380,11 +380,11 @@ class DataImporter:
             ImportError: If PyYAML is not installed
         """
         try:
-            import yaml
-        except ImportError:
+            import yaml  # type: ignore[import-untyped]
+        except ImportError as err:
             raise ImportError(
                 "PyYAML is required for YAML import. Install with: pip install pyyaml"
-            )
+            ) from err
 
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
@@ -404,7 +404,7 @@ class DataImporter:
         tree = ET.parse(path)
         root = tree.getroot()
 
-        data = {"metadata": {}, "records": []}
+        data: dict[str, Any] = {"metadata": {}, "records": []}
 
         # Parse metadata
         meta_elem = root.find("metadata")
@@ -509,7 +509,7 @@ class DataImporter:
 
         return stats
 
-    def import_all(self, path: Path) -> dict[str, int]:
+    def import_all(self, path: Path) -> dict[str, Any]:
         """
         Import all data from an export directory.
 
@@ -525,7 +525,7 @@ class DataImporter:
         if self.database is None:
             raise ValueError("Database not set")
 
-        stats = {}
+        stats: dict[str, Any] = {}
 
         # Import prints
         prints_path = path / "prints.json"
@@ -538,7 +538,7 @@ class DataImporter:
 
     def _xml_to_dict(self, element: ET.Element) -> dict[str, Any]:
         """Convert XML element to dictionary recursively."""
-        result = {}
+        result: dict[str, Any] = {}
 
         for child in element:
             # Check if null

@@ -1,0 +1,69 @@
+# Paper Profiles for Pt/Pd Printing
+## Category: Domain Knowledge - Paper
+## Application: Pt/Pd alternative photographic printing
+
+## Premium Papers
+
+### Hahnemühle Platinum Rag
+- Weight: 300 gsm
+- Fiber: 100% cotton
+- Surface: Smooth, slight tooth
+- Sizing: Internal and surface sized
+- Characteristics: Excellent dMax, very smooth tonal transitions
+- Humidity sensitivity: Moderate
+- Recommended coating: Rod or brush, 1.0-1.2 mL per 8x10
+- Notes: Current gold standard for Malde-Ware printing
+
+### Arches Platine
+- Weight: 310 gsm
+- Fiber: 100% cotton
+- Surface: Hot pressed, very smooth
+- Sizing: Internally sized
+- Characteristics: Deep blacks, slightly warm base
+- Humidity sensitivity: Low-moderate
+- Recommended coating: Rod preferred, 1.0-1.4 mL per 8x10
+- Notes: Classic choice, slightly textured feel
+
+### Revere Platinum
+- Weight: 320 gsm
+- Fiber: 100% cotton
+- Surface: Smooth with subtle texture
+- Characteristics: Cone Editions preferred paper, excellent with PiezoDN
+- Notes: Designed specifically for platinum printing
+
+### Bergger COT 320
+- Weight: 320 gsm
+- Fiber: 100% cotton
+- Surface: Light texture
+- Characteristics: Good absorption, warm-neutral base
+- Humidity sensitivity: Moderate-high
+- Notes: Good value alternative, slightly more texture
+
+### Canson Platine Fibre Rag (for digital negative printing)
+- Not for coating — used for printing digital negatives
+- High opacity, smooth surface
+- Pictorico OHP preferred for UV-dense negatives
+
+## Paper Selection Decision Matrix
+
+| Priority              | Paper                   | Why                                |
+|-----------------------|-------------------------|------------------------------------|
+| Maximum dMax          | Hahnemühle Platinum Rag | Best absorption + Malde-Ware combo |
+| Smoothest transitions | Arches Platine          | Hot press + internal sizing        |
+| PiezoDN workflow      | Revere Platinum         | Calibrated by Cone Editions        |
+| Budget-friendly       | Bergger COT 320         | Good quality, lower price          |
+| Large format (>16x20) | Hahnemühle or Arches    | Consistent sizing at scale         |
+
+## Paper Preparation
+
+### Humidity Conditioning
+- Store paper in controlled environment (40-60% RH)
+- For Malde-Ware POP: pre-humidify 5-15 minutes before coating
+- Use humidity chamber (sealed container with damp sponge)
+- Paper should feel slightly cool but not damp to touch
+
+### Sizing Considerations
+- Internally sized papers: ready to coat directly
+- Externally sized papers: may need additional sizing
+- Double-sized papers: reduced absorption, use less coating solution
+- Unsized papers: require gelatin or starch sizing before coating

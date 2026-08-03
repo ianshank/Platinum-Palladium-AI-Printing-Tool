@@ -44,6 +44,7 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+coverage.json
 *.cover
 *.py,cover
 .hypothesis/
@@ -168,5 +169,22 @@ hf_space_page.html
 models/
 checkpoints/
 
-# Frontend lock file (use pnpm-lock.yaml instead)
+# Frontend lock file
 frontend/package-lock.json
+
+# Tooling
+node_modules/
+.npm/
+
+# MCTS / ML artifacts
+data/mcts_checkpoints/
+data/replay_buffer/
+*.pt
+*.onnx
+
+# Vite cache
+node_modules/.vite/
+
+# Claude Code backup files
+.claude/settings.local.json.bak
+.claude/launch.json

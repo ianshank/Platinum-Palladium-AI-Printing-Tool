@@ -9,7 +9,9 @@ describe('Button', () => {
   describe('Rendering', () => {
     it('renders with default props', () => {
       render(<Button>Click me</Button>);
-      expect(screen.getByRole('button', { name: 'Click me' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Click me' })
+      ).toBeInTheDocument();
     });
 
     it('renders with different variants', () => {
@@ -53,27 +55,35 @@ describe('Button', () => {
   });
 
   describe('Interactions', () => {
-    it('calls onClick when clicked', async () => {
+    it('calls onClick when clicked', () => {
       const handleClick = vi.fn();
       render(<Button onClick={handleClick}>Click me</Button>);
 
-      await fireEvent.click(screen.getByRole('button'));
+      fireEvent.click(screen.getByRole('button'));
       expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
-    it('does not call onClick when disabled', async () => {
+    it('does not call onClick when disabled', () => {
       const handleClick = vi.fn();
-      render(<Button onClick={handleClick} disabled>Click me</Button>);
+      render(
+        <Button onClick={handleClick} disabled>
+          Click me
+        </Button>
+      );
 
-      await fireEvent.click(screen.getByRole('button'));
+      fireEvent.click(screen.getByRole('button'));
       expect(handleClick).not.toHaveBeenCalled();
     });
 
-    it('does not call onClick when loading', async () => {
+    it('does not call onClick when loading', () => {
       const handleClick = vi.fn();
-      render(<Button onClick={handleClick} isLoading>Click me</Button>);
+      render(
+        <Button onClick={handleClick} isLoading>
+          Click me
+        </Button>
+      );
 
-      await fireEvent.click(screen.getByRole('button'));
+      fireEvent.click(screen.getByRole('button'));
       expect(handleClick).not.toHaveBeenCalled();
     });
   });
@@ -83,12 +93,18 @@ describe('Button', () => {
       render(<Button isLoading>Loading</Button>);
 
       // Check for spinner (SVG with animate-spin class)
-      const spinner = screen.getByRole('button').querySelector('svg.animate-spin');
+      const spinner = screen
+        .getByRole('button')
+        .querySelector('svg.animate-spin');
       expect(spinner).toBeInTheDocument();
     });
 
     it('shows custom loading text', () => {
-      render(<Button isLoading loadingText="Please wait...">Submit</Button>);
+      render(
+        <Button isLoading loadingText="Please wait...">
+          Submit
+        </Button>
+      );
       expect(screen.getByText('Please wait...')).toBeInTheDocument();
     });
 
@@ -118,25 +134,30 @@ describe('Button', () => {
           <a href="/test">Link Button</a>
         </Button>
       );
-      expect(screen.getByRole('link', { name: 'Link Button' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'Link Button' })
+      ).toBeInTheDocument();
     });
   });
 
   describe('Accessibility', () => {
     it('has no accessibility violations', async () => {
       const { container } = render(<Button>Accessible Button</Button>);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- axe returns error-typed value for comprehensive accessibility testing
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });
 
     it('has no accessibility violations when disabled', async () => {
       const { container } = render(<Button disabled>Disabled Button</Button>);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- axe returns error-typed value for comprehensive accessibility testing
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });
 
     it('has no accessibility violations when loading', async () => {
       const { container } = render(<Button isLoading>Loading Button</Button>);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- axe returns error-typed value for comprehensive accessibility testing
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });
@@ -148,13 +169,13 @@ describe('Button', () => {
       expect(document.activeElement).toBe(button);
     });
 
-    it('responds to Enter key', async () => {
+    it('responds to Enter key', () => {
       const handleClick = vi.fn();
       render(<Button onClick={handleClick}>Press Enter</Button>);
 
       const button = screen.getByRole('button');
-      await fireEvent.keyDown(button, { key: 'Enter' });
-      // Enter on button triggers click
+      fireEvent.keyDown(button, { key: 'Enter' });
+      expect(handleClick).toHaveBeenCalledTimes(1);
     });
   });
 });

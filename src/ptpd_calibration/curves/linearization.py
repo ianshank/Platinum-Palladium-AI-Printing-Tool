@@ -429,7 +429,13 @@ class AutoLinearizer:
 
         # Iteratively refine
         for i in range(self.config.iterations):
+            # Apply current curve to see result (interpolation prepared for future use)
+            _interp = interpolate.interp1d(
+                curve[0], current_y, kind="cubic", fill_value="extrapolate"
+            )
+
             # Compute error at measurement points
+            # predicted = _interp(input_positions)  # Reserved for future use
             measured_norm = (measured - measured.min()) / (measured.max() - measured.min() + 1e-10)
             error = target - measured_norm
 

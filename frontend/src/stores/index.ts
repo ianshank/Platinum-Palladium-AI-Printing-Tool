@@ -14,6 +14,7 @@ import { type ChemistrySlice, createChemistrySlice } from './slices/chemistrySli
 import { type ChatSlice, createChatSlice } from './slices/chatSlice';
 import { createSessionSlice, type SessionSlice } from './slices/sessionSlice';
 import { createImageSlice, type ImageSlice } from './slices/imageSlice';
+import { createMCTSSlice, type MCTSSlice } from './slices/mctsSlice';
 import { config } from '@/config';
 
 /**
@@ -27,6 +28,7 @@ export type StoreState = {
   chat: ChatSlice;
   session: SessionSlice;
   image: ImageSlice;
+  mcts: MCTSSlice;
 };
 
 /**
@@ -92,6 +94,7 @@ export const useStore = create<StoreState>()(
     chat: createChatSlice(set, get, store),
     session: createSessionSlice(set, get, store),
     image: createImageSlice(set, get, store),
+    mcts: createMCTSSlice(set, get, store),
   }))
 );
 
@@ -109,6 +112,7 @@ export const createStore = (): typeof useStore => {
       chat: createChatSlice(set, get, store),
       session: createSessionSlice(set, get, store),
       image: createImageSlice(set, get, store),
+      mcts: createMCTSSlice(set, get, store),
     }))
   );
 };
@@ -153,4 +157,4 @@ export const selectImagePreview = (state: StoreState) => state.image.preview;
 export const selectUploadProgress = (state: StoreState): number => state.image.uploadProgress;
 
 // Re-export slice types
-export type { UISlice, CalibrationSlice, CurveSlice, ChemistrySlice, ChatSlice, SessionSlice, ImageSlice };
+export type { UISlice, CalibrationSlice, CurveSlice, ChemistrySlice, ChatSlice, SessionSlice, ImageSlice, MCTSSlice };

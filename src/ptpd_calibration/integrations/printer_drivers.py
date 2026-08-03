@@ -346,7 +346,7 @@ class EpsonDriver(PrinterInterface):
             processed = processed.transpose(Image.FLIP_LEFT_RIGHT)
 
         # Invert for negative
-        if settings.invert and (processed.mode == "L" or processed.mode == "RGB"):
+        if settings.invert and processed.mode in ("L", "RGB"):
             processed = Image.eval(processed, lambda x: 255 - x)
 
         # Scale if needed
@@ -572,7 +572,7 @@ class CanonDriver(PrinterInterface):
         if settings.mirror:
             processed = processed.transpose(Image.FLIP_LEFT_RIGHT)
 
-        if settings.invert and (processed.mode == "L" or processed.mode == "RGB"):
+        if settings.invert and processed.mode in ("L", "RGB"):
             processed = Image.eval(processed, lambda x: 255 - x)
 
         if settings.scale_percent != 100.0:

@@ -167,7 +167,7 @@ class TestCurveExporters:
         assert "## QuadToneRIP" in content
         assert "# K Curve" in content
         # Should have numeric values (256 points)
-        lines = [l for l in content.split("\n") if l and not l.startswith("#")]
+        lines = [line for line in content.split("\n") if line and not line.startswith("#")]
         assert len(lines) >= 256
 
     def test_qtr_quad_export(self, sample_curve, tmp_path):

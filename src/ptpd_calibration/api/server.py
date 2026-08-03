@@ -2,22 +2,52 @@
 FastAPI server for PTPD Calibration System.
 """
 
+import logging
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import UUID
 
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+
+from ptpd_calibration.api.models import (
+    AnalyzeResponse,
+    ChatResponse,
+    CreateCalibrationResponse,
+    CurveBlendResponse,
+    CurveEnhanceResponse,
+    CurveGenerateResponse,
+    CurveModifyResponse,
+    CurveMonotonicityResponse,
+    CurveRetrieveResponse,
+    CurveSmoothResponse,
+    HealthResponse,
+    ListCalibrationsResponse,
+    QuadParseResponse,
+    QuadUploadResponse,
+    RecipeResponse,
+    RootResponse,
+    ScanUploadResponse,
+    StatisticsResponse,
+    TroubleshootResponse,
+)
 from ptpd_calibration.config import get_settings
 
+_log = logging.getLogger(__name__)
 
-def create_app():
+
+def create_app() -> "FastAPI":
     """Create the FastAPI application."""
     try:
-        from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+        from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
-        from fastapi.responses import FileResponse, JSONResponse  # noqa: F401
+        from fastapi.responses import FileResponse
         from pydantic import BaseModel
-    except ImportError:
-        raise ImportError("FastAPI is required. Install with: pip install ptpd-calibration[api]")
+    except ImportError as err:
+        raise ImportError(
+            "FastAPI is required. Install with: pip install ptpd-calibration[api]"
+        ) from err
 
     from ptpd_calibration.config import TabletType
     from ptpd_calibration.core.models import CalibrationRecord, CurveData
@@ -34,7 +64,6 @@ def create_app():
         save_curve,
     )
     from ptpd_calibration.detection import StepTabletReader
-    from ptpd_calibration.gcp.storage import get_storage_backend
     from ptpd_calibration.ml import CalibrationDatabase
 
     # Initialize app
@@ -61,25 +90,29 @@ def create_app():
     )
 
     # State
-    storage_backend = get_storage_backend(settings.gcp)
-    database = CalibrationDatabase(storage_backend=storage_backend)
-    database.load_from_storage()
+    database = CalibrationDatabase()
+    upload_dir: Path = settings.api.upload_dir or Path(tempfile.mkdtemp())
+    deep_learning_model_storage: dict = {}  # Storage for trained DL models
 
-    upload_dir = settings.api.upload_dir or Path(tempfile.mkdtemp())
+    # Include deep learning router
+    try:
+        from ptpd_calibration.api.deep_learning import create_deep_learning_router
 
-    def save_curve_to_storage(curve: CurveData) -> None:
-        """Save curve to storage backend."""
-        path = f"curves/{str(curve.id)}.json"
-        storage_backend.save(path, curve.model_dump_json())
+        deep_router = create_deep_learning_router(database, deep_learning_model_storage)
+        app.include_router(deep_router)
+    except ImportError:
+        # Deep learning dependencies not available
+        pass
 
-    def get_curve_from_storage(curve_id: str) -> CurveData | None:
-        """Get curve from storage backend."""
-        path = f"curves/{curve_id}.json"
-        try:
-            data = storage_backend.load(path)
-            return CurveData.model_validate_json(data)
-        except Exception:
-            return None
+    # Include MCTS router
+    try:
+        from ptpd_calibration.api.mcts_router import create_mcts_router
+
+        mcts_router = create_mcts_router()
+        app.include_router(mcts_router)
+    except ImportError:
+        # MCTS dependencies not available
+        pass
 
     # Pydantic models
     class AnalyzeRequest(BaseModel):
@@ -152,44 +185,76 @@ def create_app():
         paper_type: str | None = None
         additional_context: str | None = None
 
-    # Curve storage for session (replaced by persistent storage backend)
-    # curve_storage: dict[str, CurveData] = {}
+    # Curve storage — write-through cache backed by JSON files on disk
+    curves_dir = upload_dir.parent / "curves"
+    curves_dir.mkdir(parents=True, exist_ok=True)
+    curve_storage: dict[str, CurveData] = {}
+
+    def _store_curve(curve: CurveData) -> None:
+        """Cache curve in memory and persist to disk."""
+        curve_storage[str(curve.id)] = curve
+        try:
+            (curves_dir / f"{curve.id}.json").write_text(
+                curve.model_dump_json(), encoding="utf-8"
+            )
+        except Exception:
+            _log.warning("Failed to persist curve %s to disk", curve.id, exc_info=True)
+
+    def _get_curve(curve_id: str) -> CurveData | None:
+        """Return curve from memory cache, falling back to disk."""
+        if curve_id in curve_storage:
+            return curve_storage[curve_id]
+        path = curves_dir / f"{curve_id}.json"
+        if path.exists():
+            try:
+                loaded = CurveData.model_validate_json(path.read_text(encoding="utf-8"))
+                curve_storage[curve_id] = loaded
+                return loaded
+            except Exception:
+                _log.warning("Failed to load curve %s from disk", curve_id, exc_info=True)
+                return None
+        return None
 
     # Routes
-    @app.get("/")
-    async def root():
-        return {"message": "PTPD Calibration API", "version": "1.0.0"}
+    @app.get("/", response_model=RootResponse)
+    async def root() -> RootResponse:
+        """Get API information."""
+        return RootResponse(message="PTPD Calibration API", version="1.0.0")
 
-    @app.get("/api/health")
-    async def health():
-        return {"status": "healthy"}
+    @app.get("/api/health", response_model=HealthResponse)
+    async def health() -> HealthResponse:
+        """Health check endpoint."""
+        return HealthResponse(status="healthy")
 
-    @app.post("/api/analyze")
-    async def analyze_densities(request: AnalyzeRequest):
+    @app.post("/api/analyze", response_model=AnalyzeResponse)
+    async def analyze_densities(request: AnalyzeRequest) -> AnalyzeResponse:
         """Analyze density measurements."""
+        if not request.densities:
+            raise HTTPException(status_code=422, detail="Densities list cannot be empty")
+
         from ptpd_calibration.curves.analysis import CurveAnalyzer
 
         analysis = CurveAnalyzer.analyze_linearity(request.densities)
         suggestions = CurveAnalyzer.suggest_adjustments(request.densities)
 
-        return {
-            "dmin": min(request.densities),
-            "dmax": max(request.densities),
-            "range": max(request.densities) - min(request.densities),
-            "is_monotonic": analysis.is_monotonic,
-            "max_error": analysis.max_error,
-            "rms_error": analysis.rms_error,
-            "suggestions": suggestions,
-        }
+        return AnalyzeResponse(
+            dmin=min(request.densities),
+            dmax=max(request.densities),
+            range=max(request.densities) - min(request.densities),
+            is_monotonic=analysis.is_monotonic,
+            max_error=analysis.max_error,
+            rms_error=analysis.rms_error,
+            suggestions=suggestions,
+        )
 
     # Allowlisted scan file extensions (case-insensitive)
     _ALLOWED_SCAN_EXTENSIONS = frozenset({".tif", ".tiff", ".png", ".jpg", ".jpeg", ".bmp"})
 
-    @app.post("/api/scan/upload")
+    @app.post("/api/scan/upload", response_model=ScanUploadResponse)
     async def upload_scan(
         file: UploadFile = File(...),
         tablet_type: str = Form("stouffer_21"),
-    ):
+    ) -> ScanUploadResponse:
         """Upload and process a step tablet scan."""
         import logging
         from uuid import uuid4
@@ -251,31 +316,27 @@ def create_app():
             reader = StepTabletReader(tablet_type=TabletType(tablet_type))
             result = reader.read(file_path)
 
-            # Persist raw scan to storage with server-generated key
-            with open(file_path, "rb") as f:
-                storage_backend.save(f"scans/{safe_name}", f.read())
-
-            return {
-                "success": True,
-                "extraction_id": str(result.extraction.id),
-                "original_filename": original_filename,
-                "num_patches": result.extraction.num_patches,
-                "densities": result.extraction.get_densities(),
-                "dmin": result.extraction.dmin,
-                "dmax": result.extraction.dmax,
-                "range": result.extraction.density_range,
-                "quality": result.extraction.overall_quality,
-                "warnings": result.extraction.warnings,
-            }
+            return ScanUploadResponse(
+                success=True,
+                extraction_id=str(result.extraction.id),
+                original_filename=original_filename,
+                num_patches=result.extraction.num_patches,
+                densities=result.extraction.get_densities(),
+                dmin=result.extraction.dmin,
+                dmax=result.extraction.dmax,
+                range=result.extraction.density_range,
+                quality=result.extraction.overall_quality,
+                warnings=result.extraction.warnings,
+            )
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from None
         finally:
             # Cleanup temp file
             if file_path.exists():
                 file_path.unlink()
 
-    @app.post("/api/curves/generate")
-    async def generate_curve(request: CurveRequest):
+    @app.post("/api/curves/generate", response_model=CurveGenerateResponse)
+    async def generate_curve(request: CurveRequest) -> CurveGenerateResponse:
         """Generate a calibration curve."""
         generator = CurveGenerator()
 
@@ -288,26 +349,23 @@ def create_app():
                 chemistry=request.chemistry,
             )
 
-            # Store the generated curve
-            save_curve_to_storage(curve)
-
-            return {
-                "success": True,
-                "curve_id": str(curve.id),
-                "name": curve.name,
-                "num_points": len(curve.input_values),
-                "input_values": curve.input_values[:10],  # Sample
-                "output_values": curve.output_values[:10],
-            }
+            return CurveGenerateResponse(
+                success=True,
+                curve_id=str(curve.id),
+                name=curve.name,
+                num_points=len(curve.input_values),
+                input_values=curve.input_values[:10],  # Sample
+                output_values=curve.output_values[:10],
+            )
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
     @app.post("/api/curves/export")
     async def export_curve(
         densities: list[float] = Form(...),
         name: str = Form("curve"),
         format: str = Form("qtr"),
-    ):
+    ) -> "FileResponse":
         """Export a curve to file."""
         generator = CurveGenerator()
         curve = generator.generate(densities, name=name)
@@ -325,18 +383,39 @@ def create_app():
             filename=f"{name}{ext}",
         )
 
-    @app.post("/api/curves/upload-quad")
+    @app.post("/api/curves/{curve_id}/export")
+    async def export_stored_curve(
+        curve_id: str,
+        format: str = Query("qtr"),
+    ) -> "FileResponse":
+        """Export a previously stored curve by ID."""
+        curve = _get_curve(curve_id)
+        if not curve:
+            raise HTTPException(status_code=404, detail="Curve not found")
+        ext_map = {"qtr": ".txt", "piezography": ".ppt", "csv": ".csv", "json": ".json"}
+        ext = ext_map.get(format, ".txt")
+        safe_name = "".join(c if c.isalnum() or c in "-_." else "_" for c in curve.name)
+        output_path = upload_dir / f"{safe_name}{ext}"
+        save_curve(curve, output_path, format=format)
+        return FileResponse(
+            output_path,
+            media_type="application/octet-stream",
+            filename=f"{safe_name}{ext}",
+        )
+
+    @app.post("/api/curves/upload-quad", response_model=QuadUploadResponse)
     async def upload_quad_file(
         file: UploadFile = File(...),
         channel: str = Form("K"),
-    ):
+    ) -> QuadUploadResponse:
         """
         Upload and parse a QTR .quad file.
 
         Returns the parsed profile with all channels and metadata.
         """
         # Save uploaded file
-        file_path = upload_dir / file.filename
+        filename = file.filename or "upload.quad"
+        file_path = upload_dir / filename
         with open(file_path, "wb") as f:
             content = await file.read()
             f.write(content)
@@ -348,70 +427,84 @@ def create_app():
             # Convert requested channel to CurveData and store
             if channel.upper() in profile.channels:
                 curve_data = profile.to_curve_data(channel.upper())
-                save_curve_to_storage(curve_data)
+                _store_curve(curve_data)
             else:
                 curve_data = None
 
-            return {
-                "success": True,
-                "profile_name": profile.profile_name,
-                "resolution": profile.resolution,
-                "ink_limit": profile.ink_limit,
-                "media_type": profile.media_type,
-                "all_channels": profile.all_channel_names,
-                "active_channels": profile.active_channels,
-                "curve_id": str(curve_data.id) if curve_data else None,
-                "curve_data": {
-                    "input_values": curve_data.input_values[:20] if curve_data else [],
-                    "output_values": curve_data.output_values[:20] if curve_data else [],
-                }
+            from ptpd_calibration.api.models import CurveDataSample
+
+            return QuadUploadResponse(
+                success=True,
+                profile_name=profile.profile_name,
+                resolution=profile.resolution,
+                ink_limit=profile.ink_limit,
+                media_type=profile.media_type,
+                all_channels=profile.all_channel_names,
+                active_channels=profile.active_channels,
+                curve_id=str(curve_data.id) if curve_data else None,
+                curve_data=CurveDataSample(
+                    input_values=curve_data.input_values[:20] if curve_data else [],
+                    output_values=curve_data.output_values[:20] if curve_data else [],
+                )
                 if curve_data
                 else None,
-                "summary": profile.summary(),
-            }
+                summary=profile.summary(),
+            )
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from None
         finally:
             # Cleanup
             if file_path.exists():
                 file_path.unlink()
 
-    @app.post("/api/curves/parse-quad")
+    @app.post("/api/curves/parse-quad", response_model=QuadParseResponse)
     async def parse_quad_content(
         content: str = Form(...),
         name: str = Form("Uploaded Profile"),
         channel: str = Form("K"),
-    ):
+    ) -> QuadParseResponse:
         """
         Parse .quad content from a string (for pasting quad data directly).
         """
         try:
             profile = load_quad_string(content, name)
 
+            # Validate the parsed profile has recognizable .quad content.
+            # _post_process() always adds default disabled channels, so we check
+            # raw_sections (INI-style sections found) OR active_channels (channels
+            # with non-zero curve data) to distinguish real .quad from random text.
+            if not profile.raw_sections and not profile.active_channels:
+                raise ValueError(
+                    "Content does not appear to be valid .quad format: "
+                    "no sections or channel curves found"
+                )
+
             # Convert requested channel to CurveData and store
             if channel.upper() in profile.channels:
                 curve_data = profile.to_curve_data(channel.upper())
-                save_curve_to_storage(curve_data)
+                _store_curve(curve_data)
             else:
                 curve_data = None
 
-            return {
-                "success": True,
-                "profile_name": profile.profile_name,
-                "active_channels": profile.active_channels,
-                "curve_id": str(curve_data.id) if curve_data else None,
-                "curve_data": {
-                    "input_values": curve_data.input_values if curve_data else [],
-                    "output_values": curve_data.output_values if curve_data else [],
-                }
+            from ptpd_calibration.api.models import CurveDataSample
+
+            return QuadParseResponse(
+                success=True,
+                profile_name=profile.profile_name,
+                active_channels=profile.active_channels,
+                curve_id=str(curve_data.id) if curve_data else None,
+                curve_data=CurveDataSample(
+                    input_values=curve_data.input_values if curve_data else [],
+                    output_values=curve_data.output_values if curve_data else [],
+                )
                 if curve_data
                 else None,
-            }
+            )
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
-    @app.post("/api/curves/modify")
-    async def modify_curve(request: CurveModifyRequest):
+    @app.post("/api/curves/modify", response_model=CurveModifyResponse)
+    async def modify_curve(request: CurveModifyRequest) -> CurveModifyResponse:
         """
         Apply modifications to a curve.
 
@@ -452,21 +545,21 @@ def create_app():
                 raise ValueError(f"Unknown adjustment type: {adjustment_type}")
 
             # Store the modified curve
-            save_curve_to_storage(modified)
+            _store_curve(modified)
 
-            return {
-                "success": True,
-                "curve_id": str(modified.id),
-                "name": modified.name,
-                "adjustment_applied": adjustment_type,
-                "input_values": modified.input_values,
-                "output_values": modified.output_values,
-            }
+            return CurveModifyResponse(
+                success=True,
+                curve_id=str(modified.id),
+                name=modified.name,
+                adjustment_applied=adjustment_type,
+                input_values=modified.input_values,
+                output_values=modified.output_values,
+            )
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
-    @app.post("/api/curves/smooth")
-    async def smooth_curve(request: CurveSmoothRequest):
+    @app.post("/api/curves/smooth", response_model=CurveSmoothResponse)
+    async def smooth_curve(request: CurveSmoothRequest) -> CurveSmoothResponse:
         """
         Apply smoothing to a curve.
 
@@ -489,21 +582,21 @@ def create_app():
             )
 
             # Store the smoothed curve
-            save_curve_to_storage(smoothed)
+            _store_curve(smoothed)
 
-            return {
-                "success": True,
-                "curve_id": str(smoothed.id),
-                "name": smoothed.name,
-                "method_applied": request.method,
-                "input_values": smoothed.input_values,
-                "output_values": smoothed.output_values,
-            }
+            return CurveSmoothResponse(
+                success=True,
+                curve_id=str(smoothed.id),
+                name=smoothed.name,
+                method_applied=request.method,
+                input_values=smoothed.input_values,
+                output_values=smoothed.output_values,
+            )
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
-    @app.post("/api/curves/blend")
-    async def blend_curves(request: CurveBlendRequest):
+    @app.post("/api/curves/blend", response_model=CurveBlendResponse)
+    async def blend_curves(request: CurveBlendRequest) -> CurveBlendResponse:
         """
         Blend two curves together.
 
@@ -533,21 +626,21 @@ def create_app():
             blended.name = request.name
 
             # Store the blended curve
-            save_curve_to_storage(blended)
+            _store_curve(blended)
 
-            return {
-                "success": True,
-                "curve_id": str(blended.id),
-                "name": blended.name,
-                "mode_applied": request.mode,
-                "input_values": blended.input_values,
-                "output_values": blended.output_values,
-            }
+            return CurveBlendResponse(
+                success=True,
+                curve_id=str(blended.id),
+                name=blended.name,
+                mode_applied=request.mode,
+                input_values=blended.input_values,
+                output_values=blended.output_values,
+            )
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
-    @app.post("/api/curves/enhance")
-    async def enhance_curve_ai(request: CurveEnhanceRequest):
+    @app.post("/api/curves/enhance", response_model=CurveEnhanceResponse)
+    async def enhance_curve_ai(request: CurveEnhanceRequest) -> CurveEnhanceResponse:
         """
         Apply AI-powered enhancement to a curve.
 
@@ -570,9 +663,10 @@ def create_app():
                 result = await enhancer.enhance_with_llm(
                     curve,
                     goal=goal,
-                    additional_context=request.additional_context,
+                    user_requirements=request.additional_context,
                 )
             except Exception:
+                _log.info("LLM enhancement unavailable, falling back to algorithmic", exc_info=True)
                 # Fall back to algorithmic enhancement
                 result = await enhancer.analyze_and_enhance(
                     curve,
@@ -580,121 +674,132 @@ def create_app():
                 )
 
             # Store the enhanced curve
-            save_curve_to_storage(result.enhanced_curve)
+            _store_curve(result.enhanced_curve)
 
-            return {
-                "success": True,
-                "curve_id": str(result.enhanced_curve.id),
-                "name": result.enhanced_curve.name,
-                "goal": result.goal.value,
-                "confidence": result.confidence,
-                "analysis": result.analysis,
-                "changes_made": result.changes_made,
-                "input_values": result.enhanced_curve.input_values,
-                "output_values": result.enhanced_curve.output_values,
-            }
+            return CurveEnhanceResponse(
+                success=True,
+                curve_id=str(result.enhanced_curve.id),
+                name=result.enhanced_curve.name,
+                goal=goal.value,
+                confidence=result.confidence,
+                analysis=str(result.analysis) if isinstance(result.analysis, dict) else result.analysis,
+                changes_made=result.adjustments_applied,
+                input_values=result.enhanced_curve.input_values,
+                output_values=result.enhanced_curve.output_values,
+            )
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
-    @app.get("/api/curves/{curve_id}")
-    async def get_stored_curve(curve_id: str):
+    @app.get("/api/curves/{curve_id}", response_model=CurveRetrieveResponse)
+    async def get_stored_curve(curve_id: str) -> CurveRetrieveResponse:
         """Get a stored curve by ID."""
-        curve = get_curve_from_storage(curve_id)
+        curve = _get_curve(curve_id)
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
 
-        return {
-            "curve_id": str(curve.id),
-            "name": curve.name,
-            "curve_type": curve.curve_type.value if curve.curve_type else None,
-            "paper_type": curve.paper_type,
-            "input_values": curve.input_values,
-            "output_values": curve.output_values,
-            "notes": curve.notes,
-        }
+        return CurveRetrieveResponse(
+            curve_id=str(curve.id),
+            name=curve.name,
+            curve_type=curve.curve_type.value if curve.curve_type else None,
+            paper_type=curve.paper_type,
+            input_values=curve.input_values,
+            output_values=curve.output_values,
+            notes=curve.notes,
+        )
 
-    @app.post("/api/curves/{curve_id}/enforce-monotonicity")
+    @app.post("/api/curves/{curve_id}/enforce-monotonicity", response_model=CurveMonotonicityResponse)
     async def enforce_monotonicity(
         curve_id: str,
         direction: str = "increasing",
-    ):
+    ) -> CurveMonotonicityResponse:
         """Enforce monotonicity on a stored curve."""
-        curve = get_curve_from_storage(curve_id)
+        curve = _get_curve(curve_id)
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
 
         try:
             modifier = CurveModifier()
             modified = modifier.enforce_monotonicity(curve, direction=direction)
-            save_curve_to_storage(modified)
+            _store_curve(modified)
 
-            return {
-                "success": True,
-                "curve_id": str(modified.id),
-                "name": modified.name,
-                "input_values": modified.input_values,
-                "output_values": modified.output_values,
-            }
+            return CurveMonotonicityResponse(
+                success=True,
+                curve_id=str(modified.id),
+                name=modified.name,
+                input_values=modified.input_values,
+                output_values=modified.output_values,
+            )
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from None
 
-    @app.get("/api/calibrations")
+    @app.get("/api/calibrations", response_model=ListCalibrationsResponse)
     async def list_calibrations(
         paper_type: str | None = None,
         limit: int = 50,
-    ):
+    ) -> ListCalibrationsResponse:
         """List calibration records."""
+        from ptpd_calibration.api.models import CalibrationRecord as CalibrationRecordModel
+
         records = database.query(paper_type=paper_type)
 
-        return {
-            "count": len(records),
-            "records": [
-                {
-                    "id": str(r.id),
-                    "paper_type": r.paper_type,
-                    "exposure_time": r.exposure_time,
-                    "metal_ratio": r.metal_ratio,
-                    "timestamp": r.timestamp.isoformat(),
-                    "dmax": max(r.measured_densities) if r.measured_densities else 0,
-                }
+        return ListCalibrationsResponse(
+            count=len(records),
+            records=[
+                CalibrationRecordModel(
+                    id=str(r.id),
+                    paper_type=r.paper_type,
+                    exposure_time=r.exposure_time,
+                    metal_ratio=r.metal_ratio,
+                    timestamp=r.timestamp.isoformat(),
+                    dmax=max(r.measured_densities) if r.measured_densities else 0,
+                )
                 for r in records[:limit]
             ],
-        }
-
-    @app.post("/api/calibrations")
-    async def create_calibration(request: CalibrationRequest):
-        """Create a new calibration record."""
-        record = CalibrationRecord(
-            paper_type=request.paper_type,
-            exposure_time=request.exposure_time,
-            metal_ratio=request.metal_ratio,
-            contrast_agent=ContrastAgent(request.contrast_agent),
-            contrast_amount=request.contrast_amount,
-            developer=DeveloperType(request.developer),
-            chemistry_type=ChemistryType(request.chemistry_type),
-            measured_densities=request.densities,
-            notes=request.notes,
         )
+
+    @app.post("/api/calibrations", response_model=CreateCalibrationResponse)
+    async def create_calibration(request: CalibrationRequest) -> CreateCalibrationResponse:
+        """Create a new calibration record."""
+        from pydantic import ValidationError
+
+        try:
+            record = CalibrationRecord(
+                paper_type=request.paper_type,
+                exposure_time=request.exposure_time,
+                metal_ratio=request.metal_ratio,
+                contrast_agent=ContrastAgent(request.contrast_agent),
+                contrast_amount=request.contrast_amount,
+                developer=DeveloperType(request.developer),
+                chemistry_type=ChemistryType(request.chemistry_type),
+                measured_densities=request.densities,
+                notes=request.notes,
+            )
+        except ValidationError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from None
 
         database.add_record(record)
 
-        return {
-            "success": True,
-            "id": str(record.id),
-            "message": "Calibration saved",
-        }
+        return CreateCalibrationResponse(
+            success=True,
+            id=str(record.id),
+            message="Calibration saved",
+        )
 
     @app.get("/api/calibrations/{calibration_id}")
-    async def get_calibration(calibration_id: str):
+    async def get_calibration(calibration_id: str) -> dict:
         """Get a specific calibration record."""
-        record = database.get_record(UUID(calibration_id))
+        try:
+            uid = UUID(calibration_id)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid calibration ID format") from None
+        record = database.get_record(uid)
         if not record:
             raise HTTPException(status_code=404, detail="Calibration not found")
 
         return record.model_dump(mode="json")
 
-    @app.post("/api/chat")
-    async def chat(request: ChatRequest):
+    @app.post("/api/chat", response_model=ChatResponse)
+    async def chat(request: ChatRequest) -> ChatResponse:
         """Chat with the AI assistant."""
         try:
             from ptpd_calibration.llm import create_assistant
@@ -705,12 +810,12 @@ def create_app():
                 include_history=request.include_history,
             )
 
-            return {"response": response}
+            return ChatResponse(response=response)
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from None
 
-    @app.post("/api/chat/recipe")
-    async def suggest_recipe(request: RecipeRequest):
+    @app.post("/api/chat/recipe", response_model=RecipeResponse)
+    async def suggest_recipe(request: RecipeRequest) -> RecipeResponse:
         """Get recipe suggestion."""
         try:
             from ptpd_calibration.llm import create_assistant
@@ -721,12 +826,12 @@ def create_app():
                 request.characteristics,
             )
 
-            return {"response": response}
+            return RecipeResponse(response=response)
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from None
 
-    @app.post("/api/chat/troubleshoot")
-    async def troubleshoot(request: TroubleshootRequest):
+    @app.post("/api/chat/troubleshoot", response_model=TroubleshootResponse)
+    async def troubleshoot(request: TroubleshootRequest) -> TroubleshootResponse:
         """Get troubleshooting help."""
         try:
             from ptpd_calibration.llm import create_assistant
@@ -734,24 +839,32 @@ def create_app():
             assistant = create_assistant(database=database)
             response = await assistant.troubleshoot(request.problem)
 
-            return {"response": response}
+            return TroubleshootResponse(response=response)
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from None
 
-    @app.get("/api/statistics")
-    async def get_statistics():
+    @app.get("/api/statistics", response_model=StatisticsResponse)
+    async def get_statistics() -> StatisticsResponse:
         """Get database statistics."""
-        return database.get_statistics()
+        stats = database.get_statistics()
+        return StatisticsResponse(
+            total_calibrations=stats.get("total_calibrations", 0),
+            unique_papers=stats.get("unique_papers", 0),
+            avg_exposure_time=stats.get("avg_exposure_time", 0.0),
+            data=stats.get("data", {}),
+        )
 
     return app
 
 
-def main():
+def main() -> None:
     """Run the API server."""
     try:
         import uvicorn
-    except ImportError:
-        raise ImportError("uvicorn is required. Install with: pip install ptpd-calibration[api]")
+    except ImportError as err:
+        raise ImportError(
+            "uvicorn is required. Install with: pip install ptpd-calibration[api]"
+        ) from err
 
     settings = get_settings()
     app = create_app()

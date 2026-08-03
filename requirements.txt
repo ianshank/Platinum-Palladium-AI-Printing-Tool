@@ -22,3 +22,6 @@ matplotlib>=3.7.0
 
 # Image I/O (16-bit TIFF support)
 tifffile>=2024.1.0
+
+# Deep Learning (optional - install with pip install -r requirements-dl.txt)
+# See requirements-dl.txt for full deep learning dependencies

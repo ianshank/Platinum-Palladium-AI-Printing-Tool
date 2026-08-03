@@ -221,9 +221,8 @@ class AgentMemory:
             del self._long_term[key]
 
             # Remove from category index
-            if item.category in self._categories:
-                if key in self._categories[item.category]:
-                    self._categories[item.category].remove(key)
+            if item.category in self._categories and key in self._categories[item.category]:
+                self._categories[item.category].remove(key)
 
             if self.storage_path:
                 self._save()

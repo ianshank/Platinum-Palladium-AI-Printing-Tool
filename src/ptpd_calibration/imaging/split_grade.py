@@ -246,7 +246,7 @@ class TonalCurveAdjuster:
     printing processes, including their different contrast and tonal behaviors.
     """
 
-    def __init__(self, settings: SplitGradeSettings | None = None):
+    def __init__(self, settings: SplitGradeSettings | None = None) -> None:
         """Initialize the tonal curve adjuster.
 
         Args:
@@ -516,7 +516,7 @@ class SplitGradeSimulator:
     - Calculating exposure times
     """
 
-    def __init__(self, settings: SplitGradeSettings | None = None):
+    def __init__(self, settings: SplitGradeSettings | None = None) -> None:
         """Initialize the split-grade simulator.
 
         Args:
@@ -1099,7 +1099,7 @@ class SplitGradeSimulator:
         elif is_high_key:
             ratio -= 0.05
 
-        return np.clip(ratio, 0.4, 0.75)
+        return float(np.clip(ratio, 0.4, 0.75))
 
     @staticmethod
     def _soft_light_blend(

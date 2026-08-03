@@ -10,6 +10,7 @@ Simulates how prints will look on paper, accounting for:
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import TypedDict
 
 import numpy as np
 from PIL import Image
@@ -26,8 +27,15 @@ class PaperSimulation(str, Enum):
     CUSTOM = "custom"
 
 
+class _PaperPreset(TypedDict):
+    white_rgb: tuple[int, int, int]
+    dmax: float
+    dmin: float
+    tone: str
+
+
 # Paper simulation presets
-PAPER_PRESETS = {
+PAPER_PRESETS: dict[PaperSimulation, _PaperPreset] = {
     PaperSimulation.ARCHES_PLATINE: {
         "white_rgb": (250, 246, 238),
         "dmax": 1.6,

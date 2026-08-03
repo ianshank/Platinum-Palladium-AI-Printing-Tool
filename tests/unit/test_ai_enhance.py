@@ -374,7 +374,7 @@ class TestLLMResponseParsing:
 class TestConfidenceCalculation:
     """Tests for confidence score calculation."""
 
-    def test_confidence_high_for_simple_curve(self, linear_curve):
+    def test_confidence_high_for_simple_curve(self, linear_curve):  # noqa: ARG002
         """Test high confidence for simple, clean curve."""
         enhancer = CurveAIEnhancer()
         issues = []

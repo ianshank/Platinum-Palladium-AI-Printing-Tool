@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'styled-components';
 import { theme } from './styles/theme';
 
-
 import { App } from './App';
 import { config } from './config';
 import { logger } from './lib/logger';
@@ -34,7 +33,9 @@ const queryClient = new QueryClient({
 // Get root element
 const rootElement = document.getElementById('root');
 if (!rootElement) {
-  throw new Error('Root element not found. Ensure index.html has <div id="root"></div>');
+  throw new Error(
+    'Root element not found. Ensure index.html has <div id="root"></div>'
+  );
 }
 
 // Create root and render

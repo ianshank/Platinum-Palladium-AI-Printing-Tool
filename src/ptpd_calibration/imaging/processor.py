@@ -9,6 +9,7 @@ import io
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from PIL import Image
@@ -93,7 +94,7 @@ class ImageProcessor:
     - Exporting in various formats while preserving quality
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the image processor."""
         self._lut_cache: dict[str, np.ndarray] = {}
 
@@ -109,7 +110,7 @@ class ImageProcessor:
         Returns:
             ProcessingResult with loaded image and metadata
         """
-        if isinstance(source, (str, Path)):
+        if isinstance(source, str | Path):
             img = Image.open(source)
             original_format = img.format
         elif isinstance(source, bytes):
@@ -163,9 +164,8 @@ class ImageProcessor:
         img = result.image
 
         # Convert to appropriate mode for processing
-        if color_mode == ColorMode.GRAYSCALE:
-            if img.mode not in ("L", "LA"):
-                img = img.convert("L")
+        if color_mode == ColorMode.GRAYSCALE and img.mode not in ("L", "LA"):
+            img = img.convert("L")
         elif color_mode == ColorMode.RGB and img.mode not in ("RGB", "RGBA"):
             img = img.convert("RGB")
 
@@ -195,8 +195,8 @@ class ImageProcessor:
             try:
                 rgb = img.convert("RGB")
                 processed = self._apply_lut_rgb(rgb, lut)
-            except Exception:
-                raise ValueError(f"Unsupported image mode: {img.mode}")
+            except Exception as e:
+                raise ValueError(f"Unsupported image mode: {img.mode}") from e
 
         notes = list(result.processing_notes)
         notes.append(f"Applied curve: {curve.name}")
@@ -437,8 +437,8 @@ class ImageProcessor:
                 arr = np.array(rgb)
                 inverted_arr = 255 - arr
                 inverted = Image.fromarray(inverted_arr.astype(np.uint8), mode="RGB")
-            except Exception:
-                raise ValueError(f"Cannot invert image mode: {img.mode}")
+            except Exception as e:
+                raise ValueError(f"Cannot invert image mode: {img.mode}") from e
 
         notes = list(result.processing_notes)
         notes.append("Image inverted (negative created)")
@@ -576,7 +576,7 @@ class ImageProcessor:
         is_16bit = settings.format in (ImageFormat.TIFF_16BIT, ImageFormat.PNG_16BIT)
 
         # Build save kwargs
-        save_kwargs = {}
+        save_kwargs: dict[str, Any] = {}
 
         # Set DPI
         if settings.preserve_resolution and result.original_dpi:
@@ -658,7 +658,7 @@ class ImageProcessor:
         ext = ext_map.get(fmt, ".png")
 
         # Build save kwargs
-        save_kwargs = {}
+        save_kwargs: dict[str, Any] = {}
 
         if fmt == "JPEG":
             quality = 98 if settings.format == ImageFormat.JPEG_HIGH else settings.jpeg_quality

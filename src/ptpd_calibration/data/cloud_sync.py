@@ -255,8 +255,10 @@ class S3Provider(CloudProvider):
 
         try:
             import boto3
-        except ImportError:
-            raise ImportError("boto3 is required for S3 sync. Install with: pip install boto3")
+        except ImportError as err:
+            raise ImportError(
+                "boto3 is required for S3 sync. Install with: pip install boto3"
+            ) from err
 
         self.bucket = config.get("bucket")
         if not self.bucket:

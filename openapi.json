@@ -1,0 +1,3546 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PTPD Calibration API",
+    "description": "AI-powered calibration system for platinum/palladium printing",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/deep/status": {
+      "get": {
+        "tags": [
+          "deep-learning"
+        ],
+        "summary": "Get Deep Learning Status",
+        "description": "Get the status of deep learning capabilities.",
+        "operationId": "get_deep_learning_status_api_deep_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deep/train": {
+      "post": {
+        "tags": [
+          "deep-learning"
+        ],
+        "summary": "Train Model",
+        "description": "Train a deep learning model for curve prediction.\n\nCan use existing calibration data or generate synthetic data.\nTraining runs in the background.",
+        "operationId": "train_model_api_deep_train_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrainRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deep/train/{model_name}/status": {
+      "get": {
+        "tags": [
+          "deep-learning"
+        ],
+        "summary": "Get Training Status",
+        "description": "Get the training status for a model.",
+        "operationId": "get_training_status_api_deep_train__model_name__status_get",
+        "parameters": [
+          {
+            "name": "model_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deep/predict": {
+      "post": {
+        "tags": [
+          "deep-learning"
+        ],
+        "summary": "Predict Curve",
+        "description": "Predict a tone curve from process parameters.\n\nRequires a trained model.",
+        "operationId": "predict_curve_api_deep_predict_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deep/suggest-adjustments": {
+      "post": {
+        "tags": [
+          "deep-learning"
+        ],
+        "summary": "Suggest Adjustments",
+        "description": "Get suggestions for parameter adjustments to achieve a target curve.",
+        "operationId": "suggest_adjustments_api_deep_suggest_adjustments_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestAdjustmentsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deep/models": {
+      "get": {
+        "tags": [
+          "deep-learning"
+        ],
+        "summary": "List Models",
+        "description": "List all available trained models.",
+        "operationId": "list_models_api_deep_models_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deep/models/{model_name}": {
+      "delete": {
+        "tags": [
+          "deep-learning"
+        ],
+        "summary": "Delete Model",
+        "description": "Delete a trained model.",
+        "operationId": "delete_model_api_deep_models__model_name__delete",
+        "parameters": [
+          {
+            "name": "model_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deep/generate-synthetic": {
+      "post": {
+        "tags": [
+          "deep-learning"
+        ],
+        "summary": "Generate Synthetic Data",
+        "description": "Generate synthetic calibration data and add to database.\n\nUseful for testing without real calibration data.",
+        "operationId": "generate_synthetic_data_api_deep_generate_synthetic_post",
+        "parameters": [
+          {
+            "name": "num_samples",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Num Samples"
+            }
+          },
+          {
+            "name": "seed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seed"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mcts/status": {
+      "get": {
+        "tags": [
+          "mcts"
+        ],
+        "summary": "Get Mcts Status",
+        "description": "Get the status of MCTS capabilities.",
+        "operationId": "get_mcts_status_api_mcts_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MCTSStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mcts/search": {
+      "post": {
+        "tags": [
+          "mcts"
+        ],
+        "summary": "Run Mcts Search",
+        "description": "Run MCTS search for optimal calibration parameters.\n\nCan run in background for large searches.",
+        "operationId": "run_mcts_search_api_mcts_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MCTSSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MCTSSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mcts/evaluate": {
+      "post": {
+        "tags": [
+          "mcts"
+        ],
+        "summary": "Evaluate Parameters",
+        "description": "Evaluate a parameter set against the simulator.\n\nReturns predicted curve and quality metrics.",
+        "operationId": "evaluate_parameters_api_mcts_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MCTSEvaluateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MCTSEvaluateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mcts/train": {
+      "post": {
+        "tags": [
+          "mcts"
+        ],
+        "summary": "Start Training",
+        "description": "Start Expert Iteration training session.\n\nReturns immediately with session_id; training runs in background.",
+        "operationId": "start_training_api_mcts_train_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MCTSTrainRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MCTSTrainResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mcts/train/{session_id}/status": {
+      "get": {
+        "tags": [
+          "mcts"
+        ],
+        "summary": "Get Training Status",
+        "description": "Get training progress for a session.",
+        "operationId": "get_training_status_api_mcts_train__session_id__status_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Training Status Api Mcts Train  Session Id  Status Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mcts/export": {
+      "post": {
+        "tags": [
+          "mcts"
+        ],
+        "summary": "Export Result",
+        "description": "Export calibration result as curve or recipe.\n\nArgs:\n    parameters: Parameter set to export.\n    format: Export format (json, csv, recipe).\n\nReturns:\n    Exported data.",
+        "operationId": "export_result_api_mcts_export_post",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "json",
+              "title": "Format"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "title": "Parameters"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Export Result Api Mcts Export Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mcts/feedback": {
+      "post": {
+        "tags": [
+          "mcts"
+        ],
+        "summary": "Submit Feedback",
+        "description": "Submit real measurement data for model improvement.\n\nArgs:\n    request: Feedback with parameters and measured curve.\n\nReturns:\n    Confirmation message.",
+        "operationId": "submit_feedback_api_mcts_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MCTSFeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Submit Feedback Api Mcts Feedback Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mcts/recommendations": {
+      "get": {
+        "tags": [
+          "mcts"
+        ],
+        "summary": "Get Recommendations",
+        "description": "Get top-N parameter recommendations.\n\nArgs:\n    paper_type: Optional paper type filter.\n    limit: Number of recommendations to return.\n\nReturns:\n    List of recommendations.",
+        "operationId": "get_recommendations_api_mcts_recommendations_get",
+        "parameters": [
+          {
+            "name": "paper_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Paper Type"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 5,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/MCTSRecommendation"
+                    }
+                  },
+                  "title": "Response Get Recommendations Api Mcts Recommendations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "description": "Get API information.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RootResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "summary": "Health",
+        "description": "Health check endpoint.",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/analyze": {
+      "post": {
+        "summary": "Analyze Densities",
+        "description": "Analyze density measurements.",
+        "operationId": "analyze_densities_api_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scan/upload": {
+      "post": {
+        "summary": "Upload Scan",
+        "description": "Upload and process a step tablet scan.",
+        "operationId": "upload_scan_api_scan_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_scan_api_scan_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/curves/generate": {
+      "post": {
+        "summary": "Generate Curve",
+        "description": "Generate a calibration curve.",
+        "operationId": "generate_curve_api_curves_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurveGenerateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/curves/export": {
+      "post": {
+        "summary": "Export Curve",
+        "description": "Export a curve to file.",
+        "operationId": "export_curve_api_curves_export_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_export_curve_api_curves_export_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/curves/{curve_id}/export": {
+      "post": {
+        "summary": "Export Stored Curve",
+        "description": "Export a previously stored curve by ID.",
+        "operationId": "export_stored_curve_api_curves__curve_id__export_post",
+        "parameters": [
+          {
+            "name": "curve_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Curve Id"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "qtr",
+              "title": "Format"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/curves/upload-quad": {
+      "post": {
+        "summary": "Upload Quad File",
+        "description": "Upload and parse a QTR .quad file.\n\nReturns the parsed profile with all channels and metadata.",
+        "operationId": "upload_quad_file_api_curves_upload_quad_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_quad_file_api_curves_upload_quad_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuadUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/curves/parse-quad": {
+      "post": {
+        "summary": "Parse Quad Content",
+        "description": "Parse .quad content from a string (for pasting quad data directly).",
+        "operationId": "parse_quad_content_api_curves_parse_quad_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_parse_quad_content_api_curves_parse_quad_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuadParseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/curves/modify": {
+      "post": {
+        "summary": "Modify Curve",
+        "description": "Apply modifications to a curve.\n\nSupports: brightness, contrast, gamma, levels, highlights, shadows, midtones",
+        "operationId": "modify_curve_api_curves_modify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurveModifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurveModifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/curves/smooth": {
+      "post": {
+        "summary": "Smooth Curve",
+        "description": "Apply smoothing to a curve.\n\nSupports: gaussian, savgol, moving_average, spline",
+        "operationId": "smooth_curve_api_curves_smooth_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurveSmoothRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurveSmoothResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/curves/blend": {
+      "post": {
+        "summary": "Blend Curves",
+        "description": "Blend two curves together.\n\nSupports: average, weighted, multiply, screen, overlay, min, max",
+        "operationId": "blend_curves_api_curves_blend_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurveBlendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurveBlendResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/curves/enhance": {
+      "post": {
+        "summary": "Enhance Curve Ai",
+        "description": "Apply AI-powered enhancement to a curve.\n\nUses LLM analysis to suggest and apply improvements based on the specified goal.",
+        "operationId": "enhance_curve_ai_api_curves_enhance_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurveEnhanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurveEnhanceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/curves/{curve_id}": {
+      "get": {
+        "summary": "Get Stored Curve",
+        "description": "Get a stored curve by ID.",
+        "operationId": "get_stored_curve_api_curves__curve_id__get",
+        "parameters": [
+          {
+            "name": "curve_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Curve Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurveRetrieveResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/curves/{curve_id}/enforce-monotonicity": {
+      "post": {
+        "summary": "Enforce Monotonicity",
+        "description": "Enforce monotonicity on a stored curve.",
+        "operationId": "enforce_monotonicity_api_curves__curve_id__enforce_monotonicity_post",
+        "parameters": [
+          {
+            "name": "curve_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Curve Id"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "increasing",
+              "title": "Direction"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurveMonotonicityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/calibrations": {
+      "get": {
+        "summary": "List Calibrations",
+        "description": "List calibration records.",
+        "operationId": "list_calibrations_api_calibrations_get",
+        "parameters": [
+          {
+            "name": "paper_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Paper Type"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListCalibrationsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Calibration",
+        "description": "Create a new calibration record.",
+        "operationId": "create_calibration_api_calibrations_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalibrationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateCalibrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/calibrations/{calibration_id}": {
+      "get": {
+        "summary": "Get Calibration",
+        "description": "Get a specific calibration record.",
+        "operationId": "get_calibration_api_calibrations__calibration_id__get",
+        "parameters": [
+          {
+            "name": "calibration_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calibration Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat": {
+      "post": {
+        "summary": "Chat",
+        "description": "Chat with the AI assistant.",
+        "operationId": "chat_api_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/recipe": {
+      "post": {
+        "summary": "Suggest Recipe",
+        "description": "Get recipe suggestion.",
+        "operationId": "suggest_recipe_api_chat_recipe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/troubleshoot": {
+      "post": {
+        "summary": "Troubleshoot",
+        "description": "Get troubleshooting help.",
+        "operationId": "troubleshoot_api_chat_troubleshoot_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TroubleshootRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TroubleshootResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/statistics": {
+      "get": {
+        "summary": "Get Statistics",
+        "description": "Get database statistics.",
+        "operationId": "get_statistics_api_statistics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatisticsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnalyzeRequest": {
+        "properties": {
+          "densities": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Densities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "densities"
+        ],
+        "title": "AnalyzeRequest"
+      },
+      "AnalyzeResponse": {
+        "properties": {
+          "dmin": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Dmin",
+            "description": "Minimum density"
+          },
+          "dmax": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Dmax",
+            "description": "Maximum density"
+          },
+          "range": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Range",
+            "description": "Density range"
+          },
+          "is_monotonic": {
+            "type": "boolean",
+            "title": "Is Monotonic",
+            "description": "Whether values are monotonic"
+          },
+          "max_error": {
+            "type": "number",
+            "title": "Max Error",
+            "description": "Maximum error"
+          },
+          "rms_error": {
+            "type": "number",
+            "title": "Rms Error",
+            "description": "RMS error"
+          },
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Suggestions",
+            "description": "Adjustment suggestions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dmin",
+          "dmax",
+          "range",
+          "is_monotonic",
+          "max_error",
+          "rms_error"
+        ],
+        "title": "AnalyzeResponse",
+        "description": "Response from density analysis."
+      },
+      "Body_export_curve_api_curves_export_post": {
+        "properties": {
+          "densities": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Densities"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "curve"
+          },
+          "format": {
+            "type": "string",
+            "title": "Format",
+            "default": "qtr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "densities"
+        ],
+        "title": "Body_export_curve_api_curves_export_post"
+      },
+      "Body_parse_quad_content_api_curves_parse_quad_post": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "Uploaded Profile"
+          },
+          "channel": {
+            "type": "string",
+            "title": "Channel",
+            "default": "K"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "Body_parse_quad_content_api_curves_parse_quad_post"
+      },
+      "Body_upload_quad_file_api_curves_upload_quad_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "channel": {
+            "type": "string",
+            "title": "Channel",
+            "default": "K"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_quad_file_api_curves_upload_quad_post"
+      },
+      "Body_upload_scan_api_scan_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "tablet_type": {
+            "type": "string",
+            "title": "Tablet Type",
+            "default": "stouffer_21"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_scan_api_scan_upload_post"
+      },
+      "CalibrationRecord": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique calibration ID"
+          },
+          "paper_type": {
+            "type": "string",
+            "title": "Paper Type",
+            "description": "Paper type"
+          },
+          "exposure_time": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Exposure Time",
+            "description": "Exposure time in seconds"
+          },
+          "metal_ratio": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Metal Ratio",
+            "description": "Platinum to palladium ratio"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp",
+            "description": "ISO-format timestamp"
+          },
+          "dmax": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Dmax",
+            "description": "Maximum density achieved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "paper_type",
+          "exposure_time",
+          "metal_ratio",
+          "timestamp",
+          "dmax"
+        ],
+        "title": "CalibrationRecord",
+        "description": "Summary of a calibration record."
+      },
+      "CalibrationRequest": {
+        "properties": {
+          "paper_type": {
+            "type": "string",
+            "title": "Paper Type"
+          },
+          "exposure_time": {
+            "type": "number",
+            "title": "Exposure Time"
+          },
+          "metal_ratio": {
+            "type": "number",
+            "title": "Metal Ratio",
+            "default": 0.5
+          },
+          "contrast_agent": {
+            "type": "string",
+            "title": "Contrast Agent",
+            "default": "none"
+          },
+          "contrast_amount": {
+            "type": "number",
+            "title": "Contrast Amount",
+            "default": 0.0
+          },
+          "developer": {
+            "type": "string",
+            "title": "Developer",
+            "default": "potassium_oxalate"
+          },
+          "chemistry_type": {
+            "type": "string",
+            "title": "Chemistry Type",
+            "default": "platinum_palladium"
+          },
+          "densities": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Densities",
+            "default": []
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "paper_type",
+          "exposure_time"
+        ],
+        "title": "CalibrationRequest"
+      },
+      "ChatRequest": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "include_history": {
+            "type": "boolean",
+            "title": "Include History",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "ChatRequest"
+      },
+      "ChatResponse": {
+        "properties": {
+          "response": {
+            "type": "string",
+            "title": "Response",
+            "description": "AI assistant response"
+          }
+        },
+        "type": "object",
+        "required": [
+          "response"
+        ],
+        "title": "ChatResponse",
+        "description": "Response from chat endpoint."
+      },
+      "CreateCalibrationResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether creation succeeded"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique calibration ID"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Confirmation message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "id",
+          "message"
+        ],
+        "title": "CreateCalibrationResponse",
+        "description": "Response from calibration creation."
+      },
+      "CurveBlendRequest": {
+        "properties": {
+          "curve1_inputs": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Curve1 Inputs"
+          },
+          "curve1_outputs": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Curve1 Outputs"
+          },
+          "curve2_inputs": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Curve2 Inputs"
+          },
+          "curve2_outputs": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Curve2 Outputs"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "Blended Curve"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "default": "weighted"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight",
+            "default": 0.5
+          }
+        },
+        "type": "object",
+        "required": [
+          "curve1_inputs",
+          "curve1_outputs",
+          "curve2_inputs",
+          "curve2_outputs"
+        ],
+        "title": "CurveBlendRequest"
+      },
+      "CurveBlendResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether blending succeeded"
+          },
+          "curve_id": {
+            "type": "string",
+            "title": "Curve Id",
+            "description": "Unique curve ID"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Curve name"
+          },
+          "mode_applied": {
+            "type": "string",
+            "title": "Mode Applied",
+            "description": "Blending mode used"
+          },
+          "input_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Input Values",
+            "description": "Blended input values"
+          },
+          "output_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Output Values",
+            "description": "Blended output values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "curve_id",
+          "name",
+          "mode_applied",
+          "input_values",
+          "output_values"
+        ],
+        "title": "CurveBlendResponse",
+        "description": "Response from curve blending."
+      },
+      "CurveDataSample": {
+        "properties": {
+          "input_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Input Values",
+            "description": "Input values"
+          },
+          "output_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Output Values",
+            "description": "Output values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input_values",
+          "output_values"
+        ],
+        "title": "CurveDataSample",
+        "description": "Sample of curve data."
+      },
+      "CurveEnhanceRequest": {
+        "properties": {
+          "input_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Input Values"
+          },
+          "output_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Output Values"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "Enhanced Curve"
+          },
+          "goal": {
+            "type": "string",
+            "title": "Goal",
+            "default": "linearization"
+          },
+          "paper_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paper Type"
+          },
+          "additional_context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additional Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input_values",
+          "output_values"
+        ],
+        "title": "CurveEnhanceRequest"
+      },
+      "CurveEnhanceResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether enhancement succeeded"
+          },
+          "curve_id": {
+            "type": "string",
+            "title": "Curve Id",
+            "description": "Unique curve ID"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Curve name"
+          },
+          "goal": {
+            "type": "string",
+            "title": "Goal",
+            "description": "Enhancement goal"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Confidence in enhancement"
+          },
+          "analysis": {
+            "type": "string",
+            "title": "Analysis",
+            "description": "Analysis of the curve"
+          },
+          "changes_made": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Changes Made",
+            "description": "List of changes made"
+          },
+          "input_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Input Values",
+            "description": "Enhanced input values"
+          },
+          "output_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Output Values",
+            "description": "Enhanced output values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "curve_id",
+          "name",
+          "goal",
+          "confidence",
+          "analysis",
+          "input_values",
+          "output_values"
+        ],
+        "title": "CurveEnhanceResponse",
+        "description": "Response from AI curve enhancement."
+      },
+      "CurveGenerateResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether generation succeeded"
+          },
+          "curve_id": {
+            "type": "string",
+            "title": "Curve Id",
+            "description": "Unique curve ID"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Curve name"
+          },
+          "num_points": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "Num Points",
+            "description": "Number of points in curve"
+          },
+          "input_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Input Values",
+            "description": "Sample input values"
+          },
+          "output_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Output Values",
+            "description": "Sample output values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "curve_id",
+          "name",
+          "num_points",
+          "input_values",
+          "output_values"
+        ],
+        "title": "CurveGenerateResponse",
+        "description": "Response from curve generation."
+      },
+      "CurveModifyRequest": {
+        "properties": {
+          "input_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Input Values"
+          },
+          "output_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Output Values"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "Modified Curve"
+          },
+          "adjustment_type": {
+            "type": "string",
+            "title": "Adjustment Type",
+            "default": "brightness"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount",
+            "default": 0.0
+          },
+          "pivot": {
+            "type": "number",
+            "title": "Pivot",
+            "default": 0.5
+          },
+          "black_point": {
+            "type": "number",
+            "title": "Black Point",
+            "default": 0.0
+          },
+          "white_point": {
+            "type": "number",
+            "title": "White Point",
+            "default": 1.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "input_values",
+          "output_values"
+        ],
+        "title": "CurveModifyRequest"
+      },
+      "CurveModifyResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether modification succeeded"
+          },
+          "curve_id": {
+            "type": "string",
+            "title": "Curve Id",
+            "description": "Unique curve ID"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Curve name"
+          },
+          "adjustment_applied": {
+            "type": "string",
+            "title": "Adjustment Applied",
+            "description": "Type of adjustment applied"
+          },
+          "input_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Input Values",
+            "description": "Modified input values"
+          },
+          "output_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Output Values",
+            "description": "Modified output values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "curve_id",
+          "name",
+          "adjustment_applied",
+          "input_values",
+          "output_values"
+        ],
+        "title": "CurveModifyResponse",
+        "description": "Response from curve modification."
+      },
+      "CurveMonotonicityResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether enforcement succeeded"
+          },
+          "curve_id": {
+            "type": "string",
+            "title": "Curve Id",
+            "description": "Unique curve ID"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Curve name"
+          },
+          "input_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Input Values",
+            "description": "Input values"
+          },
+          "output_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Output Values",
+            "description": "Output values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "curve_id",
+          "name",
+          "input_values",
+          "output_values"
+        ],
+        "title": "CurveMonotonicityResponse",
+        "description": "Response from monotonicity enforcement."
+      },
+      "CurveRequest": {
+        "properties": {
+          "densities": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Densities"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "Calibration Curve"
+          },
+          "curve_type": {
+            "type": "string",
+            "title": "Curve Type",
+            "default": "linear"
+          },
+          "paper_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paper Type"
+          },
+          "chemistry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chemistry"
+          }
+        },
+        "type": "object",
+        "required": [
+          "densities"
+        ],
+        "title": "CurveRequest"
+      },
+      "CurveRetrieveResponse": {
+        "properties": {
+          "curve_id": {
+            "type": "string",
+            "title": "Curve Id",
+            "description": "Unique curve ID"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Curve name"
+          },
+          "curve_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curve Type",
+            "description": "Type of curve"
+          },
+          "paper_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paper Type",
+            "description": "Paper type"
+          },
+          "input_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Input Values",
+            "description": "Input values"
+          },
+          "output_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Output Values",
+            "description": "Output values"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Notes about the curve"
+          }
+        },
+        "type": "object",
+        "required": [
+          "curve_id",
+          "name",
+          "input_values",
+          "output_values"
+        ],
+        "title": "CurveRetrieveResponse",
+        "description": "Response from curve retrieval."
+      },
+      "CurveSmoothRequest": {
+        "properties": {
+          "input_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Input Values"
+          },
+          "output_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Output Values"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "Smoothed Curve"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method",
+            "default": "gaussian"
+          },
+          "strength": {
+            "type": "number",
+            "title": "Strength",
+            "default": 0.5
+          },
+          "preserve_endpoints": {
+            "type": "boolean",
+            "title": "Preserve Endpoints",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "input_values",
+          "output_values"
+        ],
+        "title": "CurveSmoothRequest"
+      },
+      "CurveSmoothResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether smoothing succeeded"
+          },
+          "curve_id": {
+            "type": "string",
+            "title": "Curve Id",
+            "description": "Unique curve ID"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Curve name"
+          },
+          "method_applied": {
+            "type": "string",
+            "title": "Method Applied",
+            "description": "Smoothing method used"
+          },
+          "input_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Input Values",
+            "description": "Smoothed input values"
+          },
+          "output_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Output Values",
+            "description": "Smoothed output values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "curve_id",
+          "name",
+          "method_applied",
+          "input_values",
+          "output_values"
+        ],
+        "title": "CurveSmoothResponse",
+        "description": "Response from curve smoothing."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Service status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse",
+        "description": "Health check response."
+      },
+      "ListCalibrationsResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count",
+            "description": "Number of records"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/CalibrationRecord"
+            },
+            "type": "array",
+            "title": "Records",
+            "description": "Calibration records"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "records"
+        ],
+        "title": "ListCalibrationsResponse",
+        "description": "Response from calibration listing."
+      },
+      "MCTSEvaluateRequest": {
+        "properties": {
+          "parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Parameters",
+            "description": "Parameters to evaluate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parameters"
+        ],
+        "title": "MCTSEvaluateRequest",
+        "description": "Request to evaluate a parameter set."
+      },
+      "MCTSEvaluateResponse": {
+        "properties": {
+          "density_curve": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Density Curve"
+          },
+          "dmin": {
+            "type": "number",
+            "title": "Dmin"
+          },
+          "dmax": {
+            "type": "number",
+            "title": "Dmax"
+          },
+          "density_range": {
+            "type": "number",
+            "title": "Density Range"
+          },
+          "gamma": {
+            "type": "number",
+            "title": "Gamma"
+          },
+          "quality_score": {
+            "type": "number",
+            "title": "Quality Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "density_curve",
+          "dmin",
+          "dmax",
+          "density_range",
+          "gamma",
+          "quality_score"
+        ],
+        "title": "MCTSEvaluateResponse",
+        "description": "Response from parameter evaluation."
+      },
+      "MCTSFeedbackRequest": {
+        "properties": {
+          "parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Parameters",
+            "description": "Parameters used"
+          },
+          "measured_curve": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Measured Curve",
+            "description": "Measured density curve"
+          },
+          "quality_rating": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Quality Rating",
+            "description": "User quality rating"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parameters",
+          "measured_curve",
+          "quality_rating"
+        ],
+        "title": "MCTSFeedbackRequest",
+        "description": "Request to submit real measurement feedback."
+      },
+      "MCTSRecommendation": {
+        "properties": {
+          "parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Parameters"
+          },
+          "predicted_quality": {
+            "type": "number",
+            "title": "Predicted Quality"
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parameters",
+          "predicted_quality",
+          "rationale"
+        ],
+        "title": "MCTSRecommendation",
+        "description": "Parameter recommendation."
+      },
+      "MCTSSearchRequest": {
+        "properties": {
+          "paper_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paper Type",
+            "description": "Paper type (optional)"
+          },
+          "uv_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uv Source",
+            "description": "UV source type (optional)"
+          },
+          "target_curve": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Curve",
+            "description": "Target density curve (optional)"
+          },
+          "fixed_parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Fixed Parameters",
+            "description": "Fixed parameters to constrain search"
+          },
+          "target_aesthetics": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Target Aesthetics",
+            "description": "Target aesthetic preferences (contrast, warmth, tonal_range)"
+          },
+          "num_simulations": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000.0,
+                "minimum": 50.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Simulations",
+            "description": "Number of MCTS simulations"
+          }
+        },
+        "type": "object",
+        "title": "MCTSSearchRequest",
+        "description": "Request to run MCTS calibration search."
+      },
+      "MCTSSearchResponse": {
+        "properties": {
+          "search_id": {
+            "type": "string",
+            "title": "Search Id"
+          },
+          "best_parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Best Parameters"
+          },
+          "predicted_curve": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Predicted Curve"
+          },
+          "quality_score": {
+            "type": "number",
+            "title": "Quality Score"
+          },
+          "alternatives": {
+            "items": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Alternatives"
+          },
+          "search_time_seconds": {
+            "type": "number",
+            "title": "Search Time Seconds"
+          },
+          "num_simulations": {
+            "type": "integer",
+            "title": "Num Simulations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "search_id",
+          "best_parameters",
+          "predicted_curve",
+          "quality_score",
+          "alternatives",
+          "search_time_seconds",
+          "num_simulations"
+        ],
+        "title": "MCTSSearchResponse",
+        "description": "Response from MCTS search."
+      },
+      "MCTSStatusResponse": {
+        "properties": {
+          "engine_ready": {
+            "type": "boolean",
+            "title": "Engine Ready"
+          },
+          "networks_loaded": {
+            "type": "boolean",
+            "title": "Networks Loaded"
+          },
+          "torch_available": {
+            "type": "boolean",
+            "title": "Torch Available"
+          },
+          "parameter_ranges": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Parameter Ranges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "engine_ready",
+          "networks_loaded",
+          "torch_available",
+          "parameter_ranges"
+        ],
+        "title": "MCTSStatusResponse",
+        "description": "MCTS engine status."
+      },
+      "MCTSTrainRequest": {
+        "properties": {
+          "num_episodes": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 10.0,
+            "title": "Num Episodes",
+            "description": "Number of episodes",
+            "default": 100
+          }
+        },
+        "type": "object",
+        "title": "MCTSTrainRequest",
+        "description": "Request to start Expert Iteration training."
+      },
+      "MCTSTrainResponse": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "status",
+          "message"
+        ],
+        "title": "MCTSTrainResponse",
+        "description": "Response from training start."
+      },
+      "PredictRequest": {
+        "properties": {
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "description": "Name of the model to use",
+            "default": "default"
+          },
+          "paper_type": {
+            "type": "string",
+            "title": "Paper Type",
+            "description": "Paper type"
+          },
+          "metal_ratio": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Metal Ratio",
+            "description": "Platinum ratio",
+            "default": 0.5
+          },
+          "exposure_time": {
+            "type": "number",
+            "minimum": 1.0,
+            "title": "Exposure Time",
+            "description": "Exposure time (seconds)",
+            "default": 180.0
+          },
+          "contrast_agent": {
+            "type": "string",
+            "title": "Contrast Agent",
+            "description": "Contrast agent type",
+            "default": "na2"
+          },
+          "contrast_amount": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Contrast Amount",
+            "description": "Contrast agent amount",
+            "default": 5.0
+          },
+          "humidity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Humidity",
+            "description": "Humidity %",
+            "default": 50.0
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 50.0,
+                "minimum": -20.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature",
+            "description": "Temperature \u00b0C",
+            "default": 21.0
+          },
+          "return_uncertainty": {
+            "type": "boolean",
+            "title": "Return Uncertainty",
+            "description": "Return uncertainty estimate",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "paper_type"
+        ],
+        "title": "PredictRequest",
+        "description": "Request to predict a curve from process parameters."
+      },
+      "QuadParseResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether parsing succeeded"
+          },
+          "profile_name": {
+            "type": "string",
+            "title": "Profile Name",
+            "description": "Profile name"
+          },
+          "active_channels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Active Channels",
+            "description": "Active channels"
+          },
+          "curve_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curve Id",
+            "description": "ID of extracted curve"
+          },
+          "curve_data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurveDataSample"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sample curve data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "profile_name"
+        ],
+        "title": "QuadParseResponse",
+        "description": "Response from quad content parsing."
+      },
+      "QuadUploadResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether upload succeeded"
+          },
+          "profile_name": {
+            "type": "string",
+            "title": "Profile Name",
+            "description": "Profile name"
+          },
+          "resolution": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Resolution",
+            "description": "Resolution"
+          },
+          "ink_limit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ink Limit",
+            "description": "Ink limit"
+          },
+          "media_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Type",
+            "description": "Media type"
+          },
+          "all_channels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "All Channels",
+            "description": "All available channels"
+          },
+          "active_channels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Active Channels",
+            "description": "Active channels"
+          },
+          "curve_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curve Id",
+            "description": "ID of extracted curve"
+          },
+          "curve_data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurveDataSample"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sample curve data"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary",
+            "description": "Profile summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "profile_name",
+          "resolution"
+        ],
+        "title": "QuadUploadResponse",
+        "description": "Response from quad file upload."
+      },
+      "RecipeRequest": {
+        "properties": {
+          "paper_type": {
+            "type": "string",
+            "title": "Paper Type"
+          },
+          "characteristics": {
+            "type": "string",
+            "title": "Characteristics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "paper_type",
+          "characteristics"
+        ],
+        "title": "RecipeRequest"
+      },
+      "RecipeResponse": {
+        "properties": {
+          "response": {
+            "type": "string",
+            "title": "Response",
+            "description": "Recipe recommendation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "response"
+        ],
+        "title": "RecipeResponse",
+        "description": "Response from recipe suggestion."
+      },
+      "RootResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Service description"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "API version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "version"
+        ],
+        "title": "RootResponse",
+        "description": "Root endpoint response."
+      },
+      "ScanUploadResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether upload was successful"
+          },
+          "extraction_id": {
+            "type": "string",
+            "title": "Extraction Id",
+            "description": "Unique extraction ID"
+          },
+          "original_filename": {
+            "type": "string",
+            "title": "Original Filename",
+            "description": "Original filename"
+          },
+          "num_patches": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Num Patches",
+            "description": "Number of patches detected"
+          },
+          "densities": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Densities",
+            "description": "Extracted density values"
+          },
+          "dmin": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dmin",
+            "description": "Minimum density"
+          },
+          "dmax": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dmax",
+            "description": "Maximum density"
+          },
+          "range": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Range",
+            "description": "Density range"
+          },
+          "quality": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Quality",
+            "description": "Overall quality score"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "description": "Processing warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "extraction_id",
+          "original_filename",
+          "num_patches",
+          "densities",
+          "quality"
+        ],
+        "title": "ScanUploadResponse",
+        "description": "Response from step tablet scan upload."
+      },
+      "StatisticsResponse": {
+        "properties": {
+          "total_calibrations": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Calibrations",
+            "description": "Total calibration records"
+          },
+          "unique_papers": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unique Papers",
+            "description": "Number of unique paper types"
+          },
+          "avg_exposure_time": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Avg Exposure Time",
+            "description": "Average exposure time"
+          },
+          "data": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Data",
+            "description": "Additional statistics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_calibrations",
+          "unique_papers",
+          "avg_exposure_time"
+        ],
+        "title": "StatisticsResponse",
+        "description": "Response from statistics endpoint."
+      },
+      "SuggestAdjustmentsRequest": {
+        "properties": {
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "description": "Model to use",
+            "default": "default"
+          },
+          "paper_type": {
+            "type": "string",
+            "title": "Paper Type",
+            "description": "Paper type"
+          },
+          "metal_ratio": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Metal Ratio",
+            "default": 0.5
+          },
+          "exposure_time": {
+            "type": "number",
+            "minimum": 1.0,
+            "title": "Exposure Time",
+            "default": 180.0
+          },
+          "target_curve": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Target Curve",
+            "description": "Target curve values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "paper_type",
+          "target_curve"
+        ],
+        "title": "SuggestAdjustmentsRequest",
+        "description": "Request to get adjustment suggestions."
+      },
+      "TrainRequest": {
+        "properties": {
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "description": "Name for the trained model",
+            "default": "default"
+          },
+          "num_epochs": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Num Epochs",
+            "description": "Number of training epochs",
+            "default": 50
+          },
+          "batch_size": {
+            "type": "integer",
+            "maximum": 256.0,
+            "minimum": 1.0,
+            "title": "Batch Size",
+            "description": "Training batch size",
+            "default": 32
+          },
+          "learning_rate": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 1e-06,
+            "title": "Learning Rate",
+            "description": "Learning rate",
+            "default": 0.001
+          },
+          "use_synthetic_data": {
+            "type": "boolean",
+            "title": "Use Synthetic Data",
+            "description": "Generate synthetic training data",
+            "default": false
+          },
+          "num_synthetic_samples": {
+            "type": "integer",
+            "maximum": 5000.0,
+            "minimum": 50.0,
+            "title": "Num Synthetic Samples",
+            "description": "Number of synthetic samples",
+            "default": 200
+          },
+          "validation_split": {
+            "type": "number",
+            "maximum": 0.4,
+            "minimum": 0.1,
+            "title": "Validation Split",
+            "description": "Validation split",
+            "default": 0.2
+          },
+          "use_ensemble": {
+            "type": "boolean",
+            "title": "Use Ensemble",
+            "description": "Use ensemble of models",
+            "default": false
+          },
+          "device": {
+            "type": "string",
+            "title": "Device",
+            "description": "Device to train on (cpu/cuda)",
+            "default": "cpu"
+          },
+          "num_control_points": {
+            "type": "integer",
+            "maximum": 64.0,
+            "minimum": 4.0,
+            "title": "Num Control Points",
+            "description": "Number of control points",
+            "default": 16
+          },
+          "hidden_dims": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Hidden Dims",
+            "description": "Hidden layer dimensions",
+            "default": [
+              128,
+              256,
+              128
+            ]
+          },
+          "early_stopping_patience": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Early Stopping Patience",
+            "description": "Early stopping patience",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "title": "TrainRequest",
+        "description": "Request to train a deep learning model."
+      },
+      "TroubleshootRequest": {
+        "properties": {
+          "problem": {
+            "type": "string",
+            "title": "Problem"
+          }
+        },
+        "type": "object",
+        "required": [
+          "problem"
+        ],
+        "title": "TroubleshootRequest"
+      },
+      "TroubleshootResponse": {
+        "properties": {
+          "response": {
+            "type": "string",
+            "title": "Response",
+            "description": "Troubleshooting advice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "response"
+        ],
+        "title": "TroubleshootResponse",
+        "description": "Response from troubleshooting endpoint."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

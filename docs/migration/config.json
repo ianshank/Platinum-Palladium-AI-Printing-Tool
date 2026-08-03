@@ -34,7 +34,6 @@
     }
   },
   "paths": {
-    "projectRoot": "/home/user/Platinum-Palladium-AI-Printing-Tool",
     "frontend": "frontend",
     "backend": "src/ptpd_calibration",
     "legacy": "src/ptpd_calibration/ui",
@@ -63,9 +62,27 @@
   },
   "components": {
     "priority": {
-      "critical": ["Layout", "Tabs", "CurveDisplay", "CurveEditor", "StepTabletAnalysis", "CalibrationWizard"],
-      "high": ["Dashboard", "ChemistryCalculator", "AIAssistant", "ImageUpload", "ImagePreview"],
-      "medium": ["SessionLog", "Settings", "ExportPanel", "Histogram"],
+      "critical": [
+        "Layout",
+        "Tabs",
+        "CurveDisplay",
+        "CurveEditor",
+        "StepTabletAnalysis",
+        "CalibrationWizard"
+      ],
+      "high": [
+        "Dashboard",
+        "ChemistryCalculator",
+        "AIAssistant",
+        "ImageUpload",
+        "ImagePreview"
+      ],
+      "medium": [
+        "SessionLog",
+        "Settings",
+        "ExportPanel",
+        "Histogram"
+      ],
       "low": []
     }
   },

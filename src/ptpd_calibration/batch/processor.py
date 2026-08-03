@@ -6,6 +6,7 @@ enabling processing of entire editions or test strips in one operation.
 """
 
 import concurrent.futures
+import contextlib
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -268,10 +269,9 @@ class BatchProcessor:
                 if self._cancelled.is_set():
                     executor.shutdown(wait=False, cancel_futures=True)
                     break
-                try:
+                with contextlib.suppress(Exception):
+                    # Errors handled in process_and_update
                     future.result()
-                except Exception:
-                    pass  # Errors handled in process_and_update
 
     def _process_single_job(self, job: BatchJob) -> None:
         """Process a single job."""

@@ -3,7 +3,11 @@
  */
 
 import { type ReactElement, type ReactNode } from 'react';
-import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
+import {
+  render,
+  type RenderOptions,
+  type RenderResult,
+} from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
@@ -17,7 +21,9 @@ export { default as userEvent } from '@testing-library/user-event';
 /**
  * Create a fresh store for testing
  */
-export function createTestStore(initialState?: Partial<StoreState>): ReturnType<typeof createStore> {
+export function createTestStore(
+  initialState?: Partial<StoreState>
+): ReturnType<typeof createStore> {
   const store = createStore();
 
   // Apply initial state if provided
@@ -59,16 +65,14 @@ interface TestProviderProps {
  */
 export function TestProvider({
   children,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   store: _store = createTestStore(),
   queryClient = createTestQueryClient(),
 }: TestProviderProps): ReactElement {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
-        <BrowserRouter>
-          {children}
-        </BrowserRouter>
+        <BrowserRouter>{children}</BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>
   );
@@ -91,7 +95,10 @@ export function renderWithProviders(
     route = '/',
     ...renderOptions
   }: CustomRenderOptions = {}
-): RenderResult & { store: ReturnType<typeof createStore>; queryClient: QueryClient } {
+): RenderResult & {
+  store: ReturnType<typeof createStore>;
+  queryClient: QueryClient;
+} {
   // Set initial route
   window.history.pushState({}, 'Test page', route);
 
@@ -131,11 +138,7 @@ export async function waitForCondition(
 /**
  * Create a mock file for testing file uploads
  */
-export function createMockFile(
-  name: string,
-  size: number,
-  type: string
-): File {
+export function createMockFile(name: string, size: number, type: string): File {
   const content = new Array(size).fill('a').join('');
   const blob = new Blob([content], { type });
   return new File([blob], name, { type });
@@ -144,10 +147,7 @@ export function createMockFile(
 /**
  * Create a mock image file
  */
-export function createMockImageFile(
-  name = 'test.png',
-  size = 1024
-): File {
+export function createMockImageFile(name = 'test.png', size = 1024): File {
   return createMockFile(name, size, 'image/png');
 }
 
@@ -158,7 +158,7 @@ export function mockFetchResponse<T>(data: T, status = 200): void {
   global.fetch = vi.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
     status,
-    json: async () => data,
+    json: () => Promise.resolve(data),
   });
 }
 
@@ -169,7 +169,7 @@ export function mockFetchError(message: string, status = 500): void {
   global.fetch = vi.fn().mockResolvedValue({
     ok: false,
     status,
-    json: async () => ({ message }),
+    json: () => Promise.resolve({ message }),
   });
 }
 

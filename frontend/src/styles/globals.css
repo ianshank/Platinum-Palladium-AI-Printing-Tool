@@ -99,7 +99,9 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
 
   /* Improve focus visibility for accessibility */
@@ -118,7 +120,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/30 rounded-full;
+    @apply rounded-full bg-muted-foreground/30;
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -192,19 +194,19 @@
 
   /* Status badges */
   .badge-success {
-    @apply bg-success/20 text-success border-success/30;
+    @apply border-success/30 bg-success/20 text-success;
   }
 
   .badge-warning {
-    @apply bg-warning/20 text-warning border-warning/30;
+    @apply border-warning/30 bg-warning/20 text-warning;
   }
 
   .badge-error {
-    @apply bg-destructive/20 text-destructive border-destructive/30;
+    @apply border-destructive/30 bg-destructive/20 text-destructive;
   }
 
   .badge-info {
-    @apply bg-info/20 text-info border-info/30;
+    @apply border-info/30 bg-info/20 text-info;
   }
 }
 

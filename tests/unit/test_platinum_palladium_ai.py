@@ -1114,11 +1114,10 @@ class TestOptimizeWorkflow:
         """Test identification of metal ratio trends."""
         result = ai.optimize_workflow(sample_print_history)
 
-        if result.successful_prints > 5:
+        if result.successful_prints > 5 and "metal_ratio" in result.parameter_trends:
             # Should identify metal ratio trends
-            if "metal_ratio" in result.parameter_trends:
-                trend = result.parameter_trends["metal_ratio"]
-                assert trend in ["palladium_dominant", "platinum_dominant", "balanced"]
+            trend = result.parameter_trends["metal_ratio"]
+            assert trend in ["palladium_dominant", "platinum_dominant", "balanced"]
 
     def test_identifies_exposure_consistency(self, ai):
         """Test identification of exposure consistency."""

@@ -33,7 +33,7 @@ class StepTabletDetector:
     to find step tablets and segment individual patches.
     """
 
-    def __init__(self, settings: DetectionSettings | None = None):
+    def __init__(self, settings: DetectionSettings | None = None) -> None:
         """
         Initialize the detector.
 
@@ -106,7 +106,7 @@ class StepTabletDetector:
             return image
         if isinstance(image, Image.Image):
             return np.array(image)
-        if isinstance(image, (Path, str)):
+        if isinstance(image, Path | str):
             pil_img = Image.open(image)
             return np.array(pil_img)
         raise TypeError(f"Unsupported image type: {type(image)}")

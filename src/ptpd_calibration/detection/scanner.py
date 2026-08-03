@@ -5,6 +5,7 @@ Scanner calibration and profiling for accurate measurements.
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from PIL import Image
@@ -205,7 +206,7 @@ class ScannerCalibration:
         if self.profile is None:
             raise ValueError("No profile to save")
 
-        data = {
+        data: dict[str, Any] = {
             "name": self.profile.name,
             "created_at": self.profile.created_at,
             "scanner_model": self.profile.scanner_model,
@@ -267,7 +268,7 @@ class ScannerCalibration:
             return image
         if isinstance(image, Image.Image):
             return np.array(image)
-        if isinstance(image, (Path, str)):
+        if isinstance(image, Path | str):
             pil_img = Image.open(image)
             return np.array(pil_img)
         raise TypeError(f"Unsupported image type: {type(image)}")

@@ -1,232 +1,360 @@
-import React, { useMemo, useState } from 'react';
-import {
-    CartesianGrid,
-    Line,
-    LineChart,
-    ReferenceLine,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis
-} from 'recharts';
-import { type CurveData } from '@/types/models';
+import React, { useCallback, useState } from 'react';
+import { type CurveData, type CurveEnhanceResponse } from '@/types/models';
 import { api } from '@/api/client';
+import { useEnhanceCurve, useSaveCurve } from '@/api/hooks';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { RefreshCw, Save } from 'lucide-react';
-import * as SliderPrimitive from '@radix-ui/react-slider';
-
+import { Save } from 'lucide-react';
+import { logger } from '@/lib/logger';
+import { useUndoRedo } from '@/hooks/useUndoRedo';
+import { config } from '@/config';
 import { cn } from '@/lib/utils';
+import { CurveChart } from './CurveChart';
+import { AdjustmentPanel, type AdjustmentType } from './AdjustmentPanel';
+import { type EnhancementGoal, EnhancementPanel } from './EnhancementPanel';
+import { UndoRedoControls } from './UndoRedoControls';
 
-// --- UI Components (Inline for speed, move to ui/ later) ---
-
-const Slider = React.forwardRef<
-    React.ElementRef<typeof SliderPrimitive.Root>,
-    React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
->(({ className, ...props }, ref) => (
-    <SliderPrimitive.Root
-        ref={ref}
-        className={cn(
-            "relative flex w-full touch-none select-none items-center",
-            className
-        )}
-        {...props}
-    >
-        <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary/20 bg-gray-200">
-            <SliderPrimitive.Range className="absolute h-full bg-primary bg-blue-600" />
-        </SliderPrimitive.Track>
-        <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
-    </SliderPrimitive.Root>
-));
-Slider.displayName = SliderPrimitive.Root.displayName;
-
-// Simple Select wrapper
-const AdjustmentSelect = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => (
-    <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label="Adjustment type"
-        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-        <option value="contrast">Contrast</option>
-        <option value="brightness">Brightness</option>
-        <option value="gamma">Gamma</option>
-        <option value="sigmoid">Sigmoid</option>
-    </select>
-);
-
-
-interface CurveEditorProps {
-    initialCurve?: CurveData;
-    onSave?: (curve: CurveData) => void;
-    className?: string;
+export interface CurveEditorProps {
+  /** Initial curve data to load */
+  initialCurve?: CurveData;
+  /** Callback when curve is saved */
+  onSave?: (curve: CurveData) => void;
+  /** Optional CSS class */
+  className?: string;
 }
 
-export function CurveEditor({ initialCurve, onSave, className }: CurveEditorProps) {
-    // Local state for curve data
-    const [name, setName] = useState(initialCurve?.name || 'New Curve');
-    const [inputValues, setInputValues] = useState<number[]>(initialCurve?.input_values || Array.from({ length: 256 }, (_, i) => i));
-    const [outputValues, setOutputValues] = useState<number[]>(initialCurve?.output_values || Array.from({ length: 256 }, (_, i) => i));
+function makeLinearCurve(length: number): number[] {
+  return Array.from({ length }, (_, i) => i);
+}
 
-    // Adjustment state
-    const [adjustmentType, setAdjustmentType] = useState<string>('contrast');
-    const [amount, setAmount] = useState<number>(0);
-    const [isApplying, setIsApplying] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+/**
+ * Orchestrates the curve editing interface
+ * Composes CurveChart, AdjustmentPanel, and EnhancementPanel
+ *
+ * @example
+ * ```tsx
+ * <CurveEditor
+ *   initialCurve={curve}
+ *   onSave={handleSave}
+ * />
+ * ```
+ */
+export function CurveEditor({
+  initialCurve,
+  onSave,
+  className,
+}: CurveEditorProps): React.ReactElement {
+  const curveLength = config.calibration.maxCurvePoints;
+  const maxValue = curveLength - 1;
 
-    // Prepare data for Recharts
-    const chartData = useMemo(() => {
-        return inputValues.map((input, index) => ({
-            input,
-            output: outputValues[index],
-            reference: input // Linear reference
-        }));
-    }, [inputValues, outputValues]);
+  // Local state for curve data
+  const [name, setName] = useState(initialCurve?.name || 'New Curve');
+  const [inputValues, setInputValues] = useState<number[]>(
+    initialCurve?.input_values || makeLinearCurve(curveLength)
+  );
 
-    const handleApplyAdjustment = async () => {
-        setIsApplying(true);
-        setError(null);
-        try {
-            const response = await api.curves.modify({
-                name,
-                input_values: inputValues,
-                output_values: outputValues,
-                adjustment_type: adjustmentType,
-                amount: amount,
-            });
+  // Output values with undo/redo support
+  const {
+    state: outputValues,
+    setState: setOutputValues,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    reset: resetOutputValues,
+  } = useUndoRedo<number[]>(
+    initialCurve?.output_values || makeLinearCurve(curveLength)
+  );
 
-            if (response.success) {
-                setOutputValues(response.output_values);
-            } else {
-                setError('Failed to apply adjustment');
-            }
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Error applying adjustment';
-            setError(message);
-        } finally {
-            setIsApplying(false);
-        }
-    };
+  // Adjustment state
+  const [adjustmentType, setAdjustmentType] =
+    useState<AdjustmentType>('contrast');
+  const [amount, setAmount] = useState<number>(0);
+  const [isApplying, setIsApplying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const handleReset = () => {
-        if (initialCurve) {
-            setInputValues(initialCurve.input_values);
-            setOutputValues(initialCurve.output_values);
-        } else {
-            // Reset to linear
-            const linear = Array.from({ length: 256 }, (_, i) => i);
-            setInputValues(linear);
-            setOutputValues(linear);
-        }
-        setAmount(0);
-    };
+  // AI Enhancement state
+  const [enhancementGoal, setEnhancementGoal] = useState<EnhancementGoal>('linearization');
+  const [enhanceResult, setEnhanceResult] = useState<CurveEnhanceResponse | null>(null);
+  const [showEnhancePanel, setShowEnhancePanel] = useState(false);
 
-    const handleSave = () => {
-        // TODO: Implement save via API or callback
-        // For now just call callback
-        if (onSave) {
+  // Save mutation
+  const { mutate: saveCurve, isPending: isSaving } = useSaveCurve();
+
+  // AI enhance mutation
+  const { mutate: enhanceCurve, isPending: isEnhancing } = useEnhanceCurve();
+
+  // Ref for the chart container to calculate coordinates
+  const chartContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Handle chart container click to add control points
+  const handleChartClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>): void => {
+      const container = chartContainerRef.current;
+      if (!container) return;
+
+      // Get click position relative to container
+      const rect = container.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // Account for chart margins (from LineChart margin prop)
+      const marginLeft = 0;
+      const marginTop = 5;
+      const marginRight = 20;
+      const marginBottom = 5;
+
+      // Calculate the actual chart area dimensions
+      const chartWidth = rect.width - marginLeft - marginRight;
+      const chartHeight = rect.height - marginTop - marginBottom;
+
+      // Adjust click position for margins
+      const adjustedX = clickX - marginLeft;
+      const adjustedY = clickY - marginTop;
+
+      // Check if click is within chart area
+      if (
+        adjustedX < 0 ||
+        adjustedX > chartWidth ||
+        adjustedY < 0 ||
+        adjustedY > chartHeight
+      ) {
+        logger.debug('CurveEditor: click outside chart area');
+        return;
+      }
+
+      // Convert pixel coordinates to data coordinates
+      // X-axis: linear mapping from 0 to maxValue
+      const inputValue = (adjustedX / chartWidth) * maxValue;
+
+      // Y-axis: inverted because SVG/canvas Y goes top-to-bottom
+      // Top of chart (adjustedY = 0) should be maxValue (255)
+      // Bottom of chart (adjustedY = chartHeight) should be 0
+      const outputValue = maxValue - (adjustedY / chartHeight) * maxValue;
+
+      // Clamp values to valid range
+      const clampedInput = Math.max(
+        0,
+        Math.min(maxValue, Math.round(inputValue))
+      );
+      const clampedOutput = Math.max(
+        0,
+        Math.min(maxValue, Math.round(outputValue))
+      );
+
+      logger.info('CurveEditor: adding control point', {
+        input: clampedInput,
+        output: clampedOutput,
+        clickPos: { x: clickX, y: clickY },
+        chartArea: { width: chartWidth, height: chartHeight },
+      });
+
+      // Modify the output value at the clicked input position
+      // This creates a "control point" effect by setting outputValues[clampedInput] = clampedOutput
+      const newOutputValues = [...outputValues];
+      newOutputValues[clampedInput] = clampedOutput;
+
+      // Apply the change through undo/redo system
+      setOutputValues(newOutputValues);
+
+      logger.debug('CurveEditor: control point added', {
+        index: clampedInput,
+        oldValue: outputValues[clampedInput],
+        newValue: clampedOutput,
+      });
+    },
+    [outputValues, maxValue, setOutputValues]
+  );
+
+  const handleApplyAdjustment = useCallback(async (): Promise<void> => {
+    logger.info('CurveEditor: applying adjustment', { adjustmentType, amount });
+    setIsApplying(true);
+    setError(null);
+    try {
+      const response = await api.curves.modify({
+        name,
+        input_values: inputValues,
+        output_values: outputValues,
+        adjustment_type: adjustmentType,
+        amount: amount,
+      });
+
+      if (response.success) {
+        logger.info('CurveEditor: adjustment applied', { adjustmentType });
+        setOutputValues(response.output_values);
+      } else {
+        logger.warn('CurveEditor: adjustment returned success=false');
+        setError('Failed to apply adjustment');
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Error applying adjustment';
+      logger.error('CurveEditor: adjustment failed', { error: message });
+      setError(message);
+    } finally {
+      setIsApplying(false);
+    }
+  }, [adjustmentType, amount, name, inputValues, outputValues, setOutputValues]);
+
+  const handleReset = useCallback((): void => {
+    logger.info('CurveEditor: resetting curve');
+    if (initialCurve) {
+      setInputValues(initialCurve.input_values);
+      resetOutputValues(initialCurve.output_values);
+    } else {
+      const linear = makeLinearCurve(curveLength);
+      setInputValues(linear);
+      resetOutputValues(linear);
+    }
+    setAmount(0);
+  }, [initialCurve, curveLength, resetOutputValues]);
+
+  const handleSave = useCallback((): void => {
+    logger.info('CurveEditor: saving curve', {
+      name,
+      pointCount: inputValues.length,
+    });
+
+    saveCurve(
+      {
+        name,
+        input_values: inputValues,
+        output_values: outputValues,
+        adjustment_type: 'brightness',
+        amount: 0,
+      },
+      {
+        onSuccess: (response) => {
+          logger.info('CurveEditor: curve saved', {
+            curveId: response.curve_id,
+          });
+          if (onSave) {
             onSave({
-                id: initialCurve?.id || 'new', // placeholder
-                name,
-                created_at: new Date().toISOString(),
-                curve_type: initialCurve?.curve_type || 'custom',
-                input_values: inputValues,
-                output_values: outputValues,
+              id: response.curve_id,
+              name: response.name,
+              created_at: new Date().toISOString(),
+              curve_type: initialCurve?.curve_type || 'custom',
+              input_values: response.input_values,
+              output_values: response.output_values,
             } as CurveData);
-        }
-    };
-
-    return (
-        <div className={cn("space-y-6 p-6 border rounded-lg bg-card text-card-foreground shadow-sm", className)}>
-            <div className="flex items-center justify-between">
-                <div className="flex-1 max-w-sm">
-                    <label className="text-sm font-medium mb-1 block">Curve Name</label>
-                    <Input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Curve Name"
-                    />
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleReset} title="Reset">
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Reset
-                    </Button>
-                    <Button onClick={handleSave}>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save
-                    </Button>
-                </div>
-            </div>
-
-            <div className="h-[400px] w-full bg-white/5 rounded-md border p-4">
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis
-                            dataKey="input"
-                            type="number"
-                            domain={[0, 255]}
-                            tick={{ fontSize: 12 }}
-                            label={{ value: 'Input Density', position: 'insideBottom', offset: -5 }}
-                        />
-                        <YAxis
-                            type="number"
-                            domain={[0, 255]}
-                            tick={{ fontSize: 12 }}
-                            label={{ value: 'Output Density', angle: -90, position: 'insideLeft' }}
-                        />
-                        <Tooltip
-                            contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '4px', border: '1px solid hsl(var(--border))', color: 'hsl(var(--card-foreground))' }}
-                        />
-                        <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 255, y: 255 }]} stroke="#ccc" strokeDasharray="3 3" />
-                        <Line
-                            type="monotone"
-                            dataKey="output"
-                            stroke="#2563eb"
-                            strokeWidth={2}
-                            dot={false}
-                            isAnimationActive={false}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/50 rounded-md">
-                <div className="space-y-4">
-                    <label className="text-sm font-medium">Adjustment Type</label>
-                    <AdjustmentSelect
-                        value={adjustmentType}
-                        onChange={setAdjustmentType}
-                    />
-                </div>
-
-                <div className="space-y-4">
-                    <div className="flex justify-between">
-                        <label className="text-sm font-medium">Amount</label>
-                        <span className="text-sm text-gray-500">{amount}</span>
-                    </div>
-                    <Slider
-                        value={[amount]}
-                        min={-100}
-                        max={100}
-                        step={1}
-                        onValueChange={(vals) => setAmount(vals[0] ?? 0)}
-                    />
-                </div>
-
-                <div className="md:col-span-2">
-                    <Button
-                        onClick={handleApplyAdjustment}
-                        disabled={isApplying}
-                        className="w-full md:w-auto"
-                    >
-                        {isApplying ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
-                        Apply Adjustment
-                    </Button>
-                    {error && <p className="text-sm text-destructive mt-2">{error}</p>}
-                </div>
-            </div>
-        </div>
+          }
+        },
+        onError: (err) => {
+          const rawMessage = err.response?.data?.message ?? err.message;
+          const message =
+            typeof rawMessage === 'string' && rawMessage.trim().length > 0
+              ? rawMessage
+              : 'Failed to save curve. Please try again.';
+          logger.error('CurveEditor: save failed', { error: message });
+          setError(message);
+        },
+      }
     );
+  }, [name, inputValues, outputValues, initialCurve, onSave, saveCurve]);
+
+  const handleAIEnhance = useCallback((): void => {
+    logger.info('CurveEditor: requesting AI enhancement', {
+      goal: enhancementGoal,
+      name,
+    });
+    setError(null);
+    enhanceCurve(
+      {
+        name,
+        input_values: inputValues,
+        output_values: outputValues,
+        goal: enhancementGoal,
+      },
+      {
+        onSuccess: (data) => {
+          if (data.success) {
+            setOutputValues(data.output_values);
+            setEnhanceResult(data);
+            setShowEnhancePanel(true);
+          }
+        },
+        onError: (err) => {
+          const rawMessage = err.response?.data?.message ?? err.message;
+          setError(rawMessage || 'AI enhancement failed');
+        },
+      }
+    );
+  }, [enhancementGoal, name, inputValues, outputValues, setOutputValues, enhanceCurve]);
+
+  return (
+    <div
+      className={cn(
+        'space-y-6 rounded-lg border bg-card p-6 text-card-foreground shadow-sm',
+        className
+      )}
+    >
+      {/* Header: Curve Name and Controls */}
+      <div className="flex items-center justify-between">
+        <div className="max-w-sm flex-1">
+          <label
+            htmlFor="curve-name-input"
+            className="mb-1 block text-sm font-medium"
+          >
+            Curve Name
+          </label>
+          <Input
+            id="curve-name-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Curve Name"
+          />
+        </div>
+        <div className="flex gap-2">
+          <UndoRedoControls
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
+            onReset={handleReset}
+          />
+          <Button
+            onClick={handleSave}
+            isLoading={isSaving}
+            disabled={isSaving}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Curve Chart */}
+      <CurveChart
+        ref={chartContainerRef}
+        inputValues={inputValues}
+        outputValues={outputValues}
+        curveName={name}
+        maxValue={maxValue}
+        onChartClick={handleChartClick}
+      />
+
+      {/* Adjustment Panel and Enhancement Panel */}
+      <div className="space-y-4">
+        <AdjustmentPanel
+          adjustmentType={adjustmentType}
+          onAdjustmentTypeChange={setAdjustmentType}
+          amount={amount}
+          onAmountChange={setAmount}
+          isApplying={isApplying}
+          onApply={handleApplyAdjustment}
+          error={error}
+        />
+
+        <EnhancementPanel
+          enhancementGoal={enhancementGoal}
+          onGoalChange={setEnhancementGoal}
+          isEnhancing={isEnhancing}
+          onEnhance={handleAIEnhance}
+          enhanceResult={enhanceResult}
+          onDismissResult={() => setShowEnhancePanel(false)}
+          showResult={showEnhancePanel}
+        />
+      </div>
+    </div>
+  );
 }

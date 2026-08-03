@@ -207,7 +207,7 @@ class PiezographyExporter(CurveExporter):
         x_new = np.linspace(0, 1, 101)
         y_new = np.interp(x_new, curve.input_values, curve.output_values)
 
-        for _i, (inp, out) in enumerate(zip(x_new, y_new, strict=False)):
+        for _i, (inp, out) in enumerate(zip(x_new, y_new, strict=True)):
             pz_input = int(inp * 100)
             pz_output = out * 100
             lines.append(f"{pz_input}={pz_output:.2f}")
@@ -235,7 +235,7 @@ class CSVExporter(CurveExporter):
         with open(path, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["input", "output"])
-            for inp, out in zip(curve.input_values, curve.output_values, strict=False):
+            for inp, out in zip(curve.input_values, curve.output_values, strict=True):
                 writer.writerow([f"{inp:.6f}", f"{out:.6f}"])
 
     def get_format_name(self) -> str:
@@ -286,11 +286,11 @@ def save_curve(curve: CurveData, path: Path, format: str | None = None) -> None:
     format = format.lower()
 
     if format in ("qtr", "quadtone"):
-        exporter = QTRExporter()
+        qtr_exporter = QTRExporter()
         export_format = "quad" if path.suffix.lower() == ".quad" else "curve"
-        exporter.export(curve, path, format=export_format)
+        qtr_exporter.export(curve, path, format=export_format)
     elif format in ("piezography", "pz", "ppt"):
-        exporter = PiezographyExporter()
+        exporter: CurveExporter = PiezographyExporter()
         exporter.export(curve, path)
     elif format == "csv":
         exporter = CSVExporter()

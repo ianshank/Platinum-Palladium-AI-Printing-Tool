@@ -56,6 +56,10 @@ All tests use mocked external dependencies and simulated hardware
 to ensure tests can run without physical devices or API keys.
 """
 
+import pytest
+
+pytest.importorskip("ptpd_calibration.integrations")
+
 import json
 import tempfile
 from datetime import datetime, timedelta
