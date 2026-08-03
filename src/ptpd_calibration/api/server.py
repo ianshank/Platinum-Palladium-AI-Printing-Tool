@@ -5,7 +5,11 @@ FastAPI server for PTPD Calibration System.
 import logging
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
 from ptpd_calibration.api.models import (
     AnalyzeResponse,
@@ -87,7 +91,7 @@ def create_app() -> "FastAPI":
 
     # State
     database = CalibrationDatabase()
-    upload_dir = settings.api.upload_dir or Path(tempfile.mkdtemp())
+    upload_dir: Path = settings.api.upload_dir or Path(tempfile.mkdtemp())
     deep_learning_model_storage: dict = {}  # Storage for trained DL models
 
     # Include deep learning router
@@ -410,7 +414,8 @@ def create_app() -> "FastAPI":
         Returns the parsed profile with all channels and metadata.
         """
         # Save uploaded file
-        file_path = upload_dir / file.filename
+        filename = file.filename or "upload.quad"
+        file_path = upload_dir / filename
         with open(file_path, "wb") as f:
             content = await file.read()
             f.write(content)
@@ -658,7 +663,7 @@ def create_app() -> "FastAPI":
                 result = await enhancer.enhance_with_llm(
                     curve,
                     goal=goal,
-                    additional_context=request.additional_context,
+                    user_requirements=request.additional_context,
                 )
             except Exception:
                 _log.info("LLM enhancement unavailable, falling back to algorithmic", exc_info=True)
@@ -675,10 +680,10 @@ def create_app() -> "FastAPI":
                 success=True,
                 curve_id=str(result.enhanced_curve.id),
                 name=result.enhanced_curve.name,
-                goal=result.goal.value,
+                goal=goal.value,
                 confidence=result.confidence,
-                analysis=result.analysis,
-                changes_made=result.changes_made,
+                analysis=str(result.analysis) if isinstance(result.analysis, dict) else result.analysis,
+                changes_made=result.adjustments_applied,
                 input_values=result.enhanced_curve.input_values,
                 output_values=result.enhanced_curve.output_values,
             )
