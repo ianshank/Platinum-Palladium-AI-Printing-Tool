@@ -78,6 +78,8 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
+    "gradio>=4.0.0",
+    "psutil>=6.0.0",
 ]
 
 [project.scripts]
