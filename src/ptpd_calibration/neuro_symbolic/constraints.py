@@ -74,7 +74,7 @@ class SymbolicConstraint(ABC):
         constraint_type: ConstraintType,
         weight: float,
         settings: NeuroSymbolicSettings | None = None,
-    ):
+    ) -> None:
         """Initialize constraint.
 
         Args:
@@ -162,7 +162,7 @@ class MonotonicityConstraint(SymbolicConstraint):
         self,
         weight: float | None = None,
         settings: NeuroSymbolicSettings | None = None,
-    ):
+    ) -> None:
         settings = settings or get_settings().neuro_symbolic
         super().__init__(
             name="Monotonicity",
@@ -233,7 +233,7 @@ class DensityBoundsConstraint(SymbolicConstraint):
         max_density: float | None = None,
         weight: float | None = None,
         settings: NeuroSymbolicSettings | None = None,
-    ):
+    ) -> None:
         settings = settings or get_settings().neuro_symbolic
         super().__init__(
             name="Density Bounds",
@@ -324,7 +324,7 @@ class PhysicsConstraint(SymbolicConstraint):
         shoulder_fraction: float = 0.2,
         weight: float | None = None,
         settings: NeuroSymbolicSettings | None = None,
-    ):
+    ) -> None:
         """Initialize physics constraint.
 
         Args:
@@ -454,7 +454,7 @@ class SmoothnessConstraint(SymbolicConstraint):
         order: int = 2,
         weight: float | None = None,
         settings: NeuroSymbolicSettings | None = None,
-    ):
+    ) -> None:
         """Initialize smoothness constraint.
 
         Args:
@@ -548,7 +548,7 @@ class ConstraintSet:
         self,
         constraints: list[SymbolicConstraint] | None = None,
         settings: NeuroSymbolicSettings | None = None,
-    ):
+    ) -> None:
         """Initialize constraint set.
 
         Args:
@@ -688,7 +688,7 @@ class DifferentiableLoss:
         target_values: NDArray[np.float64] | None = None,
         data_loss_weight: float = 1.0,
         data_loss_type: str = "mse",
-    ):
+    ) -> None:
         """Initialize differentiable loss.
 
         Args:
@@ -777,7 +777,7 @@ class ConstrainedCurveOptimizer:
         self,
         constraint_set: ConstraintSet | None = None,
         settings: NeuroSymbolicSettings | None = None,
-    ):
+    ) -> None:
         """Initialize optimizer.
 
         Args:

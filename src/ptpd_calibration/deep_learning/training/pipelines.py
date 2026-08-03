@@ -154,7 +154,7 @@ class EarlyStopping:
         patience: int,
         min_delta: float = 0.0,
         mode: str = "min",
-    ):
+    ) -> None:
         self.patience = patience
         self.min_delta = min_delta
         self.mode = mode
@@ -213,7 +213,7 @@ class BaseTrainingPipeline(ABC, Generic[ModelT]):
         self,
         config: TrainingConfig | None = None,
         data_config: SyntheticDataConfig | None = None,
-    ):
+    ) -> None:
         if not TORCH_AVAILABLE:
             raise ImportError(
                 "PyTorch is required for training. Install with: pip install torch torchvision"
@@ -614,7 +614,7 @@ class DetectionTrainingPipeline(BaseTrainingPipeline):
         config: TrainingConfig | None = None,
         data_config: SyntheticDataConfig | None = None,
         num_classes: int = 21,
-    ):
+    ) -> None:
         super().__init__(config, data_config)
         self.num_classes = num_classes
 
@@ -769,7 +769,7 @@ class CurveTrainingPipeline(BaseTrainingPipeline):
         config: TrainingConfig | None = None,
         data_config: SyntheticDataConfig | None = None,
         num_zones: int = 21,
-    ):
+    ) -> None:
         super().__init__(config, data_config)
         self.num_zones = num_zones
 
@@ -897,7 +897,7 @@ class ExposureTrainingPipeline(BaseTrainingPipeline):
         self,
         config: TrainingConfig | None = None,
         data_config: SyntheticDataConfig | None = None,
-    ):
+    ) -> None:
         super().__init__(config, data_config)
 
     def _create_model(self) -> nn.Module:
@@ -1014,7 +1014,7 @@ class DefectTrainingPipeline(BaseTrainingPipeline):
         config: TrainingConfig | None = None,
         data_config: SyntheticDataConfig | None = None,
         num_classes: int = 7,
-    ):
+    ) -> None:
         super().__init__(config, data_config)
         self.num_classes = num_classes
 
@@ -1027,7 +1027,7 @@ class DefectTrainingPipeline(BaseTrainingPipeline):
 
         # Combined model for both segmentation and classification
         class CombinedDefectModel(nn.Module):
-            def __init__(self, num_classes: int, dropout: float, image_size: int = 256):
+            def __init__(self, num_classes: int, dropout: float, image_size: int = 256) -> None:
                 super().__init__()
                 self.segmentation = DefectSegmentationNet(in_channels=3, out_channels=1)
                 self.classifier = DefectClassifierNet(
@@ -1168,7 +1168,7 @@ class RecipeTrainingPipeline(BaseTrainingPipeline):
         config: TrainingConfig | None = None,
         data_config: SyntheticDataConfig | None = None,
         embedding_dim: int = 64,
-    ):
+    ) -> None:
         super().__init__(config, data_config)
         self.embedding_dim = embedding_dim
 

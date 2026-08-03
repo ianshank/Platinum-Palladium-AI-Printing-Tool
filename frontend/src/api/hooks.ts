@@ -1,36 +1,30 @@
 /**
  * TanStack Query hooks for API operations
  * Provides caching, loading states, and error handling
+ *
+ * This file serves as the main entry point for all API hooks.
+ * Domain-specific hooks are organized in:
+ * - hooks-curves.ts: Curve generation, modification, enhancement
+ * - hooks-calibration.ts: Calibration and scan upload
+ * - hooks-chat.ts: Chat messages, recipes, troubleshooting
+ * - hooks-mcts.ts: Machine learning recommendations
  */
 
 import {
-  useMutation,
-  type UseMutationOptions,
   useQuery,
-  useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query';
 import { api, type ApiError, type AxiosError } from './client';
-import type {
-  CalibrationCreateResponse,
-  CalibrationListResponse,
-  CalibrationRecord,
-  ChatResponse,
-  CurveEnhanceResponse,
-  CurveGenerationResponse,
-  CurveModificationRequest,
-  CurveModificationResponse,
-  CurveSmoothingResponse,
-  CurveSmoothRequest,
-  QuadParseResponse,
-  QuadUploadResponse,
-  ScanUploadResponse,
-  StatisticsResponse,
-} from '@/types/models';
-import { useStore } from '@/stores';
-import { logger } from '@/lib/logger';
+import type { StatisticsResponse } from '@/types/models';
 
-// Query key factory for consistent cache invalidation
+// ============================================================================
+// Query Key Factory
+// ============================================================================
+
+/**
+ * Centralized query key factory for consistent cache invalidation
+ * Used across all API hook files
+ */
 export const queryKeys = {
   all: ['ptpd'] as const,
   health: () => [...queryKeys.all, 'health'] as const,
@@ -45,6 +39,9 @@ export const queryKeys = {
 // Health Check
 // ============================================================================
 
+/**
+ * Check backend health status
+ */
 export function useHealthCheck(
   options?: Omit<
     UseQueryOptions<{ status: string }, AxiosError<ApiError>>,
@@ -60,514 +57,12 @@ export function useHealthCheck(
 }
 
 // ============================================================================
-// Curves
-// ============================================================================
-
-export function useCurve(
-  id: string,
-  options?: Omit<
-    UseQueryOptions<unknown, AxiosError<ApiError>>,
-    'queryKey' | 'queryFn'
-  >
-) {
-  return useQuery({
-    queryKey: queryKeys.curve(id),
-    queryFn: () => api.curves.get(id),
-    enabled: !!id,
-    ...options,
-  });
-}
-
-export function useGenerateCurve(
-  options?: UseMutationOptions<
-    CurveGenerationResponse,
-    AxiosError<ApiError>,
-    {
-      measurements: number[];
-      type?: string;
-      name?: string;
-      curve_type?: string;
-    }
-  >
-) {
-  const queryClient = useQueryClient();
-  const addToast = useStore((state) => state.ui.addToast);
-  const setProcessing = useStore((state) => state.ui.setProcessing);
-
-  return useMutation({
-    mutationFn: (data: {
-      measurements: number[];
-      type?: string;
-      name?: string;
-      curve_type?: string;
-    }) => api.curves.generate(data),
-    onMutate: () => {
-      setProcessing(true);
-      logger.info('Generating curve...');
-    },
-    onSuccess: (data) => {
-      logger.info('Curve generated', {
-        id: data.curve_id,
-        pointCount: data.input_values.length,
-      });
-      addToast({
-        title: 'Curve Generated',
-        description: `Created curve with ${data.input_values.length} points`,
-        variant: 'success',
-      });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
-    },
-    onError: (error) => {
-      logger.error('Curve generation failed', { error: error.message });
-      addToast({
-        title: 'Generation Failed',
-        description: error.response?.data?.message ?? error.message,
-        variant: 'error',
-      });
-    },
-    onSettled: () => {
-      setProcessing(false);
-    },
-    ...options,
-  });
-}
-
-export function useModifyCurve(
-  options?: UseMutationOptions<
-    CurveModificationResponse,
-    AxiosError<ApiError>,
-    CurveModificationRequest
-  >
-) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CurveModificationRequest) => api.curves.modify(data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
-    },
-    ...options,
-  });
-}
-
-export function useSmoothCurve(
-  options?: UseMutationOptions<
-    CurveSmoothingResponse,
-    AxiosError<ApiError>,
-    CurveSmoothRequest
-  >
-) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CurveSmoothRequest) => api.curves.smooth(data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
-    },
-    ...options,
-  });
-}
-
-export function useEnhanceCurve(
-  options?: UseMutationOptions<
-    CurveEnhanceResponse,
-    AxiosError<ApiError>,
-    {
-      name: string;
-      input_values: number[];
-      output_values: number[];
-      goal: string;
-      additional_context?: string;
-      paper_type?: string;
-    }
-  >
-) {
-  const queryClient = useQueryClient();
-  const addToast = useStore((state) => state.ui.addToast);
-
-  return useMutation({
-    mutationFn: (data) => api.curves.enhance(data),
-    onSuccess: (data) => {
-      logger.info('Curve enhanced', { curveId: data.curve_id, goal: data.goal });
-      addToast({
-        title: 'AI Enhancement Applied',
-        description: `Goal: ${data.goal} — Confidence: ${Math.round(data.confidence * 100)}%`,
-        variant: 'success',
-      });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
-    },
-    onError: (error) => {
-      logger.error('Curve enhance failed', { error: error.message });
-      addToast({
-        title: 'Enhancement Failed',
-        description: error.response?.data?.message ?? error.message,
-        variant: 'error',
-      });
-    },
-    ...options,
-  });
-}
-
-export function useSaveCurve(
-  options?: UseMutationOptions<
-    CurveModificationResponse,
-    AxiosError<ApiError>,
-    CurveModificationRequest
-  >
-) {
-  const queryClient = useQueryClient();
-  const addToast = useStore((state) => state.ui?.addToast);
-
-  return useMutation({
-    mutationFn: (data: CurveModificationRequest) => api.curves.modify(data),
-    onSuccess: (data) => {
-      logger.info('Curve saved', { curveId: data.curve_id, name: data.name });
-      addToast?.({
-        title: 'Curve Saved',
-        description: `"${data.name}" saved successfully`,
-        variant: 'success',
-      });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
-    },
-    onError: (error) => {
-      logger.error('Curve save failed', { error: error.message });
-      addToast?.({
-        title: 'Save Failed',
-        description: error.response?.data?.message ?? error.message,
-        variant: 'error',
-      });
-    },
-    ...options,
-  });
-}
-
-export function useExportCurve(
-  options?: UseMutationOptions<
-    Blob,
-    AxiosError<ApiError>,
-    { curveId: string; format: string }
-  >
-) {
-  const addToast = useStore((state) => state.ui.addToast);
-
-  return useMutation({
-    mutationFn: (data) => api.curves.export(data),
-    onSuccess: () => {
-      addToast({
-        title: 'Export Complete',
-        description: 'Curve exported successfully',
-        variant: 'success',
-      });
-    },
-    onError: (error) => {
-      addToast({
-        title: 'Export Failed',
-        description: error.response?.data?.message ?? error.message,
-        variant: 'error',
-      });
-    },
-    ...options,
-  });
-}
-
-// ============================================================================
-// Quad File Upload / Parse
-// ============================================================================
-
-export function useUploadQuadFile(
-  options?: UseMutationOptions<
-    QuadUploadResponse,
-    AxiosError<ApiError>,
-    { file: File; channel: string }
-  >
-) {
-  const queryClient = useQueryClient();
-  const addToast = useStore((state) => state.ui.addToast);
-
-  return useMutation({
-    mutationFn: ({ file, channel }: { file: File; channel: string }) =>
-      api.curves.uploadQuad(file, channel),
-    onSuccess: (data) => {
-      logger.info('Quad file uploaded', {
-        profile: data.profile_name,
-        channels: data.active_channels,
-      });
-      addToast({
-        title: 'Profile Loaded',
-        description: `Loaded "${data.profile_name}" with ${data.active_channels.length} channels`,
-        variant: 'success',
-      });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
-    },
-    onError: (error) => {
-      logger.error('Quad file upload failed', { error: error.message });
-      addToast({
-        title: 'Upload Failed',
-        description: error.response?.data?.message ?? error.message,
-        variant: 'error',
-      });
-    },
-    ...options,
-  });
-}
-
-export function useParseQuadContent(
-  options?: UseMutationOptions<
-    QuadParseResponse,
-    AxiosError<ApiError>,
-    { content: string; name?: string; channel: string }
-  >
-) {
-  const queryClient = useQueryClient();
-  const addToast = useStore((state) => state.ui.addToast);
-
-  return useMutation({
-    mutationFn: ({
-      content,
-      name,
-      channel,
-    }: {
-      content: string;
-      name?: string;
-      channel: string;
-    }) => api.curves.parseQuad(content, name ?? 'Uploaded Profile', channel),
-    onSuccess: (data) => {
-      logger.info('Quad content parsed', {
-        profile: data.profile_name,
-        channels: data.active_channels,
-      });
-      addToast({
-        title: 'Content Parsed',
-        description: `Parsed "${data.profile_name}" with ${data.active_channels.length} channels`,
-        variant: 'success',
-      });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.curves() });
-    },
-    onError: (error) => {
-      logger.error('Quad content parse failed', { error: error.message });
-      addToast({
-        title: 'Parse Failed',
-        description: error.response?.data?.message ?? error.message,
-        variant: 'error',
-      });
-    },
-    ...options,
-  });
-}
-
-// ============================================================================
-// Scan / Upload
-// ============================================================================
-
-export function useUploadScan(
-  options?: UseMutationOptions<
-    ScanUploadResponse,
-    AxiosError<ApiError>,
-    { file: File; tabletType: string }
-  >
-) {
-  const addToast = useStore((state) => state.ui.addToast);
-  const startUpload = useStore((state) => state.image.startUpload);
-  const updateUploadProgress = useStore(
-    (state) => state.image.updateUploadProgress
-  );
-  const setError = useStore((state) => state.image.setError);
-
-  return useMutation({
-    mutationFn: ({ file, tabletType }: { file: File; tabletType: string }) => {
-      startUpload(file.name);
-      return api.scan.upload(file, tabletType, updateUploadProgress);
-    },
-    onSuccess: (data) => {
-      logger.info('Scan uploaded', { extraction_id: data.extraction_id });
-      addToast({
-        title: 'Scan Uploaded',
-        description: `Detected ${data.num_patches} measurements`,
-        variant: 'success',
-      });
-    },
-    onError: (error) => {
-      setError(error.response?.data?.message ?? error.message);
-      addToast({
-        title: 'Upload Failed',
-        description: error.response?.data?.message ?? error.message,
-        variant: 'error',
-      });
-    },
-    ...options,
-  });
-}
-
-// ============================================================================
-// Calibrations
-// ============================================================================
-
-export function useCalibrations(
-  options?: Omit<
-    UseQueryOptions<CalibrationListResponse, AxiosError<ApiError>>,
-    'queryKey' | 'queryFn'
-  >
-) {
-  return useQuery({
-    queryKey: queryKeys.calibrations(),
-    queryFn: () => api.calibrations.list(),
-    ...options,
-  });
-}
-
-export function useCalibration(
-  id: string,
-  options?: Omit<
-    UseQueryOptions<unknown, AxiosError<ApiError>>,
-    'queryKey' | 'queryFn'
-  >
-) {
-  return useQuery({
-    queryKey: queryKeys.calibration(id),
-    queryFn: () => api.calibrations.get(id),
-    enabled: !!id,
-    ...options,
-  });
-}
-
-export function useCreateCalibration(
-  options?: UseMutationOptions<
-    CalibrationCreateResponse,
-    AxiosError<ApiError>,
-    Omit<CalibrationRecord, 'id' | 'timestamp'>
-  >
-) {
-  const queryClient = useQueryClient();
-  const addToast = useStore((state) => state.ui.addToast);
-
-  return useMutation({
-    mutationFn: (data: Omit<CalibrationRecord, 'id' | 'timestamp'>) =>
-      api.calibrations.create(data),
-    onSuccess: () => {
-      addToast({
-        title: 'Calibration Saved',
-        variant: 'success',
-      });
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.calibrations(),
-      });
-    },
-    onError: (error) => {
-      addToast({
-        title: 'Save Failed',
-        description: error.response?.data?.message ?? error.message,
-        variant: 'error',
-      });
-    },
-    ...options,
-  });
-}
-
-// ============================================================================
-// Chat
-// ============================================================================
-
-export function useSendMessage(
-  options?: UseMutationOptions<
-    ChatResponse,
-    AxiosError<ApiError>,
-    { message: string; context?: string[] }
-  >
-) {
-  const addMessage = useStore((state) => state.chat.addMessage);
-  const setLoading = useStore((state) => state.chat.setLoading);
-  const setError = useStore((state) => state.chat.setError);
-
-  return useMutation({
-    mutationFn: (data) => {
-      addMessage({ role: 'user', content: data.message });
-      return api.chat.send(data);
-    },
-    onMutate: () => {
-      setLoading(true);
-    },
-    onSuccess: (data) => {
-      addMessage({
-        role: 'assistant',
-        content: data.response,
-        metadata: { context: data.context_used ?? [] },
-      });
-    },
-    onError: (error) => {
-      setError(error.response?.data?.message ?? error.message);
-    },
-    onSettled: () => {
-      setLoading(false);
-    },
-    ...options,
-  });
-}
-
-export function useRecipeSuggestion(
-  options?: UseMutationOptions<
-    ChatResponse,
-    AxiosError<ApiError>,
-    { paper_type: string; characteristics: string }
-  >
-) {
-  const addMessage = useStore((state) => state.chat.addMessage);
-  const addToast = useStore((state) => state.ui.addToast);
-
-  return useMutation({
-    mutationFn: (data) => {
-      addMessage({
-        role: 'user',
-        content: `Recipe for ${data.paper_type}: ${data.characteristics}`,
-      });
-      return api.chat.recipe(data);
-    },
-    onSuccess: (data) => {
-      addMessage({ role: 'assistant', content: data.response });
-    },
-    onError: (error) => {
-      addToast({
-        title: 'Recipe Request Failed',
-        description: error.response?.data?.message ?? error.message,
-        variant: 'error',
-      });
-    },
-    ...options,
-  });
-}
-
-export function useTroubleshootRequest(
-  options?: UseMutationOptions<
-    ChatResponse,
-    AxiosError<ApiError>,
-    { problem: string }
-  >
-) {
-  const addMessage = useStore((state) => state.chat.addMessage);
-  const addToast = useStore((state) => state.ui.addToast);
-
-  return useMutation({
-    mutationFn: (data) => {
-      addMessage({ role: 'user', content: `Troubleshoot: ${data.problem}` });
-      return api.chat.troubleshoot(data);
-    },
-    onSuccess: (data) => {
-      addMessage({ role: 'assistant', content: data.response });
-    },
-    onError: (error) => {
-      addToast({
-        title: 'Troubleshoot Failed',
-        description: error.response?.data?.message ?? error.message,
-        variant: 'error',
-      });
-    },
-    ...options,
-  });
-}
-
-// ============================================================================
 // Statistics
 // ============================================================================
 
+/**
+ * Fetch system statistics (calibration count, curve count, etc.)
+ */
 export function useStatistics(
   options?: Omit<
     UseQueryOptions<StatisticsResponse, AxiosError<ApiError>>,
@@ -580,6 +75,61 @@ export function useStatistics(
     ...options,
   });
 }
+
+// ============================================================================
+// Backward Compatibility Exports
+// ============================================================================
+// Re-export all domain-specific hooks for backward compatibility
+// This ensures existing imports like `import { useCurve } from '@/api/hooks'` still work
+
+/**
+ * Curve hooks - see hooks-curves.ts for details
+ */
+export {
+  useCurve,
+  useGenerateCurve,
+  useModifyCurve,
+  useSmoothCurve,
+  useSaveCurve,
+  useEnhanceCurve,
+  useExportCurve,
+  useUploadQuadFile,
+  useParseQuadContent,
+} from './hooks-curves';
+
+/**
+ * Calibration hooks - see hooks-calibration.ts for details
+ */
+export {
+  useCalibrations,
+  useCalibration,
+  useCreateCalibration,
+  useUploadScan,
+} from './hooks-calibration';
+
+/**
+ * Chat and LLM hooks - see hooks-chat.ts for details
+ */
+export {
+  useSendMessage,
+  useRecipeSuggestion,
+  useTroubleshootRequest,
+} from './hooks-chat';
+
+/**
+ * MCTS hooks - see hooks-mcts.ts for details
+ */
+export {
+  useMCTSStatus,
+  useMCTSSearch,
+  useMCTSEvaluate,
+  useMCTSRecommendations,
+  useMCTSTraining,
+  useMCTSTrainingStatus,
+  useMCTSFeedback,
+  useMCTSExport,
+  mctsQueryKeys,
+} from './hooks-mcts';
 
 // ============================================================================
 // Scan Quality Assessment

@@ -33,7 +33,7 @@ class StepTabletDetector:
     to find step tablets and segment individual patches.
     """
 
-    def __init__(self, settings: DetectionSettings | None = None):
+    def __init__(self, settings: DetectionSettings | None = None) -> None:
         """
         Initialize the detector.
 

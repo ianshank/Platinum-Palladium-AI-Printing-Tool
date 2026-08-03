@@ -353,7 +353,7 @@ class PlatinumPalladiumAI:
     All parameters are configurable via settings, with no hardcoded values.
     """
 
-    def __init__(self, settings: Any | None = None):
+    def __init__(self, settings: Any | None = None) -> None:
         """
         Initialize the Platinum/Palladium AI system.
 

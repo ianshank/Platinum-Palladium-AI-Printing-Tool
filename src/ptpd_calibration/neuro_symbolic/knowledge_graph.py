@@ -146,7 +146,7 @@ class KnowledgeGraph:
     Provides entity and relationship storage with query capabilities.
     """
 
-    def __init__(self, settings: NeuroSymbolicSettings | None = None):
+    def __init__(self, settings: NeuroSymbolicSettings | None = None) -> None:
         """Initialize knowledge graph.
 
         Args:
@@ -416,7 +416,7 @@ class PaperChemistryKnowledgeGraph(KnowledgeGraph):
     Pre-populated with domain knowledge about platinum/palladium printing.
     """
 
-    def __init__(self, settings: NeuroSymbolicSettings | None = None):
+    def __init__(self, settings: NeuroSymbolicSettings | None = None) -> None:
         """Initialize with domain knowledge."""
         super().__init__(settings)
         self._initialize_domain_knowledge()

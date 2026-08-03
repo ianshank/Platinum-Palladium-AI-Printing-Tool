@@ -511,7 +511,7 @@ class DifferentiableSymbolicRegressor:
     gradient-based optimization for constant refinement.
     """
 
-    def __init__(self, settings: NeuroSymbolicSettings | None = None):
+    def __init__(self, settings: NeuroSymbolicSettings | None = None) -> None:
         """Initialize regressor.
 
         Args:
@@ -875,7 +875,7 @@ class CurveFormulaDiscovery:
     for platinum/palladium curve discovery.
     """
 
-    def __init__(self, settings: NeuroSymbolicSettings | None = None):
+    def __init__(self, settings: NeuroSymbolicSettings | None = None) -> None:
         """Initialize formula discovery.
 
         Args:

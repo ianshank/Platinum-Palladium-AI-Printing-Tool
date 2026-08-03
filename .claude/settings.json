@@ -7,10 +7,12 @@
       "Write(migration/**)",
       "Write(.claude/**)",
       "Write(kb/**)",
+      "Write(src/ptpd_calibration/ui/**)",
       "Edit(frontend/**)",
       "Edit(migration/**)",
       "Edit(.claude/**)",
       "Edit(kb/**)",
+      "Edit(src/ptpd_calibration/ui/**)",
       "Bash(pnpm *)",
       "Bash(npm *)",
       "Bash(npx *)",
@@ -24,8 +26,6 @@
       "Glob"
     ],
     "deny": [
-      "Write(src/ptpd_calibration/ui/**)",
-      "Edit(src/ptpd_calibration/ui/**)",
       "Bash(rm -rf *)",
       "Bash(sudo *)"
     ]

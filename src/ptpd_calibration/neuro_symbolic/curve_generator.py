@@ -91,7 +91,7 @@ class NeuroSymbolicCurveGenerator:
         self,
         curve_settings: CurveSettings | None = None,
         neuro_settings: NeuroSymbolicSettings | None = None,
-    ):
+    ) -> None:
         """Initialize neuro-symbolic curve generator.
 
         Args:

@@ -70,7 +70,7 @@ class CurveModifier:
     for fine-tuning and optimization.
     """
 
-    def __init__(self, preserve_endpoints: bool = True):
+    def __init__(self, preserve_endpoints: bool = True) -> None:
         """
         Initialize the curve modifier.
 

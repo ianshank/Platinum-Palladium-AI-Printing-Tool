@@ -8,6 +8,79 @@ Migration from Gradio Python UI to React 18 + TypeScript + Zustand for a digital
 - **Components Migrated**: 12/15
 - **Test Coverage**: ~75% (Target: 80%)
 - **Started**: 2026-01-24
+- **Backend Refactoring**: Complete - Domain-driven modular architecture
+
+---
+
+## Refactored Backend Architecture (NEW)
+
+The backend has been restructured to support a growing feature set with clear domain boundaries, unified configuration, structured logging, and consistent error handling.
+
+### Core Principles
+1. **Domain-Driven Organization**: Each feature lives in its own module (curves, detection, ml, agents, ai, etc.)
+2. **Configuration-First**: Environment-based settings with pydantic validation
+3. **Structured Logging**: JSON-formatted logs with context and tracing
+4. **Unified Error Handling**: Custom exception hierarchy for predictable error codes
+5. **Module Independence**: Minimal coupling between domains, optional imports for heavy features
+
+### Configuration System (NEW)
+- **Location**: `src/ptpd_calibration/config.py` & `config/` domain module
+- **Pattern**: Pydantic BaseSettings with validation and defaults
+- **Usage**: Environment variables with `PTPD_` prefix override defaults
+- **Details**: See [docs/CONFIG_SYSTEM.md](docs/CONFIG_SYSTEM.md)
+
+Example:
+```python
+from ptpd_calibration.config import get_settings
+settings = get_settings()
+# Access nested: settings.api.cors_origins, settings.detection.canny_threshold
+```
+
+### Logging Architecture (NEW)
+- **Location**: `src/ptpd_calibration/core/logging.py`
+- **Features**: JSON formatting, context variables, color console output
+- **Usage**: `from ptpd_calibration.core.logging import get_logger, setup_logging`
+- **Details**: See [docs/LOGGING.md](docs/LOGGING.md)
+
+Example:
+```python
+logger = get_logger(__name__)
+logger.info("Processing started", extra={"record_id": 123})
+# Output (JSON): {"timestamp": "...", "level": "INFO", "context": {...}, ...}
+```
+
+### Error Handling (NEW)
+- **Location**: Domain-specific exception modules (e.g., `detection/exceptions.py`)
+- **Pattern**: Custom exception hierarchy with structured messages
+- **Usage**: Catch domain-specific exceptions, FastAPI converts to HTTP error codes
+- **Details**: See [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md)
+
+Example:
+```python
+from ptpd_calibration.detection.exceptions import TabletDetectionError
+try:
+    tablet = detector.detect(image)
+except TabletDetectionError as e:
+    logger.error("Tablet detection failed", extra={"error": str(e)})
+```
+
+### Domain Modules
+| Module | Purpose | Status |
+|--------|---------|--------|
+| `curves/` | Curve generation, export, modification | Stable |
+| `detection/` | Step tablet detection, density extraction | Stable |
+| `ml/` | Machine learning models, predictions | Stable |
+| `llm/` | LLM integration (Claude, OpenAI) | Stable |
+| `agents/` | Multi-agent orchestration with tool registry | NEW |
+| `ai/` | Platinum/Palladium AI analysis | NEW |
+| `advanced/` | Advanced features (blending, style transfer) | NEW |
+| `workflow/` | Recipe management and workflow automation | NEW |
+| `monitoring/` | Performance monitoring and profiling | NEW |
+| `calculations/` | Enhanced technical calculations | NEW |
+| `data/` | Data management, export/import, sync | NEW |
+| `integrations/` | Hardware (printer, spectrophotometer, weather) | NEW |
+| `qa/` | Quality assurance and validation | NEW |
+| `education/` | Tutorials, glossary, tips | NEW |
 
 ---
 
@@ -71,23 +144,26 @@ python -m ptpd_calibration.cli                         # CLI tool
 
 ---
 
-## Directory Structure
+## Directory Structure - Current (Refactored)
 
 ```
 /home/user/Platinum-Palladium-AI-Printing-Tool/
-├── CLAUDE.md                      # This file
+├── CLAUDE.md                      # This file - project guide
+├── docs/                          # Developer documentation (NEW)
+│   ├── ARCHITECTURE.md            # System architecture overview
+│   ├── CONFIG_SYSTEM.md           # Configuration management guide
+│   ├── ERROR_HANDLING.md          # Error handling patterns
+│   ├── LOGGING.md                 # Logging architecture
+│   ├── TESTING.md                 # Testing strategies
+│   ├── API_TYPES.md               # OpenAPI schema & types
+│   ├── MIGRATION_GUIDE.md         # Migration from old structure
+│   ├── ai-usage-guide.md          # AI/LLM integration
+│   ├── architecture.md            # Detailed C4 diagrams
+│   └── migration/                 # Migration documentation
 ├── .claude/
 │   ├── settings.json              # Hooks, permissions, model config
 │   ├── agents/                    # Sub-agent definitions
-│   │   ├── migration-coordinator.md
-│   │   ├── ui-migration-agent.md
-│   │   ├── testing-agent.md
-│   │   ├── gap-remediation-agent.md
-│   │   └── documentation-agent.md
 │   └── commands/                  # Custom slash commands
-│       ├── migrate-component.md
-│       ├── verify-equivalence.md
-│       └── generate-tests.md
 ├── frontend/                      # React application (NEW)
 │   ├── src/
 │   │   ├── components/           # Migrated React components
@@ -100,25 +176,56 @@ python -m ptpd_calibration.cli                         # CLI tool
 │   ├── vite.config.ts
 │   ├── tailwind.config.ts
 │   └── package.json
-├── src/                           # Python backend (EXISTING)
+├── src/                           # Python backend (REFACTORED)
 │   └── ptpd_calibration/
-│       ├── api/                  # FastAPI endpoints
-│       ├── core/                 # Core models and types
-│       ├── ui/                   # Gradio UI (legacy reference)
+│       ├── api/                  # FastAPI server & routers
+│       │   ├── server.py         # Main FastAPI app
+│       │   ├── models.py         # Request/response models
+│       │   ├── deep_learning.py  # DL training endpoints
+│       │   └── mcts_router.py    # MCTS optimization endpoints
+│       ├── config/               # Configuration domain module (NEW)
+│       │   └── calculations.py   # Configuration calculations
+│       ├── core/                 # Core infrastructure
+│       │   ├── logging.py        # Structured logging (NEW)
+│       │   ├── models.py         # Data models
+│       │   ├── types.py          # Type definitions
+│       │   └── ...
+│       ├── ui/                   # Gradio UI (legacy, modularized)
+│       │   ├── config/           # UI configuration
+│       │   ├── handlers/         # Event handlers
+│       │   ├── validators/       # Input validation
+│       │   ├── tabs/             # Tab components
+│       │   └── gradio_app.py     # Main Gradio app
 │       ├── curves/               # Curve generation/modification
 │       ├── detection/            # Step tablet detection
 │       ├── analysis/             # Wedge analysis
 │       ├── chemistry/            # Chemistry calculations
 │       ├── imaging/              # Image processing
 │       ├── llm/                  # LLM integration
-│       └── ml/                   # Machine learning
+│       ├── ml/                   # Machine learning
+│       ├── agents/               # Multi-agent system (NEW)
+│       ├── ai/                   # AI analysis (NEW)
+│       ├── advanced/             # Advanced features (NEW)
+│       ├── workflow/             # Recipe & workflow (NEW)
+│       ├── monitoring/           # Performance monitoring (NEW)
+│       ├── calculations/         # Enhanced calculations (NEW)
+│       ├── data/                 # Data management (NEW)
+│       ├── integrations/         # Hardware integrations (NEW)
+│       ├── qa/                   # Quality assurance (NEW)
+│       ├── education/            # Educational content (NEW)
+│       └── config.py             # Settings management (REFACTORED)
 ├── tests/                        # Python tests (EXISTING)
-├── migration/                    # Migration tracking (NEW)
-│   ├── progress.json             # Migration tracking
-│   ├── component-map.json        # Gradio → React mapping
-│   └── equivalence-tests/        # Before/after comparisons
-└── legacy/                       # Symlink to src/ptpd_calibration/ui (READ-ONLY)
+├── kb/                           # Knowledge base (handoffs, ledger)
+└── docs/                         # Main documentation
 ```
+
+### Key Refactoring Changes
+- **Domain-driven modules**: Config, AI, Advanced, Workflow, Monitoring moved to separate modules
+- **Unified configuration**: `config/` domain with pydantic-settings
+- **Structured logging**: `core/logging.py` with JSON formatting
+- **Error handling**: Unified exception hierarchy (see docs/ERROR_HANDLING.md)
+- **UI modularization**: Gradio UI split into config, handlers, validators, tabs
+- **API organization**: Separate routers for deep learning and MCTS
 
 ---
 
