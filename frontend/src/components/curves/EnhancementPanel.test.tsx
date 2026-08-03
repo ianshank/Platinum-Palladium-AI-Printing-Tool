@@ -177,8 +177,8 @@ describe('EnhancementPanel', () => {
   it('includes all enhancement goal options', () => {
     render(<EnhancementPanel {...defaultProps} />);
 
-    const select = screen.getByLabelText(/enhancement goal/i);
-    const options = Array.from(select.options).map(opt => opt.value);
+    const select = screen.getByLabelText(/enhancement goal/i) as HTMLSelectElement;
+    const options = Array.from(select.options).map((opt: HTMLOptionElement) => opt.value);
 
     expect(options).toContain('linearization');
     expect(options).toContain('maximize_range');

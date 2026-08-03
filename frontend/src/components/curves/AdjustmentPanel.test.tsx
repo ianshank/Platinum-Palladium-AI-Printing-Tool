@@ -121,8 +121,8 @@ describe('AdjustmentPanel', () => {
   it('includes adjustment type options', () => {
     render(<AdjustmentPanel {...defaultProps} />);
 
-    const select = screen.getByLabelText(/adjustment type/i);
-    const options = Array.from(select.options).map(opt => opt.value);
+    const select = screen.getByLabelText(/adjustment type/i) as HTMLSelectElement;
+    const options = Array.from(select.options).map((opt: HTMLOptionElement) => opt.value);
 
     expect(options).toContain('contrast');
     expect(options).toContain('brightness');

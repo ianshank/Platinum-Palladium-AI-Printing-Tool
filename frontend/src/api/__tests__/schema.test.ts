@@ -171,6 +171,11 @@ describe("Generated TypeScript Schema", () => {
         paper_type: "Arches",
         exposure_time: 10.5,
         metal_ratio: 0.5,
+        contrast_agent: "dichromate",
+        contrast_amount: 1.0,
+        developer: "potassium_oxalate",
+        chemistry_type: "platinum_palladium",
+        densities: [0.1, 0.5, 1.0, 1.5, 2.0],
       };
       expect(request.exposure_time).toBeGreaterThanOrEqual(0);
     });
@@ -241,7 +246,7 @@ describe("Generated TypeScript Schema", () => {
         components["schemas"]["AnalyzeResponse"];
 
       // This should compile if types are correct
-      const _: AnalyzeResponse = {
+      const response: AnalyzeResponse = {
         dmin: 0.1,
         dmax: 2.0,
         range: 1.9,
@@ -251,7 +256,7 @@ describe("Generated TypeScript Schema", () => {
         suggestions: [],
       };
 
-      expect(true).toBe(true); // Compilation is the real test
+      expect(response.dmin).toBeDefined(); // Compilation is the real test
     });
 
     it("should allow optional fields", () => {
@@ -261,6 +266,7 @@ describe("Generated TypeScript Schema", () => {
       const request: CurveRequest = {
         densities: [0.1, 0.5, 1.0],
         name: "My Curve",
+        curve_type: "linear",
       };
 
       expect(request.densities).toBeDefined();
@@ -289,13 +295,21 @@ describe("Generated TypeScript Schema", () => {
 
   describe("Enum Types", () => {
     it("should have ChemistryType enum", () => {
-      // This checks that enums are properly typed in the schema
-      type ChemistryType =
-        components["schemas"]["CalibrationRequest"]["properties"]["chemistry_type"];
+      type CalibrationRequest =
+        components["schemas"]["CalibrationRequest"];
 
-      // The type should be a string or union
-      const _: ChemistryType = "platinum_palladium";
-      expect(true).toBe(true); // Compilation is the real test
+      const request: CalibrationRequest = {
+        paper_type: "Arches",
+        exposure_time: 10.5,
+        metal_ratio: 0.5,
+        contrast_agent: "dichromate",
+        contrast_amount: 1.0,
+        developer: "potassium_oxalate",
+        chemistry_type: "platinum_palladium",
+        densities: [0.1, 0.5, 1.0],
+      };
+
+      expect(request.chemistry_type).toBe("platinum_palladium");
     });
   });
 
