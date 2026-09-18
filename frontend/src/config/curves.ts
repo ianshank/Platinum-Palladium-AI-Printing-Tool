@@ -42,3 +42,12 @@ export const CURVE_SAVE_NOOP_ADJUSTMENT = {
  * constant names the one the wizard intends.
  */
 export const DEFAULT_CURVE_TYPE = 'linear';
+
+/** Default output format for a digital negative: the widest the printer can use. */
+export const DEFAULT_NEGATIVE_FORMAT = 'tiff_16bit';
+
+/** A negative is a single-channel image; colour is an explicit opt-in. */
+export const DEFAULT_NEGATIVE_COLOR_MODE = 'grayscale';
+
+/** Download filename stem when the caller does not supply one. */
+export const DEFAULT_NEGATIVE_NAME = 'negative';

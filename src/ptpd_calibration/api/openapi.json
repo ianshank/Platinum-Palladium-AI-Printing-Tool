@@ -47,6 +47,70 @@
         "title": "Body_export_curve_api_curves_export_post",
         "type": "object"
       },
+      "Body_export_negative_api_export_negative_post": {
+        "properties": {
+          "color_mode": {
+            "default": "grayscale",
+            "maxLength": 4096,
+            "title": "Color Mode",
+            "type": "string"
+          },
+          "curve_id": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curve Id"
+          },
+          "densities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "maxItems": 4096,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Densities"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "format": {
+            "default": "tiff_16bit",
+            "maxLength": 4096,
+            "title": "Format",
+            "type": "string"
+          },
+          "invert": {
+            "default": true,
+            "title": "Invert",
+            "type": "boolean"
+          },
+          "name": {
+            "default": "negative",
+            "maxLength": 4096,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_export_negative_api_export_negative_post",
+        "type": "object"
+      },
       "Body_parse_quad_content_api_curves_parse_quad_post": {
         "properties": {
           "channel": {
@@ -2215,6 +2279,43 @@
         "tags": [
           "deep-learning"
         ]
+      }
+    },
+    "/api/export/negative": {
+      "post": {
+        "description": "Turn an uploaded image into a digital negative and return the file.\n\nThe curve comes from ``curve_id`` (a previously stored curve) or from\n``densities`` (generated on the spot); with neither, the image is only\ninverted. The upload is streamed to a server-generated path under the\nsame size cap as every other upload and removed as soon as it is\ndecoded; the rendered negative is removed once the response is sent.",
+        "operationId": "export_negative_api_export_negative_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_export_negative_api_export_negative_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Negative"
       }
     },
     "/api/health": {

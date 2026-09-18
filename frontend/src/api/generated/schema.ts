@@ -545,6 +545,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/export/negative": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Export Negative
+         * @description Turn an uploaded image into a digital negative and return the file.
+         *
+         *     The curve comes from ``curve_id`` (a previously stored curve) or from
+         *     ``densities`` (generated on the spot); with neither, the image is only
+         *     inverted. The upload is streamed to a server-generated path under the
+         *     same size cap as every other upload and removed as soon as it is
+         *     decoded; the rendered negative is removed once the response is sent.
+         */
+        post: operations["export_negative_api_export_negative_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -829,6 +855,35 @@ export interface components {
             /**
              * Name
              * @default curve
+             */
+            name: string;
+        };
+        /** Body_export_negative_api_export_negative_post */
+        Body_export_negative_api_export_negative_post: {
+            /**
+             * Color Mode
+             * @default grayscale
+             */
+            color_mode: string;
+            /** Curve Id */
+            curve_id?: string | null;
+            /** Densities */
+            densities?: number[] | null;
+            /** File */
+            file: string;
+            /**
+             * Format
+             * @default tiff_16bit
+             */
+            format: string;
+            /**
+             * Invert
+             * @default true
+             */
+            invert: boolean;
+            /**
+             * Name
+             * @default negative
              */
             name: string;
         };
@@ -2276,6 +2331,39 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_negative_api_export_negative_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_export_negative_api_export_negative_post"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

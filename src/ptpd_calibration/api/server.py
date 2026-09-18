@@ -80,7 +80,17 @@ def create_app(settings: Settings | None = None):
         save_curve,
     )
     from ptpd_calibration.detection import StepTabletReader
-    from ptpd_calibration.imaging.safe_image import ImageTooLargeError
+    from ptpd_calibration.imaging import (
+        ColorMode,
+        ExportSettings,
+        ImageFormat,
+        ImageProcessor,
+    )
+    from ptpd_calibration.imaging.safe_image import (
+        ImageDecodeError,
+        ImageDecodeSettings,
+        ImageTooLargeError,
+    )
     from ptpd_calibration.ml import CalibrationDatabase
 
     # Initialize app
@@ -493,6 +503,126 @@ def create_app(settings: Settings | None = None):
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
         return _export_curve_response(curve, curve.name, format)
+
+    # Download extension and media type per negative export format. ORIGINAL is
+    # absent on purpose: a negative is a new artefact, so the caller states the
+    # format it wants rather than inheriting the scan's.
+    _negative_formats: dict[str, tuple[str, str]] = {
+        ImageFormat.TIFF.value: (".tiff", "image/tiff"),
+        ImageFormat.TIFF_16BIT.value: (".tiff", "image/tiff"),
+        ImageFormat.PNG.value: (".png", "image/png"),
+        ImageFormat.PNG_16BIT.value: (".png", "image/png"),
+        ImageFormat.JPEG.value: (".jpg", "image/jpeg"),
+        ImageFormat.JPEG_HIGH.value: (".jpg", "image/jpeg"),
+    }
+
+    # A negative is printed at full size, so this path does not inherit the
+    # shared decode limits, which shrink an image to bound analysis work.
+    _negative_decode_settings = ImageDecodeSettings(
+        max_pixels=settings.api.negative_export_max_pixels,
+        downsample_max_side=settings.api.negative_export_max_side,
+    )
+
+    def _negative_curve(curve_id: str | None, densities: list[float] | None) -> CurveData | None:
+        """Resolve the curve to apply, by stored id or from measured densities.
+
+        Neither is required: inverting an already linearised file is a real
+        request, and refusing it would make the endpoint less useful than the
+        Gradio tab it replaces.
+        """
+        if curve_id:
+            stored = _get_curve(curve_id)
+            if stored is None:
+                raise HTTPException(status_code=404, detail="Curve not found")
+            return stored
+        if densities:
+            try:
+                return CurveGenerator().generate(densities, name="negative")
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from None
+        return None
+
+    @app.post("/api/export/negative")
+    async def export_negative(
+        file: UploadFile = File(...),
+        curve_id: str | None = Form(None, max_length=max_str),
+        densities: list[float] | None = Form(None, max_length=max_list),
+        name: str = Form("negative", max_length=max_str),
+        format: str = Form(ImageFormat.TIFF_16BIT.value, max_length=max_str),
+        invert: bool = Form(True),
+        color_mode: str = Form(ColorMode.GRAYSCALE.value, max_length=max_str),
+    ):
+        """Turn an uploaded image into a digital negative and return the file.
+
+        The curve comes from ``curve_id`` (a previously stored curve) or from
+        ``densities`` (generated on the spot); with neither, the image is only
+        inverted. The upload is streamed to a server-generated path under the
+        same size cap as every other upload and removed as soon as it is
+        decoded; the rendered negative is removed once the response is sent.
+        """
+        target = format.lower()
+        if target not in _negative_formats:
+            _log.debug("Rejected negative export format %r", format)
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unsupported negative format '{format}'. "
+                f"Supported: {', '.join(sorted(_negative_formats))}",
+            )
+        extension, media_type = _negative_formats[target]
+
+        try:
+            mode = ColorMode(color_mode.lower())
+        except ValueError:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unsupported color mode '{color_mode}'. "
+                f"Supported: {', '.join(sorted(m.value for m in ColorMode))}",
+            ) from None
+
+        curve = _negative_curve(curve_id, densities)
+        download_stem = safe_export_name(
+            name, default="negative", max_length=settings.api.max_export_name_length
+        )
+
+        suffix = safe_suffix(file.filename, settings.api.allowed_scan_extensions)
+        source_path = server_upload_path(upload_dir, suffix)
+        await stream_upload_to_path(file, source_path, max_upload_bytes, upload_chunk_bytes)
+
+        processor = ImageProcessor(decode_settings=_negative_decode_settings)
+        try:
+            negative = processor.create_digital_negative(
+                source_path, curve=curve, invert=invert, color_mode=mode
+            )
+        except ImageTooLargeError as exc:
+            # Decode guard tripped on the header, before any pixel was read.
+            _log.warning("Negative source rejected before decode: %s", exc)
+            raise HTTPException(status_code=413, detail=str(exc)) from None
+        except ImageDecodeError as exc:
+            _log.debug("Negative source refused: %s", exc)
+            raise HTTPException(status_code=415, detail=str(exc)) from None
+        except Exception as exc:
+            _log.warning("Negative rendering failed", exc_info=True)
+            raise HTTPException(status_code=400, detail=str(exc)) from None
+        finally:
+            # The source is fully decoded by now; only the server path is removed.
+            unlink_quietly(source_path)
+
+        output_path = server_upload_path(upload_dir, extension)
+        processor.export(negative, output_path, ExportSettings(format=ImageFormat(target)))
+        _log.debug(
+            "Exported negative: curve=%s format=%s mode=%s inverted=%s -> %s",
+            curve.id if curve else None,
+            target,
+            negative.image.mode,
+            invert,
+            output_path.name,
+        )
+        return FileResponse(
+            output_path,
+            media_type=media_type,
+            filename=f"{download_stem}{extension}",
+            background=BackgroundTask(unlink_quietly, output_path),
+        )
 
     @app.post("/api/curves/upload-quad")
     async def upload_quad_file(

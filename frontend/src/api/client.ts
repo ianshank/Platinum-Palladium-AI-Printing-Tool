@@ -10,6 +10,11 @@ import axios, {
   type AxiosResponse,
 } from 'axios';
 import { config, isDev } from '@/config';
+import {
+  DEFAULT_NEGATIVE_COLOR_MODE,
+  DEFAULT_NEGATIVE_FORMAT,
+  DEFAULT_NEGATIVE_NAME,
+} from '@/config/curves';
 import type { CurveRequestBody } from '@/api/generated';
 import { logger } from '@/lib/logger';
 import type {
@@ -31,6 +36,33 @@ import type {
   ScanUploadResponse,
   StatisticsResponse,
 } from '@/types/models';
+
+/** Formats `POST /api/export/negative` offers, mirroring the server's map. */
+export type NegativeFormat =
+  | 'tiff'
+  | 'tiff_16bit'
+  | 'png'
+  | 'png_16bit'
+  | 'jpeg'
+  | 'jpeg_high';
+
+/** Colour handling for the negative, mirroring the server's `ColorMode`. */
+export type NegativeColorMode = 'grayscale' | 'rgb' | 'preserve';
+
+/** Arguments for {@link api.negative.export}. */
+export interface NegativeExportOptions {
+  file: File;
+  /** A stored curve to linearise with. Takes precedence over `densities`. */
+  curveId?: string;
+  /** Measured densities to generate a curve from, when no curve is stored. */
+  densities?: number[];
+  format?: NegativeFormat;
+  colorMode?: NegativeColorMode;
+  invert?: boolean;
+  /** Download filename stem; the server sanitises it. */
+  name?: string;
+  onProgress?: (progress: number) => void;
+}
 
 /**
  * API Error response structure
@@ -217,6 +249,48 @@ export const api = {
         method: 'POST',
         url: '/api/curves/parse-quad',
         data: form,
+      });
+    },
+  },
+
+  // Digital negative export
+  negative: {
+    /**
+     * Render an uploaded image as a digital negative and download the file.
+     *
+     * The endpoint declares Form fields and streams a file back, so the body
+     * is multipart and the response is a Blob. Supplying neither `curveId`
+     * nor `densities` inverts the image without linearising it, which is what
+     * you want for a file that is already linearised.
+     */
+    export: (options: NegativeExportOptions) => {
+      const form = new FormData();
+      form.append('file', options.file);
+      form.append('format', options.format ?? DEFAULT_NEGATIVE_FORMAT);
+      form.append('invert', String(options.invert ?? true));
+      form.append(
+        'color_mode',
+        options.colorMode ?? DEFAULT_NEGATIVE_COLOR_MODE
+      );
+      form.append('name', options.name ?? DEFAULT_NEGATIVE_NAME);
+      if (options.curveId) {
+        form.append('curve_id', options.curveId);
+      }
+      options.densities?.forEach((density) =>
+        form.append('densities', String(density))
+      );
+
+      return apiRequest<Blob>({
+        method: 'POST',
+        url: '/api/export/negative',
+        data: form,
+        responseType: 'blob',
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (options.onProgress && e.total) {
+            options.onProgress(Math.round((e.loaded * 100) / e.total));
+          }
+        },
       });
     },
   },

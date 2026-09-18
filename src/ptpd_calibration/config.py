@@ -423,6 +423,22 @@ class APISettings(BaseSettings):
         default=64, ge=8, le=255, description="Maximum length of a sanitised download filename"
     )
 
+    # Digital-negative export. The shared decode defaults shrink an image so
+    # the analysis work downstream stays bounded; a negative is printed at
+    # full size, so shrinking it would throw away resolution the print needs.
+    # An 8x10 inch negative at 720 dpi is about 41 megapixels, above the
+    # shared decode cap, so this path carries its own.
+    negative_export_max_side: int | None = Field(
+        default=None,
+        ge=1,
+        description="Longest side of an uploaded negative source; None keeps the full size",
+    )
+    negative_export_max_pixels: int = Field(
+        default=100_000_000,
+        ge=1,
+        description="Pixel-count cap for a negative source, checked from the header before decode",
+    )
+
     # Request bounds (SEC-03)
     max_request_body_mb: int = Field(
         default=50, ge=1, le=1024, description="Global cap on any HTTP request body"

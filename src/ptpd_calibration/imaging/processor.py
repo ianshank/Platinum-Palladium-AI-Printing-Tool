@@ -29,6 +29,7 @@ from ptpd_calibration.config import ImagingSettings, get_settings
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.imaging.safe_image import (
     HIGH_DEPTH_GRAY_MODES,
+    ImageDecodeSettings,
     open_image_safely,
     resize_to_fit,
 )
@@ -175,15 +176,25 @@ class ImageProcessor:
     - Exporting in various formats while preserving quality
     """
 
-    def __init__(self, settings: ImagingSettings | None = None) -> None:
+    def __init__(
+        self,
+        settings: ImagingSettings | None = None,
+        decode_settings: ImageDecodeSettings | None = None,
+    ) -> None:
         """Initialize the image processor.
 
         Args:
             settings: Imaging settings; ``None`` reads them from the
                 environment. Injecting them keeps the processor testable
                 without mutating global configuration.
+            decode_settings: Limits applied when decoding an untrusted file;
+                ``None`` reads ``PTPD_IMAGE_*`` from the environment. An
+                export path passes its own, because the shared default
+                shrinks images to bound the analysis work downstream and a
+                negative is printed at full size.
         """
         self._settings = settings or get_settings().imaging
+        self._decode_settings = decode_settings
         # An LRU rather than a plain dict: a 16-bit table is 128 KB and the
         # cache had no bound, so a long-lived processor handed a new curve per
         # request grew for the lifetime of the process.
@@ -210,7 +221,7 @@ class ImageProcessor:
             # the format, pixel-count, frame-count and mode guards from
             # ImageDecodeSettings and fully decodes, so no file handle is left
             # open for the garbage collector to close.
-            img = open_image_safely(source)
+            img = open_image_safely(source, self._decode_settings)
             original_format = img.format
         elif isinstance(source, Image.Image):
             img = source.copy()
