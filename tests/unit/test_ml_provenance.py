@@ -210,3 +210,44 @@ class TestCurvePredictorProvenance:
         with pytest.raises(ValueError, match="Need at least"):
             predictor.train(db)
         assert predictor.train(db, include_simulated=True)["num_samples"] == 10
+
+
+class TestSyntheticProducersLabelTheirOutput:
+    """Every producer of simulated records must say so at construction.
+
+    The suite exhaustively covered the consumer-side filter and never tested a
+    producer, so a generator that omitted ``provenance`` inherited the
+    ``"measured"`` default and passed straight through the filter. The
+    /api/deep/generate-synthetic route writes into the shared calibration
+    database, and training falls back to synthetic data when the database is
+    small, so an untouched install could train on simulator output believing
+    it was measured.
+    """
+
+    def test_synthetic_data_generator_marks_records_simulated(self) -> None:
+        from ptpd_calibration.ml.deep.synthetic_data import SyntheticDataGenerator
+
+        records = SyntheticDataGenerator().generate_database(num_records=8)
+
+        assert records, "generator produced nothing to check"
+        assert all(record.provenance == "simulated" for record in records)
+        assert all(record.is_simulated for record in records)
+
+    def test_synthetic_records_do_not_survive_the_measured_only_filter(self) -> None:
+        from ptpd_calibration.ml.database import filter_by_provenance
+        from ptpd_calibration.ml.deep.synthetic_data import SyntheticDataGenerator
+
+        records = SyntheticDataGenerator().generate_database(num_records=8)
+
+        kept = filter_by_provenance(records, include_simulated=False, context="test")
+
+        assert kept == []
+
+    def test_mcts_export_still_marks_records_simulated(self) -> None:
+        """Regression guard for the producer that was already correct."""
+        import inspect
+
+        from ptpd_calibration.mcts import export
+
+        source = inspect.getsource(export)
+        assert 'provenance="simulated"' in source

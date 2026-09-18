@@ -4,6 +4,7 @@ Density and color extraction from step tablet patches.
 Implements robust measurement with outlier rejection for Pt/Pd prints.
 """
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,6 +15,8 @@ from ptpd_calibration.config import ExtractionSettings, get_settings
 from ptpd_calibration.core.models import ExtractionResult, PatchData
 from ptpd_calibration.detection.detector import DetectionResult
 from ptpd_calibration.imaging.safe_image import load_image_array
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -302,39 +305,63 @@ class DensityExtractor:
         # Convert MAD to standard deviation estimate
         return mad * 1.4826
 
+    @staticmethod
+    def _srgb_to_linear(values: np.ndarray) -> np.ndarray:
+        """Undo the sRGB transfer function, mapping code values to reflectance.
+
+        Scanner files store gamma-encoded values. Density is
+        ``-log10(reflectance)``, and reflectance is a *linear* quantity, so the
+        encoding has to be undone first. Skipping it compresses the scale by
+        roughly a factor of two: a print whose true maximum density is 1.95
+        reads as 0.97, and the quality gates, which are set from published
+        figures for this process, then become unreachable.
+        """
+        normalised = np.asarray(values, dtype=float) / 255.0
+        return np.where(
+            normalised <= 0.04045,
+            normalised / 12.92,
+            ((normalised + 0.055) / 1.055) ** 2.4,
+        )
+
+    def _to_reflectance(self, rgb: np.ndarray) -> np.ndarray:
+        """Return linear reflectance for ``rgb``, honouring the settings flag."""
+        if self.settings.linearize_srgb:
+            return self._srgb_to_linear(rgb)
+        return np.asarray(rgb, dtype=float) / 255.0
+
     def _rgb_to_density(
         self,
         rgb: np.ndarray,
         reference: tuple[float, float, float] | None = None,
     ) -> float:
-        """
-        Convert RGB to visual density using Status A weighting.
+        """Convert RGB to visual density.
 
-        Density = -log10(reflectance)
-        where reflectance = sample / reference
+        ``density = -log10(sample / reference)``, with both terms converted to
+        linear reflectance first and combined with the configured channel
+        weights. The weights are Rec. 709 luminance, which is a reasonable
+        visual proxy; the field is named for what it is rather than for Status
+        A, which it does not implement.
         """
-        # Status A weights (appropriate for warm-toned prints)
-        weights = np.array(self.settings.status_a_weights)
+        weights = np.array(self.settings.visual_density_weights)
 
-        # Normalize to 0-1
-        rgb_norm = np.array(rgb) / 255.0
+        sample = self._to_reflectance(rgb)
 
         if reference is not None:
-            ref_norm = np.array(reference) / 255.0
-            # Ensure minimum reflectance
-            ref_norm = np.maximum(ref_norm, 0.01)
+            ref = np.maximum(self._to_reflectance(np.asarray(reference)), 0.01)
         else:
-            ref_norm = np.array([self.settings.reference_white_reflectance] * 3)
+            ref = np.array([self.settings.reference_white_reflectance] * 3)
 
-        # Calculate reflectance
-        reflectance = np.clip(rgb_norm / ref_norm, 0.001, 1.0)
-
-        # Weighted reflectance (Status A)
-        weighted_reflectance = np.sum(reflectance * weights)
-
-        # Convert to density
+        reflectance = np.clip(sample / ref, 0.001, 1.0)
+        weighted_reflectance = float(np.sum(reflectance * weights))
         density = -np.log10(weighted_reflectance)
 
+        logger.debug(
+            "rgb=%s -> reflectance=%.5f density=%.3f (linearised=%s)",
+            np.asarray(rgb).tolist(),
+            weighted_reflectance,
+            density,
+            self.settings.linearize_srgb,
+        )
         return float(max(0.0, density))
 
     def _rgb_to_lab(self, rgb: np.ndarray) -> np.ndarray:

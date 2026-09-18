@@ -138,3 +138,62 @@ class TestDensityValidation:
             CurveGenerator().generate(list(densities))
 
         assert "descending" in caplog.text
+
+
+class TestDensityScale:
+    """Reported densities must match what a densitometer reads.
+
+    The extractor used gamma-encoded scanner values directly as reflectance.
+    Density is ``-log10(reflectance)`` and reflectance is linear, so skipping
+    the sRGB transfer function compressed the scale by about half: an
+    excellent print reading 1.95 was reported as 0.97, and the quality gates,
+    set from published figures for this process, became unreachable. The tool
+    then told the printer to increase exposure on a perfect print.
+    """
+
+    @staticmethod
+    def _encode(linear: float) -> float:
+        """Encode a linear reflectance the way a scanner file stores it."""
+        if linear <= 0.0031308:
+            return linear * 12.92 * 255.0
+        return (1.055 * linear ** (1 / 2.4) - 0.055) * 255.0
+
+    def _code_for_density(self, density: float) -> np.ndarray:
+        return np.repeat(np.clip(self._encode(10.0**-density), 0.0, 255.0), 3)
+
+    @pytest.mark.parametrize("paper,black", [(0.08, 1.95), (0.10, 1.45), (0.06, 1.20)])
+    def test_reported_density_matches_the_true_density(self, paper: float, black: float) -> None:
+        from ptpd_calibration.detection.extractor import DensityExtractor
+
+        reference = tuple(float(v) for v in self._code_for_density(paper))
+        reported = DensityExtractor()._rgb_to_density(self._code_for_density(black), reference)
+
+        assert reported == pytest.approx(black - paper, abs=0.01)
+
+    def test_an_excellent_print_clears_the_quality_gate(self) -> None:
+        """The gate is 1.8, which is right for this process and was unreachable."""
+        from ptpd_calibration.detection.extractor import DensityExtractor
+
+        reference = tuple(float(v) for v in self._code_for_density(0.08))
+        reported = DensityExtractor()._rgb_to_density(self._code_for_density(1.95), reference)
+
+        assert reported >= 1.8
+
+    def test_linearisation_can_be_disabled_for_already_linear_input(self) -> None:
+        from ptpd_calibration.config import ExtractionSettings
+        from ptpd_calibration.detection.extractor import DensityExtractor
+
+        extractor = DensityExtractor(settings=ExtractionSettings(linearize_srgb=False))
+        reference = tuple(float(v) for v in self._code_for_density(0.08))
+        reported = extractor._rgb_to_density(self._code_for_density(1.95), reference)
+
+        assert reported < 1.2  # the old, compressed scale
+
+    def test_the_weights_setting_keeps_its_old_environment_name(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Renaming the field must not silently ignore existing configuration."""
+        from ptpd_calibration.config import ExtractionSettings
+
+        monkeypatch.setenv("PTPD_EXTRACTION_STATUS_A_WEIGHTS", "[0.3, 0.5, 0.2]")
+        assert ExtractionSettings().visual_density_weights == (0.3, 0.5, 0.2)

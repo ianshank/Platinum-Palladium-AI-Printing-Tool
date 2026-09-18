@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from pydantic import Field, ValidationInfo, field_validator
+from pydantic import AliasChoices, Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
@@ -94,7 +94,26 @@ class ExtractionSettings(BaseSettings):
 
     # Density calculation
     reference_white_reflectance: float = Field(default=0.9, ge=0.5, le=1.0)
-    status_a_weights: tuple[float, float, float] = Field(default=(0.2126, 0.7152, 0.0722))
+    # Rec. 709 luminance coefficients. The field was named for Status A, which
+    # is a spectral-responsivity standard these numbers do not implement; the
+    # old name is kept as a deprecated alias so existing configuration loads.
+    visual_density_weights: tuple[float, float, float] = Field(
+        default=(0.2126, 0.7152, 0.0722),
+        validation_alias=AliasChoices(
+            "PTPD_EXTRACTION_VISUAL_DENSITY_WEIGHTS",
+            "PTPD_EXTRACTION_STATUS_A_WEIGHTS",
+            "visual_density_weights",
+            "status_a_weights",
+        ),
+        description="Channel weights used to combine reflectance into a visual density",
+    )
+    linearize_srgb: bool = Field(
+        default=True,
+        description=(
+            "Convert gamma-encoded scanner values to linear reflectance before "
+            "taking the log. Disable only for input that is already linear."
+        ),
+    )
 
     # Paper base detection
     paper_margin_ratio: float = Field(default=0.05, ge=0.01, le=0.2)
