@@ -5,7 +5,9 @@ Applies calibration curves to images, creates inverted negatives,
 and exports in various formats while preserving resolution.
 """
 
+import hashlib
 import io
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -23,6 +25,8 @@ except ImportError:
 
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.imaging.safe_image import open_image_safely
+
+logger = logging.getLogger(__name__)
 
 
 class ImageFormat(str, Enum):
@@ -681,6 +685,22 @@ class ImageProcessor:
 
         return buffer.read(), ext
 
+    @staticmethod
+    def _lut_cache_key(curve: CurveData) -> str:
+        """Identify a curve by its contents, not by its label.
+
+        The key used to be the name and point count. Generated curves default
+        to the same name and always carry 256 points, so a second curve
+        silently reused the first one's table: the user exported a negative
+        with the previous calibration and had no way to tell. Hashing the
+        values makes two curves share an entry only when they are equal.
+        """
+        digest = hashlib.blake2b(digest_size=16)
+        for values in (curve.input_values, curve.output_values):
+            digest.update(np.ascontiguousarray(values, dtype=np.float64).tobytes())
+            digest.update(b"|")
+        return digest.hexdigest()
+
     def _create_lut(self, curve: CurveData) -> np.ndarray:
         """Create 256-entry lookup table from curve.
 
@@ -690,9 +710,9 @@ class ImageProcessor:
         Returns:
             NumPy array of 256 output values
         """
-        # Check cache
-        cache_key = f"{curve.name}_{len(curve.input_values)}"
+        cache_key = self._lut_cache_key(curve)
         if cache_key in self._lut_cache:
+            logger.debug("LUT cache hit for curve %s (%s)", curve.name, cache_key[:8])
             return self._lut_cache[cache_key]
 
         # Interpolate curve to 256 points
@@ -703,8 +723,10 @@ class ImageProcessor:
         x_lut = np.linspace(0, 1, 256)
         y_lut = np.interp(x_lut, input_vals, output_vals)
 
-        # Convert to 0-255 range
-        lut = (np.clip(y_lut, 0, 1) * 255).astype(np.uint8)
+        # Convert to 0-255 range. Round rather than truncate: casting to uint8
+        # discards the fraction, which biases every entry by up to half a code
+        # value and maps 0.5 to 127 instead of 128.
+        lut = np.rint(np.clip(y_lut, 0, 1) * 255).astype(np.uint8)
 
         # Cache and return
         self._lut_cache[cache_key] = lut

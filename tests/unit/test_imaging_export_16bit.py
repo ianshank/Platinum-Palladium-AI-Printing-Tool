@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.imaging.processor import ExportSettings, ImageFormat, ImageProcessor
 
 EXPECTED_16BIT_MODE = "I;16"
@@ -123,3 +124,52 @@ class TestLoadImageGuards:
         assert result.image.size == (16, 12)
         assert result.original_size == (16, 12)
         assert result.original_format == "PNG"
+
+
+class TestLutCache:
+    """The lookup-table cache must identify a curve by its values.
+
+    The key used to be name plus point count. Generated curves default to the
+    same name and always carry 256 points, so the second curve of a session
+    silently received the first one's table: a user who rescanned, regenerated
+    and exported again got the previous calibration with no warning.
+    """
+
+    @staticmethod
+    def _curve(outputs: list[float], name: str = "Calibration Curve") -> CurveData:
+        return CurveData(
+            name=name,
+            input_values=list(np.linspace(0.0, 1.0, len(outputs))),
+            output_values=outputs,
+        )
+
+    def test_same_name_and_length_do_not_share_a_table(self) -> None:
+        axis = list(np.linspace(0.0, 1.0, 256))
+        identity = self._curve(axis)
+        squared = self._curve([v**2 for v in axis])
+        processor = ImageProcessor()
+
+        first = processor._create_lut(identity).copy()
+        second = processor._create_lut(squared)
+
+        assert not np.array_equal(first, second)
+        assert first[128] == 128
+        assert second[128] == 64
+
+    def test_an_identical_curve_is_still_cached(self) -> None:
+        axis = list(np.linspace(0.0, 1.0, 256))
+        processor = ImageProcessor()
+
+        first = processor._create_lut(self._curve(axis)).copy()
+        again = processor._create_lut(self._curve(axis, name="a different label"))
+
+        assert np.array_equal(first, again)
+
+    def test_values_are_rounded_not_truncated(self) -> None:
+        """Truncation biases every entry by up to half a code value."""
+        axis = list(np.linspace(0.0, 1.0, 256))
+        lut = ImageProcessor()._create_lut(self._curve(axis))
+
+        assert lut[128] == 128  # 0.50196 * 255 = 128.0, truncation gives 127
+        assert lut[0] == 0
+        assert lut[-1] == 255
