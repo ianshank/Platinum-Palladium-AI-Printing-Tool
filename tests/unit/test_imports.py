@@ -374,3 +374,54 @@ class TestOptionalImports:
 
         # Just verify the flag exists (True or False)
         assert isinstance(HAS_TIFFFILE, bool)
+
+
+class TestPackageAdvertisesItsTypes:
+    """PEP 561: without the marker, every type in this package reads as Any.
+
+    mypy checks an allowlist of modules in-tree, but that work stops at the
+    package boundary: an importer outside the build -- anything consuming the
+    installed wheel, and any module not on the allowlist -- resolves
+    ``ptpd_calibration`` from site-packages, and mypy treats an unmarked
+    package as untyped. ``CurveData`` revealed as ``Any`` rather than as its
+    signature, so none of the annotations reached a caller.
+    """
+
+    def test_the_marker_sits_next_to_the_package(self) -> None:
+        from pathlib import Path
+
+        import ptpd_calibration
+
+        marker = Path(ptpd_calibration.__file__).parent / "py.typed"
+
+        assert marker.is_file(), "PEP 561 marker missing; the package reads as untyped"
+
+    def test_the_marker_is_packaged_not_just_present_on_disk(self) -> None:
+        """A file the build does not ship helps nobody.
+
+        ``[tool.hatch.build.targets.wheel]`` selects the package directory, so
+        the marker is included by default rather than by an explicit rule.
+        That is worth pinning: a later switch to an explicit include list, or
+        to a different backend, drops it silently.
+        """
+        from pathlib import Path
+
+        import tomllib
+
+        import ptpd_calibration
+
+        root = Path(ptpd_calibration.__file__).parent.parent.parent
+        pyproject = root / "pyproject.toml"
+        if not pyproject.is_file():  # installed without the source tree alongside
+            pytest.skip("source tree not available next to the installed package")
+
+        config = tomllib.loads(pyproject.read_text())
+        wheel = config["tool"]["hatch"]["build"]["targets"]["wheel"]
+
+        assert "src/ptpd_calibration" in wheel["packages"]
+        # If an explicit file selection is ever introduced, it must keep the marker.
+        for key in ("include", "only-include", "force-include"):
+            if key in wheel:
+                assert any("py.typed" in str(entry) for entry in wheel[key]), (
+                    f"wheel target sets {key!r} but does not keep py.typed"
+                )
