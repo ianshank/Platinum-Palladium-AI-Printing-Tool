@@ -413,7 +413,48 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # The dependency graph is a repository feature that this workflow cannot
+      # turn on. Where it is unavailable the action fails with "Dependency
+      # review is not supported on this repository" on every pull request: a
+      # permanent red that says nothing about the diff, and that trains
+      # reviewers to ignore a security check. Probe the API first so the job
+      # reports the reason as a warning and skips, and starts reviewing by
+      # itself the moment the graph becomes available. Only the two statuses
+      # that mean "feature unavailable" skip; every other response runs the
+      # action, so a real high-severity finding still fails the job.
+      #
+      # Vulnerability scanning of the locked dependencies is not lost either
+      # way: pip-audit in the `security` job is blocking and `security` is in
+      # the required set for `all-green`.
+      - name: Is the dependency graph available on this repository?
+        id: graph
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASEHEAD: ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}
+        run: |
+          set -uo pipefail
+          body=$(mktemp)
+          code=$(curl -sS -o "$body" -w '%{http_code}' \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/dependency-graph/compare/${BASEHEAD}")
+          echo "dependency-graph compare returned HTTP ${code}"
+          # A rate-limited 403 is a transient failure, not a missing feature;
+          # let the action run and fail so it is not mistaken for one.
+          if grep -qi 'rate limit' "$body"; then
+            echo "available=true" >>"$GITHUB_OUTPUT"
+          elif [ "${code}" = "403" ] || [ "${code}" = "404" ]; then
+            echo "available=false" >>"$GITHUB_OUTPUT"
+            echo "::warning title=Dependency review skipped::The dependency graph is not available on this repository (HTTP ${code}), so dependency review cannot run. Enable it under Settings > Code security and analysis. Locked Python dependencies are still scanned by pip-audit in the security job."
+          else
+            echo "available=true" >>"$GITHUB_OUTPUT"
+          fi
+          rm -f "$body"
+
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        if: steps.graph.outputs.available == 'true'
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
