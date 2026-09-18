@@ -290,6 +290,33 @@ class TestCurveExportHardening:
         assert ".json" in disposition
         assert list(upload_dir.iterdir()) == []
 
+    def test_curve_id_cannot_read_a_file_outside_the_curve_directory(
+        self, secure_client, upload_dir: Path
+    ) -> None:
+        """A traversing curve id answers 404 and never reads the neighbouring file.
+
+        ``curve_id`` is a URL path parameter that is joined to a filesystem
+        path. The ASGI server decodes the path before routing, so a traversing
+        id does not reach the handler through a normal client; this test pins
+        the observable behaviour, while the containment check that makes the
+        join safe regardless is covered directly in
+        tests/unit/test_api_security.py::TestStoredRecordPath.
+        """
+        curves_dir = upload_dir.parent / "curves"
+        curves_dir.mkdir(parents=True, exist_ok=True)
+        secret = upload_dir.parent / "secret.json"
+        secret.write_text(
+            '{"name": "secret", "input_values": [0.0, 1.0], "output_values": [0.0, 1.0]}',
+            encoding="utf-8",
+        )
+
+        for traversal in ("..%2Fsecret", "..%2f..%2fsecret", "%2e%2e%2fsecret"):
+            response = secure_client.get(f"/api/curves/{traversal}")
+            assert response.status_code == 404, traversal
+            assert "secret" not in response.text
+
+        assert secret.exists()
+
 
 # =============================================================================
 # SEC-03: request body cap and field bounds

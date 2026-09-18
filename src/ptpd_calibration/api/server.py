@@ -11,6 +11,9 @@ from ptpd_calibration.config import Settings, get_settings
 
 _log = logging.getLogger(__name__)
 
+# Extension of the JSON records written for stored curves.
+_CURVE_SUFFIX = ".json"
+
 
 def create_app(settings: Settings | None = None):
     """Create the FastAPI application.
@@ -38,6 +41,7 @@ def create_app(settings: Settings | None = None):
         safe_export_name,
         safe_suffix,
         server_upload_path,
+        stored_record_path,
         stream_upload_to_path,
         unlink_quietly,
     )
@@ -216,11 +220,24 @@ def create_app(settings: Settings | None = None):
     curves_dir.mkdir(parents=True, exist_ok=True)
     curve_storage: dict[str, CurveData] = {}
 
+    def _curve_path(curve_id: str) -> Path | None:
+        """Path of a stored curve, or None when the id is not a safe component.
+
+        The id reaches this from a URL path parameter, so it goes through
+        ``stored_record_path``, which rejects separators and traversal and
+        re-checks that the resolved path is still under ``curves_dir``.
+        """
+        return stored_record_path(curves_dir, curve_id, _CURVE_SUFFIX)
+
     def _store_curve(curve: CurveData) -> None:
         """Cache curve in memory and persist to disk."""
         curve_storage[str(curve.id)] = curve
+        path = _curve_path(str(curve.id))
+        if path is None:  # pragma: no cover - ids are server-generated UUIDs
+            _log.error("Refusing to persist curve with unsafe id %r", curve.id)
+            return
         try:
-            (curves_dir / f"{curve.id}.json").write_text(curve.model_dump_json(), encoding="utf-8")
+            path.write_text(curve.model_dump_json(), encoding="utf-8")
         except Exception:
             _log.warning("Failed to persist curve %s to disk", curve.id, exc_info=True)
 
@@ -228,7 +245,9 @@ def create_app(settings: Settings | None = None):
         """Return curve from memory cache, falling back to disk."""
         if curve_id in curve_storage:
             return curve_storage[curve_id]
-        path = curves_dir / f"{curve_id}.json"
+        path = _curve_path(curve_id)
+        if path is None:
+            return None
         if path.exists():
             try:
                 loaded = CurveData.model_validate_json(path.read_text(encoding="utf-8"))

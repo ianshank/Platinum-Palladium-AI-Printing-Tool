@@ -115,6 +115,38 @@ def server_upload_path(upload_dir: Path, suffix: str) -> Path:
     return upload_dir / f"{uuid4().hex}{suffix}"
 
 
+def stored_record_path(directory: Path, identifier: str, suffix: str) -> Path | None:
+    """Return the path of a stored record inside ``directory``, or None if unsafe.
+
+    ``identifier`` reaches this function straight from a URL path parameter, so
+    it is never trusted: it must be a plain component (no separators, no NUL,
+    no leading dot, so ``..`` is excluded) and the resolved path must still sit
+    inside ``directory``. The containment check is what makes this safe even if
+    a future identifier format allows more characters.
+
+    Returning ``None`` rather than raising lets callers answer 404, which tells
+    an attacker nothing about what does or does not exist on disk.
+
+    Args:
+        directory: Directory the record must live in.
+        identifier: Untrusted record id from the request.
+        suffix: Extension to append, including the leading dot.
+
+    Returns:
+        The resolved path, or ``None`` when the identifier is not safe.
+    """
+    if not is_safe_basename(identifier):
+        logger.debug("Rejected unsafe record identifier: %r", identifier)
+        return None
+
+    candidate = (directory / f"{identifier}{suffix}").resolve()
+    root = directory.resolve()
+    if not candidate.is_relative_to(root):
+        logger.warning("Rejected record identifier escaping %s: %r", root, identifier)
+        return None
+    return candidate
+
+
 async def stream_upload_to_path(
     upload_file: UploadFile,
     dest: Path,

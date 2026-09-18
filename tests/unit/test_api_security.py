@@ -28,6 +28,7 @@ from ptpd_calibration.api.security import (  # noqa: E402
     safe_export_name,
     safe_suffix,
     server_upload_path,
+    stored_record_path,
     stream_upload_to_path,
     unlink_quietly,
 )
@@ -106,6 +107,50 @@ class TestServerUploadPath:
 
     def test_paths_are_unique(self, tmp_path: Path) -> None:
         assert server_upload_path(tmp_path, ".png") != server_upload_path(tmp_path, ".png")
+
+
+class TestStoredRecordPath:
+    """A record id from the URL must never select a file outside its directory."""
+
+    @pytest.fixture
+    def records(self, tmp_path: Path) -> Path:
+        directory = tmp_path / "curves"
+        directory.mkdir()
+        return directory
+
+    def test_plain_identifier_resolves_inside_the_directory(self, records: Path) -> None:
+        path = stored_record_path(records, "9f6b2c61-0000-4000-8000-000000000000", ".json")
+        assert path is not None
+        assert path.parent == records.resolve()
+        assert path.name.endswith(".json")
+
+    @pytest.mark.parametrize(
+        "identifier",
+        [
+            "../secret",
+            "..",
+            ".",
+            "../../etc/passwd",
+            "sub/child",
+            "sub\\child",
+            "..%2f..%2fsecret",
+            "with\x00null",
+            "",
+            ".hidden",
+        ],
+    )
+    def test_traversal_and_separators_are_refused(self, records: Path, identifier: str) -> None:
+        assert stored_record_path(records, identifier, ".json") is None
+
+    def test_sibling_directory_is_not_reachable(self, records: Path, tmp_path: Path) -> None:
+        """The decisive case: a name that would resolve next to, not inside, the directory."""
+        secret = tmp_path / "secret.json"
+        secret.write_text("{}", encoding="utf-8")
+        assert stored_record_path(records, "../secret", ".json") is None
+
+    def test_returns_none_rather_than_raising(self, records: Path) -> None:
+        """Callers answer 404, so an attacker learns nothing about what exists."""
+        assert stored_record_path(records, "../secret", ".json") is None
 
 
 class TestSafeExportName:
