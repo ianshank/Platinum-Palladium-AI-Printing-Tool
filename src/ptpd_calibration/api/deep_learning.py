@@ -13,6 +13,7 @@ import logging
 from typing import Annotated
 
 from ptpd_calibration.config import get_settings
+from ptpd_calibration.core.logging import sanitize_log_text
 
 logger = logging.getLogger(__name__)
 
@@ -522,6 +523,8 @@ async def _train_model_task(
         training_status[model_name].best_val_loss = stats.get("best_val_loss")
 
     except Exception as e:
-        logger.error("Training failed for %s: %s", model_name, e)
+        logger.error(
+            "Training failed for %s: %s", sanitize_log_text(model_name), sanitize_log_text(e)
+        )
         training_status[model_name].status = "failed"
         training_status[model_name].error = str(e)

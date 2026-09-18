@@ -19,6 +19,7 @@ References:
 - Platinum/Palladium Printing: A Contemporary Guide
 """
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -27,6 +28,8 @@ from PIL import Image
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from scipy.ndimage import gaussian_filter
+
+logger = logging.getLogger(__name__)
 
 
 class BlendMode(str, Enum):
@@ -505,6 +508,20 @@ class TonalCurveAdjuster:
         return result
 
 
+def _safe_ratio(numerator: np.ndarray, denominator: float) -> np.ndarray:
+    """Return ``numerator / denominator`` clipped to 0-1, tolerating zero.
+
+    The threshold fields allow 0.0 and 1.0, either of which makes the
+    denominator zero. Dividing produced NaN, which ``gaussian_filter`` then
+    spread across the whole frame, so a legal setting returned an entirely NaN
+    preview instead of an empty mask.
+    """
+    if denominator <= 0.0:
+        logger.debug("Mask threshold leaves a zero denominator; returning an empty mask")
+        return np.zeros_like(numerator, dtype=float)
+    return np.clip(numerator / denominator, 0.0, 1.0)
+
+
 class SplitGradeSimulator:
     """Simulate split-grade printing for platinum/palladium processes.
 
@@ -657,8 +674,11 @@ class SplitGradeSimulator:
         # Use threshold from settings if not provided
         thresh = threshold if threshold is not None else self.settings.shadow_threshold
 
-        # Create base mask (inverse: dark areas get high values)
-        mask = np.clip((thresh - luminance) / thresh, 0, 1)
+        # Create base mask (inverse: dark areas get high values). The field
+        # bounds allow thresh == 0.0, which divided by zero and produced NaN;
+        # gaussian_filter then spread it over the whole frame, so the preview
+        # came back entirely NaN rather than simply empty.
+        mask = _safe_ratio(thresh - luminance, thresh)
 
         # Apply feathering and blur
         mask = self._apply_mask_processing(mask)
@@ -686,8 +706,9 @@ class SplitGradeSimulator:
         # Use threshold from settings if not provided
         thresh = threshold if threshold is not None else self.settings.highlight_threshold
 
-        # Create base mask (bright areas get high values)
-        mask = np.clip((luminance - thresh) / (1 - thresh), 0, 1)
+        # Create base mask (bright areas get high values). thresh == 1.0 is
+        # within the field bounds and divided by zero; see the shadow mask.
+        mask = _safe_ratio(luminance - thresh, 1.0 - thresh)
 
         # Apply feathering and blur
         mask = self._apply_mask_processing(mask)

@@ -35,6 +35,89 @@ from typing import Any
 _log_context: ContextVar[dict[str, Any] | None] = ContextVar("log_context", default=None)
 
 
+#: Characters that start a new line for a log reader. ``str.splitlines`` treats
+#: all of them as breaks, so escaping only CR and LF would leave a forged record
+#: reachable through a ``.quad`` section name or a percent-encoded URL path.
+_LINE_BREAKS: tuple[str, ...] = (
+    "\r",
+    "\n",
+    "\x0b",
+    "\x0c",
+    "\x1c",
+    "\x1d",
+    "\x1e",
+    "\x85",
+    "\u2028",
+    "\u2029",
+)
+
+
+def sanitize_log_text(
+    value: object,
+    *,
+    max_length: int | None = None,
+) -> str:
+    """Escape line breaks so untrusted text cannot forge a log record.
+
+    A value that reaches a log message with a raw newline in it writes what
+    looks like a second, independent record: an attacker who controls a request
+    path or a form field can invent an entry at any level and attribute it to
+    any logger. Escaping the break turns it back into one record.
+
+    ``str.replace`` is used rather than ``re.sub`` deliberately: ``re.sub``
+    treats its replacement as a template, so ``"\\n"`` there inserts a real
+    newline and silently does the opposite of what is wanted.
+
+    Args:
+        value: The value to render; anything not a string is passed to ``str``.
+        max_length: Truncation limit; ``None`` reads it from settings.
+
+    Returns:
+        A single-line representation, truncated with a count of what was cut.
+    """
+    text = value if isinstance(value, str) else str(value)
+    if max_length is None:
+        max_length = _sanitize_limit()
+    if max_length and len(text) > max_length:
+        text = f"{text[:max_length]}...[{len(text) - max_length} more]"
+    text = text.replace("\\", "\\\\")
+    for char in _LINE_BREAKS:
+        text = text.replace(
+            char, f"\\x{ord(char):02x}" if ord(char) < 256 else f"\\u{ord(char):04x}"
+        )
+    return text
+
+
+def _sanitize_limit() -> int:
+    """Read the truncation limit from settings, tolerating an unloadable config."""
+    try:
+        from ptpd_calibration.config import get_settings
+
+        return int(get_settings().log_sanitize_max_length)
+    except Exception:  # pragma: no cover - configuration is broken, still log
+        return _FALLBACK_SANITIZE_LIMIT
+
+
+#: Used only when settings cannot be loaded; the real value is a settings field.
+_FALLBACK_SANITIZE_LIMIT = 2048
+
+
+class SanitizingFormatterMixin:
+    """Escape line breaks in the formatted message, leaving tracebacks intact.
+
+    ``logging.Formatter.format`` sets ``record.message``, calls
+    ``formatMessage``, and only then appends ``exc_text``, so sanitising here
+    covers every interpolated argument without touching a multi-line traceback.
+    ``record.message`` is recomputed per handler, so this does not leak into the
+    JSON formatter, which is already safe because ``json.dumps`` escapes breaks.
+    """
+
+    def formatMessage(self, record: logging.LogRecord) -> str:  # noqa: N802 - logging API
+        record.message = sanitize_log_text(record.message)
+        formatted: str = super().formatMessage(record)  # type: ignore[misc]
+        return formatted
+
+
 class JSONFormatter(logging.Formatter):
     """JSON log formatter for structured logging.
 
@@ -83,6 +166,10 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_data, default=str)
 
 
+class SafeFormatter(SanitizingFormatterMixin, logging.Formatter):
+    """Plain formatter that cannot emit a forged second line."""
+
+
 class ColoredFormatter(logging.Formatter):
     """Colored console formatter for development.
 
@@ -110,6 +197,14 @@ class ColoredFormatter(logging.Formatter):
         color = self.COLORS.get(record.levelname, "")
         record.levelname = f"{color}{record.levelname:8}{self.RESET}"
         return super().format(record)
+
+
+class SafeColoredFormatter(SanitizingFormatterMixin, ColoredFormatter):
+    """Coloured formatter with the same guarantee.
+
+    Only ``record.message`` is escaped, so the ANSI codes ``ColoredFormatter``
+    puts on ``levelname`` survive.
+    """
 
 
 _logging_configured = False
@@ -155,18 +250,24 @@ def setup_logging(
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.DEBUG)
 
+    # JSON output is already injection-safe because json.dumps escapes breaks,
+    # and escaping there would double-encode, so only the text formatters are
+    # swapped. PTPD_LOG_SANITIZE=false restores the raw ones.
+    sanitize = settings.log_sanitize
     if json_format:
         console_handler.setFormatter(JSONFormatter())
     elif colored and sys.stdout.isatty():
+        coloured = SafeColoredFormatter if sanitize else ColoredFormatter
         console_handler.setFormatter(
-            ColoredFormatter(
+            coloured(
                 "%(asctime)s | %(levelname)s | %(name)s:%(lineno)d | %(message)s",
                 datefmt="%H:%M:%S",
             )
         )
     else:
+        plain = SafeFormatter if sanitize else logging.Formatter
         console_handler.setFormatter(
-            logging.Formatter(
+            plain(
                 "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s",
                 datefmt="%Y-%m-%d %H:%M:%S",
             )

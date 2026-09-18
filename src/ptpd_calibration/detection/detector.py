@@ -11,7 +11,10 @@ import numpy as np
 from PIL import Image
 
 from ptpd_calibration.config import DetectionSettings, get_settings
-from ptpd_calibration.imaging.safe_image import load_image_array
+from ptpd_calibration.imaging.safe_image import load_image_array, to_uint8_scale
+
+#: Rec. 709 luminance weights, the same coefficients the density extractor uses.
+_REC709_LUMINANCE: tuple[float, float, float] = (0.2126, 0.7152, 0.0722)
 
 
 @dataclass
@@ -108,11 +111,19 @@ class StepTabletDetector:
         return load_image_array(image)
 
     def _to_grayscale(self, image: np.ndarray) -> np.ndarray:
-        """Convert RGB image to grayscale using luminosity method."""
+        """Convert an image to 8-bit grayscale using the luminosity method.
+
+        The cast used to be a bare ``astype(np.uint8)``, which truncates modulo
+        256 instead of scaling. A 16-bit scan's paper white (30000) and its
+        near-black (300) came out four code values apart, so edge detection and
+        patch segmentation ran on noise for exactly the file format this
+        toolkit treats as first class elsewhere.
+        """
         if len(image.shape) == 2:
-            return image
+            return to_uint8_scale(image)
         # Use Rec. 709 coefficients for better perceptual accuracy
-        return np.dot(image[..., :3], [0.2126, 0.7152, 0.0722]).astype(np.uint8)
+        luminance = np.dot(image[..., :3], _REC709_LUMINANCE)
+        return to_uint8_scale(luminance)
 
     def _detect_tablet_region(self, gray: np.ndarray) -> tuple[tuple[int, int, int, int], str]:
         """Detect the main tablet region using edge detection and contours."""

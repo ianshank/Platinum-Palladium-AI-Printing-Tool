@@ -244,7 +244,12 @@ class TestAIEnhancementEndpoints:
 
             response = await async_client.post("/api/curves/enhance", json=request_data)
 
-            assert response.status_code in [200, 400, 500]
+            # This used to accept 400 and 500, so it passed for months while the
+            # endpoint answered 400 to every well-formed request.
+            assert response.status_code == 200, response.text
+            body = response.json()
+            assert body["goal"] == goal
+            assert isinstance(body["changes_made"], list)
 
     @pytest.mark.asyncio
     async def test_enhance_curve_with_context(self, async_client, sample_curve_data):
@@ -259,4 +264,7 @@ class TestAIEnhancementEndpoints:
 
         response = await async_client.post("/api/curves/enhance", json=request_data)
 
-        assert response.status_code in [200, 400, 500]
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["goal"] == "linearization"
+        assert len(body["output_values"]) == len(request_data["output_values"])

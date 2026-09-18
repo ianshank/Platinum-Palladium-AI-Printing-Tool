@@ -72,6 +72,20 @@ class CurveAdjustment:
             self.parameters = {}
 
 
+def _gaussian_mask(inputs: np.ndarray, center: float, width: float) -> np.ndarray:
+    """Return a gaussian weighting around ``center``, tolerating zero width.
+
+    ``width`` and ``influence`` are ordinary public arguments with no
+    validation, and zero divided by zero, putting NaN into the curve's output
+    values. The NaN survived endpoint pinning and was saved and exported, so a
+    zero width now means "affect only the matching point".
+    """
+    if width <= 0.0:
+        logger.debug("Zero-width gaussian requested; weighting only exact matches")
+        return np.isclose(inputs, center).astype(float)
+    return np.exp(-((inputs - center) ** 2) / (2 * width**2))
+
+
 class CurveModifier:
     """
     Modifier for editing and enhancing calibration curves.
@@ -322,8 +336,10 @@ class CurveModifier:
         inputs = np.array(curve.input_values)
         outputs = np.array(curve.output_values)
 
-        # Create gaussian mask centered on midtones
-        mask = np.exp(-((inputs - center) ** 2) / (2 * width**2))
+        # Create gaussian mask centered on midtones. A zero width divided by
+        # zero and put NaN straight into the saved curve, which survived
+        # endpoint pinning and export.
+        mask = _gaussian_mask(inputs, center, width)
 
         # Apply adjustment
         adjustment = amount * 0.3 * mask
@@ -598,8 +614,8 @@ class CurveModifier:
         # Calculate adjustment needed
         delta = output_value - current
 
-        # Create gaussian influence mask
-        mask = np.exp(-((inputs - input_value) ** 2) / (2 * influence**2))
+        # Create gaussian influence mask; a zero influence divided by zero.
+        mask = _gaussian_mask(inputs, input_value, influence)
 
         # Apply adjustment
         outputs = outputs + delta * mask

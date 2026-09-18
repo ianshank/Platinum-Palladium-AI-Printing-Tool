@@ -19,6 +19,8 @@ from uuid import uuid4
 from fastapi import HTTPException
 from starlette.responses import JSONResponse
 
+from ptpd_calibration.core.logging import sanitize_log_text
+
 if TYPE_CHECKING:
     from fastapi import UploadFile
     from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -263,7 +265,7 @@ class RequestBodyLimitMiddleware:
             logger.debug(
                 "Rejected %s %s: Content-Length %d exceeds cap %d",
                 scope.get("method"),
-                scope.get("path"),
+                sanitize_log_text(scope.get("path")),
                 declared,
                 self.max_bytes,
             )
@@ -294,7 +296,7 @@ class RequestBodyLimitMiddleware:
             logger.debug(
                 "Aborted streamed body for %s %s at %d bytes (cap %d)",
                 scope.get("method"),
-                scope.get("path"),
+                sanitize_log_text(scope.get("path")),
                 exc.received,
                 exc.max_bytes,
             )

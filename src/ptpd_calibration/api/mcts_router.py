@@ -15,6 +15,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from ptpd_calibration.config import get_settings
+from ptpd_calibration.core.logging import sanitize_log_text
 
 if TYPE_CHECKING:
     from ptpd_calibration.mcts.feedback import FeedbackStore
@@ -573,10 +574,13 @@ def create_mcts_router(feedback_store: FeedbackStore | None = None) -> APIRouter
                 }
                 return recipe
             else:
-                raise ValueError(f"Unknown format: {format}")
+                # Never interpolate the raw value into the message: it is a
+                # query parameter, and a newline in it forged a second log
+                # record at ERROR, which every default level emits.
+                raise ValueError(f"Unknown format: {sanitize_log_text(format)}")
 
         except Exception as e:
-            logger.exception("Export failed: %s", e)
+            logger.exception("Export failed: %s", sanitize_log_text(e))
             raise HTTPException(
                 status_code=500,
                 detail=f"Export failed: {str(e)}",

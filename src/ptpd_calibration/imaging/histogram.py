@@ -17,7 +17,11 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from ptpd_calibration.imaging.safe_image import open_image_safely
+from ptpd_calibration.imaging.safe_image import (
+    image_from_array,
+    open_image_safely,
+    to_uint8_scale,
+)
 
 
 class HistogramScale(str, Enum):
@@ -153,10 +157,10 @@ class HistogramAnalyzer:
             # Hardened decode (SEC-04): format allow-list, pixel/frame caps.
             img = open_image_safely(image)
         elif isinstance(image, np.ndarray):
-            if image.ndim == 2:
-                img = Image.fromarray(image.astype(np.uint8), mode="L")
-            else:
-                img = Image.fromarray(image.astype(np.uint8))
+            # Scale rather than truncate: ``astype(np.uint8)`` wraps modulo 256,
+            # so a 16-bit or float array produced a histogram, a brightness and
+            # a set of printing recommendations computed from noise.
+            img = image_from_array(to_uint8_scale(image))
         else:
             img = image
 

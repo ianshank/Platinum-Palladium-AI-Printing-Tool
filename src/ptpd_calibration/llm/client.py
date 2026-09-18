@@ -74,12 +74,16 @@ class AnthropicClient(LLMClient):
 
         client = anthropic.AsyncAnthropic(api_key=self.api_key)
 
+        # `temperature` is not a parameter of the Messages API on current
+        # models and is not accepted by the installed SDK, so passing it raised
+        # TypeError on every call. It is still accepted by this method for
+        # backwards compatibility and simply has no effect.
+        _ = temperature
         response = await client.messages.create(
             model=self.settings.anthropic_model,
             max_tokens=max_tokens or self.settings.max_tokens,
             system=system or "",
             messages=messages,
-            temperature=temperature if temperature is not None else self.settings.temperature,
         )
 
         return response.content[0].text
@@ -101,12 +105,13 @@ class AnthropicClient(LLMClient):
 
         client = anthropic.AsyncAnthropic(api_key=self.api_key)
 
+        # See complete(): the Messages API takes no sampling parameters.
+        _ = temperature
         async with client.messages.stream(
             model=self.settings.anthropic_model,
             max_tokens=max_tokens or self.settings.max_tokens,
             system=system or "",
             messages=messages,
-            temperature=temperature if temperature is not None else self.settings.temperature,
         ) as stream:
             async for text in stream.text_stream:
                 yield text

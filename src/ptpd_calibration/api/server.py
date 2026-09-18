@@ -875,16 +875,21 @@ def create_app(settings: Settings | None = None):
             enhancer = CurveAIEnhancer()
             goal = EnhancementGoal(request.goal.lower())
 
-            # Try LLM enhancement first, fall back to algorithmic
+            # Try LLM enhancement first, fall back to algorithmic. The keyword
+            # was `additional_context`, which is not this method's parameter, so
+            # every call raised TypeError and the fallback below swallowed it:
+            # the LLM path was unreachable and nothing said so. Log the fallback
+            # at warning so a future mismatch is visible rather than silent.
             try:
                 result = await enhancer.enhance_with_llm(
                     curve,
                     goal=goal,
-                    additional_context=request.additional_context,
+                    user_requirements=request.additional_context,
                 )
             except Exception:
-                _log.info("LLM enhancement unavailable, falling back to algorithmic", exc_info=True)
-                # Fall back to algorithmic enhancement
+                _log.warning(
+                    "LLM enhancement unavailable, falling back to algorithmic", exc_info=True
+                )
                 result = await enhancer.analyze_and_enhance(
                     curve,
                     goal=goal,
@@ -893,14 +898,19 @@ def create_app(settings: Settings | None = None):
             # Store the enhanced curve
             _store_curve(result.enhanced_curve)
 
+            # `goal` and `changes_made` are not fields of EnhancementResult, so
+            # reading them raised AttributeError and the handler answered 400 to
+            # every well-formed request. The goal is the validated request
+            # value; the adjustments are `adjustments_applied`.
             return {
                 "success": True,
                 "curve_id": str(result.enhanced_curve.id),
                 "name": result.enhanced_curve.name,
-                "goal": result.goal.value,
+                "goal": goal.value,
                 "confidence": result.confidence,
                 "analysis": result.analysis,
-                "changes_made": result.changes_made,
+                "changes_made": result.adjustments_applied,
+                "suggestions": result.suggestions,
                 "input_values": result.enhanced_curve.input_values,
                 "output_values": result.enhanced_curve.output_values,
             }

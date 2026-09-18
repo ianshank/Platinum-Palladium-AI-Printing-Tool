@@ -29,6 +29,7 @@ from ptpd_calibration.deep_learning.types import (
     AssistantMode,
     VisionLanguageModel,
 )
+from ptpd_calibration.imaging.safe_image import image_from_array, to_uint8_scale
 
 logger = logging.getLogger(__name__)
 
@@ -952,15 +953,14 @@ class MultiModalAssistant:
                 scale = self.settings.max_image_size / max_dim
                 new_size = (int(image.shape[1] * scale), int(image.shape[0] * scale))
 
-                img = Image.fromarray(image)
+                img = image_from_array(to_uint8_scale(image))
                 img = img.resize(new_size, Image.Resampling.LANCZOS)
                 image = np.array(img)
 
-            # Convert to PIL Image
-            if len(image.shape) == 2:
-                img = Image.fromarray(image, mode="L")
-            else:
-                img = Image.fromarray(image, mode="RGB")
+            # Convert to PIL Image. Without the normalisation a float array was
+            # reinterpreted as bytes rather than converted, so the base64 blob
+            # sent to the model was noise and still saved without error.
+            img = image_from_array(to_uint8_scale(image))
 
             # Encode to base64
             buffer = BytesIO()

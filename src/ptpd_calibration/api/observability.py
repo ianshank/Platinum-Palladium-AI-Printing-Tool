@@ -18,7 +18,7 @@ import logging
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from ptpd_calibration.core.logging import LogContext
+from ptpd_calibration.core.logging import LogContext, sanitize_log_text
 
 if TYPE_CHECKING:
     from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -62,5 +62,7 @@ class RequestContextMiddleware:
             await send(message)
 
         with LogContext(request_id=request_id):
-            logger.debug("%s %s", scope.get("method"), scope.get("path"))
+            # The path arrives percent-decoded, so an encoded newline in the
+            # URL reached the log verbatim.
+            logger.debug("%s %s", scope.get("method"), sanitize_log_text(scope.get("path")))
             await self.app(scope, receive, send_with_request_id)

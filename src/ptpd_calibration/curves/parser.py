@@ -24,6 +24,7 @@ from annotated_types import MaxLen
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from ptpd_calibration.core.logging import sanitize_log_text
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
 
@@ -471,7 +472,7 @@ class QuadFileParser:
                 logger.debug(
                     "Rejected key %r in [%s]: max_keys_per_section=%d reached",
                     key,
-                    self._current_section,
+                    sanitize_log_text(self._current_section),
                     self.limits.max_keys_per_section,
                 )
                 raise ValueError(

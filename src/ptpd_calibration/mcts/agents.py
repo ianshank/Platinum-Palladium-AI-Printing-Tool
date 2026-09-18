@@ -18,6 +18,7 @@ from ptpd_calibration.agents.subagents.base import (
     SubagentResult,
     register_subagent,
 )
+from ptpd_calibration.core.logging import sanitize_log_text
 from ptpd_calibration.mcts.config import DEFAULT_PARAMETER_RANGES, MCTSSettings, PhysicsConstants
 from ptpd_calibration.mcts.quality import QualityScorer
 from ptpd_calibration.mcts.simulator import ExtendedProcessSimulator
@@ -330,7 +331,7 @@ class ExposureSubagent(BaseSubagent):
         logger.debug(
             "Exposure suggestion for coating_weight=%.2f, uv_source=%s -> %s",
             coating_weight,
-            uv_source,
+            sanitize_log_text(uv_source),
             suggested,
         )
 

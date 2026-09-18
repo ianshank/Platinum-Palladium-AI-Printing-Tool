@@ -17,6 +17,14 @@ from typing import Any, cast
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+from ptpd_calibration.imaging.safe_image import image_from_array
+
+#: Bounds for a gamma inferred from a reference print. The value comes from a
+#: log ratio that runs away as the reference approaches pure white, so it is
+#: clamped to the same kind of range CurveModifier.apply_gamma uses.
+MIN_STYLE_GAMMA = 0.1
+MAX_STYLE_GAMMA = 10.0
+
 
 def _safe_correlation(a: np.ndarray, b: np.ndarray) -> float:
     """Pearson correlation clipped to [-1, 1]; 0.0 when either input has zero variance.
@@ -461,10 +469,10 @@ class AlternativeProcessSimulator:
         """
         # Convert to PIL Image if needed
         if isinstance(image, np.ndarray):
-            if image.ndim == 2:
-                pil_img = Image.fromarray(image.astype(np.uint8), mode="L")
-            else:
-                pil_img = Image.fromarray(image.astype(np.uint8), mode="RGB")
+            # Letting Pillow infer the mode is the point: declaring "RGB" for a
+            # four-channel array reinterprets the raw buffer as a continuous RGB
+            # stream, so every pixel after the first was shifted by a byte.
+            pil_img = image_from_array(image.astype(np.uint8))
         else:
             pil_img = image
 
@@ -1267,7 +1275,18 @@ class StyleTransfer:
 
         # Estimate gamma from median
         median_val = bins[np.searchsorted(cumsum, total * 0.5)]
-        gamma = np.log(0.5) / np.log(median_val + 0.001)
+        # A high-key reference drives median_val towards 1.0, so the log in the
+        # denominator approaches zero and gamma runs away: a uniform L=254
+        # reference produced gamma 101, and apply_style then raised the image to
+        # the power 1/101, flattening it to near-white. Clamp it the way
+        # CurveModifier.apply_gamma already clamps its own.
+        gamma = float(
+            np.clip(
+                np.log(0.5) / np.log(median_val + 0.001),
+                MIN_STYLE_GAMMA,
+                MAX_STYLE_GAMMA,
+            )
+        )
 
         # Estimate contrast from histogram spread
         std_dev = np.std(arr)
@@ -1405,10 +1424,9 @@ class StyleTransfer:
         """
         # Convert to PIL and grayscale
         if isinstance(image, np.ndarray):
-            if image.ndim == 2:
-                pil_img = Image.fromarray((image * 255).astype(np.uint8), mode="L")
-            else:
-                pil_img = Image.fromarray((image * 255).astype(np.uint8), mode="RGB")
+            # As above: infer rather than declare, so a four-channel array is
+            # not read as misaligned RGB.
+            pil_img = image_from_array((image * 255).astype(np.uint8))
         else:
             pil_img = image
 
@@ -1563,8 +1581,11 @@ class PrintComparison:
         if arr1.shape != arr2.shape:
             from scipy.ndimage import zoom
 
-            scale_y = arr2.shape[0] / arr1.shape[0]
-            scale_x = arr2.shape[1] / arr1.shape[1]
+            # Resizing arr2 *to* arr1 needs arr1 / arr2. Inverted, a 200x200
+            # second image became 400x400 and every caller raised on the
+            # broadcast. compare_before_after three methods away had it right.
+            scale_y = arr1.shape[0] / arr2.shape[0]
+            scale_x = arr1.shape[1] / arr2.shape[1]
             arr2 = zoom(arr2, (scale_y, scale_x), order=1)
 
         # Calculate difference
@@ -1628,8 +1649,11 @@ class PrintComparison:
         if arr1.shape != arr2.shape:
             from scipy.ndimage import zoom
 
-            scale_y = arr2.shape[0] / arr1.shape[0]
-            scale_x = arr2.shape[1] / arr1.shape[1]
+            # Resizing arr2 *to* arr1 needs arr1 / arr2. Inverted, a 200x200
+            # second image became 400x400 and every caller raised on the
+            # broadcast. compare_before_after three methods away had it right.
+            scale_y = arr1.shape[0] / arr2.shape[0]
+            scale_x = arr1.shape[1] / arr2.shape[1]
             arr2 = zoom(arr2, (scale_y, scale_x), order=1)
 
         if method == "mse":

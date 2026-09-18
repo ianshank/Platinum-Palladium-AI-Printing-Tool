@@ -1434,6 +1434,16 @@ class Settings(BaseSettings):
         default=None,
         description="Optional file to receive log records in addition to stdout",
     )
+    log_sanitize: bool = Field(
+        default=True,
+        description="Escape line breaks in formatted log messages so untrusted text cannot forge a record",
+    )
+    log_sanitize_max_length: int = Field(
+        default=2048,
+        ge=64,
+        le=65536,
+        description="Length at which a formatted log message is truncated",
+    )
 
     # Data directories
     data_dir: Path = Field(default=Path.home() / ".ptpd")

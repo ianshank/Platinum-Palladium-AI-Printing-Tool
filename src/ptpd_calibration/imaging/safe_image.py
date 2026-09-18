@@ -52,6 +52,14 @@ HIGH_DEPTH_GRAY_MODES: frozenset[str] = frozenset({"I", "I;16", "I;16B", "I;16L"
 #: converted to this first. The conversion is lossless: ``I`` is wider.
 RESAMPLE_INTEGER_MODE = "I"
 
+#: Largest value an 8-bit sample can hold.
+_EIGHT_BIT_MAX = 255
+
+#: Standard code ceilings an integer image may be carried on, smallest
+#: first, so 16-bit data scales by 257 rather than by whatever it happens
+#: to peak at.
+_INTEGER_DEPTH_LIMITS: tuple[int, ...] = (255, 65535)
+
 # ``Image.MAX_IMAGE_PIXELS`` and the warnings registry are process-global; the
 # header read that depends on them is serialised so concurrent callers with
 # different settings cannot observe each other's limit.
@@ -258,6 +266,107 @@ def _maybe_downsample(im: Image.Image, settings: ImageDecodeSettings, label: str
     return resize_to_fit(im, max_side, label)
 
 
+#: Channel counts Pillow can build a colour image from, mapped to the mode it
+#: infers. Anything else is a caller error rather than something to guess at.
+_CHANNEL_MODES: dict[int, str] = {2: "LA", 3: "RGB", 4: "RGBA"}
+
+
+def image_from_array(array: np.ndarray, *, to_mode: str | None = None) -> Image.Image:
+    """Build a ``PIL.Image`` from ``array``, letting Pillow infer the mode.
+
+    Passing ``mode=`` to ``Image.fromarray`` does not convert the data, it
+    *reinterprets the raw buffer*. Two ways that goes wrong are already in this
+    codebase and both are silent:
+
+    * a four-channel array declared ``mode="RGB"`` is read as a continuous RGB
+      stream, so every pixel after the first is shifted by one byte and the
+      whole image is progressively misaligned;
+    * a float array declared ``mode="L"`` is read as the first ``H*W`` bytes of
+      an eight-times-larger buffer, which is noise, and it still saves happily.
+
+    Pillow 13 restricts the argument so it can no longer change data types,
+    which turns both cases into an exception instead. Inferring the mode is
+    correct under every Pillow version, so callers go through here.
+
+    Args:
+        array: A 2-D grayscale array, or 3-D with 2, 3 or 4 channels.
+        to_mode: Optional mode to convert to *after* building the image. This
+            is a real conversion, unlike the ``fromarray`` argument.
+
+    Returns:
+        The image, converted to ``to_mode`` when one is given.
+
+    Raises:
+        ValueError: ``array`` has a shape Pillow cannot represent.
+    """
+    if array.ndim == 2 or (array.ndim == 3 and array.shape[2] in _CHANNEL_MODES):
+        image = Image.fromarray(array)
+    else:
+        raise ValueError(
+            f"Cannot build an image from an array of shape {array.shape}; "
+            f"expected 2-D, or 3-D with {sorted(_CHANNEL_MODES)} channels"
+        )
+    if to_mode is not None and image.mode != to_mode:
+        logger.debug("Converting inferred %s to requested %s", image.mode, to_mode)
+        return image.convert(to_mode)
+    return image
+
+
+def to_uint8_scale(array: np.ndarray) -> np.ndarray:
+    """Scale ``array`` onto the 0-255 code range, preserving relative tone.
+
+    Several read paths assumed 8-bit input and reached for ``astype(np.uint8)``,
+    which truncates modulo 256 rather than scaling: a 16-bit scan's paper white
+    (30000) and its near-black (300) landed four code values apart, so density
+    extraction and patch detection both ran on noise. Scaling here keeps the
+    tone relationships the measurement depends on.
+
+    The source depth is inferred from the values rather than the dtype, because
+    Pillow decodes a 16-bit PNG to ``int32`` ("I" mode) whose dtype maximum is
+    far larger than anything the file can hold. The chosen depth is logged, so
+    a surprising reading can be traced.
+
+    Args:
+        array: Integer or floating point image data.
+
+    Returns:
+        A ``uint8`` array on the 0-255 scale.
+    """
+    if array.dtype == np.uint8:
+        return array
+    if array.size == 0:
+        return array.astype(np.uint8)
+
+    working = np.nan_to_num(array.astype(np.float64), nan=0.0, posinf=0.0, neginf=0.0)
+    peak = float(working.max())
+
+    if np.issubdtype(array.dtype, np.integer):
+        # Integer data is already on a code scale; pick the smallest standard
+        # depth that contains it rather than trusting the dtype's own maximum.
+        depth_max = next(
+            (limit for limit in _INTEGER_DEPTH_LIMITS if peak <= limit),
+            peak if peak > 0 else _EIGHT_BIT_MAX,
+        )
+    elif peak <= 1.0:
+        depth_max = 1.0
+    elif peak <= _EIGHT_BIT_MAX:
+        depth_max = float(_EIGHT_BIT_MAX)
+    else:
+        depth_max = peak
+
+    if depth_max <= 0:
+        return np.zeros(array.shape, dtype=np.uint8)
+    logger.debug(
+        "Scaling %s data with peak %.3f onto 0-%d using source maximum %.3f",
+        array.dtype,
+        peak,
+        _EIGHT_BIT_MAX,
+        depth_max,
+    )
+    scaled = np.clip(working, 0.0, depth_max) * (_EIGHT_BIT_MAX / depth_max)
+    return np.clip(np.rint(scaled), 0, _EIGHT_BIT_MAX).astype(np.uint8)
+
+
 def open_image_safely(
     source: ImageSource,
     settings: ImageDecodeSettings | None = None,
@@ -336,7 +445,9 @@ __all__ = [
     "ImageSource",
     "ImageTooLargeError",
     "UnsupportedImageError",
+    "image_from_array",
     "load_image_array",
     "open_image_safely",
     "resize_to_fit",
+    "to_uint8_scale",
 ]
