@@ -763,3 +763,157 @@ class TestAIFacadeKeepsTheDepth:
         assert not np.all(data % SCALE_8_TO_16 == 0)
         # Clipping blew 99.6% of the frame to white.
         assert float((data >= SIXTEEN_BIT_MAX - SCALE_8_TO_16).mean()) < 0.5
+
+
+class TestNarrowingScalesEverywhere:
+    """Every path that reduces a high-depth image must scale, never clip.
+
+    The first pass at this scaled only the array branch of ``load_image``, so
+    ``preserve_bit_depth=False`` looked correct for an in-memory array and
+    still ruined a negative made from a real scanner file. Pillow's own
+    ``convert`` clips, so a single missed call site reintroduces the defect.
+    """
+
+    SIDE = 48
+
+    @classmethod
+    def _scan(cls, tmp_path: Path) -> Path:
+        path = tmp_path / "scan.tiff"
+        ramp = (
+            np.linspace(0, SIXTEEN_BIT_MAX, cls.SIDE * cls.SIDE)
+            .astype(np.uint16)
+            .reshape(cls.SIDE, cls.SIDE)
+        )
+        Image.fromarray(ramp).save(path, format="TIFF")
+        return path
+
+    @staticmethod
+    def _curve() -> CurveData:
+        axis = np.linspace(0.0, 1.0, 32)
+        return CurveData(name="narrow", input_values=list(axis), output_values=list(axis**1.5))
+
+    @staticmethod
+    def _legacy() -> ImageProcessor:
+        return ImageProcessor(ImagingSettings(preserve_bit_depth=False))
+
+    def test_apply_curve_on_a_file_source_scales(self, tmp_path: Path) -> None:
+        processor = self._legacy()
+
+        curved = processor.apply_curve(processor.load_image(self._scan(tmp_path)), self._curve())
+
+        data = np.asarray(curved.image)
+        assert float((data == EIGHT_BIT_MAX).mean()) < 0.1, "the frame was clipped to white"
+        assert np.unique(data).size > 2
+
+    def test_the_negative_from_a_file_source_is_not_ruined(self, tmp_path: Path) -> None:
+        """Clipping to white then inverting produced an all-black negative."""
+        processor = self._legacy()
+
+        negative = processor.create_digital_negative(self._scan(tmp_path), curve=self._curve())
+
+        data = np.asarray(negative.image)
+        assert np.unique(data).size > 2
+        assert float((data == 0).mean()) < 0.5, "the negative collapsed to black"
+
+    def test_an_explicit_rgb_request_also_scales(self, tmp_path: Path) -> None:
+        processor = self._legacy()
+
+        curved = processor.apply_curve(
+            processor.load_image(self._scan(tmp_path)), self._curve(), ColorMode.RGB
+        )
+
+        assert curved.image.mode == "RGB"
+        assert float((np.asarray(curved.image) == EIGHT_BIT_MAX).mean()) < 0.1
+
+    def test_narrow_scales_the_full_range(self) -> None:
+        source = Image.fromarray(
+            np.array([[0, SCALE_8_TO_16, 128 * SCALE_8_TO_16, SIXTEEN_BIT_MAX]], dtype=np.uint16)
+        )
+
+        narrowed = ImageProcessor._narrow(source, "L")
+
+        assert narrowed.mode == "L"
+        assert np.array_equal(np.asarray(narrowed), np.array([[0, 1, 128, 255]], dtype=np.uint8))
+
+    def test_narrow_leaves_an_eight_bit_image_alone(self) -> None:
+        source = Image.fromarray(np.array([[0, 128, 255]], dtype=np.uint8))
+
+        assert ImageProcessor._narrow(source, "L") is source
+
+
+class TestSixteenBitColourBytes:
+    """A 16-bit request must never be answered with an 8-bit file.
+
+    Pillow has no 16-bit colour mode, so a three-channel image reaches the
+    16-bit writers as 8-bit colour widened by 257. The bytes writer used to log
+    a warning and return the 8-bit file anyway, and the file writer fell
+    through and did the same for PNG, so an export endpoint that accepts
+    ``color_mode=rgb`` answered 200 with the wrong depth. Silently wrong is the
+    failure this module exists to remove.
+    """
+
+    @staticmethod
+    def _colour() -> Image.Image:
+        ramp = np.linspace(0, EIGHT_BIT_MAX, 16 * 16).astype(np.uint8).reshape(16, 16)
+        return Image.fromarray(np.stack([ramp, ramp, ramp], axis=-1))
+
+    def test_sixteen_bit_colour_tiff_bytes_are_really_sixteen_bit(self) -> None:
+        tifffile = pytest.importorskip("tifffile")
+        processor = ImageProcessor()
+
+        payload, extension = processor.export_to_bytes(
+            processor.load_image(self._colour()), ExportSettings(format=ImageFormat.TIFF_16BIT)
+        )
+
+        assert extension == ".tiff"
+        data = tifffile.imread(io.BytesIO(payload))
+        assert data.dtype == np.uint16
+        assert data.shape[-1] == 3
+        assert int(data.max()) == SIXTEEN_BIT_MAX
+
+    def test_sixteen_bit_colour_png_bytes_are_refused(self) -> None:
+        processor = ImageProcessor()
+
+        with pytest.raises(ValueError, match="16-bit colour"):
+            processor.export_to_bytes(
+                processor.load_image(self._colour()), ExportSettings(format=ImageFormat.PNG_16BIT)
+            )
+
+    def test_sixteen_bit_colour_png_file_is_refused_the_same_way(self, tmp_path: Path) -> None:
+        """The two writers must not disagree about what is possible."""
+        processor = ImageProcessor()
+
+        with pytest.raises(ValueError, match="16-bit colour"):
+            processor.export(
+                processor.load_image(self._colour()),
+                tmp_path / "colour.png",
+                ExportSettings(format=ImageFormat.PNG_16BIT),
+            )
+
+    def test_sixteen_bit_colour_tiff_file_still_works(self, tmp_path: Path) -> None:
+        tifffile = pytest.importorskip("tifffile")
+        processor = ImageProcessor()
+        path = tmp_path / "colour.tiff"
+
+        processor.export(
+            processor.load_image(self._colour()),
+            path,
+            ExportSettings(format=ImageFormat.TIFF_16BIT),
+        )
+
+        data = tifffile.imread(path)
+        assert data.dtype == np.uint16
+        assert data.shape[-1] == 3
+
+    def test_grayscale_is_unaffected(self) -> None:
+        processor = ImageProcessor()
+        gradient = _gradient()
+
+        payload, _ = processor.export_to_bytes(
+            processor.load_image(Image.fromarray(gradient)),
+            ExportSettings(format=ImageFormat.TIFF_16BIT),
+        )
+
+        with Image.open(io.BytesIO(payload)) as saved:
+            saved.load()
+            assert saved.mode == EXPECTED_16BIT_MODE

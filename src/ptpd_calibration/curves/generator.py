@@ -273,6 +273,25 @@ class CurveGenerator:
                 f"from patch {index}. Re-read that patch or fix the scan."
             )
 
+        # A step inside the tolerance is measurement noise, and it was accepted
+        # above but left in place. ``_inverse_lookup`` hands this array to
+        # ``np.searchsorted``, which is defined only for a sorted sequence: a
+        # dip of any size makes it return a bracket that skips the dipped patch
+        # and yields a silently wrong correction. Flatten the accepted noise so
+        # the series the inversion sees is genuinely non-decreasing. The running
+        # maximum only ever raises a dipped patch back to its predecessor, so a
+        # clean reading is unchanged.
+        repaired = np.maximum.accumulate(densities)
+        flattened = int(np.count_nonzero(repaired != densities))
+        if flattened:
+            logger.info(
+                "Flattened %d density step(s) within the %.3f tolerance so the "
+                "series is monotonic before inversion",
+                flattened,
+                tolerance,
+            )
+        densities = repaired
+
         logger.debug(
             "Validated %d densities: dmin=%.3f dmax=%.3f",
             densities.size,

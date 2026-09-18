@@ -14,6 +14,8 @@ Each produced a plausible-looking curve that would have ruined a print.
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import pytest
 
@@ -197,3 +199,68 @@ class TestDensityScale:
 
         monkeypatch.setenv("PTPD_EXTRACTION_STATUS_A_WEIGHTS", "[0.3, 0.5, 0.2]")
         assert ExtractionSettings().visual_density_weights == (0.3, 0.5, 0.2)
+
+
+class TestToleratedNoiseIsRepaired:
+    """Densities accepted within the tolerance must still be sorted.
+
+    ``_inverse_lookup`` hands the validated array to ``np.searchsorted``, which
+    is defined only for a sorted sequence. A step small enough to pass the
+    monotonicity check was left in place, so the search returned a bracket that
+    skipped the dipped patch and produced a silently wrong correction. The
+    accepted noise is flattened instead, which is the smallest repair that
+    keeps the inversion well defined.
+    """
+
+    @staticmethod
+    def _generator() -> CurveGenerator:
+        return CurveGenerator()
+
+    def test_a_dip_inside_the_tolerance_is_flattened(self) -> None:
+        generator = self._generator()
+        tolerance = generator.settings.density_monotonicity_tolerance
+        dip = tolerance / 2
+        densities = [0.10, 0.30, 0.50, 0.50 - dip, 0.70, 0.90, 1.10, 1.30]
+
+        validated = generator._validate_densities(densities)
+
+        assert np.all(np.diff(validated) >= 0), "searchsorted needs a sorted series"
+        assert validated[3] == pytest.approx(0.50), "the dipped patch rises to its predecessor"
+        assert validated[0] == pytest.approx(0.10)
+        assert validated[-1] == pytest.approx(1.30)
+
+    def test_a_clean_reading_is_untouched(self) -> None:
+        densities = [0.10, 0.30, 0.50, 0.70, 0.90, 1.10]
+
+        validated = self._generator()._validate_densities(densities)
+
+        assert np.allclose(validated, densities)
+
+    def test_a_dip_beyond_the_tolerance_is_still_refused(self) -> None:
+        generator = self._generator()
+        tolerance = generator.settings.density_monotonicity_tolerance
+        densities = [0.10, 0.30, 0.80, 0.80 - (tolerance * 5), 1.00, 1.20]
+
+        with pytest.raises(ValueError, match="monotonically"):
+            generator._validate_densities(densities)
+
+    def test_the_generated_curve_stays_monotonic_through_a_dip(self) -> None:
+        """The defect showed up as a non-monotonic correction, not an error."""
+        generator = self._generator()
+        dip = generator.settings.density_monotonicity_tolerance / 2
+        densities = [0.08, 0.22, 0.41, 0.41 - dip, 0.63, 0.88, 1.10, 1.28, 1.41, 1.52]
+
+        curve = generator.generate(densities, name="noisy")
+
+        outputs = np.asarray(curve.output_values)
+        assert np.all(np.diff(outputs) >= -1e-9), "the correction reversed inside the dip"
+
+    def test_flattening_is_logged(self, caplog: pytest.LogCaptureFixture) -> None:
+        generator = self._generator()
+        dip = generator.settings.density_monotonicity_tolerance / 2
+        densities = [0.10, 0.30, 0.50, 0.50 - dip, 0.70, 0.90]
+
+        with caplog.at_level(logging.INFO, logger="ptpd_calibration.curves.generator"):
+            generator._validate_densities(densities)
+
+        assert "Flattened 1 density step" in caplog.text

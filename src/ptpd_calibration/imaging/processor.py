@@ -291,12 +291,9 @@ class ImageProcessor:
             and img.mode not in ("L", "LA")
             and not self._keeps_high_depth(img)
         ):
-            img = img.convert("L")
+            img = self._narrow(img, "L")
         elif color_mode == ColorMode.RGB and img.mode not in ("RGB", "RGBA"):
-            # Pillow's convert() clips a high-depth image at 255 instead of
-            # scaling it, so an explicit colour request turned all but the
-            # deepest shadows pure white. Scale first, then colourise.
-            img = (to_eight_bit_gray(img) if is_high_depth_gray(img) else img).convert("RGB")
+            img = self._narrow(img, "RGB")
 
         # Apply the LUT based on image mode. Each table is built inside the
         # branch that uses it, so a 16-bit workload does not also fill the
@@ -321,9 +318,11 @@ class ImageProcessor:
             processed = processed_rgb.copy()
             processed.putalpha(a_channel)
         else:
-            # Try to convert to RGB first
+            # Anything else becomes RGB. This is where a high-depth image lands
+            # under ColorMode.PRESERVE once preserve_bit_depth is off, so it
+            # narrows by scaling rather than by Pillow's clipping convert().
             try:
-                rgb = img.convert("RGB")
+                rgb = self._narrow(img, "RGB")
                 processed = self._apply_lut_rgb(rgb, self._create_lut(curve))
             except Exception as e:
                 raise ValueError(f"Unsupported image mode: {img.mode}") from e
@@ -567,9 +566,10 @@ class ImageProcessor:
             inverted = inverted_rgb.copy()
             inverted.putalpha(a)
         else:
-            # Try to handle other modes
+            # Try to handle other modes. Narrow by scaling for the same reason
+            # as apply_curve's catch-all above.
             try:
-                rgb = img.convert("RGB")
+                rgb = self._narrow(img, "RGB")
                 arr = np.array(rgb)
                 inverted_arr = 255 - arr
                 inverted = Image.fromarray(inverted_arr.astype(np.uint8), mode="RGB")
@@ -620,7 +620,7 @@ class ImageProcessor:
             and not self._keeps_high_depth(result.image)
         ):
             result = ProcessingResult(
-                image=result.image.convert("L"),
+                image=self._narrow(result.image, "L"),
                 original_size=result.original_size,
                 original_mode=result.original_mode,
                 original_format=result.original_format,
@@ -775,8 +775,10 @@ class ImageProcessor:
                     # ``mode`` argument is deprecated and removed in Pillow 13.
                     img = Image.fromarray(arr)
                 else:
-                    # For RGB, need to use array directly
-                    pass  # Fall through to standard save
+                    # Colour: this used to fall through and write an 8-bit file
+                    # for a 16-bit request, the same silent downgrade the bytes
+                    # writer made. Refuse instead, with the same message.
+                    raise ValueError(self._no_16bit_colour_message(fmt))
 
         # Standard save
         img.save(output_path, format=fmt, **save_kwargs)
@@ -837,12 +839,17 @@ class ImageProcessor:
             arr = self._as_16bit(np.asarray(img))
             if arr.ndim == 2:
                 img = Image.fromarray(arr)
+            elif self._writes_16bit_colour(fmt):
+                # Pillow cannot write 16-bit colour, so tifffile does. Returning
+                # an 8-bit file for a 16-bit request looked like success while
+                # being the wrong depth, which is the defect this module exists
+                # to remove.
+                colour_buffer = io.BytesIO()
+                tifffile.imwrite(colour_buffer, arr, photometric="rgb")
+                logger.debug("Wrote 16-bit %s colour to bytes via tifffile", fmt)
+                return colour_buffer.getvalue(), ext
             else:
-                # Pillow has no in-memory writer for 16-bit colour; that path
-                # needs tifffile and a real file (see _save_16bit_tiff).
-                logger.warning(
-                    "16-bit %s colour cannot be written to bytes; emitting 8-bit instead", fmt
-                )
+                raise ValueError(self._no_16bit_colour_message(fmt))
 
         # Save to bytes
         buffer = io.BytesIO()
@@ -949,6 +956,40 @@ class ImageProcessor:
     def _keeps_high_depth(self, img: Image.Image) -> bool:
         """Report whether ``img`` should be processed at more than eight bits."""
         return self._settings.preserve_bit_depth and is_high_depth_gray(img)
+
+    @staticmethod
+    def _writes_16bit_colour(fmt: str) -> bool:
+        """Report whether a three-channel image can be written at 16 bits.
+
+        Only TIFF can, and only through tifffile: Pillow has no 16-bit colour
+        mode at all, which is why a 16-bit colour request used to come back as
+        an 8-bit file.
+        """
+        return fmt == "TIFF" and HAS_TIFFFILE
+
+    @staticmethod
+    def _no_16bit_colour_message(fmt: str) -> str:
+        """Explain why a 16-bit colour request cannot be served."""
+        remedy = "" if HAS_TIFFFILE else " Install tifffile for 16-bit TIFF colour."
+        return (
+            f"16-bit colour cannot be written as {fmt}.{remedy} "
+            "Request a grayscale color mode, an 8-bit format, or 16-bit TIFF."
+        )
+
+    @staticmethod
+    def _narrow(img: Image.Image, mode: str) -> Image.Image:
+        """Convert ``img`` to an 8-bit ``mode``, scaling a high-depth source.
+
+        Pillow's ``convert`` clips a high-depth image at 255 rather than
+        scaling it, so every narrowing has to scale first. Routing all of them
+        through one helper is the point: the first fix scaled only the array
+        branch of ``load_image`` and left the file branch clipping, which made
+        ``preserve_bit_depth=False`` produce a ruined negative from a real
+        scanner file while the array path looked correct.
+        """
+        if is_high_depth_gray(img):
+            img = to_eight_bit_gray(img)
+        return img if img.mode == mode else img.convert(mode)
 
     @staticmethod
     def _as_16bit(arr: np.ndarray) -> np.ndarray:

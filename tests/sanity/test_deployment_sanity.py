@@ -12,8 +12,6 @@ pytestmark = pytest.mark.legacy_ui
 
 from pathlib import Path
 
-import pytest
-
 
 class TestCoreImports:
     """Verify core modules can be imported."""
