@@ -490,6 +490,29 @@ class VisualizationSettings(BaseSettings):
     show_reference_line: bool = Field(default=True)
 
 
+class ImagingSettings(BaseSettings):
+    """Settings for applying curves to images and exporting negatives."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_IMAGING_")
+
+    # A 16-bit scan carries 65536 grey levels. Routing it through the 256-entry
+    # lookup table quantises it to 8 bits, and the export then multiplies the
+    # result back up, so a "16-bit" negative held fewer distinct levels than an
+    # 8-bit one would. Highlight banding in the print is exactly what the wider
+    # file exists to avoid. Setting this false restores the old behaviour for
+    # anyone whose downstream tooling depends on 8-bit output.
+    preserve_bit_depth: bool = Field(
+        default=True,
+        description="Carry 16-bit sources through curve, inversion and export at 16 bits",
+    )
+    lut_cache_entries: int = Field(
+        default=16,
+        ge=1,
+        le=1024,
+        description="Lookup tables held in memory before the least recently used is evicted",
+    )
+
+
 class ChemistrySettings(BaseSettings):
     """Settings for platinum/palladium chemistry calculations.
 
@@ -1411,6 +1434,7 @@ class Settings(BaseSettings):
     agent: AgentSettings = Field(default_factory=AgentSettings)
     api: APISettings = Field(default_factory=APISettings)
     visualization: VisualizationSettings = Field(default_factory=VisualizationSettings)
+    imaging: ImagingSettings = Field(default_factory=ImagingSettings)
     wedge_analysis: WedgeAnalysisSettings = Field(default_factory=WedgeAnalysisSettings)
     chemistry: ChemistrySettings = Field(default_factory=ChemistrySettings)
     workflow: WorkflowSettings = Field(default_factory=WorkflowSettings)

@@ -19,3 +19,4 @@ Status of every record is `proposed` until the owner accepts it (plan §9). Reco
 | 0013 | [API-first: domain math lives in Python only](0013-api-first-no-frontend-formulas.md) | proposed |
 | 0014 | [One persistence layer](0014-single-persistence-layer.md) | proposed |
 | 0015 | [Knowledge-base protocol minimization](0015-kb-protocol-minimization.md) | proposed |
+| 0016 | [Bit depth is preserved end to end](0016-bit-depth-is-preserved-end-to-end.md) | proposed |
