@@ -451,7 +451,7 @@ class QuadFileParser:
                         )
                         value_index += 1
                 except (ValueError, OverflowError):
-                    pass
+                    logger.debug("Skipping unparsable curve value %r", line)
 
     def _parse_key_value(self, line: str) -> None:
         """Parse a key=value line."""
@@ -528,7 +528,7 @@ class QuadFileParser:
                 if 0 <= index < 256:
                     self._profile.channels[channel].values[index] = max(0, min(255, output))
             except (ValueError, IndexError, OverflowError):
-                pass
+                logger.debug("Skipping unparsable indexed value %r=%r", key, number)
 
     def _post_process(self) -> None:
         """Post-process the parsed profile."""

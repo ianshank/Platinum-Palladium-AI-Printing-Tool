@@ -20,9 +20,12 @@ from uuid import uuid4
 import numpy as np
 import pytest
 
+from ptpd_calibration.core.models import CalibrationRecord, CurveData
+from ptpd_calibration.core.types import ChemistryType
 from ptpd_calibration.mcts.config import MCTSSettings
 from ptpd_calibration.mcts.export import MCTSResultExporter
 from ptpd_calibration.mcts.types import SearchResult
+from ptpd_calibration.ml.database import CalibrationDatabase
 
 
 @pytest.fixture
@@ -128,11 +131,6 @@ class TestMCTSResultExporter:
 
     def test_to_curve_data_success(self, exporter, sample_search_result):
         """Test conversion to CurveData returns valid data."""
-        try:
-            from ptpd_calibration.core.models import CurveData
-        except ImportError:
-            pytest.skip("CurveData not available")
-
         curve_data = exporter.to_curve_data(sample_search_result)
 
         # Verify type
@@ -157,10 +155,7 @@ class TestMCTSResultExporter:
 
     def test_to_curve_data_correct_number_of_points(self, exporter, sample_search_result):
         """Test that CurveData has correct number of points."""
-        try:
-            curve_data = exporter.to_curve_data(sample_search_result)
-        except ImportError:
-            pytest.skip("CurveData not available")
+        curve_data = exporter.to_curve_data(sample_search_result)
 
         expected_points = len(sample_search_result.predicted_curve)
         assert len(curve_data.input_values) == expected_points
@@ -168,12 +163,6 @@ class TestMCTSResultExporter:
 
     def test_to_calibration_record_success(self, exporter, sample_search_result):
         """Test conversion to CalibrationRecord maps parameters correctly."""
-        try:
-            from ptpd_calibration.core.models import CalibrationRecord
-            from ptpd_calibration.core.types import ChemistryType
-        except ImportError:
-            pytest.skip("CalibrationRecord not available")
-
         record = exporter.to_calibration_record(sample_search_result)
 
         # Verify type
@@ -218,11 +207,6 @@ class TestMCTSResultExporter:
 
     def test_to_calibration_record_chemistry_types(self, exporter):
         """Test chemistry type inference from metal ratio."""
-        try:
-            from ptpd_calibration.core.types import ChemistryType
-        except ImportError:
-            pytest.skip("ChemistryType not available")
-
         # Pure platinum (>0.9)
         result_pt = SearchResult(
             best_parameters={"metal_ratio": 0.95},
@@ -260,11 +244,6 @@ class TestMCTSResultExporter:
         self, exporter, sample_search_result
     ):
         """An exported record must not leak into measured-only database queries."""
-        try:
-            from ptpd_calibration.ml.database import CalibrationDatabase
-        except ImportError:
-            pytest.skip("CalibrationDatabase not available")
-
         record = exporter.to_calibration_record(sample_search_result)
         db = CalibrationDatabase()
         db.add_record(record)
@@ -501,12 +480,9 @@ class TestMCTSResultExporter:
         assert "low_dmax" in recipe["metadata"]["constraint_violations"]
 
         # Check notes include violations
-        try:
-            record = exporter.to_calibration_record(minimal_search_result)
-            assert "Constraint Violations" in record.notes
-            assert "low_dmax" in record.notes
-        except ImportError:
-            pytest.skip("CalibrationRecord not available")
+        record = exporter.to_calibration_record(minimal_search_result)
+        assert "Constraint Violations" in record.notes
+        assert "low_dmax" in record.notes
 
     def test_roundtrip_recipe_json(self, exporter, sample_search_result):
         """Test roundtrip: export to JSON and verify contents match."""

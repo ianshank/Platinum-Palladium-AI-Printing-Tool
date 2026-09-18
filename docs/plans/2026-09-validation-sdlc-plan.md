@@ -326,6 +326,19 @@ Critical path: ARC-01 → OPS-08 → OPS-03 → TST-03 → TST-09 → SCI-09 →
 7. **Python floor.** Approve `requires-python >= 3.11` (3.10 reaches end of life in October 2026).
 8. **KB protocol.** Approve ADR-0015 (remove the blocking Stop hook, cap injection, delete `.agent/` and the 23 `AGENT.md` files).
 
+### 9.0 Static-analysis backlog (tracked, not yet done)
+
+CodeQL reports 33 medium "log injection" alerts: values that originate in a
+request (a filename, a format name, a channel label) are written to the log
+without stripping newlines, so a caller can forge log records. The logging is
+lazy `%`-style throughout, the application is single-operator, and the records
+are not parsed by an alerting system, so this is scheduled rather than urgent:
+one shared sanitiser applied at the untrusted call sites, as part of the
+Phase-2 ratchet that makes CodeQL blocking (OPS-16). The high-severity path
+alerts are resolved; what remains of them are false positives on
+`curves/export.py`, where the destination path is server-generated before the
+library sees it.
+
 ### 9.1 Repository settings only the owner can change
 
 These are not code changes; the workflow cannot enable them from a run.

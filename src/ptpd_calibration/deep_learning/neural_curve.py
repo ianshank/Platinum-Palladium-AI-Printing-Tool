@@ -791,8 +791,8 @@ class NeuralCurvePredictor:
             del self.model
             self.model = None
 
-        for model in self.ensemble:
-            del model
+        # Clearing the list is what drops the references; deleting the loop
+        # variable would only unbind the name inside this frame.
         self.ensemble = []
 
         if self._torch is not None and hasattr(self._torch.cuda, "empty_cache"):
