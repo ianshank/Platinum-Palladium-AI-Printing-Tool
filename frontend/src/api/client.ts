@@ -10,6 +10,7 @@ import axios, {
   type AxiosResponse,
 } from 'axios';
 import { config, isDev } from '@/config';
+import type { CurveRequestBody } from '@/api/generated';
 import { logger } from '@/lib/logger';
 import type {
   AnalysisResponse,
@@ -134,13 +135,9 @@ export const api = {
 
   // Curves
   curves: {
-    generate: (data: {
-      measurements: number[];
-      type?: string;
-      name?: string;
-      paper_type?: string;
-      chemistry?: string;
-    }) =>
+    // The body type comes from the generated schema, so a field the server
+    // does not read is a compile error rather than a silently ignored value.
+    generate: (data: CurveRequestBody) =>
       apiRequest<CurveGenerationResponse>({
         method: 'POST',
         url: '/api/curves/generate',
@@ -209,12 +206,19 @@ export const api = {
       });
     },
 
-    parseQuad: (content: string, name: string, channel: string) =>
-      apiRequest<QuadParseResponse>({
+    // The endpoint declares Form fields, not a JSON body. Sending JSON made
+    // every call fail validation with "Field required: content".
+    parseQuad: (content: string, name: string, channel: string) => {
+      const form = new FormData();
+      form.append('content', content);
+      form.append('name', name);
+      form.append('channel', channel);
+      return apiRequest<QuadParseResponse>({
         method: 'POST',
         url: '/api/curves/parse-quad',
-        data: { content, name, channel },
-      }),
+        data: form,
+      });
+    },
   },
 
   // Scan / Step Tablet

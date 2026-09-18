@@ -352,14 +352,26 @@ def create_app(settings: Settings | None = None):
                 chemistry=request.chemistry,
             )
 
+            # Every other curve route stores its result, and this one returned
+            # a curve_id regardless, so fetching or exporting a generated curve
+            # answered 404 for the one endpoint a calibration actually starts
+            # from.
+            _store_curve(curve)
+
             return {
                 "success": True,
                 "curve_id": str(curve.id),
                 "name": curve.name,
                 "num_points": len(curve.input_values),
-                "input_values": curve.input_values[:10],  # Sample
-                "output_values": curve.output_values[:10],
+                "input_values": curve.input_values,
+                "output_values": curve.output_values,
             }
+        except ValueError as e:
+            # The generator refuses input it cannot invert (a reversed wedge, a
+            # non-finite patch, a series that rises and falls) and names the
+            # offending patch; that message is the useful part of the response.
+            _log.debug("Curve generation refused: %s", e)
+            raise HTTPException(status_code=422, detail=str(e)) from None
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e)) from None
 

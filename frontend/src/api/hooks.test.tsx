@@ -363,7 +363,14 @@ describe('API Hooks', () => {
         wrapper: createWrapper(),
       });
 
-      result.current.mutate({ measurements: [0.1, 0.5, 0.9] });
+      // Body shape comes from the generated schema: this test asserted
+      // `measurements` while the server read `densities`, so both sides passed
+      // against contradictory contracts.
+      result.current.mutate({
+        densities: [0.1, 0.5, 0.9],
+        curve_type: 'linear',
+        name: 'Test Curve',
+      });
 
       expect(mockSetProcessing).toHaveBeenCalledWith(true);
 

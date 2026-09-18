@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/Input';
 import { ScanUpload } from './ScanUpload';
 import { CurveEditor } from '@/components/curves/CurveEditor';
 import { api } from '@/api/client';
+import { DEFAULT_CURVE_TYPE } from '@/config/curves';
 import {
   type CalibrationRecord,
   ChemistryType,
@@ -62,8 +63,8 @@ export function CalibrationWizard() {
     setIsGenerating(true);
     try {
       const response = await api.curves.generate({
-        measurements: scanResult.densities,
-        type: 'linearization',
+        densities: scanResult.densities,
+        curve_type: DEFAULT_CURVE_TYPE,
         name: `${data.paper_type} ${data.chemistry_type}`,
       });
 

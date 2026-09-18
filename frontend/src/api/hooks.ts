@@ -11,6 +11,7 @@ import {
   type UseQueryOptions,
 } from '@tanstack/react-query';
 import { api, type ApiError, type AxiosError } from './client';
+import type { CurveRequestBody } from './generated';
 import type {
   CalibrationCreateResponse,
   CalibrationListResponse,
@@ -82,12 +83,7 @@ export function useGenerateCurve(
   options?: UseMutationOptions<
     CurveGenerationResponse,
     AxiosError<ApiError>,
-    {
-      measurements: number[];
-      type?: string;
-      name?: string;
-      curve_type?: string;
-    }
+    CurveRequestBody
   >
 ) {
   const queryClient = useQueryClient();
@@ -95,12 +91,7 @@ export function useGenerateCurve(
   const setProcessing = useStore((state) => state.ui.setProcessing);
 
   return useMutation({
-    mutationFn: (data: {
-      measurements: number[];
-      type?: string;
-      name?: string;
-      curve_type?: string;
-    }) => api.curves.generate(data),
+    mutationFn: (data: CurveRequestBody) => api.curves.generate(data),
     onMutate: () => {
       setProcessing(true);
       logger.info('Generating curve...');

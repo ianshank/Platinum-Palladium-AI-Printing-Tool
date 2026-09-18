@@ -30,3 +30,15 @@ export const CURVE_SAVE_NOOP_ADJUSTMENT = {
   CurveModificationRequest,
   'adjustment_type' | 'amount'
 >;
+
+/**
+ * Curve type sent when the caller expresses no preference.
+ *
+ * The server validates this against its `CurveType` enum and returns HTTP 400
+ * for anything else. The wizard used to send `'linearization'`, which is not a
+ * member, under the key `type`, which the server does not read: the request
+ * was rejected outright once the field name was corrected, and silently fell
+ * back to the default before that. Values live in the generated schema; this
+ * constant names the one the wizard intends.
+ */
+export const DEFAULT_CURVE_TYPE = 'linear';

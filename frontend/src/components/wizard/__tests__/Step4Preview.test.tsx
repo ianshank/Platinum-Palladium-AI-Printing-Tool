@@ -80,7 +80,7 @@ describe('Step4Preview', () => {
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.any returns any for type matching
-        measurements: expect.any(Array),
+        densities: expect.any(Array),
         name: 'Test Curve',
         curve_type: 'monotonic',
       }),

@@ -100,7 +100,7 @@ export function Step4Preview() {
       setHasTriedGeneration(true);
       generateCurve(
         {
-          measurements: densities.map((d) => d.measuredDensity),
+          densities: densities.map((d) => d.measuredDensity),
           name: curveName,
           curve_type: curveStrategy,
         },
@@ -151,7 +151,7 @@ export function Step4Preview() {
     setHasTriedGeneration(true);
     generateCurve(
       {
-        measurements: densities.map((d) => d.measuredDensity),
+        densities: densities.map((d) => d.measuredDensity),
         name: curveName,
         curve_type: curveStrategy,
       },

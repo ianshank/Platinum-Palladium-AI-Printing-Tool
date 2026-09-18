@@ -132,6 +132,12 @@ jobs:
       - name: Package is importable from its own metadata
         run: uv run python -c "import ptpd_calibration, ptpd_calibration.curves, ptpd_calibration.api.server"
 
+      # The frontend generates its client types from this file. It pointed at a
+      # path that had never existed, so four request-field mismatches reached
+      # the default branch. Fail here rather than in a user's browser.
+      - name: OpenAPI schema matches the routes
+        run: uv run python scripts/export_openapi.py --check
+
       - name: pytest (unit + integration + api + property; no browser/perf/visual)
         run: >
           uv run pytest
@@ -223,6 +229,18 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
+
+      # Regenerate the client types from the committed schema and fail if they
+      # differ from what is checked in. Together with the backend's schema
+      # check this makes a route change the frontend has not followed a build
+      # failure rather than a runtime 422.
+      - name: Generated API types are current
+        working-directory: frontend
+        run: |
+          pnpm generate:types
+          git diff --exit-code -- src/api/generated/schema.ts \
+            || { echo "::error::Generated types are stale. Run 'pnpm generate:types' and commit src/api/generated/schema.ts"; exit 1; }
+
       - run: pnpm typecheck
       - run: pnpm lint # PHASE-2: --max-warnings 0
       - run: pnpm format:check
