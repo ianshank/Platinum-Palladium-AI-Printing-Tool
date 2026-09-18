@@ -457,3 +457,107 @@ class TestConvenienceFunctions:
 
         assert len(result.output_values) > 0
         assert all(0 <= v <= 1 for v in result.output_values)
+
+
+class TestSmoothingRegressions:
+    """Regression tests for probe finding F1: spline smoothing of short curves."""
+
+    @pytest.mark.parametrize("n", [3, 5, 9])
+    def test_spline_smoothing_short_curve_does_not_raise(self, n):
+        """Curves with fewer than MIN_SPLINE_KNOTS points used to raise ValueError."""
+        curve = CurveData(
+            name="short",
+            input_values=list(np.linspace(0, 1, n)),
+            output_values=[0.0] * n,
+        )
+        result = CurveModifier().smooth(curve, SmoothingMethod.SPLINE, 0.5)
+
+        assert len(result.output_values) == n
+        assert result.output_values == pytest.approx([0.0] * n)
+
+    @pytest.mark.parametrize("strength", [0.0, 0.5, 1.0])
+    def test_spline_smoothing_unchanged_for_long_curves(self, noisy_curve, strength):
+        """For n >= MIN_SPLINE_KNOTS the knot selection is identical to the legacy formula."""
+        from scipy.interpolate import PchipInterpolator
+
+        inputs = np.array(noisy_curve.input_values)
+        outputs = np.array(noisy_curve.output_values)
+        n = len(outputs)
+        legacy_subsample = max(10, int(n * (1 - strength * 0.9)))
+        indices = np.linspace(0, n - 1, legacy_subsample).astype(int)
+        expected = np.clip(PchipInterpolator(inputs[indices], outputs[indices])(inputs), 0, 1)
+        expected[0], expected[-1] = outputs[0], outputs[-1]
+
+        result = CurveModifier().smooth(noisy_curve, SmoothingMethod.SPLINE, strength)
+
+        assert np.array_equal(np.array(result.output_values), expected)
+
+
+class TestEndpointPinningRegressions:
+    """Regression tests for probe finding F2: endpoint pinning broke monotonicity."""
+
+    def test_contrast_keeps_monotonicity_for_unanchored_curve(self):
+        """Shrunk probe example: [0, 0.75, 0.75] with contrast +1 became [0, 1.0, 0.75]."""
+        curve = CurveData(name="c", input_values=[0.0, 0.5, 1.0], output_values=[0.0, 0.75, 0.75])
+        result = CurveModifier().adjust_contrast(curve, 1.0)
+
+        assert np.all(np.diff(result.output_values) >= 0)
+        assert result.output_values[0] == 0.0
+        assert result.output_values[-1] == 0.75
+
+    def test_gamma_keeps_monotonicity_for_unanchored_curve(self):
+        """Shrunk probe example: [0, 0.5, 0.5] with gamma 0.5 became [0, 0.707, 0.5]."""
+        curve = CurveData(name="c", input_values=[0.0, 0.5, 1.0], output_values=[0.0, 0.5, 0.5])
+        result = CurveModifier().adjust_gamma(curve, 0.5)
+
+        assert np.all(np.diff(result.output_values) >= 0)
+        assert result.output_values[0] == 0.0
+        assert result.output_values[-1] == 0.5
+
+    def test_negative_brightness_keeps_monotonicity_for_anchored_curve(self):
+        """Even anchored curves could lose monotonicity with a negative amount."""
+        curve = CurveData(
+            name="c",
+            input_values=[0.0, 1 / 3, 2 / 3, 1.0],
+            output_values=[0.0, 0.3, 0.3, 1.0],
+        )
+        result = CurveModifier().adjust_brightness(curve, -1.0)
+
+        assert np.all(np.diff(result.output_values) >= 0)
+        assert result.output_values[0] == 0.0
+        assert result.output_values[-1] == 1.0
+
+    def test_non_monotone_input_is_pinned_only(self):
+        """Non-monotone inputs keep the legacy behaviour exactly (pin, no enforcement)."""
+        outputs = np.array([0.0, 0.9, 0.1, 1.0])
+        curve = CurveData(name="c", input_values=[0.0, 1 / 3, 2 / 3, 1.0], output_values=outputs)
+        legacy = np.clip(0.5 + (outputs - 0.5) * 1.5, 0, 1)
+        legacy[0], legacy[-1] = outputs[0], outputs[-1]
+
+        result = CurveModifier().adjust_contrast(curve, 0.5)
+
+        assert np.array_equal(np.array(result.output_values), legacy)
+
+    def test_anchored_monotone_curve_matches_legacy_pinning(self, nonlinear_curve):
+        """Anchored monotone curves are bit-identical to the legacy pin-only result."""
+        outputs = np.array(nonlinear_curve.output_values)
+        legacy = np.clip(0.5 + (outputs - 0.5) * 1.5, 0, 1)
+        legacy[0], legacy[-1] = outputs[0], outputs[-1]
+
+        result = CurveModifier().adjust_contrast(nonlinear_curve, 0.5)
+
+        assert np.array_equal(np.array(result.output_values), legacy)
+
+    def test_constant_curve_stays_constant(self):
+        """A constant input has no room between its pinned endpoints."""
+        curve = CurveData(name="c", input_values=[0.0, 0.5, 1.0], output_values=[0.4, 0.4, 0.4])
+        result = CurveModifier().adjust_midtones(curve, 1.0)
+
+        assert result.output_values == pytest.approx([0.4, 0.4, 0.4])
+
+    def test_preserve_endpoints_false_is_untouched(self):
+        """Without endpoint preservation the raw transform is returned."""
+        curve = CurveData(name="c", input_values=[0.0, 0.5, 1.0], output_values=[0.0, 0.75, 0.75])
+        result = CurveModifier(preserve_endpoints=False).adjust_contrast(curve, 1.0)
+
+        assert result.output_values == pytest.approx([0.0, 1.0, 1.0])

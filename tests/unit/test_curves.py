@@ -332,3 +332,92 @@ class TestConvenienceFunctions:
         assert curve.name == "Quick Cal"
         assert curve.paper_type == "Test Paper"
         assert curve.curve_type == CurveType.LINEAR
+
+
+class TestQTRRoundTrip:
+    """Regression tests for probe finding F3: ``save_curve``/``load_curve`` for QTR files.
+
+    ``QTRExporter`` writes 16-bit values while ``QuadFileParser`` stores 8-bit
+    values, so the round trip is exact only to within 2/255 (one step of 16->8
+    bit truncation plus ``int()`` truncation on export).
+    """
+
+    QUANTIZATION_TOLERANCE = 2 / 255
+    QTR_POINTS = 256
+
+    @pytest.fixture
+    def qtr_curve(self):
+        """Non-linear, monotone curve with metadata."""
+        x = np.linspace(0, 1, 33)
+        return CurveData(
+            name="Round Trip Curve",
+            input_values=list(x),
+            output_values=list(x**0.9),
+            paper_type="Arches Platine",
+            chemistry="Pd/Pt 50:50",
+            curve_type=CurveType.LINEAR,
+        )
+
+    @pytest.mark.parametrize("suffix", [".quad", ".txt"])
+    def test_save_and_load_qtr_roundtrip(self, qtr_curve, tmp_path, suffix):
+        """Both the full .quad profile and the single-channel curve file load back."""
+        path = tmp_path / f"roundtrip{suffix}"
+        save_curve(qtr_curve, path)
+
+        loaded = load_curve(path)
+
+        expected = np.interp(
+            np.linspace(0, 1, self.QTR_POINTS), qtr_curve.input_values, qtr_curve.output_values
+        )
+        assert len(loaded.output_values) == self.QTR_POINTS
+        assert np.max(np.abs(np.array(loaded.output_values) - expected)) <= (
+            self.QUANTIZATION_TOLERANCE
+        )
+        assert np.all(np.diff(loaded.output_values) >= 0)
+        assert loaded.name == qtr_curve.name
+        assert loaded.paper_type == qtr_curve.paper_type
+        assert loaded.chemistry == qtr_curve.chemistry
+
+    def test_load_uses_channel_with_data(self, qtr_curve, tmp_path):
+        """A profile exported on a non-K channel loads that channel, not the empty K."""
+        path = tmp_path / "cyan.quad"
+        QTRExporter(primary_channel="C").export(qtr_curve, path, format="quad")
+
+        loaded = load_curve(path)
+
+        assert max(loaded.output_values) > 0.5
+
+    def test_missing_metadata_falls_back_to_stem(self, qtr_curve, tmp_path):
+        """'Unknown' paper/chemistry map to None; a missing name uses the file stem."""
+        path = tmp_path / "bare.quad"
+        bare = CurveData(
+            name="Bare", input_values=qtr_curve.input_values, output_values=qtr_curve.output_values
+        )
+        save_curve(bare, path)
+        content = path.read_text().replace("# Profile: Bare\n", "")
+        path.write_text(content)
+
+        loaded = load_curve(path)
+
+        assert loaded.name == "bare"
+        assert loaded.paper_type is None
+        assert loaded.chemistry is None
+
+    def test_key_value_text_format_still_supported(self, tmp_path):
+        """The legacy ``index=value`` layout keeps working."""
+        path = tmp_path / "legacy.txt"
+        path.write_text("ProfileName=Legacy\n0=0\n128=64\n255=255\n")
+
+        loaded = load_curve(path)
+
+        assert loaded.name == "Legacy"
+        assert loaded.input_values == pytest.approx([0.0, 128 / 255, 1.0])
+        assert loaded.output_values == pytest.approx([0.0, 64 / 255, 1.0])
+
+    def test_text_without_curve_data_raises(self, tmp_path):
+        """Files with neither layout still raise the documented ValueError."""
+        path = tmp_path / "empty.txt"
+        path.write_text("# just a comment\n")
+
+        with pytest.raises(ValueError, match="No curve data found"):
+            load_curve(path)

@@ -4,6 +4,7 @@ Curve modification utilities for editing and enhancing calibration curves.
 Provides tools for adjusting, smoothing, blending, and transforming curves.
 """
 
+import logging
 from dataclasses import dataclass
 from enum import Enum
 
@@ -14,6 +15,15 @@ from scipy.signal import savgol_filter
 
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
+
+logger = logging.getLogger(__name__)
+
+# Minimum number of knots retained by SPLINE smoothing before re-interpolation.
+# The knot count is always capped at the curve length (see ``CurveModifier.smooth``).
+MIN_SPLINE_KNOTS = 10
+
+# Minimum number of points for which endpoint pinning can affect the interior.
+MIN_POINTS_FOR_INTERIOR = 3
 
 
 class AdjustmentType(str, Enum):
@@ -68,6 +78,13 @@ class CurveModifier:
 
     Provides non-destructive operations that can be applied to curves
     for fine-tuning and optimization.
+
+    When ``preserve_endpoints`` is set, every ``adjust_*`` operation and
+    :meth:`smooth` pin the first/last output back to their original values
+    after the transform. For a monotone input the interior is additionally
+    clipped into the pinned range and monotonicity is re-enforced, so
+    "monotone in => monotone out" holds for all curves, not only those
+    anchored at 0->1 (see :meth:`_pin_endpoints`).
     """
 
     def __init__(self, preserve_endpoints: bool = True):
@@ -108,8 +125,9 @@ class CurveModifier:
         outputs = np.clip(outputs, 0, 1)
 
         if self.preserve_endpoints:
-            outputs[0] = curve.output_values[0]
-            outputs[-1] = curve.output_values[-1]
+            outputs = self._pin_endpoints(
+                curve.output_values, outputs, curve.output_values[0], curve.output_values[-1]
+            )
 
         return self._create_modified_curve(curve, outputs, f"brightness({amount:+.2f})")
 
@@ -140,8 +158,9 @@ class CurveModifier:
         outputs = np.clip(outputs, 0, 1)
 
         if self.preserve_endpoints:
-            outputs[0] = curve.output_values[0]
-            outputs[-1] = curve.output_values[-1]
+            outputs = self._pin_endpoints(
+                curve.output_values, outputs, curve.output_values[0], curve.output_values[-1]
+            )
 
         return self._create_modified_curve(curve, outputs, f"contrast({amount:+.2f})")
 
@@ -167,8 +186,9 @@ class CurveModifier:
         outputs = np.power(outputs, gamma)
 
         if self.preserve_endpoints:
-            outputs[0] = curve.output_values[0]
-            outputs[-1] = curve.output_values[-1]
+            outputs = self._pin_endpoints(
+                curve.output_values, outputs, curve.output_values[0], curve.output_values[-1]
+            )
 
         return self._create_modified_curve(curve, outputs, f"gamma({gamma:.2f})")
 
@@ -204,8 +224,7 @@ class CurveModifier:
             outputs = np.power(outputs, gamma)
 
         if self.preserve_endpoints:
-            outputs[0] = 0.0
-            outputs[-1] = 1.0
+            outputs = self._pin_endpoints(curve.output_values, outputs, 0.0, 1.0)
 
         return self._create_modified_curve(
             curve, outputs, f"levels({black_point:.2f},{white_point:.2f})"
@@ -240,7 +259,9 @@ class CurveModifier:
         outputs = np.clip(outputs, 0, 1)
 
         if self.preserve_endpoints:
-            outputs[-1] = curve.output_values[-1]
+            outputs = self._pin_endpoints(
+                curve.output_values, outputs, None, curve.output_values[-1]
+            )
 
         return self._create_modified_curve(curve, outputs, f"highlights({amount:+.2f})")
 
@@ -273,7 +294,9 @@ class CurveModifier:
         outputs = np.clip(outputs, 0, 1)
 
         if self.preserve_endpoints:
-            outputs[0] = curve.output_values[0]
+            outputs = self._pin_endpoints(
+                curve.output_values, outputs, curve.output_values[0], None
+            )
 
         return self._create_modified_curve(curve, outputs, f"shadows({amount:+.2f})")
 
@@ -308,8 +331,9 @@ class CurveModifier:
         outputs = np.clip(outputs, 0, 1)
 
         if self.preserve_endpoints:
-            outputs[0] = curve.output_values[0]
-            outputs[-1] = curve.output_values[-1]
+            outputs = self._pin_endpoints(
+                curve.output_values, outputs, curve.output_values[0], curve.output_values[-1]
+            )
 
         return self._create_modified_curve(curve, outputs, f"midtones({amount:+.2f})")
 
@@ -329,6 +353,20 @@ class CurveModifier:
 
         Returns:
             Smoothed CurveData.
+
+        Notes:
+            ``SmoothingMethod.SPLINE`` keeps at most ``len(curve)`` knots. Earlier
+            versions always requested at least ``MIN_SPLINE_KNOTS`` knots, which
+            duplicated indices for curves with fewer than 10 points and made
+            ``PchipInterpolator`` raise ``ValueError`` (probe finding F1); that
+            was a defect and is fixed. For curves with ten or more points the
+            output is unchanged.
+
+            Savitzky-Golay smoothing is a local polynomial fit and is *not*
+            shape-preserving (it may overshoot a step); endpoint pinning for it
+            therefore never re-enforces monotonicity. All other methods behave
+            like the ``adjust_*`` operations: a monotone input yields a monotone
+            output when ``preserve_endpoints`` is set.
         """
         outputs = np.array(curve.output_values)
         n = len(outputs)
@@ -352,8 +390,11 @@ class CurveModifier:
 
         elif method == SmoothingMethod.SPLINE:
             inputs = np.array(curve.input_values)
-            # Subsample and interpolate
-            subsample = max(10, int(n * (1 - strength * 0.9)))
+            # Subsample and interpolate. Cap the knot count at ``n`` so that
+            # ``linspace(0, n - 1, subsample).astype(int)`` never repeats an index
+            # (F1: n < MIN_SPLINE_KNOTS used to produce duplicate knots).
+            subsample = min(n, max(MIN_SPLINE_KNOTS, int(n * (1 - strength * 0.9))))
+            logger.debug("Spline smoothing %d-point curve with %d knots", n, subsample)
             indices = np.linspace(0, n - 1, subsample).astype(int)
             interp = PchipInterpolator(inputs[indices], outputs[indices])
             smoothed = interp(inputs)
@@ -364,8 +405,13 @@ class CurveModifier:
         smoothed = np.clip(smoothed, 0, 1)
 
         if self.preserve_endpoints:
-            smoothed[0] = curve.output_values[0]
-            smoothed[-1] = curve.output_values[-1]
+            smoothed = self._pin_endpoints(
+                curve.output_values,
+                smoothed,
+                curve.output_values[0],
+                curve.output_values[-1],
+                enforce_monotone=method != SmoothingMethod.SAVGOL,
+            )
 
         return self._create_modified_curve(
             curve, smoothed, f"smooth({method.value},{strength:.2f})"
@@ -386,18 +432,10 @@ class CurveModifier:
         Returns:
             Monotonic CurveData.
         """
-        outputs = np.array(curve.output_values)
-
-        if direction == "increasing":
-            # Make monotonically increasing
-            for i in range(1, len(outputs)):
-                if outputs[i] < outputs[i - 1]:
-                    outputs[i] = outputs[i - 1]
-        else:
-            # Make monotonically decreasing
-            for i in range(1, len(outputs)):
-                if outputs[i] > outputs[i - 1]:
-                    outputs[i] = outputs[i - 1]
+        outputs = self._enforce_monotone_array(
+            np.array(curve.output_values),
+            "increasing" if direction == "increasing" else "decreasing",
+        )
 
         return self._create_modified_curve(curve, outputs, f"monotonic({direction})")
 
@@ -606,6 +644,101 @@ class CurveModifier:
                 result = self.adjust_midtones(result, adj.amount, **params)
 
         return result
+
+    @staticmethod
+    def _enforce_monotone_array(outputs: np.ndarray, direction: str) -> np.ndarray:
+        """Return a monotone copy of ``outputs`` (running max or running min).
+
+        ``direction="increasing"`` replaces every value that drops below its
+        predecessor with that predecessor (running maximum); any other value
+        applies the mirror image (running minimum). This is exactly the
+        sequential rule used by :meth:`enforce_monotonicity`.
+        """
+        values = np.asarray(outputs, dtype=float)
+        if direction == "increasing":
+            return np.maximum.accumulate(values)
+        return np.minimum.accumulate(values)
+
+    def _pin_endpoints(
+        self,
+        original: list[float] | np.ndarray,
+        transformed: np.ndarray,
+        first: float | None,
+        last: float | None,
+        enforce_monotone: bool = True,
+    ) -> np.ndarray:
+        """Pin curve endpoints after a transform without breaking monotonicity.
+
+        Historically the endpoints were simply overwritten with their original
+        values after the interior had been transformed. For curves whose
+        endpoints are not (0, 1) that turned a monotone input into a
+        non-monotone output, e.g. ``[0, 0.75, 0.75]`` with ``contrast=+1``
+        became ``[0, 1.0, 0.75]`` (probe finding F2). Negative brightness or
+        highlight amounts could do the same even for anchored 0->1 curves.
+
+        This helper keeps the pinning semantics (the pinned values are exactly
+        ``first``/``last``; ``None`` leaves that endpoint as transformed) and,
+        when the *input* curve was monotone, clips the interior into the range
+        spanned by the two endpoints and re-enforces the same monotone direction
+        via :meth:`_enforce_monotone_array`. Consequences:
+
+        * monotone in => monotone out, endpoints exactly preserved, bounds kept;
+        * anchored 0->1 curves whose transform was already monotone are
+          returned unchanged (the clip and running max are no-ops);
+        * non-monotone inputs are pinned only, exactly as before;
+        * a constant input stays constant (there is no room between the pinned
+          endpoints).
+
+        Args:
+            original: Output values of the input curve.
+            transformed: Transformed output values (already clipped to [0, 1]).
+            first: Value to pin at index 0, or ``None`` to leave as transformed.
+            last: Value to pin at index -1, or ``None`` to leave as transformed.
+            enforce_monotone: Re-enforce monotonicity for monotone inputs.
+                ``False`` restores plain pinning (used for Savitzky-Golay).
+
+        Returns:
+            New array with pinned endpoints.
+        """
+        outputs = np.array(transformed, dtype=float, copy=True)
+        if first is not None:
+            outputs[0] = first
+        if last is not None:
+            outputs[-1] = last
+
+        if not enforce_monotone or len(outputs) < MIN_POINTS_FOR_INTERIOR:
+            return outputs
+
+        diffs = np.diff(np.asarray(original, dtype=float))
+        if np.all(diffs >= 0):
+            direction = "increasing"
+        elif np.all(diffs <= 0):
+            direction = "decreasing"
+        else:
+            return outputs
+
+        # The pinned endpoints must themselves be ordered consistently with the
+        # input direction; otherwise no monotone interior exists and we keep the
+        # legacy (pin-only) result.
+        if (direction == "increasing" and outputs[0] > outputs[-1]) or (
+            direction == "decreasing" and outputs[0] < outputs[-1]
+        ):
+            return outputs
+
+        lo, hi = sorted((float(outputs[0]), float(outputs[-1])))
+        pinned_only = outputs.copy()
+        outputs[1:-1] = np.clip(outputs[1:-1], lo, hi)
+        outputs = self._enforce_monotone_array(outputs, direction)
+
+        changed = int(np.count_nonzero(pinned_only != outputs))
+        if changed:
+            logger.debug(
+                "Endpoint pinning re-enforced %s monotonicity on %d of %d points",
+                direction,
+                changed,
+                len(outputs),
+            )
+        return outputs
 
     def _create_modified_curve(
         self,
