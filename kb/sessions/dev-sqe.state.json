@@ -1,55 +1,65 @@
 {
-  "last_session_id": "1771779535-039824300",
-  "last_timestamp": "2026-02-22T16:58:54.000Z",
-  "active_branch": "claude/compassionate-pike",
-  "git_commit": "5ac3a6e",
+  "last_session_id": "e274d4ad-70e6-5d62-ba38-6b277fa971b0",
+  "last_timestamp": "2026-09-18T13:11:57.000Z",
+  "active_branch": "claude/ptpd-validation-sdlc-plan-j2a2gc",
+  "git_commit": "d60bc24",
+  "pull_request": "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/pull/37",
+  "ci_run": "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/actions/runs/35348644644",
   "context_files": [
-    "src/ptpd_calibration/api/server.py",
-    "src/ptpd_calibration/core/types.py",
-    "src/ptpd_calibration/curves/parser.py",
-    "frontend/src/components/curves/CurveEditor.tsx",
-    "frontend/src/stores/slices/uiSlice.ts",
-    "frontend/e2e/app.spec.ts"
+    "docs/plans/2026-09-validation-sdlc-plan.md",
+    "docs/plans/2026-09-review/expert-testing.md",
+    "docs/adr/README.md",
+    "AGENTS.md",
+    "pyproject.toml",
+    ".github/workflows/ci.yml"
   ],
   "resume_pointers": {
-    "last_file_modified": "src/ptpd_calibration/api/server.py",
-    "last_test_file": "frontend/e2e/app.spec.ts",
+    "current_task": "PRE-PR validation of PR #37 once CI reports on d60bc24",
+    "last_handoff_doc": "kb/handoffs/20260918-131157_dev-sqe_to_pre-pr.md",
+    "next_steps": [
+      "Confirm the CI run is green and record its URL in the PR",
+      "Owner performs plan section 9 actions (default branch, rulesets, stale PRs, deploy secret)",
+      "Phase 1: digital negative export endpoint, then Gradio retirement (ADR-0004)",
+      "Phase 2: MCTS ablation before any further MCTS investment (ADR-0005)"
+    ],
     "context_files": [
-      "src/ptpd_calibration/api/server.py",
-      "src/ptpd_calibration/core/types.py",
-      "src/ptpd_calibration/curves/parser.py",
-      "frontend/src/components/curves/CurveEditor.tsx",
-      "frontend/src/stores/slices/uiSlice.ts",
-      "frontend/e2e/app.spec.ts"
+      "docs/plans/2026-09-validation-sdlc-plan.md",
+      "docs/adr/README.md",
+      "AGENTS.md"
     ]
   },
   "implementation_status": {
     "completed": [
-      "Fix CurveEditor adjustment_type 'none' -> 'brightness' (P0 HTTP-400 bug)",
-      "Fix uiSlice sidebarOpen default true -> false",
-      "Fix e2e test selectors (duplicate h1 scoped to main, focus-visible)",
-      "Backend Fix 1: analyze_densities empty densities guard -> HTTP 422",
-      "Backend Fix 2: create_calibration pydantic.ValidationError -> HTTP 422",
-      "Backend Fix 3: get_calibration UUID ValueError -> HTTP 422",
-      "Backend Fix 4: smooth_curve preserve_endpoints moved to __init__",
-      "Backend Fix 5: parse_quad_content raw_sections + active_channels validation",
-      "Backend Fix 6: CurveType enum SPLINE + POLYNOMIAL values added"
+      "TASK-002",
+      "TASK-003",
+      "TASK-004",
+      "TASK-005",
+      "TASK-006",
+      "TASK-007",
+      "TASK-008",
+      "TASK-009",
+      "TASK-010",
+      "TASK-012"
     ],
     "in_progress": [],
-    "blocked": [],
-    "ready_for_pr": ["claude/compassionate-pike"]
+    "blocked": [
+      "TASK-001",
+      "TASK-011"
+    ],
+    "ready_for_pr": [
+      "claude/ptpd-validation-sdlc-plan-j2a2gc"
+    ]
   },
   "test_status": {
-    "playwright_e2e": "9/9 passed",
-    "backend_pytest": "104 passed, 13 skipped, 0 failed",
-    "frontend_vitest": "726 passed, 0 failed",
-    "typecheck_errors": 0,
-    "lint_errors": 0,
-    "last_test_run": "2026-02-22T16:58:54.000Z"
+    "source_of_truth": "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/actions/runs/35348644644",
+    "backend": "green (warnings-as-errors); all four coverage floors met",
+    "frontend": "green (typecheck, lint, prettier, vitest, build)",
+    "note": "Counts and percentages are read from the CI run, never recorded here (ADR-0007)."
   },
   "quality_checks": {
     "lint": "pass",
     "typecheck": "pass",
-    "format": "pass"
+    "format": "pass",
+    "doc_rules": "pass"
   }
 }
