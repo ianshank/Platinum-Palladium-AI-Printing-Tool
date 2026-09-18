@@ -302,6 +302,7 @@ class TestZoneSystemJourney:
         assert analysis.development_adjustment in ["N-2", "N-1", "N", "N+1", "N+2"]
 
 
+@pytest.mark.legacy_ui
 class TestSoftProofingJourney:
     """Test soft proofing workflow."""
 
@@ -585,6 +586,7 @@ class TestIntegratedWorkflow:
         print(f"Exposure: {exposure.format_time()}")
 
 
+@pytest.mark.legacy_ui
 class TestWizardStep3Linearization:
     """Test Calibration Wizard Step 3 linearization configuration journey."""
 

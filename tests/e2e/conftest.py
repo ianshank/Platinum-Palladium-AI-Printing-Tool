@@ -82,7 +82,10 @@ def real_quad_path(tmp_path_factory):
         return real
     channels = ["K", "C", "M", "Y", "LC", "LM", "LK", "LLK"]
     max_value = 65535
-    lines = [f"## QuadToneRIP {','.join(channels)}"]
+    lines = [
+        f"## QuadToneRIP {','.join(channels)}",
+        "# Platinum-Palladium V6 CC (synthetic profile generated for tests)",
+    ]
     for name in channels:
         lines.append(f"# {name} Curve")
         if name == "K":
@@ -97,3 +100,16 @@ def real_quad_path(tmp_path_factory):
     path = tmp_path_factory.mktemp("quad") / "synthetic_platinum_palladium.quad"
     path.write_text("\n".join(lines) + "\n")
     return path
+
+
+@pytest.fixture(autouse=True)
+def _legacy_ui_requires_gradio(request: pytest.FixtureRequest) -> None:
+    """Skip tests marked ``legacy_ui`` when the retired Gradio UI is not installed.
+
+    The marker documents that a journey exercises Gradio handlers (ADR-0004);
+    gating here keeps the marker reusable instead of repeating importorskip.
+    """
+    if request.node.get_closest_marker("legacy_ui") is not None:
+        pytest.importorskip(
+            "gradio", reason="legacy Gradio UI journey needs the [ui] extra (ADR-0004)"
+        )
