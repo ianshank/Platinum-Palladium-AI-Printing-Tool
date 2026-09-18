@@ -17,7 +17,8 @@ from typing import Any, cast
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from ptpd_calibration.imaging.safe_image import image_from_array
+from ptpd_calibration.imaging.processor import as_eight_bit_gray
+from ptpd_calibration.imaging.safe_image import image_from_array, to_uint8_scale
 
 #: Bounds for a gamma inferred from a reference print. The value comes from a
 #: log ratio that runs away as the reference approaches pure white, so it is
@@ -95,6 +96,12 @@ def _get_truetype_font(
 
     # Fall back to default font if nothing works
     return ImageFont.load_default()
+
+
+#: Fixed so the simulated grain is repeatable between runs. It is a constant,
+#: not a setting: a caller wanting different grain varies texture_strength, and
+#: a varying seed would make two renders of one image disagree.
+TEXTURE_SEED = 42
 
 
 class BlendMode(str, Enum):
@@ -472,12 +479,14 @@ class AlternativeProcessSimulator:
             # Letting Pillow infer the mode is the point: declaring "RGB" for a
             # four-channel array reinterprets the raw buffer as a continuous RGB
             # stream, so every pixel after the first was shifted by a byte.
-            pil_img = image_from_array(image.astype(np.uint8))
+            # astype truncates modulo 256, so a 16-bit array arrived scrambled
+            # rather than merely flattened; to_uint8_scale keeps the tone order.
+            pil_img = image_from_array(to_uint8_scale(image))
         else:
             pil_img = image
 
         # Convert to grayscale for processing
-        gray = pil_img.convert("L") if pil_img.mode != "L" else pil_img
+        gray = as_eight_bit_gray(pil_img)
 
         # Convert to normalized array
         arr = np.array(gray, dtype=np.float32) / 255.0
@@ -584,8 +593,7 @@ class NegativeBlender:
         neg_arrays = []
         for neg in negatives:
             if isinstance(neg, Image.Image):
-                if neg.mode != "L":
-                    neg = neg.convert("L")
+                neg = as_eight_bit_gray(neg)
                 arr = np.array(neg, dtype=np.float32) / 255.0
             else:
                 arr = neg.astype(np.float32)
@@ -607,8 +615,7 @@ class NegativeBlender:
                     mask_arrays.append(np.ones(target_size, dtype=np.float32))
                     continue
                 if isinstance(mask, Image.Image):
-                    if mask.mode != "L":
-                        mask = mask.convert("L")
+                    mask = as_eight_bit_gray(mask)
                     m_arr = np.array(mask, dtype=np.float32) / 255.0
                 else:
                     m_arr = mask.astype(np.float32)
@@ -657,8 +664,7 @@ class NegativeBlender:
         """
         # Convert to array
         if isinstance(image, Image.Image):
-            if image.mode != "L":
-                image = image.convert("L")
+            image = as_eight_bit_gray(image)
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -701,8 +707,7 @@ class NegativeBlender:
         """
         # Convert to array
         if isinstance(image, Image.Image):
-            if image.mode != "L":
-                image = image.convert("L")
+            image = as_eight_bit_gray(image)
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -734,8 +739,7 @@ class NegativeBlender:
         """
         # Convert to array
         if isinstance(image, Image.Image):
-            if image.mode != "L":
-                image = image.convert("L")
+            image = as_eight_bit_gray(image)
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -773,8 +777,7 @@ class NegativeBlender:
         """
         # Convert image to array
         if isinstance(image, Image.Image):
-            if image.mode != "L":
-                image = image.convert("L")
+            image = as_eight_bit_gray(image)
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -786,7 +789,7 @@ class NegativeBlender:
         # Apply dodging (lighten)
         if dodge_mask is not None:
             if isinstance(dodge_mask, Image.Image):
-                dodge_arr = np.array(dodge_mask.convert("L"), dtype=np.float32) / 255.0
+                dodge_arr = np.array(as_eight_bit_gray(dodge_mask), dtype=np.float32) / 255.0
             else:
                 dodge_arr = dodge_mask.astype(np.float32)
                 if dodge_arr.max() > 1.0:
@@ -799,7 +802,7 @@ class NegativeBlender:
         # Apply burning (darken)
         if burn_mask is not None:
             if isinstance(burn_mask, Image.Image):
-                burn_arr = np.array(burn_mask.convert("L"), dtype=np.float32) / 255.0
+                burn_arr = np.array(as_eight_bit_gray(burn_mask), dtype=np.float32) / 255.0
             else:
                 burn_arr = burn_mask.astype(np.float32)
                 if burn_arr.max() > 1.0:
@@ -835,7 +838,7 @@ class NegativeBlender:
 
         # Convert first layer
         if isinstance(layers[0], Image.Image):
-            result = np.array(layers[0].convert("L"), dtype=np.float32) / 255.0
+            result = np.array(as_eight_bit_gray(layers[0]), dtype=np.float32) / 255.0
         else:
             result = layers[0].astype(np.float32)
             if result.max() > 1.0:
@@ -844,7 +847,7 @@ class NegativeBlender:
         # Blend remaining layers
         for i in range(1, len(layers)):
             if isinstance(layers[i], Image.Image):
-                layer = np.array(layers[i].convert("L"), dtype=np.float32) / 255.0
+                layer = np.array(as_eight_bit_gray(layers[i]), dtype=np.float32) / 255.0
             else:
                 layer = layers[i].astype(np.float32)
                 if layer.max() > 1.0:
@@ -1256,7 +1259,7 @@ class StyleTransfer:
         """
         # Convert to grayscale array
         if isinstance(reference_image, Image.Image):
-            gray = reference_image.convert("L") if reference_image.mode != "L" else reference_image
+            gray = as_eight_bit_gray(reference_image)
             arr = np.array(gray, dtype=np.float32) / 255.0
         else:
             arr = reference_image.astype(np.float32)
@@ -1426,11 +1429,14 @@ class StyleTransfer:
         if isinstance(image, np.ndarray):
             # As above: infer rather than declare, so a four-channel array is
             # not read as misaligned RGB.
-            pil_img = image_from_array((image * 255).astype(np.uint8))
+            # Scaling handles both shapes this receives: a float image on 0-1
+            # and an integer one already on a code scale. Multiplying by 255
+            # first overflowed the latter instead of converting it.
+            pil_img = image_from_array(to_uint8_scale(image))
         else:
             pil_img = image
 
-        gray = pil_img.convert("L") if pil_img.mode != "L" else pil_img
+        gray = as_eight_bit_gray(pil_img)
 
         # Convert to array
         arr = np.array(gray, dtype=np.float32) / 255.0
@@ -1470,8 +1476,11 @@ class StyleTransfer:
 
         # Add texture if requested
         if params.texture_strength > 0:
-            np.random.seed(42)
-            noise = np.random.normal(0, params.texture_strength * 0.02, (h, w))
+            # A local generator, not np.random.seed: seeding globally reset the
+            # RNG of whatever called this, so an unrelated draw elsewhere in the
+            # process silently became deterministic too.
+            rng = np.random.default_rng(TEXTURE_SEED)
+            noise = rng.normal(0, params.texture_strength * 0.02, (h, w))
             for c in range(3):
                 rgb_output[:, :, c] = np.clip(rgb_output[:, :, c] + noise, 0, 1)
 
@@ -1762,7 +1771,7 @@ class PrintComparison:
             Normalized grayscale array (0-1)
         """
         if isinstance(image, Image.Image):
-            gray = image.convert("L") if image.mode != "L" else image
+            gray = as_eight_bit_gray(image)
             arr = np.array(gray, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)

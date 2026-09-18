@@ -413,3 +413,75 @@ class TestFeedbackPersistence:
         records = FeedbackStore(target).list()
         assert len(records) == 1
         assert records[0].id == response.json()["record_id"]
+
+
+class TestTrainingDoesNotBlockTheEventLoop:
+    """The training background task must not run on the event loop.
+
+    Starlette's ``BackgroundTask.__call__`` branches on whether the callable is
+    a coroutine function: an async task is awaited directly on the loop, a
+    synchronous one is handed to the threadpool. ``_train_model_task`` was
+    ``async def`` and slept once per episode, so a single request to
+    ``POST /api/mcts/train`` stopped the API answering anything at all -- health
+    checks and the endpoint that reports this very task's progress included --
+    for the length of the run.
+    """
+
+    def test_the_task_is_not_a_coroutine_function(self) -> None:
+        """Pins the fix: making this ``async def`` again reintroduces the stall."""
+        import asyncio
+
+        from ptpd_calibration.api.mcts_router import _train_model_task
+
+        assert not asyncio.iscoroutinefunction(_train_model_task)
+
+    def test_the_episode_pause_is_a_setting_not_a_literal(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A deployment can turn the stub's pause off entirely."""
+        from ptpd_calibration.mcts.config import MCTSSettings
+
+        monkeypatch.setenv("PTPD_MCTS_TRAINING_EPISODE_DELAY_SECONDS", "0")
+
+        assert MCTSSettings().training_episode_delay_seconds == 0.0
+
+    def test_episodes_are_clamped_to_the_deployment_ceiling(
+        self, monkeypatch: pytest.MonkeyPatch, mcts_client: TestClient
+    ) -> None:
+        """The request field's bound is the schema's widest value, not a policy.
+
+        ``/search`` already clamps ``num_simulations`` this way; training now
+        matches it, so the accepted maximum cannot be dictated by the caller.
+        The clamp happens in the endpoint before the task is queued, so it is
+        observable without the torch install the task itself needs.
+        """
+        from ptpd_calibration.api import mcts_router
+
+        ceiling = 10
+        monkeypatch.setenv("PTPD_MCTS_MAX_EPISODES_PER_REQUEST", str(ceiling))
+        monkeypatch.setenv("PTPD_MCTS_TRAINING_EPISODE_DELAY_SECONDS", "0")
+        monkeypatch.setattr(mcts_router, "TORCH_AVAILABLE", True)
+
+        response = mcts_client.post("/api/mcts/train", json={"num_episodes": 10_000})
+
+        assert response.status_code == 200
+        assert str(ceiling) in response.json()["message"]
+
+    def test_the_ceiling_cannot_undercut_the_trainer_floor(self) -> None:
+        """A clamp is only safe if its result is still a legal episode count.
+
+        The clamped value is fed back into ``MCTSSettings`` as
+        ``num_training_episodes``, which requires at least ten. A ceiling below
+        that would turn every training request into a validation failure rather
+        than a shorter run, so the two bounds are pinned together here.
+        """
+        from ptpd_calibration.mcts.config import MCTSSettings
+
+        fields = MCTSSettings.model_fields
+        ceiling = fields["max_episodes_per_request"]
+        floor = fields["num_training_episodes"]
+
+        def lower_bound(field) -> float:
+            return next(m.ge for m in field.metadata if hasattr(m, "ge"))
+
+        assert lower_bound(ceiling) >= lower_bound(floor)

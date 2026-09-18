@@ -324,9 +324,10 @@ class SessionLogger:
         Args:
             record: Print record to log
         """
-        if not self._current_session:
-            self.start_session()
-        self._current_session.add_record(record)
+        # start_session returns the session it assigns, so binding it here is
+        # the same call in one step and leaves no optional to re-check.
+        session = self._current_session or self.start_session()
+        session.add_record(record)
         self._auto_save()
 
     def end_session(self) -> PrintSession | None:

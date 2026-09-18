@@ -79,6 +79,7 @@ def create_app(settings: Settings | None = None):
         load_quad_string,
         save_curve,
     )
+    from ptpd_calibration.curves.parser import QuadParserLimits
     from ptpd_calibration.detection import StepTabletReader
     from ptpd_calibration.imaging import (
         ColorMode,
@@ -125,6 +126,13 @@ def create_app(settings: Settings | None = None):
     max_str = settings.api.max_string_length
     max_upload_bytes = mb_to_bytes(settings.api.max_upload_size_mb)
     upload_chunk_bytes = kb_to_bytes(settings.api.upload_chunk_size_kb)
+    # A pasted .quad profile is legitimately far longer than the general string
+    # cap: 256 values per channel across eight channels runs to thousands of
+    # lines, so max_str would reject valid content. The parser's own limit is
+    # the right bound, and it measures a string the same way (PTPD_QUAD_*), so
+    # an oversize paste is refused by the framework instead of being buffered
+    # and parsed before the parser rejects it.
+    max_quad_content = QuadParserLimits().max_bytes
 
     # Body-size cap is added before CORS so that CORS wraps it and a 413 still
     # carries the CORS headers a browser needs to surface the error.
@@ -689,7 +697,7 @@ def create_app(settings: Settings | None = None):
 
     @app.post("/api/curves/parse-quad")
     async def parse_quad_content(
-        content: str = Form(...),
+        content: str = Form(..., max_length=max_quad_content),
         name: str = Form("Uploaded Profile", max_length=max_str),
         channel: str = Form("K", max_length=max_str),
     ):

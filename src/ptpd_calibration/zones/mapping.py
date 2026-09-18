@@ -25,6 +25,8 @@ from enum import IntEnum
 import numpy as np
 from PIL import Image
 
+from ptpd_calibration.imaging.processor import as_eight_bit_gray
+
 
 class Zone(IntEnum):
     """Ansel Adams Zone System zones (0-10)."""
@@ -203,14 +205,16 @@ class ZoneMapper:
         Returns:
             ZoneAnalysis with distribution and recommendations
         """
-        # Convert to grayscale
-        gray = image.convert("L") if image.mode != "L" else image
+        # Convert to grayscale, scaling a high-depth scan rather than letting
+        # Pillow clip it: clipped, a 16-bit image landed almost entirely in
+        # Zone X and the development recommendation was drawn from that.
+        gray = as_eight_bit_gray(image)
 
         # Get pixel values
         arr = np.array(gray)
 
         # Calculate zone histogram
-        zone_histogram = {}
+        zone_histogram: dict[Zone, float] = {}
         for zone in Zone:
             # Map zone to 0-255 range
             zone_min = int((zone.value / 10.0) * 255 - 12.75)
@@ -224,7 +228,7 @@ class ZoneMapper:
             zone_histogram[zone] = count / arr.size
 
         # Find actual shadow and highlight zones
-        cumsum = 0
+        cumsum = 0.0
         actual_shadow = Zone.ZONE_0
         for zone in Zone:
             cumsum += zone_histogram[zone]
@@ -232,7 +236,7 @@ class ZoneMapper:
                 actual_shadow = zone
                 break
 
-        cumsum = 0
+        cumsum = 0.0
         actual_highlight = Zone.ZONE_X
         for zone in reversed(Zone):
             cumsum += zone_histogram[zone]
@@ -335,8 +339,11 @@ class ZoneMapper:
         Returns:
             Image with zones visualized
         """
-        # Convert to grayscale
-        gray = image.convert("L") if image.mode != "L" else image.copy()
+        # Convert to grayscale, scaling a high-depth scan as analyze_image does.
+        # The copy keeps the caller's image untouched when it is already "L".
+        gray = as_eight_bit_gray(image)
+        if gray is image:
+            gray = image.copy()
 
         if posterize:
             # Posterize to 11 levels

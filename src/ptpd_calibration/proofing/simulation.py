@@ -15,6 +15,13 @@ from typing import TypedDict
 import numpy as np
 from PIL import Image
 
+from ptpd_calibration.imaging.processor import as_eight_bit_gray
+
+#: Fixed so the simulated grain is repeatable between runs. It is a constant,
+#: not a setting: a caller wanting different grain varies texture_strength, and
+#: a varying seed would make two renders of one image disagree.
+TEXTURE_SEED = 42
+
 
 class PaperSimulation(str, Enum):
     """Paper simulation presets."""
@@ -166,9 +173,11 @@ class SoftProofer:
         settings = settings or self.settings
         notes = []
 
-        # Convert to grayscale if needed
+        # Convert to grayscale if needed. A high-depth scan is grayscale
+        # already but not 8-bit, and Pillow clips rather than scales it, so the
+        # proof came out at paper Dmin across the whole frame.
         if image.mode not in ("L", "LA"):
-            gray = image.convert("L")
+            gray = as_eight_bit_gray(image)
             notes.append("Converted to grayscale for Pt/Pd simulation")
         else:
             gray = image if image.mode == "L" else image.split()[0]
@@ -284,9 +293,12 @@ class SoftProofer:
         """
         h, w = image.shape[:2]
 
-        # Generate subtle noise for texture
-        np.random.seed(42)  # Consistent texture
-        noise = np.random.normal(0, strength * 0.02, (h, w))
+        # Generate subtle noise for texture. The texture is meant to be
+        # repeatable, but np.random.seed made it repeatable by resetting the
+        # caller's global RNG; a local generator keeps the repeatability and
+        # drops the side effect.
+        rng = np.random.default_rng(TEXTURE_SEED)
+        noise = rng.normal(0, strength * 0.02, (h, w))
 
         # Apply to all channels
         for c in range(3):

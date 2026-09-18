@@ -5,6 +5,7 @@ Provides algorithms for creating linearization curves from step wedge measuremen
 with various target curve options and optimization methods.
 """
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -13,6 +14,8 @@ from scipy import interpolate
 
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
+
+logger = logging.getLogger(__name__)
 
 
 class LinearizationMethod(str, Enum):
@@ -360,9 +363,7 @@ class AutoLinearizer:
         except Exception as e:
             # Fall back to linear interpolation
             # Log the exception for debugging
-            import logging
-
-            logging.warning(f"Spline fit failed, falling back to linear: {e}")
+            logger.warning("Spline fit failed, falling back to linear: %s", e)
             spline = interpolate.interp1d(
                 measured_norm, input_positions, kind="linear", fill_value="extrapolate"
             )

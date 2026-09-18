@@ -363,7 +363,11 @@ class LLMSettings(BaseSettings):
             return self.openai_api_key or self.api_key
         elif self.provider == LLMProvider.VERTEX_AI:
             return None  # Vertex AI uses service account credentials, not API keys
-        return self.api_key
+        # Unreachable while LLMProvider has exactly the three members above, and
+        # pydantic rejects anything else before it reaches here. Kept rather than
+        # deleted so a fourth provider gets a defined answer instead of None; the
+        # ignore goes stale on its own if that happens.
+        return self.api_key  # type: ignore[unreachable]
 
 
 class AgentSettings(BaseSettings):

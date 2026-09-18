@@ -22,6 +22,7 @@ import numpy as np
 from PIL import Image
 
 from ptpd_calibration.config import QASettings
+from ptpd_calibration.imaging.processor import as_eight_bit_gray
 
 # ============================================================================
 # Configuration
@@ -261,9 +262,12 @@ class NegativeDensityValidator:
         Returns:
             DensityAnalysis with validation results
         """
-        # Convert to numpy array if needed
+        # Convert to numpy array if needed. A high-depth scan must be scaled,
+        # not clipped: read through convert("L") a 16-bit negative reported
+        # nearly every pixel as paper white, so Dmin, the zone distribution and
+        # the pre-print checklist that reads them all described a blank sheet.
         if isinstance(image, Image.Image):
-            image = np.array(image.convert("L"))
+            image = np.array(as_eight_bit_gray(image))
         elif len(image.shape) == 3:
             # Convert RGB to grayscale
             image = np.mean(image, axis=2)
@@ -382,9 +386,9 @@ class NegativeDensityValidator:
         Returns:
             Tuple of (histogram counts, bin edges)
         """
-        # Convert to numpy array if needed
+        # Convert to numpy array if needed; scaled, not clipped, as above.
         if isinstance(image, Image.Image):
-            image = np.array(image.convert("L"))
+            image = np.array(as_eight_bit_gray(image))
         elif len(image.shape) == 3:
             image = np.mean(image, axis=2)
 

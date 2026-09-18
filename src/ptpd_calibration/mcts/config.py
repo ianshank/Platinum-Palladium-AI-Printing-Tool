@@ -318,6 +318,22 @@ class MCTSSettings(BaseSettings):
         le=10000,
         description="Upper bound on num_simulations honoured by POST /api/mcts/search",
     )
+    max_episodes_per_request: int = Field(
+        default=1000,
+        # The floor matches num_training_episodes above: the clamped value is
+        # fed straight back into these settings, so a ceiling below that floor
+        # would make every training request fail validation instead of running
+        # a shorter one.
+        ge=10,
+        le=10000,
+        description="Upper bound on num_episodes honoured by POST /api/mcts/train",
+    )
+    training_episode_delay_seconds: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=60.0,
+        description="Pause between episodes in the training stub; 0 disables it",
+    )
 
     def __init__(self, **data: Any) -> None:
         """Initialize settings and validate decision order."""

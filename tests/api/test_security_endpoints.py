@@ -426,6 +426,37 @@ class TestFieldBounds:
         )
         assert response.status_code == 422
 
+    def test_quad_content_bounded_by_the_parser_limit(
+        self, monkeypatch: pytest.MonkeyPatch, sample_quad_content: str
+    ) -> None:
+        """The pasted profile is bounded, and by the right limit.
+
+        ``content`` carried no ``max_length`` at all: it was refused only after
+        the framework had buffered it and the parser had measured it. The
+        general string cap would be the wrong bound here, because a real
+        profile is far longer than it, so the field takes the parser's own
+        ``PTPD_QUAD_MAX_BYTES`` and is refused before any of that work.
+        """
+        from fastapi.testclient import TestClient
+
+        from ptpd_calibration.api.server import create_app
+
+        limit = len(sample_quad_content) + 1
+        monkeypatch.setenv("PTPD_QUAD_MAX_BYTES", str(limit))
+
+        with TestClient(create_app()) as client:
+            accepted = client.post(
+                "/api/curves/parse-quad",
+                data={"content": sample_quad_content, "channel": "K"},
+            )
+            refused = client.post(
+                "/api/curves/parse-quad",
+                data={"content": "#" * (limit + 1), "channel": "K"},
+            )
+
+        assert accepted.status_code == 200
+        assert refused.status_code == 422
+
 
 class TestModuleLevelBounds:
     """The MCTS and deep-learning routers use APISettings defaults (4096)."""

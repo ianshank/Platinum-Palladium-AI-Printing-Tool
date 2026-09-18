@@ -294,6 +294,14 @@ class BatchProcessor:
                 preserve_resolution=self.settings.preserve_resolution,
             )
 
+            if job.output_path is None:
+                # The field is optional so a caller can build a job and fill the
+                # destination in later, but reaching the export without one is a
+                # programming error. Raising here turns it into a message naming
+                # the cause, instead of the "Path(None)" TypeError the surrounding
+                # handler would otherwise record as the job's failure reason.
+                raise ValueError("BatchJob.output_path must be set before processing")
+
             self._processor.export(result, job.output_path, export_settings)
 
             job.status = JobStatus.COMPLETED

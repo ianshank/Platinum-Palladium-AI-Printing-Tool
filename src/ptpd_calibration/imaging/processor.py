@@ -30,6 +30,7 @@ from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.imaging.safe_image import (
     HIGH_DEPTH_GRAY_MODES,
     ImageDecodeSettings,
+    image_from_array,
     open_image_safely,
     resize_to_fit,
 )
@@ -85,6 +86,28 @@ def to_eight_bit_gray(image: Image.Image) -> Image.Image:
     instead, which is exact at both ends of the range.
     """
     return Image.fromarray(to_eight_bit_array(to_uint16(np.asarray(image))))
+
+
+def as_eight_bit_gray(image: Image.Image) -> Image.Image:
+    """Return ``image`` as 8-bit "L", scaling high-depth input instead of clipping.
+
+    This is the safe replacement for a bare ``image.convert("L")``. Every module
+    that needs a grayscale array of an image it did not decode itself has the
+    same problem: ``open_image_safely`` deliberately preserves ``I;16`` and
+    ``I``, and Pillow's ``convert`` clips those at 255, so a 16-bit scan arrives
+    as very nearly solid white. Reading a 16-bit negative that way reported its
+    tones as 99% paper white, which is not a small error in a tool whose whole
+    job is measuring tone.
+
+    An image that is already "L" is returned unchanged rather than copied, so
+    this is cheap enough to call unconditionally.
+    """
+    if is_high_depth_gray(image):
+        logger.debug("Scaling %s image to 8-bit rather than clipping it", image.mode)
+        return to_eight_bit_gray(image)
+    if image.mode == "L":
+        return image
+    return image.convert("L")
 
 
 def to_eight_bit_array(array: np.ndarray) -> np.ndarray:
@@ -1114,9 +1137,14 @@ class ImageProcessor:
                     resolutionunit=2 if resolution else None,
                 )
         else:
-            # Fallback: save as 8-bit if tifffile not available
-            arr_8bit = (arr / 257).astype(np.uint8)
-            img = Image.fromarray(arr_8bit, mode="RGB")
+            # Fallback: save as 8-bit if tifffile not available.
+            # The mode is inferred rather than declared "RGB": an RGBA export
+            # reaches here with a four-channel array, and ``mode="RGB"`` does
+            # not convert it, it reinterprets the buffer -- every pixel after
+            # the first shifts by a byte and alpha folds into the colour
+            # stream. ``image_from_array`` picks the mode from the shape.
+            arr_8bit = to_eight_bit_array(arr)
+            img = image_from_array(arr_8bit)
             img.save(path, format="TIFF", **kwargs)
 
     @staticmethod

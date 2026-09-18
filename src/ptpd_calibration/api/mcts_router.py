@@ -477,11 +477,22 @@ def create_mcts_router(feedback_store: FeedbackStore | None = None) -> APIRouter
 
             session_id = str(uuid4())
 
+            # Clamp to the deployment's own ceiling, as /search does with
+            # num_simulations: the request field's bound is the widest value the
+            # schema allows, not the most a given deployment wants to run.
+            from ptpd_calibration.mcts.config import MCTSSettings
+
+            num_episodes = min(request.num_episodes, MCTSSettings().max_episodes_per_request)
+            if num_episodes != request.num_episodes:
+                logger.debug(
+                    "Clamped requested episodes %d to %d", request.num_episodes, num_episodes
+                )
+
             # Initialize training session
             training_sessions[session_id] = {
                 "status": "starting",
                 "episodes_completed": 0,
-                "num_episodes": request.num_episodes,
+                "num_episodes": num_episodes,
                 "error": None,
             }
 
@@ -489,14 +500,14 @@ def create_mcts_router(feedback_store: FeedbackStore | None = None) -> APIRouter
             background_tasks.add_task(
                 _train_model_task,
                 session_id,
-                request.num_episodes,
+                num_episodes,
                 training_sessions,
             )
 
             return MCTSTrainResponse(
                 session_id=session_id,
                 status="starting",
-                message=f"Training started with {request.num_episodes} episodes",
+                message=f"Training started with {num_episodes} episodes",
             )
 
         except Exception as e:
@@ -684,12 +695,22 @@ def create_mcts_router(feedback_store: FeedbackStore | None = None) -> APIRouter
 # =============================================================================
 
 
-async def _train_model_task(
+def _train_model_task(
     session_id: str,
     num_episodes: int,
     training_sessions: dict,
 ) -> None:
-    """Background task to train MCTS models."""
+    """Background task to train MCTS models.
+
+    Deliberately ``def`` and not ``async def``. Starlette awaits an async
+    background task directly on the event loop (``BackgroundTask.__call__``
+    branches on ``is_async``), so the per-episode pause below -- and the real
+    training that will replace it -- ran *on* the loop: one request to this
+    endpoint stopped the whole API answering anything, health checks included,
+    for the length of the run. A synchronous task is handed to the threadpool
+    instead, which is also the right shape for the CPU-bound trainer that the
+    stub stands in for.
+    """
     import time
 
     try:
@@ -701,15 +722,24 @@ async def _train_model_task(
 
         settings = MCTSSettings(num_training_episodes=num_episodes)
         _trainer = MCTSTrainer(settings=settings)
+        delay = settings.training_episode_delay_seconds
+        logger.debug(
+            "Training session %s starting: %d episodes, %.3fs pause per episode",
+            session_id,
+            num_episodes,
+            delay,
+        )
 
         # Run training with progress updates
         for episode in range(num_episodes):
             # Simulate training episode
             # In production, this would call trainer.run_episode()
-            time.sleep(0.1)  # Simulate work
+            if delay:
+                time.sleep(delay)
 
             training_sessions[session_id]["episodes_completed"] = episode + 1
 
+        logger.debug("Training session %s completed %d episodes", session_id, num_episodes)
         training_sessions[session_id]["status"] = "completed"
 
     except Exception as e:

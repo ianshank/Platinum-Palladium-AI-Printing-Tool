@@ -277,6 +277,12 @@ select = [
     "UP",   # pyupgrade
     "ARG",  # flake8-unused-arguments
     "SIM",  # flake8-simplify
+    # LOG015 catches a call on the real root logger. setup_logging attaches the
+    # SafeFormatter to the "ptpd_calibration" logger, so a root-logger call does
+    # not traverse it: the line-break escaping that stops one log record forging
+    # another is skipped, and the record never reaches the JSON log file either.
+    # This also enforces the getLogger(__name__) rule in CLAUDE.md.
+    "LOG",  # flake8-logging
 ]
 ignore = [
     "E501",   # line too long (handled by formatter)
@@ -324,10 +330,18 @@ files = [
     "src/ptpd_calibration/papers",
     "src/ptpd_calibration/workflow",
     "src/ptpd_calibration/vertex",
+    "src/ptpd_calibration/batch",
+    "src/ptpd_calibration/session",
+    "src/ptpd_calibration/ai",
+    "src/ptpd_calibration/zones",
 ]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
+# A branch that can never run is usually a stale assumption about the types
+# around it. Turning this on while the checked set is clean is far cheaper than
+# adopting it later.
+warn_unreachable = true
 exclude = ["tests"]
