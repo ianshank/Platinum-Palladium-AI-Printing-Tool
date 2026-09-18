@@ -26,7 +26,13 @@ from pathlib import Path
 from typing import Any
 
 # Context variable for request/operation tracking
-_log_context: ContextVar[dict[str, Any]] = ContextVar("log_context")
+# A default is required: ContextVar.get() raises LookupError when the variable
+# has never been set in the current context, and both the formatter and
+# LogContext read it before anything writes it, so the first log record in a
+# fresh context raised. The default is None rather than a dict because a
+# mutable default on a ContextVar is shared by every context; readers treat
+# None as empty.
+_log_context: ContextVar[dict[str, Any] | None] = ContextVar("log_context", default=None)
 
 
 class JSONFormatter(logging.Formatter):
@@ -228,11 +234,11 @@ class LogContext:
             **context: Key-value pairs to add to log context.
         """
         self.context = context
-        self._token: Token[dict[str, Any]] | None = None
+        self._token: Token[dict[str, Any] | None] | None = None
 
     def __enter__(self) -> "LogContext":
         """Enter context, adding to context variable."""
-        current = _log_context.get()
+        current = _log_context.get() or {}
         new_context = {**current, **self.context}
         self._token = _log_context.set(new_context)
         return self

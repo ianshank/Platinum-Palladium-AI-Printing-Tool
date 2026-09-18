@@ -119,10 +119,17 @@ class TestHealthEndpoints:
 
     @pytest.mark.asyncio
     async def test_health(self, client: httpx.AsyncClient):
-        """GET /api/health returns healthy status."""
+        """GET /api/health reports status plus what is actually deployed."""
         resp = await client.get("/api/health")
         assert resp.status_code == 200
-        assert resp.json() == {"status": "healthy"}
+
+        body = resp.json()
+        assert body["status"] == "healthy"
+        # An exact-equality assertion here pinned the endpoint to a constant,
+        # which is what made it useless to an operator; assert the contract.
+        assert body["version"]
+        assert isinstance(body["llm_provider_configured"], bool)
+        assert set(body["features"]) == {"mcts", "deep_learning"}
 
 
 # ---------------------------------------------------------------------------

@@ -5,10 +5,13 @@ FastAPI server for PTPD Calibration System.
 import logging
 import re
 import tempfile
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from uuid import UUID
 
+from ptpd_calibration.api.observability import RequestContextMiddleware
 from ptpd_calibration.config import Settings, get_settings
+from ptpd_calibration.core.logging import setup_logging
 
 _log = logging.getLogger(__name__)
 
@@ -18,6 +21,18 @@ _CURVE_SUFFIX = ".json"
 # Stored curve ids are UUIDs (CurveData.id), so the id taken from the URL is
 # matched against that shape before it is ever joined to a path.
 _CURVE_ID_PATTERN = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
+
+
+def _api_version() -> str:
+    """Return the installed package version, or a marker when run from a tree.
+
+    The API reported a hard-coded "1.0.0" whatever was deployed, so an operator
+    could not tell which build answered a request.
+    """
+    try:
+        return version("ptpd-calibration")
+    except PackageNotFoundError:  # pragma: no cover - only outside an install
+        return "0.0.0+unknown"
 
 
 def create_app(settings: Settings | None = None):
@@ -70,10 +85,28 @@ def create_app(settings: Settings | None = None):
 
     # Initialize app
     settings = settings or get_settings()
+
+    # Configure logging deliberately, here, rather than leaving it to whichever
+    # module happens to call get_logger() first: that made the level, format
+    # and destination depend on import order, so a deployment could not choose
+    # them and the debug logging on guarded paths was invisible.
+    setup_logging(
+        level=settings.log_level,
+        log_file=settings.log_file,
+        json_format=settings.log_json,
+    )
+    _log.info(
+        "Starting %s version %s (log level %s, json=%s)",
+        settings.app_name,
+        _api_version(),
+        settings.log_level,
+        settings.log_json,
+    )
+
     app = FastAPI(
         title="PTPD Calibration API",
         description="AI-powered calibration system for platinum/palladium printing",
-        version="1.0.0",
+        version=_api_version(),
     )
 
     # Request bounds shared by every endpoint (SEC-03). Values come from
@@ -89,6 +122,10 @@ def create_app(settings: Settings | None = None):
         RequestBodyLimitMiddleware,
         max_bytes=mb_to_bytes(settings.api.max_request_body_mb),
     )
+
+    # Added last so it runs first: every request, including one rejected by the
+    # body cap above, is logged with its identifier.
+    app.add_middleware(RequestContextMiddleware)
 
     # CORS (SEC-07): allow_credentials is read from settings and defaults to
     # False; APISettings refuses the wildcard-origin + credentials combination.
@@ -120,25 +157,29 @@ def create_app(settings: Settings | None = None):
     upload_dir.mkdir(parents=True, exist_ok=True)
     deep_learning_model_storage: dict = {}  # Storage for trained DL models
 
-    # Include deep learning router
+    # Optional routers. Which of these mounted is reported by /api/health, so a
+    # caller can tell a missing extra from a broken deployment.
+    optional_routers: dict[str, bool] = {}
+
     try:
         from ptpd_calibration.api.deep_learning import create_deep_learning_router
 
         deep_router = create_deep_learning_router(database, deep_learning_model_storage)
         app.include_router(deep_router)
-    except ImportError:
-        # Deep learning dependencies not available
-        pass
+        optional_routers["deep_learning"] = True
+    except ImportError as exc:
+        _log.info("Deep-learning routes unavailable: %s", exc)
+        optional_routers["deep_learning"] = False
 
-    # Include MCTS router
     try:
         from ptpd_calibration.api.mcts_router import create_mcts_router
 
         mcts_router = create_mcts_router()
         app.include_router(mcts_router)
-    except ImportError:
-        # MCTS dependencies not available
-        pass
+        optional_routers["mcts"] = True
+    except ImportError as exc:
+        _log.info("Search routes unavailable: %s", exc)
+        optional_routers["mcts"] = False
 
     # Pydantic models. Every list and string field is bounded (SEC-03) using
     # the limits above so an oversized payload fails validation with 422
@@ -270,7 +311,20 @@ def create_app(settings: Settings | None = None):
 
     @app.get("/api/health")
     async def health():
-        return {"status": "healthy"}
+        """Report what is actually running and which optional parts are usable.
+
+        A static "healthy" cannot distinguish a working deployment from one
+        whose language-model provider is unconfigured or whose optional
+        machine-learning extra is missing, which are the two states an operator
+        most often needs to tell apart.
+        """
+        return {
+            "status": "healthy",
+            "version": _api_version(),
+            "log_level": settings.log_level,
+            "llm_provider_configured": bool(settings.llm.get_active_api_key()),
+            "features": dict(optional_routers),
+        }
 
     @app.post("/api/analyze")
     async def analyze_densities(request: AnalyzeRequest):

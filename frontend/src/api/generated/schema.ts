@@ -552,7 +552,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Health */
+        /**
+         * Health
+         * @description Report what is actually running and which optional parts are usable.
+         *
+         *     A static "healthy" cannot distinguish a working deployment from one
+         *     whose language-model provider is unconfigured or whose optional
+         *     machine-learning extra is missing, which are the two states an operator
+         *     most often needs to tell apart.
+         */
         get: operations["health_api_health_get"];
         put?: never;
         post?: never;

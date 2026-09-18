@@ -2219,6 +2219,7 @@
     },
     "/api/health": {
       "get": {
+        "description": "Report what is actually running and which optional parts are usable.\n\nA static \"healthy\" cannot distinguish a working deployment from one\nwhose language-model provider is unconfigured or whose optional\nmachine-learning extra is missing, which are the two states an operator\nmost often needs to tell apart.",
         "operationId": "health_api_health_get",
         "responses": {
           "200": {

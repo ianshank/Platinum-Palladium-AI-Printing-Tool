@@ -1387,6 +1387,14 @@ class Settings(BaseSettings):
     app_name: str = Field(default="PTPD Calibration Studio")
     debug: bool = Field(default=False)
     log_level: str = Field(default="INFO")
+    log_json: bool = Field(
+        default=False,
+        description="Emit structured JSON log records instead of human-readable lines",
+    )
+    log_file: Path | None = Field(
+        default=None,
+        description="Optional file to receive log records in addition to stdout",
+    )
 
     # Data directories
     data_dir: Path = Field(default=Path.home() / ".ptpd")
