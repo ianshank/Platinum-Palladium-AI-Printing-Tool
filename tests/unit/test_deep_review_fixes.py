@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 import logging
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -72,6 +73,54 @@ class TestNonEightBitInputIsScaled:
 
         # Truncation made every value 0, reporting a brightness near zero.
         assert result.stats.mean > 100
+
+    #: A 16-bit ramp whose 8-bit rendering has a mean at the middle of the range.
+    SIXTEEN_BIT_RAMP = np.linspace(0, SIXTEEN_BIT_MAX, 256, dtype=np.uint16).reshape(16, 16)
+    EIGHT_BIT_MIDPOINT = 127.5
+
+    def _write_sixteen_bit_png(self, tmp_path: Path) -> Path:
+        path = tmp_path / "ramp16.png"
+        Image.fromarray(self.SIXTEEN_BIT_RAMP).save(path)
+        return path
+
+    @pytest.mark.parametrize("as_path", [True, False], ids=["path-input", "pil-input"])
+    def test_histogram_scales_a_sixteen_bit_file_instead_of_clipping(
+        self, tmp_path: Path, as_path: bool
+    ) -> None:
+        """The array branch was scaled but the file branch still reached convert("L").
+
+        Pillow clips ``I;16`` at 255 rather than scaling it, so every sample
+        above 255 came out white: this ramp reported a mean near 254, and the
+        statistics and printing recommendations drawn from it described a frame
+        that had lost every tone above 255.
+        """
+        written = self._write_sixteen_bit_png(tmp_path)
+        source = written if as_path else Image.open(written)
+
+        result = HistogramAnalyzer().analyze(source)
+
+        assert result.stats.mean == pytest.approx(self.EIGHT_BIT_MIDPOINT, abs=1.0)
+
+    def test_every_input_shape_agrees_on_the_same_image(self, tmp_path: Path) -> None:
+        """A path, a PIL image and an array of one file must read alike."""
+        written = self._write_sixteen_bit_png(tmp_path)
+        analyzer = HistogramAnalyzer()
+
+        means = [
+            float(analyzer.analyze(written).stats.mean),
+            float(analyzer.analyze(Image.open(written)).stats.mean),
+            float(analyzer.analyze(self.SIXTEEN_BIT_RAMP).stats.mean),
+            float(analyzer.analyze((self.SIXTEEN_BIT_RAMP // 257).astype(np.uint8)).stats.mean),
+        ]
+
+        assert means == pytest.approx([means[0]] * len(means), abs=1.0)
+        assert means[0] == pytest.approx(self.EIGHT_BIT_MIDPOINT, abs=1.0)
+
+    def test_the_reported_mode_still_names_the_source(self, tmp_path: Path) -> None:
+        """Scaling is for the analysis; the caller is still told what it supplied."""
+        written = self._write_sixteen_bit_png(tmp_path)
+
+        assert HistogramAnalyzer().analyze(written).image_mode == "I;16"
 
 
 class TestUnguardedDivisions:

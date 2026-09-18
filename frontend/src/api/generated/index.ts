@@ -28,3 +28,14 @@ export type CurveSmoothRequestBody = ApiSchemas['CurveSmoothRequest'];
 
 /** Body of `POST /api/analyze`. */
 export type AnalyzeRequestBody = ApiSchemas['AnalyzeRequest'];
+
+/**
+ * Multipart body of `POST /api/export/negative`.
+ *
+ * The adapter in `client.ts` takes a `File` and a progress callback, so it
+ * cannot be this type directly; it appends its form fields through a helper
+ * keyed on `keyof NegativeExportBody` instead, so a server-side rename fails
+ * the build rather than the request.
+ */
+export type NegativeExportBody =
+  ApiSchemas['Body_export_negative_api_export_negative_post'];

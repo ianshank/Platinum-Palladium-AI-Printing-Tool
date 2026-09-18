@@ -15,7 +15,7 @@ import {
   DEFAULT_NEGATIVE_FORMAT,
   DEFAULT_NEGATIVE_NAME,
 } from '@/config/curves';
-import type { CurveRequestBody } from '@/api/generated';
+import type { CurveRequestBody, NegativeExportBody } from '@/api/generated';
 import { logger } from '@/lib/logger';
 import type {
   AnalysisResponse,
@@ -53,15 +53,32 @@ export type NegativeColorMode = 'grayscale' | 'rgb' | 'preserve';
 export interface NegativeExportOptions {
   file: File;
   /** A stored curve to linearise with. Takes precedence over `densities`. */
-  curveId?: string;
+  curveId?: NonNullable<NegativeExportBody['curve_id']>;
   /** Measured densities to generate a curve from, when no curve is stored. */
-  densities?: number[];
+  densities?: NonNullable<NegativeExportBody['densities']>;
   format?: NegativeFormat;
   colorMode?: NegativeColorMode;
-  invert?: boolean;
+  invert?: NegativeExportBody['invert'];
   /** Download filename stem; the server sanitises it. */
-  name?: string;
+  name?: NegativeExportBody['name'];
   onProgress?: (progress: number) => void;
+}
+
+/**
+ * Append a multipart field the negative export endpoint actually reads.
+ *
+ * The field names are taken from the generated schema rather than written out
+ * as free strings. `generated/index.ts` records four contract mismatches that
+ * reached the default branch while these types went ungenerated; a bare
+ * `form.append('color_mode', ...)` is the same mistake, because a server-side
+ * rename leaves it compiling and fails at runtime instead.
+ */
+function appendNegativeField(
+  form: FormData,
+  field: keyof NegativeExportBody,
+  value: string | Blob
+): void {
+  form.append(field, value);
 }
 
 /**
@@ -265,19 +282,24 @@ export const api = {
      */
     export: (options: NegativeExportOptions) => {
       const form = new FormData();
-      form.append('file', options.file);
-      form.append('format', options.format ?? DEFAULT_NEGATIVE_FORMAT);
-      form.append('invert', String(options.invert ?? true));
-      form.append(
+      appendNegativeField(form, 'file', options.file);
+      appendNegativeField(
+        form,
+        'format',
+        options.format ?? DEFAULT_NEGATIVE_FORMAT
+      );
+      appendNegativeField(form, 'invert', String(options.invert ?? true));
+      appendNegativeField(
+        form,
         'color_mode',
         options.colorMode ?? DEFAULT_NEGATIVE_COLOR_MODE
       );
-      form.append('name', options.name ?? DEFAULT_NEGATIVE_NAME);
+      appendNegativeField(form, 'name', options.name ?? DEFAULT_NEGATIVE_NAME);
       if (options.curveId) {
-        form.append('curve_id', options.curveId);
+        appendNegativeField(form, 'curve_id', options.curveId);
       }
       options.densities?.forEach((density) =>
-        form.append('densities', String(density))
+        appendNegativeField(form, 'densities', String(density))
       );
 
       return apiRequest<Blob>({
