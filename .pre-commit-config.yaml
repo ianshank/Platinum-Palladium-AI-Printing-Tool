@@ -1,0 +1,54 @@
+# Install once:  uv run pre-commit install --hook-type pre-commit --hook-type pre-push
+# CI runs the same checks; these catch problems before a commit exists.
+minimum_pre_commit_version: "4.0.0"
+default_language_version:
+  python: python3.12
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: detect-private-key
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.8
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.8.17
+    hooks:
+      - id: uv-lock
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.0
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.5.2
+    hooks:
+      - id: zizmor
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.3.3
+    hooks:
+      - id: prettier
+        files: ^frontend/.*\.(ts|tsx|css|json)$
+        additional_dependencies: ["prettier@3.3.3", "prettier-plugin-tailwindcss@0.6.11"]
+  - repo: local
+    hooks:
+      - id: doc-sprawl
+        name: root markdown allowlist
+        entry: scripts/check-doc-sprawl.sh
+        language: script
+        pass_filenames: false

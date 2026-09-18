@@ -1,0 +1,12 @@
+# Default owner for everything. Rulesets can require code-owner review for
+# workflow, dependency, container, and scientific-core changes.
+*                                        @ianshank
+/.github/                                @ianshank
+/pyproject.toml                          @ianshank
+/uv.lock                                 @ianshank
+/Dockerfile                              @ianshank
+/src/ptpd_calibration/api/               @ianshank
+/src/ptpd_calibration/chemistry/         @ianshank
+/src/ptpd_calibration/curves/            @ianshank
+/src/ptpd_calibration/mcts/              @ianshank
+/frontend/                               @ianshank
