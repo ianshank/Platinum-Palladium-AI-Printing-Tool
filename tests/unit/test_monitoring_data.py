@@ -34,9 +34,11 @@ from ptpd_calibration.data.repository import (
     SQLiteRepository,
 )
 from ptpd_calibration.monitoring.performance import (
+    APIMetric,
     APIPerformanceTracker,
     CacheManager,
     ImageProcessingProfiler,
+    PerformanceMetric,
     PerformanceMonitor,
     PerformanceReport,
     ResourceMonitor,
@@ -1760,3 +1762,42 @@ class TestRepositoryIntegration:
         stats = monitor.get_statistics("repo_add")
         assert stats["count"] == 1
         assert stats["mean"] > 0
+
+
+class TestTimestampSerialization:
+    """Every monitoring model serialises its timestamp as ISO 8601 in JSON.
+
+    The models moved from the pydantic v1 ``json_encoders`` config to
+    ``@field_serializer``; these tests pin the resulting wire format, which
+    dashboards and the metrics exporter parse.
+    """
+
+    FIXED = datetime(2026, 9, 18, 13, 45, 6, 123456)
+
+    @pytest.mark.parametrize(
+        "model",
+        [
+            PerformanceMetric(metric_name="decode", value=12.5, unit="ms", timestamp=FIXED),
+            ResourceUsage(
+                cpu_percent=3.0,
+                memory_percent=41.0,
+                memory_used_mb=820.0,
+                memory_available_mb=1180.0,
+                disk_percent=55.0,
+                disk_used_gb=11.0,
+                disk_free_gb=9.0,
+                timestamp=FIXED,
+            ),
+            APIMetric(endpoint="/api/health", duration_ms=4.0, status_code=200, timestamp=FIXED),
+        ],
+        ids=["performance_metric", "resource_usage", "api_metric"],
+    )
+    def test_timestamp_is_iso8601_in_json(self, model: BaseModel) -> None:
+        payload = json.loads(model.model_dump_json())
+        assert payload["timestamp"] == self.FIXED.isoformat()
+        assert datetime.fromisoformat(payload["timestamp"]) == self.FIXED
+
+    def test_python_dump_keeps_datetime(self) -> None:
+        """``when_used="json"`` must not change the Python representation."""
+        metric = PerformanceMetric(metric_name="decode", value=1.0, unit="ms", timestamp=self.FIXED)
+        assert metric.model_dump()["timestamp"] == self.FIXED

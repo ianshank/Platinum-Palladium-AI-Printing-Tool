@@ -326,6 +326,18 @@ Critical path: ARC-01 → OPS-08 → OPS-03 → TST-03 → TST-09 → SCI-09 →
 7. **Python floor.** Approve `requires-python >= 3.11` (3.10 reaches end of life in October 2026).
 8. **KB protocol.** Approve ADR-0015 (remove the blocking Stop hook, cap injection, delete `.agent/` and the 23 `AGENT.md` files).
 
+### 9.1 Repository settings only the owner can change
+
+These are not code changes; the workflow cannot enable them from a run.
+
+| Setting | Where | Why |
+|---|---|---|
+| Default branch `main`, fast-forwarded to the trunk | Settings → General | ADR-0001; today the default is a `claude/*` branch |
+| Ruleset on `main` and `v*` requiring `all-green` | Settings → Rules | Makes the single required check meaningful |
+| Dependency graph (and Dependabot alerts) | Settings → Code security | `dependency review` fails with "Dependency review is not supported on this repository" until this is on. The job is advisory in the gate, so it does not block, but it stays red |
+| `deploy` environment with a required reviewer and an `HF_TOKEN` secret | Settings → Environments | The deploy job fails loudly on a missing token by design |
+| Close the superseded pull requests (#13, #14, #16, #17, #34, #36) | Pull requests | They predate the trunk and cannot merge |
+
 ---
 
 ## Appendices (in `docs/plans/2026-09-review/`)

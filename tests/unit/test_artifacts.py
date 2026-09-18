@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import logging
 import os
 import pickle
 from pathlib import Path
@@ -295,6 +296,28 @@ class TestCurvePredictorLoader:
         """A directory added via the environment is accepted by the default policy."""
         monkeypatch.setenv("PTPD_ARTIFACTS_ALLOWED_DIRS", str(tmp_path))
         assert resolve_artifact_path(tmp_path / "m.pkl", ArtifactPolicy(), require_allowlist=True)
+
+    def test_save_outside_allowlist_warns_that_load_will_refuse_it(
+        self, tmp_path: Path, policy: ArtifactPolicy, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Saving is allowed anywhere, but the caller is told loading will refuse it."""
+        pytest.importorskip("sklearn")
+        from ptpd_calibration.ml.predictor import CurvePredictor
+
+        predictor = CurvePredictor(model_type="random_forest")
+        predictor.model = object()  # save() only needs is_trained and a picklable model
+        predictor.is_trained = True
+        outside = tmp_path / "outside" / "predictor.pkl"
+
+        with caplog.at_level(logging.WARNING, logger="ptpd_calibration.ml.predictor"):
+            predictor.save(outside, policy=policy)
+
+        assert outside.is_file()
+        assert manifest_path_for(outside, policy).is_file()
+        assert "PTPD_ARTIFACTS_ALLOWED_DIRS" in caplog.text
+
+        with pytest.raises(UnsafeArtifactError):
+            CurvePredictor.load(outside, policy=policy)
 
     def test_save_and_load_round_trip(self, allowed: Path, policy: ArtifactPolicy) -> None:
         pytest.importorskip("sklearn")
