@@ -3,20 +3,16 @@ AI and Chat Endpoint Tests.
 
 Tests for AI assistant, recipe suggestions, and troubleshooting endpoints.
 
-NOTE: These tests are currently skipped due to async/TestClient compatibility issues.
-The async chat endpoints cause deadlocks when tested with synchronous TestClient.
-Need to refactor to use httpx AsyncClient properly.
+These were skipped module-wide for a synchronous-TestClient deadlock. The
+refactor the skip asked for had already happened: ``tests/api/conftest.py``
+provides an ``async_client`` fixture built on httpx ``AsyncClient`` plus
+``ASGITransport``, and every test below already uses it. The skip outlived its
+reason and silently removed the only API-level coverage of the chat routes.
 """
 
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-# Skip all tests in this module due to async/sync TestClient deadlock issues
-# TODO: Refactor to use AsyncClient with proper event loop management
-pytestmark = pytest.mark.skip(
-    reason="Async chat endpoints cause TestClient deadlocks - needs AsyncClient refactor"
-)
 
 
 @pytest.mark.api

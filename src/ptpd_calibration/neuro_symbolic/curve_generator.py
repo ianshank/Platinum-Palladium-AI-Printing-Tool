@@ -13,6 +13,7 @@ The generator produces curves that:
 4. Provide uncertainty quantification and explanations
 """
 
+import logging
 from typing import Any
 
 import numpy as np
@@ -73,6 +74,9 @@ class CurveGenerationResult(BaseModel):
     # Explanations
     explanation: str = ""
     reasoning_steps: list[str] = Field(default_factory=list)
+
+
+logger = logging.getLogger(__name__)
 
 
 class NeuroSymbolicCurveGenerator:
@@ -143,10 +147,16 @@ class NeuroSymbolicCurveGenerator:
             f"Starting curve generation with {len(measured_densities)} measurements"
         )
 
-        # Step 1: Generate base curve using standard method
+        # Step 1: Generate base curve using standard method.
+        # This generator's contract is to repair physically implausible input,
+        # so a reversal in the measurements is something it fixes. The base
+        # generator refuses one beyond its tolerance, because a silently wrong
+        # curve wastes a print, so repair it here first and say so.
+        densities = self._repair_reversals(measured_densities, reasoning_steps)
+
         reasoning_steps.append("Generating base curve using classical interpolation")
         base_curve = self._base_generator.generate(
-            measured_densities,
+            densities,
             curve_type=curve_type,
             target_curve=target_curve,
             name=name,
@@ -291,6 +301,30 @@ class NeuroSymbolicCurveGenerator:
             explanation=explanation,
             reasoning_steps=reasoning_steps,
         )
+
+    def _repair_reversals(
+        self, measured_densities: list[float], reasoning_steps: list[str]
+    ) -> list[float]:
+        """Return the densities with backwards steps flattened to their predecessor.
+
+        A step tablet response is physically monotone, so a measurement that
+        goes backwards is scanner noise or a misread patch. The base generator
+        refuses one beyond its tolerance because a silently wrong curve wastes
+        a print; here the stated job is to repair the input, so each reversal
+        is clamped and reported as a reasoning step.
+        """
+        repaired = list(measured_densities)
+        reversals = 0
+        for index in range(1, len(repaired)):
+            if repaired[index] < repaired[index - 1]:
+                repaired[index] = repaired[index - 1]
+                reversals += 1
+
+        if reversals:
+            message = f"Repaired {reversals} density reversal(s) before curve generation"
+            logger.info(message)
+            reasoning_steps.append(message)
+        return repaired
 
     def generate_from_extraction(
         self,

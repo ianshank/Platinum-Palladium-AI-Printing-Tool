@@ -114,6 +114,20 @@ class CurveSettings(BaseSettings):
     smoothing_factor: float = Field(default=0.0, ge=0.0, le=1.0)
     monotonicity_enforcement: bool = Field(default=True)
 
+    # Input validation. A step wedge read from the wrong end arrives descending;
+    # that is recoverable by reversing it. A wedge that rises and falls is not,
+    # because the density-to-input inversion has no single answer there.
+    auto_orient_densities: bool = Field(
+        default=True,
+        description="Reverse a descending density series instead of refusing it",
+    )
+    density_monotonicity_tolerance: float = Field(
+        default=0.02,
+        ge=0.0,
+        le=1.0,
+        description="Largest backwards step tolerated in a measured density series",
+    )
+
     # Highlight preservation
     highlight_hold_point: float = Field(default=0.05, ge=0.0, le=0.2)
     shadow_hold_point: float = Field(default=0.95, ge=0.8, le=1.0)
