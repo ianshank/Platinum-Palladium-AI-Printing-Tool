@@ -13,7 +13,9 @@ describe('uiSlice', () => {
     it('has correct initial values', () => {
       const state = store.getState();
       expect(state.ui.activeTab).toBe('dashboard');
-      expect(state.ui.sidebarOpen).toBe(true);
+      // Sidebar starts closed so the mobile drawer/overlay is not open on
+      // first render (default changed 2026-02-22, see uiSlice.ts initialState)
+      expect(state.ui.sidebarOpen).toBe(false);
       expect(state.ui.isProcessing).toBe(false);
       expect(state.ui.isInitialized).toBe(false);
       expect(state.ui.theme).toBe('dark');
@@ -31,11 +33,12 @@ describe('uiSlice', () => {
 
   describe('Sidebar', () => {
     it('toggleSidebar toggles sidebar state', () => {
-      expect(store.getState().ui.sidebarOpen).toBe(true);
-      store.getState().ui.toggleSidebar();
+      // Default is closed (mobile-first, see 'has correct initial values')
       expect(store.getState().ui.sidebarOpen).toBe(false);
       store.getState().ui.toggleSidebar();
       expect(store.getState().ui.sidebarOpen).toBe(true);
+      store.getState().ui.toggleSidebar();
+      expect(store.getState().ui.sidebarOpen).toBe(false);
     });
 
     it('setSidebarOpen sets sidebar state', () => {

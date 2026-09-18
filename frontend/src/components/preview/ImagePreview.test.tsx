@@ -31,7 +31,11 @@ vi.mock('react-zoom-pan-pinch', () => ({
       centerView: vi.fn(),
       setTransform: vi.fn(),
     };
-    return <div data-testid="transform-wrapper">{typeof children === 'function' ? children(mockUtils) : children}</div>;
+    return (
+      <div data-testid="transform-wrapper">
+        {typeof children === 'function' ? children(mockUtils) : children}
+      </div>
+    );
   },
   TransformComponent: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="transform-component">{children}</div>
@@ -241,7 +245,9 @@ describe('ImagePreview', () => {
       // Click to hide
       fireEvent.click(infoButton);
       await waitFor(() => {
-        expect(screen.queryByTestId('metadata-overlay')).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId('metadata-overlay')
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -267,8 +273,14 @@ describe('ImagePreview', () => {
 
       // Simulate image load
       const image = screen.getByTestId('primary-image');
-      Object.defineProperty(image, 'naturalWidth', { value: 1920, configurable: true });
-      Object.defineProperty(image, 'naturalHeight', { value: 1080, configurable: true });
+      Object.defineProperty(image, 'naturalWidth', {
+        value: 1920,
+        configurable: true,
+      });
+      Object.defineProperty(image, 'naturalHeight', {
+        value: 1080,
+        configurable: true,
+      });
       fireEvent.load(image);
 
       await waitFor(() => {
@@ -317,21 +329,27 @@ describe('ImagePreview', () => {
 
   describe('Props Configuration', () => {
     it('respects minZoom prop', () => {
-      const { container } = render(<ImagePreview src="test.jpg" minZoom={0.3} />);
+      const { container } = render(
+        <ImagePreview src="test.jpg" minZoom={0.3} />
+      );
 
       // TransformWrapper should receive the minZoom prop (checked via mock setup)
       expect(container).toBeInTheDocument();
     });
 
     it('respects maxZoom prop', () => {
-      const { container } = render(<ImagePreview src="test.jpg" maxZoom={10} />);
+      const { container } = render(
+        <ImagePreview src="test.jpg" maxZoom={10} />
+      );
 
       // TransformWrapper should receive the maxZoom prop (checked via mock setup)
       expect(container).toBeInTheDocument();
     });
 
     it('respects initialZoom prop', () => {
-      const { container } = render(<ImagePreview src="test.jpg" initialZoom={2} />);
+      const { container } = render(
+        <ImagePreview src="test.jpg" initialZoom={2} />
+      );
 
       // TransformWrapper should receive the initialZoom prop (checked via mock setup)
       expect(container).toBeInTheDocument();
@@ -343,8 +361,14 @@ describe('ImagePreview', () => {
       render(<ImagePreview src="test.jpg" />);
 
       const image = screen.getByTestId('primary-image');
-      Object.defineProperty(image, 'naturalWidth', { value: 800, configurable: true });
-      Object.defineProperty(image, 'naturalHeight', { value: 600, configurable: true });
+      Object.defineProperty(image, 'naturalWidth', {
+        value: 800,
+        configurable: true,
+      });
+      Object.defineProperty(image, 'naturalHeight', {
+        value: 600,
+        configurable: true,
+      });
 
       expect(() => fireEvent.load(image)).not.toThrow();
     });
@@ -353,8 +377,14 @@ describe('ImagePreview', () => {
       render(<ImagePreview src="test.jpg" compareSrc="compare.jpg" />);
 
       const compareImage = screen.getByTestId('compare-image');
-      Object.defineProperty(compareImage, 'naturalWidth', { value: 800, configurable: true });
-      Object.defineProperty(compareImage, 'naturalHeight', { value: 600, configurable: true });
+      Object.defineProperty(compareImage, 'naturalWidth', {
+        value: 800,
+        configurable: true,
+      });
+      Object.defineProperty(compareImage, 'naturalHeight', {
+        value: 600,
+        configurable: true,
+      });
 
       expect(() => fireEvent.load(compareImage)).not.toThrow();
     });

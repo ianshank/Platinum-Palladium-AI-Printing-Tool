@@ -148,12 +148,47 @@ describe('Layout', () => {
     expect(screen.getByText('v0.1.0')).toBeInTheDocument();
   });
 
-  it('calls toggleSidebar on menu button click', () => {
-    renderLayout();
+  describe('sidebar toggle button', () => {
+    it('is labelled "Close sidebar" and calls toggleSidebar when the sidebar is open', () => {
+      mockSidebarOpen = true;
+      renderLayout();
 
-    const menuBtn = screen.getByLabelText('Open sidebar');
-    fireEvent.click(menuBtn);
+      // The in-sidebar X button shares the "Close sidebar" name; the header
+      // toggle is the only one exposing aria-expanded.
+      const menuBtn = screen.getByRole('button', {
+        name: 'Close sidebar',
+        expanded: true,
+      });
+      expect(menuBtn).toHaveAttribute('aria-controls', 'app-sidebar');
+      expect(
+        screen.queryByRole('button', { name: 'Open sidebar' })
+      ).not.toBeInTheDocument();
 
-    expect(mockToggleSidebar).toHaveBeenCalledTimes(1);
+      fireEvent.click(menuBtn);
+
+      expect(mockToggleSidebar).toHaveBeenCalledTimes(1);
+    });
+
+    it('is labelled "Open sidebar" and calls toggleSidebar when the sidebar is closed', () => {
+      mockSidebarOpen = false;
+      renderLayout();
+
+      const menuBtn = screen.getByRole('button', {
+        name: 'Open sidebar',
+        expanded: false,
+      });
+      expect(menuBtn).toHaveAttribute('aria-controls', 'app-sidebar');
+
+      fireEvent.click(menuBtn);
+
+      expect(mockToggleSidebar).toHaveBeenCalledTimes(1);
+    });
+
+    it('hides the mobile overlay when the sidebar is closed', () => {
+      mockSidebarOpen = false;
+      const { container } = renderLayout();
+
+      expect(container.querySelector('[aria-hidden="true"]')).toBeNull();
+    });
   });
 });

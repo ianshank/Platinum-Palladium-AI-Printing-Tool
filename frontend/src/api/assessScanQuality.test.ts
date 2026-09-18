@@ -1,20 +1,31 @@
 /**
- * Scan Analysis Equivalence Tests
+ * assessScanQuality unit tests
  *
- * Verifies that the React scan analysis components produce equivalent
- * results to the legacy Gradio implementation for scan quality assessment,
- * density extraction, and calibration data flow.
+ * Exercises the pure scan-quality grading function exported from
+ * `@/api/hooks`: grade boundaries, issue detection, determinism and
+ * penalty stacking. Complements the smoke cases in `hooks.test.tsx`.
+ *
+ * Moved from `src/__tests__/equivalence/ScanAnalysis.equiv.test.ts` (TST-15):
+ * it was never an equivalence test, just a unit test of this function.
  */
 
 import { describe, expect, it } from 'vitest';
 import { assessScanQuality, type ScanAnalysisInput } from '@/api/hooks';
-import { TEST_FIXTURES } from './setup';
+
+/** 21-patch scan spanning the full 0.05–2.0 density range: no penalties. */
+const EXCELLENT_SCAN: ScanAnalysisInput = {
+  densities: Array.from({ length: 21 }, (_, i) => 0.05 + (i / 20) * 1.95),
+  dmax: 2.0,
+  dmin: 0.05,
+  range: 1.95,
+  num_patches: 21,
+};
 
 // ============================================================================
-// Scan Quality Grading Equivalence
+// Scan Quality Grading
 // ============================================================================
 
-describe('Equivalence: Scan Quality Grading', () => {
+describe('assessScanQuality: grade boundaries', () => {
   const gradingScenarios: Array<{
     label: string;
     input: ScanAnalysisInput;
@@ -24,13 +35,7 @@ describe('Equivalence: Scan Quality Grading', () => {
   }> = [
     {
       label: 'perfect scan (21 patches, full range)',
-      input: {
-        densities: Array.from({ length: 21 }, (_, i) => 0.05 + (i / 20) * 1.95),
-        dmax: 2.0,
-        dmin: 0.05,
-        range: 1.95,
-        num_patches: 21,
-      },
+      input: EXCELLENT_SCAN,
       expectedGrade: 'excellent',
       minScore: 90,
       maxScore: 100,
@@ -103,7 +108,7 @@ describe('Equivalence: Scan Quality Grading', () => {
 // Quality Issue Detection
 // ============================================================================
 
-describe('Equivalence: Quality Issue Detection', () => {
+describe('assessScanQuality: issue detection', () => {
   it('detects low density range (< 0.5)', () => {
     const input: ScanAnalysisInput = {
       densities: Array.from({ length: 21 }, (_, i) => 0.1 + (i / 20) * 0.3),
@@ -113,7 +118,9 @@ describe('Equivalence: Quality Issue Detection', () => {
       num_patches: 21,
     };
     const result = assessScanQuality(input);
-    const rangeIssue = result.issues.find((i) => i.message.includes('density range'));
+    const rangeIssue = result.issues.find((i) =>
+      i.message.includes('density range')
+    );
     expect(rangeIssue).toBeDefined();
     expect(rangeIssue!.type).toBe('warning');
     expect(rangeIssue!.suggestion).toBeTruthy();
@@ -128,7 +135,9 @@ describe('Equivalence: Quality Issue Detection', () => {
       num_patches: 21,
     };
     const result = assessScanQuality(input);
-    const rangeIssue = result.issues.find((i) => i.message.includes('density range'));
+    const rangeIssue = result.issues.find((i) =>
+      i.message.includes('density range')
+    );
     expect(rangeIssue).toBeDefined();
     expect(rangeIssue!.message).toContain('Moderate');
   });
@@ -162,7 +171,7 @@ describe('Equivalence: Quality Issue Detection', () => {
   });
 
   it('reports no issues for excellent scan', () => {
-    const result = assessScanQuality(TEST_FIXTURES.scanQuality.excellent);
+    const result = assessScanQuality(EXCELLENT_SCAN);
     expect(result.issues).toHaveLength(0);
     expect(result.score).toBe(100);
   });
@@ -172,11 +181,10 @@ describe('Equivalence: Quality Issue Detection', () => {
 // Score Calculation Determinism
 // ============================================================================
 
-describe('Equivalence: Score Calculation Determinism', () => {
+describe('assessScanQuality: determinism', () => {
   it('produces identical scores for identical inputs across calls', () => {
-    const input = TEST_FIXTURES.scanQuality.excellent;
-    const result1 = assessScanQuality(input);
-    const result2 = assessScanQuality(input);
+    const result1 = assessScanQuality(EXCELLENT_SCAN);
+    const result2 = assessScanQuality(EXCELLENT_SCAN);
     expect(result1.score).toBe(result2.score);
     expect(result1.overall).toBe(result2.overall);
     expect(result1.issues).toEqual(result2.issues);

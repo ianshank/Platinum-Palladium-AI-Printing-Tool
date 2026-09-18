@@ -16,7 +16,9 @@ export interface SearchConfigPanelProps {
 /**
  * Search configuration panel with parameter sliders and search controls
  */
-export const SearchConfigPanel: FC<SearchConfigPanelProps> = ({ className }) => {
+export const SearchConfigPanel: FC<SearchConfigPanelProps> = ({
+  className,
+}) => {
   const {
     searchConfig,
     setSearchConfig,
@@ -66,7 +68,9 @@ export const SearchConfigPanel: FC<SearchConfigPanelProps> = ({ className }) => 
       data-testid="search-config-panel"
     >
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Search Configuration</h2>
+        <h2 className="text-lg font-semibold text-foreground">
+          Search Configuration
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Configure parameters and constraints for MCTS search
         </p>
@@ -84,20 +88,27 @@ export const SearchConfigPanel: FC<SearchConfigPanelProps> = ({ className }) => 
           {isEngineReady ? 'Engine Ready' : 'Engine Not Ready'}
         </span>
         {!isTorchAvailable && (
-          <span className="text-xs text-muted-foreground">(PyTorch not available)</span>
+          <span className="text-xs text-muted-foreground">
+            (PyTorch not available)
+          </span>
         )}
       </div>
 
       {/* Paper Type */}
       <div className="flex flex-col gap-2">
-        <label htmlFor="paper-type" className="text-sm font-medium text-foreground">
+        <label
+          htmlFor="paper-type"
+          className="text-sm font-medium text-foreground"
+        >
           Paper Type
         </label>
         <select
           id="paper-type"
           className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           value={searchConfig.paperType ?? ''}
-          onChange={(e) => setSearchConfig({ paperType: e.target.value || undefined })}
+          onChange={(e) =>
+            setSearchConfig({ paperType: e.target.value || undefined })
+          }
         >
           <option value="">Any</option>
           <option value="arches_platine">Arches Platine</option>
@@ -109,14 +120,19 @@ export const SearchConfigPanel: FC<SearchConfigPanelProps> = ({ className }) => 
 
       {/* UV Source */}
       <div className="flex flex-col gap-2">
-        <label htmlFor="uv-source" className="text-sm font-medium text-foreground">
+        <label
+          htmlFor="uv-source"
+          className="text-sm font-medium text-foreground"
+        >
           UV Source
         </label>
         <select
           id="uv-source"
           className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           value={searchConfig.uvSource ?? ''}
-          onChange={(e) => setSearchConfig({ uvSource: e.target.value || undefined })}
+          onChange={(e) =>
+            setSearchConfig({ uvSource: e.target.value || undefined })
+          }
         >
           <option value="">Any</option>
           <option value="sun">Natural Sunlight</option>
@@ -128,7 +144,10 @@ export const SearchConfigPanel: FC<SearchConfigPanelProps> = ({ className }) => 
 
       {/* Number of Simulations */}
       <div className="flex flex-col gap-2">
-        <label htmlFor="num-simulations" className="text-sm font-medium text-foreground">
+        <label
+          htmlFor="num-simulations"
+          className="text-sm font-medium text-foreground"
+        >
           Simulations: {numSimulations}
         </label>
         <input
@@ -150,11 +169,14 @@ export const SearchConfigPanel: FC<SearchConfigPanelProps> = ({ className }) => 
       {/* Fixed Parameters */}
       {Object.keys(parameterRanges).length > 0 && (
         <div className="flex flex-col gap-3">
-          <h3 className="text-sm font-medium text-foreground">Fixed Parameters</h3>
+          <h3 className="text-sm font-medium text-foreground">
+            Fixed Parameters
+          </h3>
           <div className="flex flex-col gap-3">
             {Object.entries(parameterRanges).map(([name, range]) => {
               const isFixed = name in (searchConfig.fixedParameters ?? {});
-              const value = searchConfig.fixedParameters?.[name] ?? range.default;
+              const value =
+                searchConfig.fixedParameters?.[name] ?? range.default;
 
               return (
                 <div key={name} className="flex flex-col gap-2">
@@ -165,7 +187,9 @@ export const SearchConfigPanel: FC<SearchConfigPanelProps> = ({ className }) => 
                     <input
                       type="checkbox"
                       checked={isFixed}
-                      onChange={(e) => handleToggleParameter(name, e.target.checked)}
+                      onChange={(e) =>
+                        handleToggleParameter(name, e.target.checked)
+                      }
                       className="h-4 w-4"
                     />
                   </div>

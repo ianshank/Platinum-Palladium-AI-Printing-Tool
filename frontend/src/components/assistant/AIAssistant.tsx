@@ -67,7 +67,8 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
   } = useChat();
 
   // --- AI quick-action hooks ---
-  const { mutate: requestRecipe, isPending: isRecipePending } = useRecipeSuggestion();
+  const { mutate: requestRecipe, isPending: isRecipePending } =
+    useRecipeSuggestion();
   const { mutate: requestTroubleshoot, isPending: isTroubleshootPending } =
     useTroubleshootRequest();
 
@@ -169,7 +170,10 @@ export const AIAssistant: FC<AIAssistantProps> = ({ className }) => {
       </div>
 
       {/* Context Panel */}
-      <details className="mx-4 mt-2 rounded-md border text-xs" data-testid="context-panel">
+      <details
+        className="mx-4 mt-2 rounded-md border text-xs"
+        data-testid="context-panel"
+      >
         <summary className="cursor-pointer px-3 py-1.5 font-medium text-muted-foreground hover:bg-muted/50">
           Context shared with AI
         </summary>

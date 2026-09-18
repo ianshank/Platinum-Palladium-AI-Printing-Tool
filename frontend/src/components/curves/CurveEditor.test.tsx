@@ -80,7 +80,7 @@ describe('CurveEditor', () => {
       success: true,
       curve_id: 'saved-123',
       name: 'Test Curve',
-      adjustment_applied: 'none',
+      adjustment_applied: 'brightness',
       input_values: [0, 128, 255],
       output_values: [0, 128, 255],
     };
@@ -101,7 +101,9 @@ describe('CurveEditor', () => {
           name: 'Test Curve',
           input_values: mockCurve.input_values,
           output_values: mockCurve.output_values,
-          adjustment_type: 'none',
+          // Backend has no "none" adjustment; save sends the identity
+          // adjustment (brightness, amount 0) — see CURVE_SAVE_NOOP_ADJUSTMENT
+          adjustment_type: 'brightness',
           amount: 0,
         })
       );
@@ -242,7 +244,9 @@ describe('CurveEditor', () => {
       expect(screen.getByTestId('enhance-result')).toBeInTheDocument();
     });
     expect(screen.getByText(/85%/)).toBeInTheDocument();
-    expect(screen.getByText('Applied smooth linearization.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Applied smooth linearization.')
+    ).toBeInTheDocument();
   });
 
   it('shows error message when AI enhance fails', async () => {

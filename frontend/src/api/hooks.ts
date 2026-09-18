@@ -188,7 +188,10 @@ export function useEnhanceCurve(
   return useMutation({
     mutationFn: (data) => api.curves.enhance(data),
     onSuccess: (data) => {
-      logger.info('Curve enhanced', { curveId: data.curve_id, goal: data.goal });
+      logger.info('Curve enhanced', {
+        curveId: data.curve_id,
+        goal: data.goal,
+      });
       addToast({
         title: 'AI Enhancement Applied',
         description: `Goal: ${data.goal} — Confidence: ${Math.round(data.confidence * 100)}%`,

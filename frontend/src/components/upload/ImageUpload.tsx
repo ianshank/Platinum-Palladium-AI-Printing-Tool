@@ -32,7 +32,10 @@ export interface ImageUploadProps {
   /** Callback when file(s) are selected */
   onFileSelect?: (files: File[]) => void;
   /** Callback for upload with progress tracking */
-  onUpload?: (file: File, onProgress: (percent: number) => void) => Promise<unknown>;
+  onUpload?: (
+    file: File,
+    onProgress: (percent: number) => void
+  ) => Promise<unknown>;
   /** Callback when upload completes */
   onUploadComplete?: (result: unknown) => void;
   /** Callback when upload fails */
@@ -111,7 +114,9 @@ export function ImageUpload({
       if (fileRejections.length > 0) {
         const rejection = fileRejections[0];
         if (rejection?.errors[0]?.code === 'file-too-large') {
-          setError(`File is too large. Maximum size is ${(maxSize / 1024 / 1024).toFixed(0)}MB.`);
+          setError(
+            `File is too large. Maximum size is ${(maxSize / 1024 / 1024).toFixed(0)}MB.`
+          );
         } else if (rejection?.errors[0]?.code === 'file-invalid-type') {
           setError('Invalid file type. Please select a valid image file.');
         } else {
@@ -155,7 +160,8 @@ export function ImageUpload({
     accept,
     maxFiles,
     maxSize,
-    disabled: disabled || uploadState === 'uploading' || uploadState === 'success',
+    disabled:
+      disabled || uploadState === 'uploading' || uploadState === 'success',
   });
 
   const handleUpload = async () => {
@@ -205,10 +211,14 @@ export function ImageUpload({
     setUploadState('idle');
   };
 
-  const isInteractive = !disabled && uploadState !== 'uploading' && uploadState !== 'success';
+  const isInteractive =
+    !disabled && uploadState !== 'uploading' && uploadState !== 'success';
 
   return (
-    <div className={cn('w-full max-w-md', className)} data-testid="image-upload-container">
+    <div
+      className={cn('w-full max-w-md', className)}
+      data-testid="image-upload-container"
+    >
       {/* Drop Zone */}
       <div
         {...getRootProps()}
@@ -216,7 +226,8 @@ export function ImageUpload({
           'relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors',
           {
             'border-primary bg-primary/5': isDragActive,
-            'border-gray-300 hover:border-primary/50': isInteractive && !isDragActive && uploadState === 'idle',
+            'border-gray-300 hover:border-primary/50':
+              isInteractive && !isDragActive && uploadState === 'idle',
             'border-destructive bg-destructive/5': uploadState === 'error',
             'border-green-500 bg-green-50': uploadState === 'success',
             'pointer-events-none opacity-50': !isInteractive,
@@ -232,7 +243,10 @@ export function ImageUpload({
         {!file && uploadState !== 'success' && (
           <div className="space-y-4">
             <div className="inline-block rounded-full bg-gray-100 p-4">
-              <UploadCloud className="h-8 w-8 text-gray-400" aria-hidden="true" />
+              <UploadCloud
+                className="h-8 w-8 text-gray-400"
+                aria-hidden="true"
+              />
             </div>
             <div>
               <p className="text-lg font-medium">{label}</p>
@@ -266,11 +280,20 @@ export function ImageUpload({
                   })}
                 >
                   {uploadState === 'success' ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-600" aria-hidden="true" />
+                    <CheckCircle2
+                      className="h-5 w-5 text-green-600"
+                      aria-hidden="true"
+                    />
                   ) : file.type.startsWith('image/') ? (
-                    <ImageIcon className="h-5 w-5 text-blue-500" aria-hidden="true" />
+                    <ImageIcon
+                      className="h-5 w-5 text-blue-500"
+                      aria-hidden="true"
+                    />
                   ) : (
-                    <FileIcon className="h-5 w-5 text-blue-500" aria-hidden="true" />
+                    <FileIcon
+                      className="h-5 w-5 text-blue-500"
+                      aria-hidden="true"
+                    />
                   )}
                 </div>
                 <div className="flex flex-col items-start truncate">
@@ -313,7 +336,9 @@ export function ImageUpload({
                     aria-label="Upload progress"
                   />
                 </div>
-                <p className="text-right text-xs text-gray-500">{Math.round(progress)}%</p>
+                <p className="text-right text-xs text-gray-500">
+                  {Math.round(progress)}%
+                </p>
               </div>
             )}
 

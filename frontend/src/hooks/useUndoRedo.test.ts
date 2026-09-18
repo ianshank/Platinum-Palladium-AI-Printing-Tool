@@ -181,7 +181,13 @@ describe('useUndoRedo', () => {
     const initial = { points: [{ x: 0, y: 0 }], name: 'test' };
     const { result } = renderHook(() => useUndoRedo(initial));
 
-    const updated = { points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], name: 'test' };
+    const updated = {
+      points: [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ],
+      name: 'test',
+    };
     act(() => {
       result.current.setState(updated);
     });

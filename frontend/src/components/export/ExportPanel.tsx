@@ -96,7 +96,9 @@ export function ExportPanel({
       const safeName = fileName.replace(/\s+/g, '_');
       const fullFileName = `${safeName}${ext}`;
 
-      logger.debug('ExportPanel: download starting', { fileName: fullFileName });
+      logger.debug('ExportPanel: download starting', {
+        fileName: fullFileName,
+      });
       downloadFile(blob, fullFileName);
 
       setExportState('success');
@@ -163,7 +165,7 @@ export function ExportPanel({
               key={format.id}
               className={cn(
                 'relative flex cursor-pointer flex-col rounded-md border-2 p-4 transition-all',
-                'hover:border-primary/50 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2',
+                'focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:border-primary/50',
                 isSelected
                   ? 'border-primary bg-primary/5'
                   : 'border-border bg-background',

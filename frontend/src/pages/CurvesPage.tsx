@@ -2,7 +2,10 @@ import { useCallback, useState } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { CurveUpload } from '@/components/curves/CurveUpload';
 import { CurveEditor } from '@/components/curves/CurveEditor';
-import { type ExportFormat, ExportPanel } from '@/components/export/ExportPanel';
+import {
+  type ExportFormat,
+  ExportPanel,
+} from '@/components/export/ExportPanel';
 import { useExportCurve } from '@/api/hooks';
 import type { CurveData, QuadCurveValues } from '@/types/models';
 import { CurveType } from '@/types/models';
@@ -10,27 +13,47 @@ import { CurveType } from '@/types/models';
 type CurvesTab = 'upload' | 'edit' | 'export';
 
 const EXPORT_FORMATS: ExportFormat[] = [
-  { id: 'qtr', label: 'QuadTone RIP', extension: '.txt', description: 'QTR .quad format' },
+  {
+    id: 'qtr',
+    label: 'QuadTone RIP',
+    extension: '.txt',
+    description: 'QTR .quad format',
+  },
   {
     id: 'piezography',
     label: 'Piezography',
     extension: '.ppt',
     description: 'Piezography profile',
   },
-  { id: 'csv', label: 'CSV', extension: '.csv', description: 'Comma-separated values' },
-  { id: 'json', label: 'JSON', extension: '.json', description: 'JSON data export' },
+  {
+    id: 'csv',
+    label: 'CSV',
+    extension: '.csv',
+    description: 'Comma-separated values',
+  },
+  {
+    id: 'json',
+    label: 'JSON',
+    extension: '.json',
+    description: 'JSON data export',
+  },
 ];
 
 export const CurvesPage = () => {
   const [activeTab, setActiveTab] = useState<CurvesTab>('upload');
   const [selectedCurveId, setSelectedCurveId] = useState<string | null>(null);
   const [selectedCurveName, setSelectedCurveName] = useState<string>('curve');
-  const [selectedCurveData, setSelectedCurveData] = useState<QuadCurveValues | null>(null);
+  const [selectedCurveData, setSelectedCurveData] =
+    useState<QuadCurveValues | null>(null);
 
   const { mutateAsync: exportCurve } = useExportCurve();
 
   const handleLoadCurve = useCallback(
-    (curveData: QuadCurveValues, curveId: string, profileName: string): void => {
+    (
+      curveData: QuadCurveValues,
+      curveId: string,
+      profileName: string
+    ): void => {
       setSelectedCurveData(curveData);
       setSelectedCurveId(curveId);
       setSelectedCurveName(profileName);
@@ -68,10 +91,15 @@ export const CurvesPage = () => {
     <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">Curve Editor</h1>
-        <p className="text-muted-foreground">Upload, edit, and export linearization curves.</p>
+        <p className="text-muted-foreground">
+          Upload, edit, and export linearization curves.
+        </p>
       </div>
 
-      <Tabs.Root value={activeTab} onValueChange={(v) => setActiveTab(v as CurvesTab)}>
+      <Tabs.Root
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as CurvesTab)}
+      >
         <Tabs.List className="mb-6 flex gap-1 rounded-lg border bg-muted p-1">
           <Tabs.Trigger
             value="upload"
@@ -82,14 +110,14 @@ export const CurvesPage = () => {
           <Tabs.Trigger
             value="edit"
             disabled={!selectedCurveId}
-            className="flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 data-[state=active]:bg-background data-[state=active]:shadow-sm"
           >
             Edit Curve
           </Tabs.Trigger>
           <Tabs.Trigger
             value="export"
             disabled={!selectedCurveId}
-            className="flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 data-[state=active]:bg-background data-[state=active]:shadow-sm"
           >
             Export
           </Tabs.Trigger>

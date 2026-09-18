@@ -25,13 +25,41 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard, shortcut: 'Ctrl+1' },
-  { path: '/calibration', label: 'Calibration', icon: SlidersHorizontal, shortcut: 'Ctrl+2' },
+  {
+    path: '/calibration',
+    label: 'Calibration',
+    icon: SlidersHorizontal,
+    shortcut: 'Ctrl+2',
+  },
   { path: '/curves', label: 'Curves', icon: LineChart, shortcut: 'Ctrl+3' },
-  { path: '/chemistry', label: 'Chemistry', icon: FlaskConical, shortcut: 'Ctrl+4' },
-  { path: '/assistant', label: 'AI Assistant', icon: MessageSquare, shortcut: 'Ctrl+5' },
+  {
+    path: '/chemistry',
+    label: 'Chemistry',
+    icon: FlaskConical,
+    shortcut: 'Ctrl+4',
+  },
+  {
+    path: '/assistant',
+    label: 'AI Assistant',
+    icon: MessageSquare,
+    shortcut: 'Ctrl+5',
+  },
   { path: '/session', label: 'Session Log', icon: History },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
+
+/** DOM id of the sidebar, referenced by the toggle button's aria-controls */
+const SIDEBAR_ID = 'app-sidebar';
+
+/**
+ * Accessible names for the sidebar toggle. The label describes the action the
+ * button will perform, so it flips with `sidebarOpen`; the in-sidebar close
+ * button always closes and keeps the same name (WCAG 3.2.4 consistency).
+ */
+const SIDEBAR_TOGGLE_LABELS = {
+  open: 'Open sidebar',
+  close: 'Close sidebar',
+} as const;
 
 interface LayoutProps {
   children: ReactNode;
@@ -50,10 +78,20 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
     logger.debug('Layout: navigation', { path });
   };
 
+  const handleToggleSidebar = (): void => {
+    logger.debug('Layout: toggle sidebar', { sidebarOpen: !sidebarOpen });
+    toggleSidebar();
+  };
+
+  const toggleLabel = sidebarOpen
+    ? SIDEBAR_TOGGLE_LABELS.close
+    : SIDEBAR_TOGGLE_LABELS.open;
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <aside
+        id={SIDEBAR_ID}
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-transform duration-200 lg:static',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
@@ -64,7 +102,9 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
         <div className="flex h-16 items-center justify-between border-b px-4">
           <Link to="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-              <span className="text-lg font-bold text-primary-foreground">Pt</span>
+              <span className="text-lg font-bold text-primary-foreground">
+                Pt
+              </span>
             </div>
             <span className="text-lg font-semibold">Pt/Pd Tool</span>
           </Link>
@@ -72,8 +112,8 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
             variant="ghost"
             size="icon"
             className="lg:hidden"
-            onClick={toggleSidebar}
-            aria-label="Close sidebar"
+            onClick={handleToggleSidebar}
+            aria-label={SIDEBAR_TOGGLE_LABELS.close}
           >
             <X className="h-5 w-5" />
           </Button>
@@ -133,30 +173,35 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
-          onClick={toggleSidebar}
+          onClick={handleToggleSidebar}
           aria-hidden="true"
         />
       )}
 
       {/* Main content */}
-      <div className={cn(
-        'flex flex-1 flex-col overflow-hidden transition-all duration-200',
-        sidebarOpen && 'lg:pl-64'
-      )}>
+      <div
+        className={cn(
+          'flex flex-1 flex-col overflow-hidden transition-all duration-200',
+          sidebarOpen && 'lg:pl-64'
+        )}
+      >
         {/* Top bar */}
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6">
           <Button
             variant="ghost"
             size="icon"
-            onClick={toggleSidebar}
-            aria-label="Toggle sidebar"
+            onClick={handleToggleSidebar}
+            aria-label={toggleLabel}
+            aria-expanded={sidebarOpen}
+            aria-controls={SIDEBAR_ID}
           >
             <Menu className="h-5 w-5" />
           </Button>
 
           {/* Page title */}
           <h1 className="text-lg font-semibold">
-            {NAV_ITEMS.find((item) => item.path === location.pathname)?.label ?? 'Dashboard'}
+            {NAV_ITEMS.find((item) => item.path === location.pathname)?.label ??
+              'Dashboard'}
           </h1>
 
           {/* Spacer */}
@@ -167,9 +212,7 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

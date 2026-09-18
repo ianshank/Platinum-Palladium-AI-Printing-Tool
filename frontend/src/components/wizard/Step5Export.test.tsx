@@ -79,7 +79,6 @@ const mockExportMutate = vi.fn();
 
 // Mock useStore
 vi.mock('@/stores', () => ({
-   
   useStore: (selector: (state: any) => any) => {
     const state = {
       calibration: {

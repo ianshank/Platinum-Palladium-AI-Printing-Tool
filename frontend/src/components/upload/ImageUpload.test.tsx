@@ -35,7 +35,9 @@ describe('ImageUpload', () => {
       render(<ImageUpload />);
 
       expect(screen.getByTestId('image-upload-dropzone')).toBeInTheDocument();
-      expect(screen.getByText('Click to upload or drag and drop')).toBeInTheDocument();
+      expect(
+        screen.getByText('Click to upload or drag and drop')
+      ).toBeInTheDocument();
     });
 
     it('renders custom label and helpText', () => {
@@ -58,7 +60,9 @@ describe('ImageUpload', () => {
         />
       );
 
-      expect(screen.getByText(/\.png, \.jpg, \.jpeg \(max 10MB\)/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/\.png, \.jpg, \.jpeg \(max 10MB\)/)
+      ).toBeInTheDocument();
     });
 
     it('applies custom className', () => {
@@ -74,7 +78,9 @@ describe('ImageUpload', () => {
       const onFileSelect = vi.fn();
       render(<ImageUpload onFileSelect={onFileSelect} />);
 
-      const file = new File(['dummy content'], 'test.png', { type: 'image/png' });
+      const file = new File(['dummy content'], 'test.png', {
+        type: 'image/png',
+      });
       const input = screen.getByTestId('image-upload-input');
 
       Object.defineProperty(input, 'files', {
@@ -109,7 +115,9 @@ describe('ImageUpload', () => {
     it('shows image preview when showPreview=true', async () => {
       render(<ImageUpload showPreview={true} />);
 
-      const file = new File(['image data'], 'preview.png', { type: 'image/png' });
+      const file = new File(['image data'], 'preview.png', {
+        type: 'image/png',
+      });
       const input = screen.getByTestId('image-upload-input');
 
       fireEvent.change(input, { target: { files: [file] } });
@@ -127,13 +135,17 @@ describe('ImageUpload', () => {
     it('does not show preview when showPreview=false', async () => {
       render(<ImageUpload showPreview={false} />);
 
-      const file = new File(['image data'], 'no-preview.png', { type: 'image/png' });
+      const file = new File(['image data'], 'no-preview.png', {
+        type: 'image/png',
+      });
       const input = screen.getByTestId('image-upload-input');
 
       fireEvent.change(input, { target: { files: [file] } });
 
       await waitFor(() => {
-        expect(screen.queryByTestId('image-upload-preview')).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId('image-upload-preview')
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -154,7 +166,9 @@ describe('ImageUpload', () => {
 
       await waitFor(() => {
         expect(screen.queryByText('test.png')).not.toBeInTheDocument();
-        expect(screen.getByText('Click to upload or drag and drop')).toBeInTheDocument();
+        expect(
+          screen.getByText('Click to upload or drag and drop')
+        ).toBeInTheDocument();
       });
     });
   });
@@ -184,11 +198,11 @@ describe('ImageUpload', () => {
     });
 
     it('shows error for invalid file type', async () => {
-      render(
-        <ImageUpload accept={{ 'image/png': ['.png'] }} />
-      );
+      render(<ImageUpload accept={{ 'image/png': ['.png'] }} />);
 
-      const invalidFile = new File(['test'], 'test.txt', { type: 'text/plain' });
+      const invalidFile = new File(['test'], 'test.txt', {
+        type: 'text/plain',
+      });
       const input = screen.getByTestId('image-upload-input');
 
       fireEvent.change(input, { target: { files: [invalidFile] } });
@@ -204,15 +218,17 @@ describe('ImageUpload', () => {
 
   describe('Upload Flow', () => {
     it('shows progress bar during upload', async () => {
-      const onUpload = vi.fn((_file: File, onProgress?: (progress: number) => void) => {
-        return new Promise((resolve) => {
-          onProgress?.(50);
-          setTimeout(() => {
-            onProgress?.(100);
-            resolve({ success: true });
-          }, 100);
-        });
-      });
+      const onUpload = vi.fn(
+        (_file: File, onProgress?: (progress: number) => void) => {
+          return new Promise((resolve) => {
+            onProgress?.(50);
+            setTimeout(() => {
+              onProgress?.(100);
+              resolve({ success: true });
+            }, 100);
+          });
+        }
+      );
 
       render(<ImageUpload onUpload={onUpload} />);
 
@@ -237,7 +253,9 @@ describe('ImageUpload', () => {
       const onUpload = vi.fn(() => Promise.resolve({ success: true }));
       const onUploadComplete = vi.fn();
 
-      render(<ImageUpload onUpload={onUpload} onUploadComplete={onUploadComplete} />);
+      render(
+        <ImageUpload onUpload={onUpload} onUploadComplete={onUploadComplete} />
+      );
 
       const file = new File(['test'], 'test.png', { type: 'image/png' });
       const input = screen.getByTestId('image-upload-input');
@@ -306,7 +324,9 @@ describe('ImageUpload', () => {
       const onUpload = vi.fn(() => Promise.resolve(result));
       const onUploadComplete = vi.fn();
 
-      render(<ImageUpload onUpload={onUpload} onUploadComplete={onUploadComplete} />);
+      render(
+        <ImageUpload onUpload={onUpload} onUploadComplete={onUploadComplete} />
+      );
 
       const file = new File(['test'], 'test.png', { type: 'image/png' });
       const input = screen.getByTestId('image-upload-input');
@@ -417,12 +437,14 @@ describe('ImageUpload', () => {
     });
 
     it('has accessible progress bar', async () => {
-      const onUpload = vi.fn((_file: File, onProgress?: (progress: number) => void) => {
-        return new Promise((resolve) => {
-          onProgress?.(75);
-          setTimeout(() => resolve({ success: true }), 100);
-        });
-      });
+      const onUpload = vi.fn(
+        (_file: File, onProgress?: (progress: number) => void) => {
+          return new Promise((resolve) => {
+            onProgress?.(75);
+            setTimeout(() => resolve({ success: true }), 100);
+          });
+        }
+      );
 
       render(<ImageUpload onUpload={onUpload} />);
 

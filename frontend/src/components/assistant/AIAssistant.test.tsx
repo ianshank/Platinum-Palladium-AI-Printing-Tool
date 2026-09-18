@@ -54,7 +54,10 @@ const mockRequestTroubleshoot = vi.fn();
 
 vi.mock('@/api/hooks', () => ({
   useRecipeSuggestion: () => ({ mutate: mockRequestRecipe, isPending: false }),
-  useTroubleshootRequest: () => ({ mutate: mockRequestTroubleshoot, isPending: false }),
+  useTroubleshootRequest: () => ({
+    mutate: mockRequestTroubleshoot,
+    isPending: false,
+  }),
 }));
 
 describe('AIAssistant', () => {
