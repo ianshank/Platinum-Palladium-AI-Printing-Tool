@@ -23,7 +23,7 @@ C4Context
 
 ## Level 2: Containers
 
-This diagram shows the three-tier architecture after the React migration. The former Gradio monolith has been split into a React SPA frontend and a FastAPI REST backend, with an optional PyTorch-based MCTS engine for AI-guided calibration optimization.
+This diagram shows the three-tier architecture after the React migration. The Gradio monolith (`src/ptpd_calibration/ui/`, `app.py`) still exists and is frozen pending retirement (ADR-0004); the parameter-search module under `mcts/` is experimental and gated by ADR-0005.
 
 ```mermaid
 C4Container
@@ -33,7 +33,7 @@ C4Container
 
   System_Boundary(c1, "Pt/Pd Calibration Studio") {
     Container(frontend, "React SPA", "React 18 + TypeScript + Vite + Zustand", "Single-page application: curve editor, calibration wizard, chemistry calculator, AI chat, image preview. Served on port 3000.")
-    Container(backend, "FastAPI Backend", "Python 3.10 + FastAPI + Pydantic", "REST API on port 8000: curves, scan upload, calibrations, MCTS, chat, export. Celery + Redis for heavy async tasks.")
+    Container(backend, "FastAPI Backend", "Python 3.10 + FastAPI + Pydantic", "REST API on port 8000: curves, scan upload, calibrations, MCTS, chat, export. CPU-bound work runs in a thread pool; no task queue is deployed (deferred, see docs/roadmap.md).")
     Container(mcts, "MCTS Engine", "Python + PyTorch (optional)", "AlphaZero-style Monte Carlo Tree Search + physics simulator for automated Pt/Pd parameter optimization.")
     Container(db, "ML Database", "In-memory + JSON files", "Calibration records, curve storage, agent memory. Backed by local filesystem.")
   }

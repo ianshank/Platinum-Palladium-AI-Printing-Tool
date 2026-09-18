@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-09-18
+
+### Changed (Phase 0: establish truth — see docs/plans/2026-09-validation-sdlc-plan.md)
+
+- **One CI workflow**: `.github/workflows/ci.yml` replaces `ci.yml`, `ci-cd.yml`, and `tests.yml`; single required check `all-green`; SHA-pinned actions; least-privilege permissions; deploy only from `v*` tags behind an environment approval and failing loudly on missing secrets (ADR-0002)
+- **uv with a committed lockfile**: `uv.lock`, `pylock.toml`, `.python-version`; every unconditional import is now a declared dependency (matplotlib, tifffile, python-dotenv, psutil, pyyaml); extras reorganised; `requirements-dl.txt` removed; `requirements.txt` is generated (ADR-0003)
+- **Strict pytest configuration**: registered markers, `--strict-markers --strict-config`, `xfail_strict`, per-test timeout; coverage flags moved to CI (ADR-0009)
+- **Documentation consolidated**: nine root roadmap/summary files deleted or archived, `CLAUDE.md` rewritten under 6 KB, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `docs/roadmap.md`, fifteen ADRs under `docs/adr/`; 23 `AGENT.md` files removed; placement rules enforced by `scripts/check-doc-sprawl.sh` (ADR-0008)
+- **Metrics are generated**: `scripts/test_metrics.py` renders test and coverage numbers from CI artifacts into the job summary; the README no longer carries typed counts (ADR-0007)
+- **Knowledge-base protocol minimised**: capped startup-only digest with staleness banner, non-blocking Stop hook, February 2026 summaries archived, protocol in `docs/agents/kb-protocol.md` (ADR-0015)
+- **Repository hygiene**: root `node_modules/`, `.gradio/certificate.pem`, `hf_check/`, root npm/husky tooling and `.claude/settings.local.json` untracked; `.pre-commit-config.yaml`, `CODEOWNERS`, Dependabot added
+
+### Fixed
+
+- `session/logger.py`: `get_paper_statistics` referenced an undefined name and silently counted one record per session
+- Five stale or incorrect frontend tests; `useKeyboardShortcuts` now ignores `<select>` elements
+- Pydantic v2 and Pillow deprecation warnings that would break under `filterwarnings = error`
+
+### Security
+
+- Client-supplied filenames and names are no longer used in server paths on `/api/curves/upload-quad` and `/api/curves/export`; uploads are size-capped and extension-allowlisted; request bodies and list/string fields are bounded; CORS no longer combines `*` with credentials (SEC-01/02/03/07)
+
 ## [Unreleased] — 2026-02-22
 
 ### Fixed (Bug-Fix Sprint)
