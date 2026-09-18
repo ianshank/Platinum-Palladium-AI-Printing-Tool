@@ -16,7 +16,11 @@ directly as a pydantic ``default_factory``.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+# ``datetime.UTC`` is a 3.11 alias; the package floor is 3.10, so use the
+# spelling that works on every supported version.
+UTC = timezone.utc
 
 # Suffix used by the JSON payloads; ``datetime.isoformat`` writes "+00:00" for
 # an aware UTC datetime, which is equivalent but not what consumers expect.

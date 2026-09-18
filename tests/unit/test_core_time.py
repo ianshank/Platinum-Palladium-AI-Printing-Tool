@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
-from ptpd_calibration.core.time import UTC_SUFFIX, utc_now, utc_timestamp
+from ptpd_calibration.core.time import UTC, UTC_SUFFIX, utc_now, utc_timestamp
 
 pytestmark = pytest.mark.unit
 
@@ -68,3 +68,13 @@ def test_no_module_calls_datetime_utcnow() -> None:
         "use ptpd_calibration.core.time.utc_now()/utc_timestamp() instead of "
         f"datetime.utcnow() in: {', '.join(offenders)}"
     )
+
+
+def test_utc_alias_works_on_the_declared_python_floor() -> None:
+    """``datetime.UTC`` is 3.11+; the package still declares a 3.10 floor.
+
+    Importing the module is the real assertion: on 3.10 a ``from datetime
+    import UTC`` would raise ImportError here rather than at a call site.
+    """
+    assert utc_now().tzinfo is UTC
+    assert UTC.utcoffset(None) == timedelta(0)

@@ -22,6 +22,7 @@ except ImportError:
     HAS_TIFFFILE = False
 
 from ptpd_calibration.core.models import CurveData
+from ptpd_calibration.imaging.safe_image import open_image_safely
 
 
 class ImageFormat(str, Enum):
@@ -110,15 +111,13 @@ class ImageProcessor:
         Returns:
             ProcessingResult with loaded image and metadata
         """
-        if isinstance(source, str | Path):
-            img = Image.open(source)
-            original_format = img.format
-            # Read the pixel data now so Pillow closes its file handle. A lazily
-            # loaded image keeps the file open until garbage collection, which
-            # surfaces as ResourceWarning under warnings-as-errors.
-            img.load()
-        elif isinstance(source, bytes):
-            img = Image.open(io.BytesIO(source))
+        if isinstance(source, str | Path | bytes):
+            # Paths and byte strings are the two untrusted sources: they arrive
+            # from an upload or a user-chosen file. open_image_safely applies
+            # the format, pixel-count, frame-count and mode guards from
+            # ImageDecodeSettings and fully decodes, so no file handle is left
+            # open for the garbage collector to close.
+            img = open_image_safely(source)
             original_format = img.format
         elif isinstance(source, Image.Image):
             img = source.copy()

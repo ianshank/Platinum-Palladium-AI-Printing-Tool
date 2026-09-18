@@ -84,3 +84,42 @@ def test_save_16bit_tiff_helper_emits_no_deprecation_warning(tmp_path: Path) -> 
         loaded.load()
         assert loaded.mode == EXPECTED_16BIT_MODE
         assert np.array_equal(np.array(loaded), arr)
+
+
+class TestLoadImageGuards:
+    """``ImageProcessor.load_image`` must apply the same guards as the API path.
+
+    Before this, the path and bytes branches called ``PIL.Image.open`` directly,
+    so a decompression bomb reached the decoder even though
+    ``open_image_safely`` existed for exactly that reason.
+    """
+
+    BOMB_SIDE = 20_000  # 400 MP declared, tiny on disk as a 1-bit PNG
+
+    def test_path_source_rejects_a_decompression_bomb(self, tmp_path: Path) -> None:
+        from ptpd_calibration.imaging.safe_image import ImageTooLargeError
+
+        bomb = tmp_path / "bomb.png"
+        Image.new("1", (self.BOMB_SIDE, self.BOMB_SIDE)).save(bomb, format="PNG")
+
+        with pytest.raises(ImageTooLargeError):
+            ImageProcessor().load_image(bomb)
+
+    def test_bytes_source_rejects_a_decompression_bomb(self, tmp_path: Path) -> None:
+        from ptpd_calibration.imaging.safe_image import ImageTooLargeError
+
+        bomb = tmp_path / "bomb.png"
+        Image.new("1", (self.BOMB_SIDE, self.BOMB_SIDE)).save(bomb, format="PNG")
+
+        with pytest.raises(ImageTooLargeError):
+            ImageProcessor().load_image(bomb.read_bytes())
+
+    def test_ordinary_image_still_loads(self, tmp_path: Path) -> None:
+        path = tmp_path / "ok.png"
+        Image.new("L", (16, 12), 128).save(path)
+
+        result = ImageProcessor().load_image(path)
+
+        assert result.image.size == (16, 12)
+        assert result.original_size == (16, 12)
+        assert result.original_format == "PNG"

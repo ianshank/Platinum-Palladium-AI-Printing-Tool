@@ -280,8 +280,12 @@ def load_torch_checkpoint(
     Args:
         path: Checkpoint file (``.pt`` / ``.pth``).
         map_location: Passed straight to ``torch.load``.
-        policy: Optional location/manifest policy. With ``None`` the path is
-            only resolved; an existing manifest is still verified.
+        policy: Location/manifest policy. ``None`` means "read the policy from
+            the environment" (:class:`ArtifactPolicy`), so
+            ``PTPD_ARTIFACTS_ALLOWED_DIRS`` and
+            ``PTPD_ARTIFACTS_REQUIRE_MANIFEST`` apply to every production load.
+            Pass ``ArtifactPolicy(allowed_dirs=[])`` to disable the location
+            check deliberately.
 
     Raises:
         UnsafeArtifactError: The path is outside the allow-list, the manifest
@@ -290,6 +294,7 @@ def load_torch_checkpoint(
         FileNotFoundError: The checkpoint does not exist.
     """
     torch = _import_torch()
+    policy = policy or ArtifactPolicy()
     resolved = resolve_artifact_path(path, policy)
     if not resolved.is_file():
         raise FileNotFoundError(f"Checkpoint not found: {resolved}")
@@ -326,6 +331,9 @@ def load_safetensors(
 ) -> dict[str, Any]:
     """Load a ``.safetensors`` file into a ``{name: tensor}`` dict.
 
+    ``policy`` defaults to the environment-configured :class:`ArtifactPolicy`,
+    matching :func:`load_torch_checkpoint`.
+
     Raises:
         ImportError: The ``safetensors`` package is not installed.
         UnsafeArtifactError: The path fails the policy or manifest checks.
@@ -338,6 +346,7 @@ def load_safetensors(
             "Install with: pip install safetensors"
         ) from exc
 
+    policy = policy or ArtifactPolicy()
     resolved = resolve_artifact_path(path, policy)
     if not resolved.is_file():
         raise FileNotFoundError(f"Checkpoint not found: {resolved}")

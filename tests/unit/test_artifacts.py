@@ -186,13 +186,17 @@ class TestTorchLoader:
         assert torch.equal(loaded["w"], torch.arange(4.0))
         assert loaded["epoch"] == 3
 
-    def test_crafted_pickle_refused_and_never_executed(self, allowed: Path) -> None:
+    def test_crafted_pickle_refused_and_never_executed(
+        self, allowed: Path, policy: ArtifactPolicy
+    ) -> None:
         import torch
 
         path = allowed / "evil.pt"
         torch.save({"payload": MaliciousPayload()}, path)
+        # The policy is explicit so this exercises the unpickler guard rather
+        # than the location guard, which the next test covers.
         with pytest.raises(UnsafeArtifactError, match="weights_only"):
-            load_torch_checkpoint(path)
+            load_torch_checkpoint(path, policy=policy)
         assert MARKER_CALLS == []
 
     def test_outside_allowlist_refused_before_reading(
@@ -241,6 +245,40 @@ class TestSafetensors:
         path = allowed / "w.safetensors"
         save_file({"w": torch.arange(3.0)}, str(path))
         assert torch.equal(load_safetensors(path, policy=policy)["w"], torch.arange(3.0))
+
+
+class TestLoaderPolicyDefaults:
+    """``policy=None`` means the configured policy, not "unrestricted".
+
+    Ten production call sites load checkpoints without passing a policy. If
+    ``None`` meant no allow-list, ``PTPD_ARTIFACTS_ALLOWED_DIRS`` would have no
+    effect on any of them.
+    """
+
+    def test_env_allowlist_applies_when_no_policy_is_passed(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        torch = pytest.importorskip("torch")
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        outside = tmp_path / "outside.pt"
+        torch.save({"w": torch.zeros(1)}, outside)
+        monkeypatch.setenv("PTPD_ARTIFACTS_ALLOWED_DIRS", str(allowed))
+
+        with pytest.raises(UnsafeArtifactError, match="outside"):
+            load_torch_checkpoint(outside)
+
+    def test_explicitly_empty_allowlist_still_disables_the_check(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        torch = pytest.importorskip("torch")
+        monkeypatch.setenv("PTPD_ARTIFACTS_ALLOWED_DIRS", str(tmp_path / "elsewhere"))
+        target = tmp_path / "model.pt"
+        torch.save({"w": torch.zeros(1)}, target)
+
+        loaded = load_torch_checkpoint(target, policy=ArtifactPolicy(allowed_dirs=[]))
+
+        assert "w" in loaded
 
 
 class TestCurvePredictorLoader:
