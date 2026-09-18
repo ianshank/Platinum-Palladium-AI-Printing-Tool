@@ -22,7 +22,7 @@ def analyzer():
 def gray_gradient_image():
     """Create a grayscale gradient image."""
     arr = np.linspace(0, 255, 256).reshape(1, 256).repeat(100, axis=0).astype(np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
@@ -32,21 +32,21 @@ def rgb_test_image():
     arr[:50, :, 0] = 200  # Red top half
     arr[50:, :, 2] = 200  # Blue bottom half
     arr[:, :, 1] = 100  # Green everywhere
-    return Image.fromarray(arr, mode="RGB")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
 def dark_image():
     """Create a dark image."""
     arr = np.full((100, 100), 30, dtype=np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
 def bright_image():
     """Create a bright image."""
     arr = np.full((100, 100), 220, dtype=np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 class TestHistogramAnalyzer:

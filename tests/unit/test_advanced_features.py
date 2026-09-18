@@ -29,7 +29,7 @@ from ptpd_calibration.advanced.features import (
 def gray_test_image():
     """Create a test grayscale image with gradient."""
     arr = np.linspace(0, 255, 256).reshape(16, 16).astype(np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ def rgb_test_image():
     arr = np.zeros((100, 100, 3), dtype=np.uint8)
     arr[:50, :, 0] = 255  # Red half
     arr[50:, :, 2] = 255  # Blue half
-    return Image.fromarray(arr, mode="RGB")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
@@ -341,7 +341,7 @@ class TestNegativeBlender:
 
         # Create gradient mask
         mask_arr = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
-        mask = Image.fromarray(mask_arr, mode="L")
+        mask = Image.fromarray(mask_arr)
 
         result = blender.blend_negatives(
             [neg1, neg2], masks=[None, mask], blend_modes=[BlendMode.NORMAL, BlendMode.NORMAL]
@@ -780,15 +780,15 @@ class TestPrintComparison:
         # Use gradient images to avoid division by zero in range calculations
         arr1 = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
         arr2 = np.clip(arr1 + 5, 0, 255).astype(np.uint8)
-        img1 = Image.fromarray(arr1, mode="L")
-        img2 = Image.fromarray(arr2, mode="L")
+        img1 = Image.fromarray(arr1)
+        img2 = Image.fromarray(arr2)
         return img1, img2
 
     def test_compare_before_after_identical(self, comparison):
         """Identical images should have high similarity."""
         # Use gradient to avoid division by zero
         arr = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
 
         metrics = comparison.compare_before_after(img, img)
 
@@ -859,8 +859,8 @@ class TestPrintComparison:
     def test_calculate_similarity_mse(self, comparison):
         """MSE similarity should work correctly."""
         arr = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
-        img1 = Image.fromarray(arr, mode="L")
-        img2 = Image.fromarray(arr.copy(), mode="L")
+        img1 = Image.fromarray(arr)
+        img2 = Image.fromarray(arr.copy())
 
         score = comparison.calculate_similarity_score(img1, img2, method="mse")
 
@@ -871,8 +871,8 @@ class TestPrintComparison:
         """Correlation similarity should work correctly."""
         arr1 = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
         arr2 = np.clip(arr1 + 10, 0, 255).astype(np.uint8)
-        img1 = Image.fromarray(arr1, mode="L")
-        img2 = Image.fromarray(arr2, mode="L")
+        img1 = Image.fromarray(arr1)
+        img2 = Image.fromarray(arr2)
 
         score = comparison.calculate_similarity_score(img1, img2, method="correlation")
 
@@ -881,8 +881,8 @@ class TestPrintComparison:
     def test_calculate_similarity_ssim(self, comparison):
         """SSIM similarity should work correctly."""
         arr = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
-        img1 = Image.fromarray(arr, mode="L")
-        img2 = Image.fromarray(arr.copy(), mode="L")
+        img1 = Image.fromarray(arr)
+        img2 = Image.fromarray(arr.copy())
 
         score = comparison.calculate_similarity_score(img1, img2, method="ssim")
 
@@ -902,9 +902,9 @@ class TestPrintComparison:
         arr2 = np.clip(arr1 + 5, 0, 255).astype(np.uint8)
         arr3 = np.clip(arr1 - 5, 0, 255).astype(np.uint8)
         images = {
-            "original": Image.fromarray(arr1, mode="L"),
-            "print1": Image.fromarray(arr2, mode="L"),
-            "print2": Image.fromarray(arr3, mode="L"),
+            "original": Image.fromarray(arr1),
+            "print1": Image.fromarray(arr2),
+            "print2": Image.fromarray(arr3),
         }
 
         report = comparison.generate_comparison_report(images)
@@ -921,8 +921,8 @@ class TestPrintComparison:
         arr1 = np.linspace(0, 255, 2500).reshape(50, 50).astype(np.uint8)
         arr2 = np.clip(arr1 + 10, 0, 255).astype(np.uint8)
         images = {
-            "img1": Image.fromarray(arr1, mode="L"),
-            "img2": Image.fromarray(arr2, mode="L"),
+            "img1": Image.fromarray(arr1),
+            "img2": Image.fromarray(arr2),
         }
 
         report = comparison.generate_comparison_report(images, reference_key="img2")

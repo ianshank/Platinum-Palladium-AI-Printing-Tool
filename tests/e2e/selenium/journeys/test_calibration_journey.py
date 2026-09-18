@@ -45,7 +45,7 @@ class TestCalibrationJourney:
             img_array[:, x_start:x_end] = value
 
         # Create RGB image
-        img = Image.fromarray(img_array, mode="L").convert("RGB")
+        img = Image.fromarray(img_array).convert("RGB")
         file_path = tmp_path / "test_step_tablet.png"
         img.save(file_path)
 

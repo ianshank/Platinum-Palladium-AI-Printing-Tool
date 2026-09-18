@@ -320,7 +320,7 @@ class TestPrintComparisonJourney:
     def reference_print(self):
         """Create a reference print image."""
         arr = np.linspace(30, 220, 256 * 256).reshape(256, 256).astype(np.uint8)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     @pytest.fixture
     def test_print(self):
@@ -329,7 +329,7 @@ class TestPrintComparisonJourney:
         # Add slight variations
         noise = np.random.normal(0, 5, arr.shape).astype(np.int16)
         arr = np.clip(arr.astype(np.int16) + noise, 0, 255).astype(np.uint8)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     @pytest.mark.xfail(
         strict=True,
@@ -444,7 +444,7 @@ class TestMultiModalAssistantJourney:
         # Create uneven exposure pattern
         for i in range(256):
             arr[i, :] = 100 + int(50 * np.sin(i * 0.1))
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     @pytest.mark.xfail(
         strict=True,
@@ -560,7 +560,7 @@ class TestDiffusionEnhancementJourney:
         # Fading
         arr[:50, :] = (arr[:50, :] * 0.7).astype(np.uint8)
 
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     @pytest.mark.xfail(
         strict=True,

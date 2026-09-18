@@ -534,7 +534,7 @@ class AlternativeProcessSimulator:
 
         # Convert to 8-bit
         rgb_output = np.clip(rgb_output * 255, 0, 255).astype(np.uint8)
-        result = Image.fromarray(rgb_output, mode="RGB")
+        result = Image.fromarray(rgb_output)
 
         # Store process info in image metadata
         result.info["process"] = process_name
@@ -644,7 +644,7 @@ class NegativeBlender:
 
         # Convert back to image
         result = np.clip(result * 255, 0, 255).astype(np.uint8)
-        return Image.fromarray(result, mode="L")
+        return Image.fromarray(result)
 
     def create_contrast_mask(
         self,
@@ -686,7 +686,7 @@ class NegativeBlender:
         mask = np.clip(gradient_magnitude / threshold, 0, 1)
 
         # Smooth the mask
-        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+        mask_img = Image.fromarray((mask * 255).astype(np.uint8))
         mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=5))
 
         return mask_img
@@ -718,7 +718,7 @@ class NegativeBlender:
         mask = np.clip((arr - threshold) / (1 - threshold), 0, 1)
 
         # Smooth transitions
-        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+        mask_img = Image.fromarray((mask * 255).astype(np.uint8))
         mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=3))
 
         return mask_img
@@ -750,7 +750,7 @@ class NegativeBlender:
         mask = 1.0 - np.clip((arr - 0) / threshold, 0, 1)
 
         # Smooth transitions
-        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+        mask_img = Image.fromarray((mask * 255).astype(np.uint8))
         mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=3))
 
         return mask_img
@@ -814,7 +814,7 @@ class NegativeBlender:
 
         # Convert back to image
         result = np.clip(result * 255, 0, 255).astype(np.uint8)
-        return Image.fromarray(result, mode="L")
+        return Image.fromarray(result)
 
     def create_multi_layer_mask(
         self,
@@ -868,7 +868,7 @@ class NegativeBlender:
 
         # Convert to image
         result = np.clip(result * 255, 0, 255).astype(np.uint8)
-        return Image.fromarray(result, mode="L")
+        return Image.fromarray(result)
 
     def _apply_blend_mode(
         self,
@@ -1486,7 +1486,7 @@ class StyleTransfer:
 
         # Convert to image
         rgb_output = (rgb_output * 255).astype(np.uint8)
-        result = Image.fromarray(rgb_output, mode="RGB")
+        result = Image.fromarray(rgb_output)
 
         # Store style info
         result.info["style"] = params.name
@@ -1628,11 +1628,11 @@ class PrintComparison:
             rgb_diff[neg_mask, 2] = 0.5 + np.abs(diff[neg_mask]) * 0.5
 
             rgb_diff = np.clip(rgb_diff * 255, 0, 255).astype(np.uint8)
-            return Image.fromarray(rgb_diff, mode="RGB")
+            return Image.fromarray(rgb_diff)
         else:
             # Grayscale difference
             diff_normalized = (np.abs(diff) * 255).astype(np.uint8)
-            return Image.fromarray(diff_normalized, mode="L")
+            return Image.fromarray(diff_normalized)
 
     def calculate_similarity_score(
         self,

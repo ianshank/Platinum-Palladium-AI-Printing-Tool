@@ -63,7 +63,7 @@ class TestImageProcessingPerformance:
 
         img_array = np.random.randint(0, 255, (600, 800), dtype=np.uint8)
         image_path = tmp_path / "small_image.png"
-        Image.fromarray(img_array, mode="L").save(image_path)
+        Image.fromarray(img_array).save(image_path)
         return image_path
 
     @pytest.fixture
@@ -73,7 +73,7 @@ class TestImageProcessingPerformance:
 
         img_array = np.random.randint(0, 255, (1500, 2000), dtype=np.uint8)
         image_path = tmp_path / "medium_image.png"
-        Image.fromarray(img_array, mode="L").save(image_path)
+        Image.fromarray(img_array).save(image_path)
         return image_path
 
     @pytest.fixture

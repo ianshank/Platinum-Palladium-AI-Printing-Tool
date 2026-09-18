@@ -90,7 +90,7 @@ def large_image(tmp_path):
     # Create a 4000x3000 image (like a high-res scan)
     img_array = np.random.randint(0, 255, (3000, 4000), dtype=np.uint8)
     image_path = tmp_path / "large_image.png"
-    Image.fromarray(img_array, mode="L").save(image_path)
+    Image.fromarray(img_array).save(image_path)
 
     return image_path
 

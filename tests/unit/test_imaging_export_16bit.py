@@ -1,9 +1,10 @@
 """Regression tests for the Pillow ``mode`` deprecation fix in ``imaging/processor.py``.
 
-``Image.fromarray(arr, mode="I;16")`` is deprecated (removed in Pillow 13); the
-processor now lets Pillow infer ``I;16`` from the ``uint16`` dtype. These tests
-pin the produced image mode, dtype and pixel values so the change is verified
-to be behaviour-preserving.
+``Image.fromarray(arr, mode="I;16")`` is deprecated. Pillow 13 restricts the
+parameter rather than removing it -- it can no longer be used to change data
+types -- so the processor lets Pillow infer ``I;16`` from the ``uint16`` dtype
+instead. These tests pin the produced image mode, dtype and pixel values so the
+change is verified to be behaviour-preserving.
 """
 
 from __future__ import annotations
@@ -917,3 +918,66 @@ class TestSixteenBitColourBytes:
         with Image.open(io.BytesIO(payload)) as saved:
             saved.load()
             assert saved.mode == EXPECTED_16BIT_MODE
+
+
+class TestNoProductionCodeDeclaresAFromarrayMode:
+    """Pillow 13 restricts ``mode``; library code must not depend on it.
+
+    ``pyproject.toml`` pins ``pillow>=10.0.0`` with no upper bound, so a fresh
+    resolve will eventually pick up Pillow 13. Every call that declared a mode
+    was proven a no-op first, by wrapping ``Image.fromarray`` for a whole test
+    run and comparing the declared result against the inferred one: 1952 calls
+    across 115 sites, and the only two that differed were the tests that exist
+    to demonstrate the reinterpretation. This keeps the argument from returning
+    to library code between now and the upgrade.
+    """
+
+    #: The two sites that demonstrate the old behaviour on purpose, and the
+    #: prose that explains it. All are tests; none is library code.
+    ALLOWED = {
+        "tests/unit/test_deep_review_fixes.py",
+        "tests/unit/test_high_depth_paths.py",
+        "tests/unit/test_imaging_export_16bit.py",
+    }
+
+    def test_no_library_module_passes_mode(self) -> None:
+        import re
+        from pathlib import Path
+
+        import ptpd_calibration
+
+        package = Path(ptpd_calibration.__file__).parent
+        pattern = re.compile(r"fromarray\([^)]*\bmode\s*=")
+
+        offenders = [
+            f"{path.relative_to(package.parent.parent)}:{n}"
+            for path in package.rglob("*.py")
+            # The legacy Gradio UI is frozen and excluded from lint (ADR-0004).
+            if "ui" not in path.relative_to(package).parts
+            for n, line in enumerate(path.read_text().splitlines(), 1)
+            if pattern.search(line)
+        ]
+
+        assert offenders == [], f"Image.fromarray(mode=) is deprecated: {offenders}"
+
+    def test_the_only_test_sites_are_the_deliberate_ones(self) -> None:
+        """A new test copying the pattern would inherit the upgrade problem."""
+        import re
+        from pathlib import Path
+
+        import ptpd_calibration
+
+        tests_dir = Path(ptpd_calibration.__file__).parent.parent.parent / "tests"
+        if not tests_dir.is_dir():
+            pytest.skip("source tree not available next to the installed package")
+
+        pattern = re.compile(r"fromarray\([^)]*\bmode\s*=")
+        root = tests_dir.parent
+        offenders = {
+            str(path.relative_to(root))
+            for path in tests_dir.rglob("*.py")
+            for line in path.read_text().splitlines()
+            if pattern.search(line)
+        }
+
+        assert offenders <= self.ALLOWED, f"unexpected mode= sites: {offenders - self.ALLOWED}"

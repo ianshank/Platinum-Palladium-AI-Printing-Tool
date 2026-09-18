@@ -49,7 +49,7 @@ def low_key_image():
     arr = np.random.randint(0, 80, (200, 200), dtype=np.uint8)
     # Add some darker areas
     arr[:100, :] = np.random.randint(0, 40, (100, 200), dtype=np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
@@ -59,7 +59,7 @@ def high_key_image():
     arr = np.random.randint(180, 255, (200, 200), dtype=np.uint8)
     # Add some brighter areas
     arr[:100, :] = np.random.randint(220, 255, (100, 200), dtype=np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
@@ -73,14 +73,14 @@ def normal_image():
     arr[50:150, :] = np.random.randint(90, 170, (100, 200), dtype=np.uint8)
     # Highlights
     arr[150:, :] = np.random.randint(180, 240, (50, 200), dtype=np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
 def gradient_image():
     """Create a smooth gradient image."""
     arr = np.linspace(0, 255, 256).reshape(1, 256).repeat(100, axis=0).astype(np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
@@ -94,7 +94,7 @@ def high_contrast_image():
     # Some transitions
     arr[:100, 100:] = 100
     arr[100:, :100] = 150
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
@@ -102,7 +102,7 @@ def low_contrast_image():
     """Create a low contrast image."""
     # All values in narrow range around middle gray
     arr = np.random.randint(110, 145, (200, 200), dtype=np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
@@ -112,7 +112,7 @@ def rgb_test_image():
     arr[:, :, 0] = 100  # Red
     arr[:, :, 1] = 150  # Green
     arr[:, :, 2] = 200  # Blue
-    return Image.fromarray(arr, mode="RGB")
+    return Image.fromarray(arr)
 
 
 # ============================================================================
@@ -342,7 +342,7 @@ class TestAnalyzeImageTonality:
         arr = np.zeros((200, 200), dtype=np.uint8)
         arr[:100, :] = 0  # 50% pure black
         arr[100:, :] = 128
-        clipped_image = Image.fromarray(arr, mode="L")
+        clipped_image = Image.fromarray(arr)
 
         result = ai.analyze_image_tonality(clipped_image)
 
@@ -924,8 +924,8 @@ class TestAnalyzePrintQuality:
         # Make scan brighter to simulate blown highlights
         scan_arr = np.clip(scan_arr.astype(int) + 40, 0, 255).astype(np.uint8)
 
-        ref_img = Image.fromarray(ref_arr, mode="L")
-        scan_img = Image.fromarray(scan_arr, mode="L")
+        ref_img = Image.fromarray(ref_arr)
+        scan_img = Image.fromarray(scan_arr)
 
         result = ai.analyze_print_quality(
             scan_image=scan_img,
@@ -1293,7 +1293,7 @@ class TestIntegrationScenarios:
         # Simulate slight density shift in "print"
         scan_arr = np.array(normal_image)
         scan_arr = np.clip(scan_arr.astype(int) - 10, 0, 255).astype(np.uint8)
-        scan_image = Image.fromarray(scan_arr, mode="L")
+        scan_image = Image.fromarray(scan_arr)
 
         quality = ai.analyze_print_quality(
             scan_image=scan_image,

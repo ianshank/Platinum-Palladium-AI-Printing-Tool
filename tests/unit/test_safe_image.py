@@ -38,7 +38,7 @@ def small_rgb(tmp_path: Path) -> tuple[Path, np.ndarray]:
     rng = np.random.default_rng(7)
     arr = rng.integers(0, 256, size=(20, 30, 3), dtype=np.uint8)
     path = tmp_path / "small.png"
-    Image.fromarray(arr, mode="RGB").save(path)
+    Image.fromarray(arr).save(path)
     return path, arr
 
 

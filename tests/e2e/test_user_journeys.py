@@ -125,7 +125,7 @@ class TestDigitalNegativeJourney:
         """Create a sample grayscale image."""
         arr = np.linspace(0, 255, 256).reshape(16, 16).astype(np.uint8)
         arr = np.repeat(np.repeat(arr, 8, axis=0), 8, axis=1)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     @pytest.fixture
     def sample_curve(self):
@@ -272,7 +272,7 @@ class TestZoneSystemJourney:
         """Create a gradient image for zone analysis."""
         arr = np.linspace(0, 255, 256).reshape(16, 16).astype(np.uint8)
         arr = np.repeat(np.repeat(arr, 10, axis=0), 10, axis=1)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     def test_zone_analysis_workflow(self, sample_gradient, tmp_path):  # noqa: ARG002
         """
@@ -311,7 +311,7 @@ class TestSoftProofingJourney:
         """Create a test image for proofing."""
         arr = np.linspace(50, 200, 100).reshape(10, 10).astype(np.uint8)
         arr = np.repeat(np.repeat(arr, 10, axis=0), 10, axis=1)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     def test_soft_proofing_workflow(self, sample_image, real_quad_path):
         """
@@ -362,7 +362,7 @@ class TestHistogramJourney:
     def sample_image(self):
         """Create a test image."""
         arr = np.random.randint(50, 200, (100, 100), dtype=np.uint8)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     def test_histogram_analysis_workflow(self, sample_image):
         """
@@ -521,7 +521,7 @@ class TestIntegratedWorkflow:
         """Create a test image."""
         arr = np.linspace(30, 220, 256).reshape(16, 16).astype(np.uint8)
         arr = np.repeat(np.repeat(arr, 8, axis=0), 8, axis=1)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     def test_complete_print_preparation(self, sample_image, tmp_path):
         """

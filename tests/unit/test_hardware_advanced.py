@@ -1315,8 +1315,8 @@ class TestPrintComparison:
         comp = PrintComparison()
         # Use gradient images to avoid NaN from zero-variance in correlation
         arr1 = np.tile(np.arange(100, dtype=np.uint8), (100, 1))
-        img1 = Image.fromarray(arr1, mode="L")
-        img2 = Image.fromarray(arr1, mode="L")
+        img1 = Image.fromarray(arr1)
+        img2 = Image.fromarray(arr1)
 
         # Identical images should have high similarity
         score_mse = comp.calculate_similarity_score(img1, img2, method="mse")

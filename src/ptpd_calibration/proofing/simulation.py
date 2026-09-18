@@ -212,7 +212,7 @@ class SoftProofer:
 
         # Convert back to image
         result_arr = (result * 255).astype(np.uint8)
-        proof_image = Image.fromarray(result_arr, mode="RGB")
+        proof_image = Image.fromarray(result_arr)
 
         # Add notes
         notes.append(f"Simulating {settings.paper_dmax:.2f} Dmax, {settings.paper_dmin:.2f} Dmin")

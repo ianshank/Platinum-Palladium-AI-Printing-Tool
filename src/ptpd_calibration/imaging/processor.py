@@ -136,6 +136,11 @@ class ImageFormat(str, Enum):
 #: Export formats that carry sixteen bits per sample. Everything else in
 #: :class:`ImageFormat` is an 8-bit choice the caller made deliberately, and
 #: ORIGINAL means "whatever came in", so it keeps the source depth.
+#: Trailing-axis lengths this loader accepts for a colour array: three for RGB
+#: and four for RGBA. Two (LA) is deliberately absent, matching what this path
+#: accepted before the mode arguments were removed.
+_COLOUR_CHANNEL_COUNTS: frozenset[int] = frozenset({3, 4})
+
 SIXTEEN_BIT_FORMATS: frozenset[ImageFormat] = frozenset(
     {ImageFormat.TIFF_16BIT, ImageFormat.PNG_16BIT}
 )
@@ -262,12 +267,14 @@ class ImageProcessor:
                     img = Image.fromarray(source.copy())
                 else:
                     img = Image.fromarray(to_eight_bit_array(source))
-            elif source.ndim == 2:
-                img = Image.fromarray(source.astype(np.uint8), mode="L")
-            elif source.ndim == 3 and source.shape[2] == 3:
-                img = Image.fromarray(source.astype(np.uint8), mode="RGB")
-            elif source.ndim == 3 and source.shape[2] == 4:
-                img = Image.fromarray(source.astype(np.uint8), mode="RGBA")
+            elif source.ndim == 2 or (
+                source.ndim == 3 and source.shape[2] in _COLOUR_CHANNEL_COUNTS
+            ):
+                # One branch per shape used to be necessary to pick the mode
+                # argument. Pillow infers the same mode from the shape, so the
+                # shapes now differ only in what they are allowed to be, and
+                # that check is all this condition is for.
+                img = Image.fromarray(source.astype(np.uint8))
             else:
                 raise ValueError(f"Unsupported array shape: {source.shape}")
             original_format = None
@@ -419,7 +426,7 @@ class ImageProcessor:
             processed[:, :, idx] = luts[channel][arr[:, :, idx]]
 
         # Convert back to PIL Image
-        processed_img = Image.fromarray(processed, mode="RGB")
+        processed_img = Image.fromarray(processed)
 
         # Restore alpha if present
         if has_alpha:
@@ -571,21 +578,21 @@ class ImageProcessor:
         elif img.mode == "L":
             arr = np.array(img)
             inverted_arr = 255 - arr
-            inverted = Image.fromarray(inverted_arr.astype(np.uint8), mode="L")
+            inverted = Image.fromarray(inverted_arr.astype(np.uint8))
         elif img.mode == "LA":
             l_channel, a_channel = img.split()
             l_arr = np.array(l_channel)
-            inverted_l = Image.fromarray((255 - l_arr).astype(np.uint8), mode="L")
+            inverted_l = Image.fromarray((255 - l_arr).astype(np.uint8))
             inverted = Image.merge("LA", (inverted_l, a_channel))
         elif img.mode == "RGB":
             arr = np.array(img)
             inverted_arr = 255 - arr
-            inverted = Image.fromarray(inverted_arr.astype(np.uint8), mode="RGB")
+            inverted = Image.fromarray(inverted_arr.astype(np.uint8))
         elif img.mode == "RGBA":
             r, g, b, a = img.split()
             rgb = Image.merge("RGB", (r, g, b))
             rgb_arr = np.array(rgb)
-            inverted_rgb = Image.fromarray((255 - rgb_arr).astype(np.uint8), mode="RGB")
+            inverted_rgb = Image.fromarray((255 - rgb_arr).astype(np.uint8))
             inverted = inverted_rgb.copy()
             inverted.putalpha(a)
         else:
@@ -595,7 +602,7 @@ class ImageProcessor:
                 rgb = self._narrow(img, "RGB")
                 arr = np.array(rgb)
                 inverted_arr = 255 - arr
-                inverted = Image.fromarray(inverted_arr.astype(np.uint8), mode="RGB")
+                inverted = Image.fromarray(inverted_arr.astype(np.uint8))
             except Exception as e:
                 raise ValueError(f"Cannot invert image mode: {img.mode}") from e
 
@@ -1050,7 +1057,7 @@ class ImageProcessor:
         """
         arr = np.array(img)
         processed = lut[arr]
-        return Image.fromarray(processed, mode="L")
+        return Image.fromarray(processed)
 
     def _apply_lut_grayscale_16(self, img: Image.Image, lut: np.ndarray) -> Image.Image:
         """Apply a 16-bit LUT to a high-depth grayscale image.
@@ -1077,7 +1084,7 @@ class ImageProcessor:
         """
         arr = np.array(img)
         processed = lut[arr]
-        return Image.fromarray(processed, mode="RGB")
+        return Image.fromarray(processed)
 
     def _save_16bit_tiff(
         self,

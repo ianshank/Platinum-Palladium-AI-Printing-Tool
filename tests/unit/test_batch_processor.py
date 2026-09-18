@@ -157,7 +157,7 @@ class TestBatchProcessor:
         images = []
         for i in range(3):
             arr = np.ones((50, 50), dtype=np.uint8) * (50 + i * 50)
-            img = Image.fromarray(arr, mode="L")
+            img = Image.fromarray(arr)
             path = tmp_path / f"input_{i}.png"
             img.save(path)
             images.append(path)
@@ -300,7 +300,7 @@ class TestBatchOutputNaming:
     def sample_image(self, tmp_path):
         """Create single sample image."""
         arr = np.ones((50, 50), dtype=np.uint8) * 128
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
         path = tmp_path / "my_image.png"
         img.save(path)
         return [path]
@@ -345,7 +345,7 @@ class TestBatchColorModes:
         for i in range(2):
             arr = np.ones((50, 50, 3), dtype=np.uint8) * 128
             arr[:, :, 0] = 100 + i * 50  # Vary red
-            img = Image.fromarray(arr, mode="RGB")
+            img = Image.fromarray(arr)
             path = tmp_path / f"rgb_{i}.png"
             img.save(path)
             images.append(path)

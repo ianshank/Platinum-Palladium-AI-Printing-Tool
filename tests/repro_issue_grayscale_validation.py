@@ -9,7 +9,7 @@ def test_grayscale_flat_validation():
 
     # Create flat grayscale image (all 128)
     arr = np.full((100, 100), 128, dtype=np.uint8)
-    img = Image.fromarray(arr, mode="L")
+    img = Image.fromarray(arr)
 
     # Create dummy result
     result = ProcessingResult(
@@ -33,7 +33,7 @@ def test_grayscale_flat_validation():
     arr_color[:, :, 1] = np.random.randint(0, 255, (100, 100))  # Channel 1 is valid
     arr_color[:, :, 2] = np.random.randint(0, 255, (100, 100))  # Channel 2 is valid
 
-    img_color = Image.fromarray(arr_color, mode="RGB")
+    img_color = Image.fromarray(arr_color)
     result_color = ProcessingResult(
         image=img_color,
         original_size=(100, 100),

@@ -44,7 +44,7 @@ class TestFileUpload:
         import numpy as np
         from PIL import Image
 
-        img = Image.fromarray(np.random.randint(0, 255, (100, 100), dtype=np.uint8), mode="L")
+        img = Image.fromarray(np.random.randint(0, 255, (100, 100), dtype=np.uint8))
         file_path = tmp_path / "test_image.tiff"
         img.save(file_path)
         return file_path

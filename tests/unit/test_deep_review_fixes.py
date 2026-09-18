@@ -193,11 +193,22 @@ class TestRefinementUnits:
 class TestModeArgumentReinterpretsBuffers:
     """`Image.fromarray(mode=)` reinterprets raw bytes; it does not convert."""
 
-    def test_declaring_rgb_for_rgba_misaligns_every_pixel(self) -> None:
-        """The premise, pinned so the helper's reason stays visible."""
+    def test_declaring_rgb_for_rgba_does_not_convert(self) -> None:
+        """The premise, pinned so the helper's reason stays visible.
+
+        Declaring a mode is not a conversion, and that is true on both sides of
+        Pillow 13: up to 12 the call reinterprets the buffer and misaligns every
+        pixel, from 13 the parameter is restricted and the call is refused. The
+        assertion is the property common to both -- you do not get the array's
+        first three channels back -- so this keeps testing the same thing when
+        the pin moves.
+        """
         rgba = np.arange(3 * 4 * 4, dtype=np.uint8).reshape(3, 4, 4)
 
-        declared = np.asarray(Image.fromarray(rgba, mode="RGB"))
+        try:
+            declared = np.asarray(Image.fromarray(rgba, mode="RGB"))
+        except (ValueError, TypeError):
+            return  # Pillow >= 13 refuses outright, which is the stronger answer.
 
         assert not np.array_equal(declared, rgba[..., :3])
 

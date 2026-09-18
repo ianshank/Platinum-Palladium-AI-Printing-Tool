@@ -144,13 +144,13 @@ class TestZoneMapper:
     def gray_image(self) -> Image.Image:
         """Create a mid-gray test image."""
         arr = np.full((100, 100), 128, dtype=np.uint8)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     @pytest.fixture()
     def gradient_image(self) -> Image.Image:
         """Create a gradient image spanning full tonal range."""
         arr = np.tile(np.linspace(0, 255, 200, dtype=np.uint8), (50, 1))
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     def test_analyze_image_returns_analysis(
         self, mapper: ZoneMapper, gray_image: Image.Image
@@ -187,14 +187,14 @@ class TestZoneMapper:
         """Very bright and dark values = high contrast = N- development."""
         arr = np.zeros((100, 100), dtype=np.uint8)
         arr[:50, :] = 255  # Half white, half black
-        image = Image.fromarray(arr, mode="L")
+        image = Image.fromarray(arr)
         result = mapper.analyze_image(image)
         assert result.development_adjustment.startswith("N-")
 
     def test_analyze_low_contrast_recommends_n_plus(self, mapper: ZoneMapper) -> None:
         """Very narrow tonal range = low contrast = N+ development."""
         arr = np.random.default_rng(42).integers(100, 150, (100, 100), dtype=np.uint8)
-        image = Image.fromarray(arr, mode="L")
+        image = Image.fromarray(arr)
         result = mapper.analyze_image(image)
         assert (
             result.development_adjustment.startswith("N+") or result.development_adjustment == "N"
@@ -203,7 +203,7 @@ class TestZoneMapper:
     def test_analyze_rgb_image(self, mapper: ZoneMapper) -> None:
         """RGB images should be converted to grayscale internally."""
         arr = np.full((50, 50, 3), 128, dtype=np.uint8)
-        image = Image.fromarray(arr, mode="RGB")
+        image = Image.fromarray(arr)
         result = mapper.analyze_image(image)
         assert isinstance(result, ZoneAnalysis)
 

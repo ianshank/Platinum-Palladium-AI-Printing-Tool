@@ -227,7 +227,7 @@ class TestComponentVisual:
             x_end = (i + 1) * patch_width
             img_array[:, x_start:x_end] = value
 
-        img = Image.fromarray(img_array, mode="L").convert("RGB")
+        img = Image.fromarray(img_array).convert("RGB")
         file_path = tmp_path / "step_tablet.png"
         img.save(file_path)
 

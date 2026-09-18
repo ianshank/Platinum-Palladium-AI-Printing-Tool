@@ -443,7 +443,7 @@ def save_test_image(
         else:
             raise ValueError(f"Cannot auto-detect mode for shape {array.shape}")
 
-    img = Image.fromarray(array, mode=mode)
+    img = Image.fromarray(array)
     img.save(path)
     return path
 

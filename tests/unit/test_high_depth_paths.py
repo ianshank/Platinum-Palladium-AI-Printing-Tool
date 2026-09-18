@@ -147,10 +147,17 @@ class TestSixteenBitTiffFallback:
 
         rgba = np.arange(4 * 4 * 4, dtype=np.uint8).reshape(4, 4, 4)
 
-        declared = Image.fromarray(rgba, mode="RGB")
         inferred = image_from_array(rgba)
 
         assert inferred.mode == "RGBA"
         assert np.array_equal(np.array(inferred), rgba)
-        # The bug: the declared form disagrees from the second pixel onwards.
-        assert np.array(declared)[0][1].tolist() != rgba[0][1][:3].tolist()
+
+        # The bug, kept visible: the declared form does not give the array back.
+        # Pillow 13 restricts the parameter rather than removing it, so the call
+        # is refused there instead of misaligning; either answer proves the
+        # point, and accepting both keeps this test working across the upgrade.
+        try:
+            declared = np.array(Image.fromarray(rgba, mode="RGB"))
+        except (ValueError, TypeError):
+            return
+        assert declared[0][1].tolist() != rgba[0][1][:3].tolist()

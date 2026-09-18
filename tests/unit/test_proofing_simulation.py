@@ -96,17 +96,17 @@ class TestSoftProofer:
     @pytest.fixture()
     def gray_image(self) -> Image.Image:
         arr = np.full((50, 50), 128, dtype=np.uint8)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     @pytest.fixture()
     def gradient_image(self) -> Image.Image:
         arr = np.tile(np.linspace(0, 255, 100, dtype=np.uint8), (50, 1))
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     @pytest.fixture()
     def rgb_image(self) -> Image.Image:
         arr = np.full((50, 50, 3), 128, dtype=np.uint8)
-        return Image.fromarray(arr, mode="RGB")
+        return Image.fromarray(arr)
 
     def test_proof_returns_result(self, proofer: SoftProofer, gray_image: Image.Image) -> None:
         result = proofer.proof(gray_image)

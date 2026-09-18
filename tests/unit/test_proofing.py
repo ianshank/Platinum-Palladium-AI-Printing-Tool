@@ -112,7 +112,7 @@ class TestSoftProofer:
     def gray_image(self):
         """Create grayscale test image."""
         arr = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     @pytest.fixture
     def rgb_image(self):
@@ -121,7 +121,7 @@ class TestSoftProofer:
         arr[:, :, 0] = 100
         arr[:, :, 1] = 150
         arr[:, :, 2] = 200
-        return Image.fromarray(arr, mode="RGB")
+        return Image.fromarray(arr)
 
     def test_proofer_default_settings(self, proofer):
         """Proofer should use default settings."""

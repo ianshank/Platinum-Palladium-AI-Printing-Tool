@@ -323,7 +323,7 @@ class ZoneMapper:
             value = int((1 - zone.value / 10.0) * 255)
             arr[:, start:end] = value
 
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     def visualize_zones(
         self,
@@ -351,7 +351,7 @@ class ZoneMapper:
             # Map to zones (0-10), then back to 0-255
             zones = (arr / 255.0 * 10).astype(int)
             posterized = (zones / 10.0 * 255).astype(np.uint8)
-            return Image.fromarray(posterized, mode="L")
+            return Image.fromarray(posterized)
         else:
             return gray
 

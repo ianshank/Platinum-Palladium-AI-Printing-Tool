@@ -139,7 +139,7 @@ class TestCoreFunctionality:
 
         # Create test image
         arr = np.linspace(0, 255, 100).reshape(10, 10).astype(np.uint8)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
 
         analyzer = HistogramAnalyzer()
         result = analyzer.analyze(img)
@@ -155,7 +155,7 @@ class TestCoreFunctionality:
 
         # Create test image
         arr = np.linspace(0, 255, 100).reshape(10, 10).astype(np.uint8)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
 
         mapper = ZoneMapper()
         result = mapper.analyze_image(img)
@@ -171,7 +171,7 @@ class TestCoreFunctionality:
 
         # Create test image
         arr = np.linspace(50, 200, 100).reshape(10, 10).astype(np.uint8)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
 
         proofer = SoftProofer()
         result = proofer.proof(img)
