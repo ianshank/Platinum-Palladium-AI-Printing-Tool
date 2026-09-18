@@ -103,8 +103,14 @@ class CurvePredictor:
         split = validation_split or self.settings.validation_split
         split_idx = int(len(X) * (1 - split))
 
-        # Shuffle
-        indices = np.random.permutation(len(X))
+        # Shuffle with a seeded local generator. This drew from the global RNG
+        # unseeded, which made it the only nondeterminism left in training: the
+        # estimators already pin their own random_state, so the same records
+        # gave a different split, a different model and a different reported
+        # validation error on every call, and any unrelated caller that drew
+        # first moved it again.
+        rng = np.random.default_rng(self.settings.random_seed)
+        indices = rng.permutation(len(X))
         X = X[indices]
         y = y[indices]
 
@@ -300,7 +306,7 @@ class CurvePredictor:
                 base = GradientBoostingRegressor(
                     n_estimators=self.settings.n_estimators,
                     max_depth=self.settings.max_depth,
-                    random_state=42,
+                    random_state=self.settings.random_seed,
                 )
                 return MultiOutputRegressor(base)
 
@@ -310,7 +316,7 @@ class CurvePredictor:
                 return RandomForestRegressor(
                     n_estimators=self.settings.n_estimators,
                     max_depth=self.settings.max_depth,
-                    random_state=42,
+                    random_state=self.settings.random_seed,
                 )
 
             else:
@@ -321,7 +327,7 @@ class CurvePredictor:
                 base = GradientBoostingRegressor(
                     n_estimators=self.settings.n_estimators,
                     max_depth=self.settings.max_depth,
-                    random_state=42,
+                    random_state=self.settings.random_seed,
                 )
                 return MultiOutputRegressor(base)
 

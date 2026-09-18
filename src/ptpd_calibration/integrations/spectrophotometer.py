@@ -20,6 +20,13 @@ from pydantic import BaseModel, ConfigDict, Field
 logger = logging.getLogger(__name__)
 
 
+#: Bounds for the simulated reading. Densities are a physical scale, so these
+#: are constants rather than settings: a caller wanting different numbers wants
+#: a different patch id, not a different ceiling.
+_SIMULATED_DENSITY_CEILING = 2.0
+_SIMULATED_DENSITY_NOISE = 0.02
+_DENSITY_LIMIT = 3.0
+
 #: Width of the seed drawn from a patch id; numpy accepts a 32-bit seed.
 _PATCH_SEED_BYTES = 4
 
@@ -374,11 +381,15 @@ class XRiteIntegration(SpectrophotometerInterface):
             logger.warning("Device not calibrated, results may be inaccurate")
 
         if self.simulate:
-            # Simulate density reading with some noise
-            # Base density varies by patch, add small random variation
-            base_density = hash(patch_id) % 100 / 50.0  # 0.0 to 2.0 range
-            noise = np.random.normal(0, 0.02)
-            density = max(0.0, min(3.0, base_density + noise))
+            # Simulate a density reading that varies by patch. Both halves used
+            # to be unstable: hash() on a string is salted per process, so the
+            # "base" moved between runs, and the noise came off the global RNG,
+            # so it moved with call order. _patch_rng fixes both -- the same
+            # patch id now reads the same way in any process.
+            rng = _patch_rng(patch_id)
+            base_density = rng.uniform(0.0, _SIMULATED_DENSITY_CEILING)
+            noise = rng.normal(0, _SIMULATED_DENSITY_NOISE)
+            density = max(0.0, min(_DENSITY_LIMIT, base_density + noise))
 
             logger.debug(f"Read density for {patch_id}: {density:.3f}")
             return density

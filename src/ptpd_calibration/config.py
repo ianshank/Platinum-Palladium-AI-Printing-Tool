@@ -118,6 +118,15 @@ class ExtractionSettings(BaseSettings):
     # Paper base detection
     paper_margin_ratio: float = Field(default=0.05, ge=0.01, le=0.2)
     paper_sample_size: int = Field(default=50, ge=10, le=500)
+    paper_sample_pixels: int = Field(
+        default=20000,
+        ge=100,
+        le=1_000_000,
+        description=(
+            "Largest number of margin pixels used to estimate the paper base. "
+            "A margin wider than this is strided evenly, never sampled randomly"
+        ),
+    )
 
 
 class CurveSettings(BaseSettings):
@@ -177,6 +186,14 @@ class MLSettings(BaseSettings):
     validation_split: float = Field(default=0.2, ge=0.1, le=0.4)
     min_training_samples: int = Field(default=5, ge=3, le=50)
     cross_validation_folds: int = Field(default=5, ge=2, le=10)
+    random_seed: int = Field(
+        default=42,
+        ge=0,
+        description=(
+            "Seed for the train/validation shuffle and the estimators, so the "
+            "same records produce the same model and the same reported error"
+        ),
+    )
 
     # Active learning
     uncertainty_threshold: float = Field(default=0.1, ge=0.01, le=0.5)

@@ -129,7 +129,7 @@ class DensityExtractor:
         margin = self.settings.paper_margin_ratio
         sample_size = self.settings.paper_sample_size
 
-        samples = []
+        samples: list[np.ndarray] = []
 
         # Top margin
         if y > sample_size:
@@ -137,7 +137,7 @@ class DensityExtractor:
                 max(0, y - sample_size) : y,
                 x : x + w,
             ]
-            samples.extend(self._sample_region(top_region))
+            samples.append(self._sample_region(top_region))
 
         # Bottom margin
         if y + h + sample_size < height:
@@ -145,7 +145,7 @@ class DensityExtractor:
                 y + h : min(height, y + h + sample_size),
                 x : x + w,
             ]
-            samples.extend(self._sample_region(bottom_region))
+            samples.append(self._sample_region(bottom_region))
 
         # Left margin
         if x > sample_size:
@@ -153,7 +153,7 @@ class DensityExtractor:
                 y : y + h,
                 max(0, x - sample_size) : x,
             ]
-            samples.extend(self._sample_region(left_region))
+            samples.append(self._sample_region(left_region))
 
         # Right margin
         if x + w + sample_size < width:
@@ -161,9 +161,10 @@ class DensityExtractor:
                 y : y + h,
                 x + w : min(width, x + w + sample_size),
             ]
-            samples.extend(self._sample_region(right_region))
+            samples.append(self._sample_region(right_region))
 
-        if not samples:
+        if not any(len(block) for block in samples):
+            samples = []
             # Fallback: use image corners
             corner_size = int(min(height, width) * margin)
             corners = [
@@ -173,14 +174,14 @@ class DensityExtractor:
                 image[-corner_size:, -corner_size:],
             ]
             for corner in corners:
-                samples.extend(self._sample_region(corner))
+                samples.append(self._sample_region(corner))
 
-        if not samples:
+        if not any(len(block) for block in samples):
             # Ultimate fallback
             return (255.0, 255.0, 255.0), 0.05
 
         # Robust mean using MAD
-        samples_array = np.array(samples)
+        samples_array = np.concatenate([block for block in samples if len(block)])
         rgb_mean = self._robust_mean(samples_array)
 
         # Calculate paper base density
@@ -188,23 +189,38 @@ class DensityExtractor:
 
         return tuple(rgb_mean), paper_density
 
-    def _sample_region(self, region: np.ndarray) -> list[np.ndarray]:
-        """Sample random pixels from a region."""
-        if region.size == 0:
-            return []
+    def _sample_region(self, region: np.ndarray) -> np.ndarray:
+        """Return the region's pixels as RGB rows, bounded but deterministic.
 
-        # Flatten to list of RGB values
-        if len(region.shape) == 3:
+        This drew a random hundred pixels off the process-global RNG. The paper
+        base it feeds is the reference every patch density is measured against,
+        so the same scan read twice gave different densities -- and an unrelated
+        caller drawing from the global RNG first shifted them too. On a margin
+        with the lighting gradient and dust a flatbed produces, the estimate
+        moved by more than a code value between runs.
+
+        A hundred pixels was also a poor estimator of a margin holding tens of
+        thousands. Everything within the bound is used now, and a larger margin
+        is strided evenly: bounded work, no RNG, and the same answer every time.
+        ``_robust_mean`` still rejects outliers by MAD, which is what makes dust
+        and specks harmless without discarding most of the data to avoid them.
+        """
+        if region.size == 0:
+            return np.empty((0, 3), dtype=region.dtype)
+
+        if region.ndim == 3:
             pixels = region.reshape(-1, region.shape[-1])
         else:
-            pixels = region.flatten()
-            pixels = np.column_stack([pixels, pixels, pixels])
+            flat = region.reshape(-1)
+            pixels = np.column_stack([flat, flat, flat])
 
-        # Random sample
-        n_samples = min(100, len(pixels))
-        indices = np.random.choice(len(pixels), n_samples, replace=False)
+        limit = self.settings.paper_sample_pixels
+        if len(pixels) > limit:
+            step = len(pixels) // limit
+            pixels = pixels[::step][:limit]
+            logger.debug("Strided %d margin pixels to %d (step %d)", region.size, len(pixels), step)
 
-        return [pixels[i] for i in indices]
+        return pixels
 
     def _extract_patch(
         self,
