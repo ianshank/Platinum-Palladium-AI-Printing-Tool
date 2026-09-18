@@ -51,3 +51,42 @@ export const DEFAULT_NEGATIVE_COLOR_MODE = 'grayscale';
 
 /** Download filename stem when the caller does not supply one. */
 export const DEFAULT_NEGATIVE_NAME = 'negative';
+
+/**
+ * Backend `CurveType` members that `POST /api/curves/generate` accepts.
+ *
+ * The wizard's "curve strategy" describes an *interpolation* choice
+ * (`monotonic`, `cubic`, `linear`); the backend's `curve_type` names a
+ * calibration target. They are different vocabularies, and sending the
+ * strategy straight through meant the wizard's own default, `monotonic`,
+ * reached `CurveType(request.curve_type)` and returned HTTP 400.
+ */
+export const BACKEND_CURVE_TYPES = [
+  'linear',
+  'paper_white',
+  'aesthetic',
+  'custom',
+  'mcts_optimized',
+  'spline',
+  'polynomial',
+] as const;
+
+export type BackendCurveType = (typeof BACKEND_CURVE_TYPES)[number];
+
+/**
+ * Translate a wizard curve strategy into a curve type the backend accepts.
+ *
+ * A strategy that is already a valid backend value passes through, so the two
+ * vocabularies can converge later without touching call sites. Anything else,
+ * including the interpolation names, falls back to the default: the generate
+ * endpoint exposes no interpolation knob, so the strategy is a presentation
+ * detail there.
+ */
+export function toBackendCurveType(
+  strategy: string | undefined
+): BackendCurveType {
+  return (
+    BACKEND_CURVE_TYPES.find((value) => value === strategy) ??
+    DEFAULT_CURVE_TYPE
+  );
+}

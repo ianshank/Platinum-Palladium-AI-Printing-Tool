@@ -608,7 +608,18 @@ def create_app(settings: Settings | None = None):
             unlink_quietly(source_path)
 
         output_path = server_upload_path(upload_dir, extension)
-        processor.export(negative, output_path, ExportSettings(format=ImageFormat(target)))
+        try:
+            processor.export(negative, output_path, ExportSettings(format=ImageFormat(target)))
+        except ValueError as exc:
+            # A combination the writers refuse, such as 16-bit colour as PNG.
+            # Left unhandled this escaped as a 500 and stranded the file.
+            unlink_quietly(output_path)
+            _log.debug("Negative export refused: %s", exc)
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except Exception as exc:
+            unlink_quietly(output_path)
+            _log.warning("Negative export failed", exc_info=True)
+            raise HTTPException(status_code=400, detail=str(exc)) from None
         _log.debug(
             "Exported negative: curve=%s format=%s mode=%s inverted=%s -> %s",
             curve.id if curve else None,

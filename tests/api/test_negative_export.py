@@ -43,6 +43,11 @@ def _sixteen_bit_source() -> bytes:
     return _png_bytes(ramp)
 
 
+def _rgb_source() -> bytes:
+    ramp = np.linspace(0, 255, SIDE * SIDE).astype(np.uint8).reshape(SIDE, SIDE)
+    return _png_bytes(np.stack([ramp, ramp, ramp], axis=-1))
+
+
 def _upload(payload: bytes, filename: str = "scan.png") -> dict:
     return {"file": (filename, payload, "image/png")}
 
@@ -244,5 +249,54 @@ class TestNegativeExportRejections:
                 ENDPOINT, files=_upload(_eight_bit_source()), data={"format": "bmp"}
             )
             assert rejected.status_code == 422
+
+        assert list(upload_dir.iterdir()) == []
+
+
+class TestExportFailuresAreClientErrors:
+    """A refused format must not escape as a 500 or strand a file.
+
+    The export call sat outside the handler's error boundary, so the one
+    combination the writers deliberately refuse, 16-bit colour as PNG, became
+    an unhandled 500 and left the rendered negative on disk.
+    """
+
+    def test_sixteen_bit_colour_png_is_a_client_error(self, client) -> None:
+        response = client.post(
+            ENDPOINT,
+            files=_upload(_rgb_source()),
+            data={"format": "png_16bit", "color_mode": "rgb"},
+        )
+
+        assert response.status_code == 422, response.text
+        assert "16-bit colour" in response.json()["detail"]
+
+    def test_sixteen_bit_colour_tiff_still_succeeds(self, client) -> None:
+        response = client.post(
+            ENDPOINT,
+            files=_upload(_rgb_source()),
+            data={"format": "tiff_16bit", "color_mode": "rgb"},
+        )
+
+        assert response.status_code == 200, response.text
+
+    def test_a_refused_export_leaves_no_file_behind(self, tmp_path) -> None:
+        from fastapi.testclient import TestClient
+
+        from ptpd_calibration.api.server import create_app
+        from ptpd_calibration.config import Settings
+
+        upload_dir = tmp_path / "uploads"
+        upload_dir.mkdir()
+        settings = Settings()
+        settings.api.upload_dir = upload_dir
+
+        with TestClient(create_app(settings)) as isolated:
+            refused = isolated.post(
+                ENDPOINT,
+                files=_upload(_rgb_source()),
+                data={"format": "png_16bit", "color_mode": "rgb"},
+            )
+            assert refused.status_code == 422
 
         assert list(upload_dir.iterdir()) == []

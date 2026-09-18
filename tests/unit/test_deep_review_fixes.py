@@ -223,3 +223,39 @@ class TestLogInjection:
 
         assert escaped.startswith("x" * 10)
         assert "90 more" in escaped
+
+
+class TestDensityExtractionNormalisesDepth:
+    """The density path divided by 255, so a 16-bit scan read as blank paper.
+
+    ``load_image_array`` hands a 16-bit file over at its full depth on purpose,
+    which made reflectance far greater than 1 and drove every density to 0.
+    """
+
+    @staticmethod
+    def _density(rgb: np.ndarray) -> float:
+        from ptpd_calibration.detection.extractor import DensityExtractor
+
+        reflectance = DensityExtractor()._to_reflectance(rgb)
+        return float(np.mean(-np.log10(np.clip(reflectance, 1e-6, 1.0))))
+
+    def test_the_same_tone_reads_the_same_at_either_depth(self) -> None:
+        eight = np.array([[[235, 235, 235]]], dtype=np.uint8)
+        sixteen = np.array([[[235 * 257, 235 * 257, 235 * 257]]], dtype=np.uint16)
+
+        assert self._density(eight) == pytest.approx(self._density(sixteen), abs=1e-3)
+
+    def test_a_sixteen_bit_scan_no_longer_reads_as_blank_paper(self) -> None:
+        dark = np.array([[[3000, 3000, 3000]]], dtype=np.uint16)
+
+        assert self._density(dark) > 1.0
+
+    def test_reflectance_stays_within_its_physical_range(self) -> None:
+        from ptpd_calibration.detection.extractor import DensityExtractor
+
+        wedge = np.array([[[0, 0, 0], [30000, 30000, 30000], [65535, 65535, 65535]]], np.uint16)
+
+        reflectance = DensityExtractor()._to_reflectance(wedge)
+
+        assert float(np.max(reflectance)) <= 1.0
+        assert float(np.min(reflectance)) >= 0.0

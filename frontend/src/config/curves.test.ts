@@ -1,31 +1,40 @@
-import { describe, expect, it } from 'vitest';
-import { CURVE_SAVE_NOOP_ADJUSTMENT } from './curves';
-
 /**
- * Adjustment types dispatched by `POST /api/curves/modify`
- * (src/ptpd_calibration/api/server.py). Anything else is rejected with 400,
- * so a "save" must use one of these with a neutral amount.
+ * The wizard's curve strategy and the backend's `curve_type` are different
+ * vocabularies. Sending the strategy straight through meant the wizard's own
+ * default, `monotonic`, reached `CurveType(request.curve_type)` and returned
+ * HTTP 400, so a first-time user could not generate a curve at all.
  */
-const BACKEND_ADJUSTMENT_TYPES = [
-  'brightness',
-  'contrast',
-  'gamma',
-  'levels',
-  'highlights',
-  'shadows',
-  'midtones',
-] as const;
 
-describe('CURVE_SAVE_NOOP_ADJUSTMENT', () => {
-  it('uses an adjustment type the backend accepts (never "none")', () => {
-    expect(BACKEND_ADJUSTMENT_TYPES).toContain(
-      CURVE_SAVE_NOOP_ADJUSTMENT.adjustment_type
+import { describe, expect, it } from 'vitest';
+
+import {
+  BACKEND_CURVE_TYPES,
+  DEFAULT_CURVE_TYPE,
+  toBackendCurveType,
+} from './curves';
+
+describe('toBackendCurveType', () => {
+  it.each(['monotonic', 'cubic', 'linearization', '', undefined])(
+    'maps the unsupported strategy %p to the default',
+    (strategy) => {
+      expect(toBackendCurveType(strategy)).toBe(DEFAULT_CURVE_TYPE);
+    }
+  );
+
+  it.each([...BACKEND_CURVE_TYPES])(
+    'passes the backend value %s through',
+    (value) => {
+      expect(toBackendCurveType(value)).toBe(value);
+    }
+  );
+
+  it('only ever returns a value the backend accepts', () => {
+    const results = ['monotonic', 'cubic', 'spline', 'nonsense'].map(
+      toBackendCurveType
     );
-    expect(CURVE_SAVE_NOOP_ADJUSTMENT.adjustment_type).not.toBe('none');
-  });
 
-  it('is a no-op: brightness with amount 0 leaves the curve unchanged', () => {
-    expect(CURVE_SAVE_NOOP_ADJUSTMENT.adjustment_type).toBe('brightness');
-    expect(CURVE_SAVE_NOOP_ADJUSTMENT.amount).toBe(0);
+    for (const result of results) {
+      expect(BACKEND_CURVE_TYPES).toContain(result);
+    }
   });
 });

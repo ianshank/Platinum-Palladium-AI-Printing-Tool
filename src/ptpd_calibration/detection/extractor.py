@@ -14,7 +14,11 @@ from PIL import Image
 from ptpd_calibration.config import ExtractionSettings, get_settings
 from ptpd_calibration.core.models import ExtractionResult, PatchData
 from ptpd_calibration.detection.detector import DetectionResult
-from ptpd_calibration.imaging.safe_image import load_image_array
+from ptpd_calibration.imaging.safe_image import load_image_array, to_uint8_scale
+
+#: Largest value an 8-bit code can hold; the sRGB transfer function is
+#: defined on that scale.
+_EIGHT_BIT_MAX = 255.0
 
 logger = logging.getLogger(__name__)
 
@@ -316,7 +320,7 @@ class DensityExtractor:
         reads as 0.97, and the quality gates, which are set from published
         figures for this process, then become unreachable.
         """
-        normalised = np.asarray(values, dtype=float) / 255.0
+        normalised = np.asarray(values, dtype=float) / _EIGHT_BIT_MAX
         return np.where(
             normalised <= 0.04045,
             normalised / 12.92,
@@ -324,10 +328,18 @@ class DensityExtractor:
         )
 
     def _to_reflectance(self, rgb: np.ndarray) -> np.ndarray:
-        """Return linear reflectance for ``rgb``, honouring the settings flag."""
+        """Return linear reflectance for ``rgb``, honouring the settings flag.
+
+        The scale is normalised first. Both branches divide by 255, so a 16-bit
+        scan, which ``load_image_array`` deliberately hands over at its full
+        depth, produced reflectance far above 1 and a density of 0 for every
+        patch: a scan the rest of this toolkit treats as first class read as
+        blank paper.
+        """
+        codes = to_uint8_scale(np.asarray(rgb))
         if self.settings.linearize_srgb:
-            return self._srgb_to_linear(rgb)
-        return np.asarray(rgb, dtype=float) / 255.0
+            return self._srgb_to_linear(codes)
+        return np.asarray(codes, dtype=float) / _EIGHT_BIT_MAX
 
     def _rgb_to_density(
         self,
@@ -367,10 +379,12 @@ class DensityExtractor:
     def _rgb_to_lab(self, rgb: np.ndarray) -> np.ndarray:
         """Convert RGB to CIE L*a*b* color space."""
         # sRGB to XYZ
+        # Normalise the depth first, for the same reason as _to_reflectance.
+        codes = np.asarray(to_uint8_scale(np.asarray(rgb)), dtype=float) / _EIGHT_BIT_MAX
         rgb_linear = np.where(
-            rgb / 255.0 <= 0.04045,
-            rgb / 255.0 / 12.92,
-            ((rgb / 255.0 + 0.055) / 1.055) ** 2.4,
+            codes <= 0.04045,
+            codes / 12.92,
+            ((codes + 0.055) / 1.055) ** 2.4,
         )
 
         # sRGB to XYZ matrix (D65 illuminant)

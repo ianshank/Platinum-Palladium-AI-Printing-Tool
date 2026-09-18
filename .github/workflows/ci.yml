@@ -424,9 +424,10 @@ jobs:
       # that mean "feature unavailable" skip; every other response runs the
       # action, so a real high-severity finding still fails the job.
       #
-      # Vulnerability scanning of the locked dependencies is not lost either
-      # way: pip-audit in the `security` job is blocking and `security` is in
-      # the required set for `all-green`.
+      # Vulnerability scanning of the locked dependencies still runs either
+      # way, in the `security` job. Note it is advisory in PHASE-1: pip-audit
+      # and pnpm audit both carry continue-on-error, so neither gates
+      # `all-green` today. PHASE-2 removes those lines.
       - name: Is the dependency graph available on this repository?
         id: graph
         env:
