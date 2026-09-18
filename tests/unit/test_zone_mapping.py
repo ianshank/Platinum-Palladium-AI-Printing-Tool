@@ -15,8 +15,8 @@ from ptpd_calibration.zones.mapping import (
     ZoneMapping,
 )
 
-
 # ── Zone enum tests ──────────────────────────────────────────────────
+
 
 class TestZone:
     def test_zone_values_range(self) -> None:
@@ -39,6 +39,7 @@ class TestZone:
 
 
 # ── ZoneMapping tests ────────────────────────────────────────────────
+
 
 class TestZoneMapping:
     def test_default_densities_computed(self) -> None:
@@ -79,11 +80,14 @@ class TestZoneMapping:
         assert mapping.get_zone_for_density(2.0) == Zone.ZONE_0
         assert mapping.get_zone_for_density(0.0) == Zone.ZONE_X
 
-    @pytest.mark.parametrize("dmax,dmin", [
-        (1.6, 0.08),
-        (2.0, 0.05),
-        (2.5, 0.10),
-    ])
+    @pytest.mark.parametrize(
+        "dmax,dmin",
+        [
+            (1.6, 0.08),
+            (2.0, 0.05),
+            (2.5, 0.10),
+        ],
+    )
     def test_custom_paper_characteristics(self, dmax: float, dmin: float) -> None:
         mapping = ZoneMapping(paper_dmax=dmax, paper_dmin=dmin)
         assert mapping.zone_densities[Zone.ZONE_0] == dmax
@@ -104,6 +108,7 @@ class TestZoneMapping:
 
 # ── ZoneAnalysis tests ───────────────────────────────────────────────
 
+
 class TestZoneAnalysis:
     def test_defaults(self) -> None:
         analysis = ZoneAnalysis()
@@ -115,14 +120,20 @@ class TestZoneAnalysis:
         analysis = ZoneAnalysis()
         d = analysis.to_dict()
         expected_keys = {
-            "zone_histogram", "shadow_zone", "highlight_zone",
-            "average_zone", "zone_range", "exposure_adjustment_stops",
-            "development_adjustment", "notes",
+            "zone_histogram",
+            "shadow_zone",
+            "highlight_zone",
+            "average_zone",
+            "zone_range",
+            "exposure_adjustment_stops",
+            "development_adjustment",
+            "notes",
         }
         assert set(d.keys()) == expected_keys
 
 
 # ── ZoneMapper tests ─────────────────────────────────────────────────
+
 
 class TestZoneMapper:
     @pytest.fixture()
@@ -172,9 +183,7 @@ class TestZoneMapper:
         result = mapper.analyze_image(gradient_image, placed_highlight=8)
         assert result.highlight_zone == Zone.ZONE_VIII
 
-    def test_analyze_high_contrast_recommends_n_minus(
-        self, mapper: ZoneMapper
-    ) -> None:
+    def test_analyze_high_contrast_recommends_n_minus(self, mapper: ZoneMapper) -> None:
         """Very bright and dark values = high contrast = N- development."""
         arr = np.zeros((100, 100), dtype=np.uint8)
         arr[:50, :] = 255  # Half white, half black
@@ -182,14 +191,14 @@ class TestZoneMapper:
         result = mapper.analyze_image(image)
         assert result.development_adjustment.startswith("N-")
 
-    def test_analyze_low_contrast_recommends_n_plus(
-        self, mapper: ZoneMapper
-    ) -> None:
+    def test_analyze_low_contrast_recommends_n_plus(self, mapper: ZoneMapper) -> None:
         """Very narrow tonal range = low contrast = N+ development."""
         arr = np.random.default_rng(42).integers(100, 150, (100, 100), dtype=np.uint8)
         image = Image.fromarray(arr, mode="L")
         result = mapper.analyze_image(image)
-        assert result.development_adjustment.startswith("N+") or result.development_adjustment == "N"
+        assert (
+            result.development_adjustment.startswith("N+") or result.development_adjustment == "N"
+        )
 
     def test_analyze_rgb_image(self, mapper: ZoneMapper) -> None:
         """RGB images should be converted to grayscale internally."""

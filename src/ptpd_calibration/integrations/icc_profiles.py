@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageCms
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +88,7 @@ class ProfileValidation(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     info: ProfileInfo | None = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ICCProfileManager:

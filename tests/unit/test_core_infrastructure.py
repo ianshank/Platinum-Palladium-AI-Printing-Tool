@@ -14,10 +14,8 @@ import asyncio
 import json
 import logging
 import time
-import weakref
 from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel
@@ -59,7 +57,6 @@ from ptpd_calibration.core.logging import (
     log_operation,
     setup_logging,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -698,9 +695,9 @@ class TestDebugTrace:
         with patch("ptpd_calibration.core.debug.logger") as mock_logger:
             traced_function()
 
-            exit_call = [
-                call for call in mock_logger.debug.call_args_list if "EXIT" in call[0][0]
-            ][0]
+            exit_call = [call for call in mock_logger.debug.call_args_list if "EXIT" in call[0][0]][
+                0
+            ]
             # Should not contain the result
             assert "secret" not in exit_call[0][0]
 
@@ -811,8 +808,8 @@ class TestDumpException:
     def test_dump_exception_with_locals(self):
         """Test exception dump with local variables."""
         try:
-            local_var = 42
-            another_var = "test"
+            local_var = 42  # noqa: F841 - must exist in the frame for the locals dump under test
+            another_var = "test"  # noqa: F841 - same
             raise RuntimeError("Error with locals")
         except RuntimeError as e:
             dump = dump_exception(e, include_locals=True)
@@ -866,7 +863,7 @@ class TestMemoryTracker:
     def test_memory_tracker_with_checkpoints(self, mock_debug):
         """Test memory tracker records checkpoints."""
         try:
-            import psutil
+            pytest.importorskip("psutil")
 
             tracker = MemoryTracker()
             tracker.checkpoint("start")
@@ -933,9 +930,7 @@ class TestPredefinedEvents:
 
     def test_calibration_completed_event(self):
         """Test CalibrationCompleted event."""
-        event = CalibrationCompleted(
-            session_id="test-123", record_id="rec-456", quality_score=0.95
-        )
+        event = CalibrationCompleted(session_id="test-123", record_id="rec-456", quality_score=0.95)
 
         assert event.event_type == "calibration.completed"
         assert event.session_id == "test-123"
@@ -960,9 +955,7 @@ class TestPredefinedEvents:
 
     def test_curve_exported_event(self):
         """Test CurveExported event."""
-        event = CurveExported(
-            curve_name="TestCurve", format="qtr", file_path="/tmp/curve.quad"
-        )
+        event = CurveExported(curve_name="TestCurve", format="qtr", file_path="/tmp/curve.quad")
 
         assert event.event_type == "curve.exported"
         assert event.format == "qtr"
@@ -1423,14 +1416,13 @@ class TestGetLogger:
 
     def test_get_logger_ensures_setup(self):
         """Test get_logger ensures logging is configured."""
-        from ptpd_calibration.core.logging import _logging_configured
         import ptpd_calibration.core.logging as logging_module
 
         # Reset logging state
         logging.getLogger("ptpd_calibration").handlers.clear()
         logging_module._logging_configured = False
 
-        logger = get_logger("test.module")
+        get_logger("test.module")
 
         # Should have configured logging
         root = logging.getLogger("ptpd_calibration")
@@ -1509,9 +1501,7 @@ class TestLogOperation:
         """Test log_operation logs failure on exception."""
         logger = get_logger("test")
 
-        with patch.object(logger, "log") as mock_log, patch.object(
-            logger, "error"
-        ) as mock_error:
+        with patch.object(logger, "log"), patch.object(logger, "error") as mock_error:
             with pytest.raises(ValueError):
                 with log_operation(logger, "failing_operation"):
                     raise ValueError("Test error")

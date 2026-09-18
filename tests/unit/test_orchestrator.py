@@ -4,7 +4,6 @@ Unit tests for agents/orchestrator.py module.
 Tests workflow management, task execution, and orchestrator functionality.
 """
 
-
 import pytest
 
 from ptpd_calibration.agents.orchestrator import (
@@ -280,9 +279,7 @@ class TestOrchestratorAgent:
 
     def test_create_review_workflow(self, orchestrator):
         """Test creating review workflow."""
-        workflow = orchestrator.create_review_workflow(
-            code="def foo(): pass"
-        )
+        workflow = orchestrator.create_review_workflow(code="def foo(): pass")
         assert workflow.name == "Code Review Workflow"
         assert len(workflow.tasks) == 2
         assert all(t.agent_type == "reviewer" for t in workflow.tasks)

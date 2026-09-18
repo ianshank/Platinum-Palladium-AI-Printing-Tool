@@ -50,7 +50,7 @@ except Exception as e:
 # --- PATCH END ---
 
 # Import and launch the Gradio app
-from ptpd_calibration.ui.gradio_app import create_gradio_app
+from ptpd_calibration.ui.gradio_app import create_gradio_app  # noqa: E402 - sys.path is set above
 
 # Create the app
 demo = create_gradio_app()

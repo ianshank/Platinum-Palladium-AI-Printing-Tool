@@ -15,8 +15,8 @@ from ptpd_calibration.proofing.simulation import (
     SoftProofer,
 )
 
-
 # ── PaperSimulation enum tests ──────────────────────────────────────
+
 
 class TestPaperSimulation:
     def test_preset_count(self) -> None:
@@ -42,6 +42,7 @@ class TestPaperSimulation:
 
 
 # ── ProofSettings tests ─────────────────────────────────────────────
+
 
 class TestProofSettings:
     def test_defaults(self) -> None:
@@ -71,6 +72,7 @@ class TestProofSettings:
 
 # ── ProofResult tests ────────────────────────────────────────────────
 
+
 class TestProofResult:
     def test_to_dict(self) -> None:
         img = Image.new("RGB", (100, 100))
@@ -84,6 +86,7 @@ class TestProofResult:
 
 
 # ── SoftProofer tests ────────────────────────────────────────────────
+
 
 class TestSoftProofer:
     @pytest.fixture()
@@ -105,24 +108,18 @@ class TestSoftProofer:
         arr = np.full((50, 50, 3), 128, dtype=np.uint8)
         return Image.fromarray(arr, mode="RGB")
 
-    def test_proof_returns_result(
-        self, proofer: SoftProofer, gray_image: Image.Image
-    ) -> None:
+    def test_proof_returns_result(self, proofer: SoftProofer, gray_image: Image.Image) -> None:
         result = proofer.proof(gray_image)
         assert isinstance(result, ProofResult)
         assert isinstance(result.image, Image.Image)
         assert result.image.mode == "RGB"
 
-    def test_proof_preserves_size(
-        self, proofer: SoftProofer, gray_image: Image.Image
-    ) -> None:
+    def test_proof_preserves_size(self, proofer: SoftProofer, gray_image: Image.Image) -> None:
         result = proofer.proof(gray_image)
         assert result.image.size == gray_image.size
         assert result.original_size == gray_image.size
 
-    def test_proof_rgb_conversion(
-        self, proofer: SoftProofer, rgb_image: Image.Image
-    ) -> None:
+    def test_proof_rgb_conversion(self, proofer: SoftProofer, rgb_image: Image.Image) -> None:
         result = proofer.proof(rgb_image)
         assert isinstance(result, ProofResult)
         assert any("grayscale" in note.lower() for note in result.notes)
@@ -145,16 +142,12 @@ class TestSoftProofer:
         result = proofer.proof(gray_image)
         assert any("cool" in note.lower() for note in result.notes)
 
-    def test_proof_settings_override(
-        self, proofer: SoftProofer, gray_image: Image.Image
-    ) -> None:
+    def test_proof_settings_override(self, proofer: SoftProofer, gray_image: Image.Image) -> None:
         override = ProofSettings(paper_dmax=2.0, paper_dmin=0.1)
         result = proofer.proof(gray_image, settings=override)
         assert "2.00 Dmax" in " ".join(result.notes)
 
-    def test_compare_multiple_settings(
-        self, proofer: SoftProofer, gray_image: Image.Image
-    ) -> None:
+    def test_compare_multiple_settings(self, proofer: SoftProofer, gray_image: Image.Image) -> None:
         settings_list = [
             ProofSettings.from_paper_preset(PaperSimulation.ARCHES_PLATINE),
             ProofSettings.from_paper_preset(PaperSimulation.BERGGER_COT320),

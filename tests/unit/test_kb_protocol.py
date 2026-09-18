@@ -355,9 +355,9 @@ class TestLedger:
                 data = json.loads(line)
                 if "timestamp" in data:
                     timestamp = data["timestamp"]
-                    assert iso8601_pattern.match(
-                        timestamp
-                    ), f"Line {line_num} has invalid timestamp format: {timestamp}"
+                    assert iso8601_pattern.match(timestamp), (
+                        f"Line {line_num} has invalid timestamp format: {timestamp}"
+                    )
 
     def test_ledger_is_append_only(self, ledger_file: Path) -> None:
         """Test that ledger maintains append-only semantics."""
@@ -571,9 +571,9 @@ class TestSummaryCap:
 
             # If entries exist, they should be capped at 20
             if entry_count > 0:
-                assert (
-                    entry_count <= 20
-                ), f"{summary_file.name} has {entry_count} entries, exceeds cap"
+                assert entry_count <= 20, (
+                    f"{summary_file.name} has {entry_count} entries, exceeds cap"
+                )
 
 
 # ============================================================================
@@ -615,6 +615,6 @@ class TestEdgeCases:
         # Pattern: <session_id>.state.json
         # Session IDs are typically UUIDs or timestamps
         for state_file in state_files:
-            assert state_file.name.endswith(
-                ".state.json"
-            ), f"Invalid state file naming: {state_file.name}"
+            assert state_file.name.endswith(".state.json"), (
+                f"Invalid state file naming: {state_file.name}"
+            )

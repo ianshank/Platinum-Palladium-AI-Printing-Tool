@@ -703,7 +703,7 @@ class KallitypeExposureCalculator:
         negative_density: float = 1.5,
         uv_source: UVSource = UVSource.BL_TUBES,
         developer_type: str = "potassium_oxalate",
-        humidity_percent: float = 50.0,
+        humidity_percent: float = 50.0,  # noqa: ARG002 - humidity model not yet fitted (plan SCI-11)
     ) -> dict:
         """Calculate kallitype exposure time.
 

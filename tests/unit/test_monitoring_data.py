@@ -22,29 +22,21 @@ Repository Module (src/ptpd_calibration/data/repository.py):
 import concurrent.futures
 import json
 import sqlite3
-import tempfile
 import threading
 import time
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from unittest.mock import Mock, patch
+from datetime import datetime
 
-import numpy as np
 import pytest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from ptpd_calibration.data.repository import (
     InMemoryRepository,
-    Repository,
     SQLiteRepository,
 )
 from ptpd_calibration.monitoring.performance import (
-    APIMetric,
     APIPerformanceTracker,
     CacheManager,
-    CacheStats,
     ImageProcessingProfiler,
-    PerformanceMetric,
     PerformanceMonitor,
     PerformanceReport,
     ResourceMonitor,
@@ -55,7 +47,6 @@ from ptpd_calibration.monitoring.performance import (
     get_profiler,
     get_resource_monitor,
 )
-
 
 # ============================================================================
 # Test Models for Repository Tests
@@ -941,9 +932,7 @@ class TestResourceMonitor:
 
     def test_init(self):
         """Test ResourceMonitor initialization."""
-        monitor = ResourceMonitor(
-            cpu_threshold=80.0, memory_threshold=80.0, disk_threshold=90.0
-        )
+        monitor = ResourceMonitor(cpu_threshold=80.0, memory_threshold=80.0, disk_threshold=90.0)
         assert monitor.cpu_threshold == 80.0
         assert monitor.memory_threshold == 80.0
         assert monitor.disk_threshold == 90.0
@@ -1249,16 +1238,12 @@ class TestSQLiteRepository:
     def test_init_creates_schema(self, tmp_path):
         """Test that init creates database schema."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(
-            TestModel, "test_table", db_path=db_path, indexed_fields=["category"]
-        )
+        SQLiteRepository(TestModel, "test_table", db_path=db_path, indexed_fields=["category"])
 
         # Check table exists
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='test_table'"
-        )
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test_table'")
         assert cursor.fetchone() is not None
         conn.close()
 
@@ -1482,9 +1467,7 @@ class TestSQLiteRepository:
         # Verify indexed fields in database
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
-        cursor.execute(
-            f"SELECT category, name FROM {repo.table_name} WHERE id = ?", (saved.id,)
-        )
+        cursor.execute(f"SELECT category, name FROM {repo.table_name} WHERE id = ?", (saved.id,))
         row = cursor.fetchone()
         assert row[0] == "TestCat"
         assert row[1] == "Test"
@@ -1763,10 +1746,10 @@ class TestRepositoryIntegration:
                 repo.add(TestModel(name=f"Test{i}", value=i))
 
         with monitor.timer("repo_get_all"):
-            all_entities = repo.get_all()
+            repo.get_all()
 
         with monitor.timer("repo_find"):
-            results = repo.find(value=5)
+            repo.find(value=5)
 
         # Verify metrics were recorded
         assert len(monitor.get_metrics("repo_add")) == 1

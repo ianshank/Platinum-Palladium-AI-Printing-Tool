@@ -5,6 +5,11 @@ These tests quickly verify that core functionality works after deployment.
 Run these after deploying to Huggingface Spaces or other environments.
 """
 
+import pytest
+
+pytest.importorskip("gradio", reason="legacy Gradio UI tests need the [ui] extra (ADR-0004)")
+pytestmark = pytest.mark.legacy_ui
+
 from pathlib import Path
 
 import pytest

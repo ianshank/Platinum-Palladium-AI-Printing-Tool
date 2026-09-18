@@ -212,8 +212,16 @@ class TestTool:
             name="multi_param_tool",
             description="Tool with multiple params",
             parameters=[
-                ToolParameter(name="required_param", type="string", description="Required", required=True),
-                ToolParameter(name="optional_param", type="integer", description="Optional", required=False, default=5),
+                ToolParameter(
+                    name="required_param", type="string", description="Required", required=True
+                ),
+                ToolParameter(
+                    name="optional_param",
+                    type="integer",
+                    description="Optional",
+                    required=False,
+                    default=5,
+                ),
             ],
             handler=handler,
         )

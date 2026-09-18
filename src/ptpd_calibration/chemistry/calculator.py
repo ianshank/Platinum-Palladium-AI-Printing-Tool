@@ -136,9 +136,7 @@ class ChemistryRecipe:
                 "contrast_boost": round(self.contrast_boost * 100, 1),
             },
             "estimated_cost_usd": (
-                round(self.estimated_cost_usd, 2)
-                if self.estimated_cost_usd is not None
-                else None
+                round(self.estimated_cost_usd, 2) if self.estimated_cost_usd is not None else None
             ),
             "notes": self.notes,
         }

@@ -255,9 +255,7 @@ class TestHealthChecker:
             HealthCheckResult("test1", True, 10.0),
             HealthCheckResult("test2", True, 20.0),
         ]
-        status, issues, warnings = checker._determine_overall_status(
-            results, 100.0, None, None
-        )
+        status, issues, warnings = checker._determine_overall_status(results, 100.0, None, None)
         assert status == HealthStatus.HEALTHY
         assert len(issues) == 0
         assert len(warnings) == 0
@@ -267,9 +265,7 @@ class TestHealthChecker:
         results = [
             HealthCheckResult("test1", False, 10.0, "Error"),
         ]
-        status, issues, warnings = checker._determine_overall_status(
-            results, 100.0, None, None
-        )
+        status, issues, warnings = checker._determine_overall_status(results, 100.0, None, None)
         assert status == HealthStatus.UNHEALTHY
         assert len(issues) > 0
 
@@ -279,7 +275,10 @@ class TestHealthChecker:
             HealthCheckResult("test1", True, 10.0),
         ]
         status, issues, warnings = checker._determine_overall_status(
-            results, 600.0, None, None  # Above warning threshold
+            results,
+            600.0,
+            None,
+            None,  # Above warning threshold
         )
         assert status == HealthStatus.DEGRADED
         assert len(warnings) > 0
@@ -295,17 +294,26 @@ class TestHealthChecker:
     @pytest.mark.asyncio
     async def test_check_health_runs(self, checker):
         """Verify health check runs without errors."""
-        with patch.object(checker, "check_llm_connectivity") as mock_llm, \
-             patch.object(checker, "check_message_bus") as mock_bus, \
-             patch.object(checker, "check_memory_system") as mock_mem, \
-             patch.object(checker, "check_tool_registry") as mock_tools, \
-             patch.object(checker, "check_subagent_registry") as mock_subagents:
-
+        with (
+            patch.object(checker, "check_llm_connectivity") as mock_llm,
+            patch.object(checker, "check_message_bus") as mock_bus,
+            patch.object(checker, "check_memory_system") as mock_mem,
+            patch.object(checker, "check_tool_registry") as mock_tools,
+            patch.object(checker, "check_subagent_registry") as mock_subagents,
+        ):
             mock_llm.return_value = HealthCheckResult("llm_service", True, 10.0)
-            mock_bus.return_value = HealthCheckResult("message_bus", True, 5.0, metadata={"queue_depth": 0})
-            mock_mem.return_value = HealthCheckResult("memory_system", True, 2.0, metadata={"memory_mb": 100.0})
-            mock_tools.return_value = HealthCheckResult("tool_registry", True, 1.0, metadata={"tool_count": 5})
-            mock_subagents.return_value = HealthCheckResult("subagent_registry", True, 1.0, metadata={"subagent_count": 4})
+            mock_bus.return_value = HealthCheckResult(
+                "message_bus", True, 5.0, metadata={"queue_depth": 0}
+            )
+            mock_mem.return_value = HealthCheckResult(
+                "memory_system", True, 2.0, metadata={"memory_mb": 100.0}
+            )
+            mock_tools.return_value = HealthCheckResult(
+                "tool_registry", True, 1.0, metadata={"tool_count": 5}
+            )
+            mock_subagents.return_value = HealthCheckResult(
+                "subagent_registry", True, 1.0, metadata={"subagent_count": 4}
+            )
 
             report = await checker.check_health()
 
@@ -398,6 +406,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_successful_call(self, breaker):
         """Successful calls pass through."""
+
         async def success():
             return "result"
 
@@ -408,6 +417,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_failure_increments_count(self, breaker):
         """Failures increment failure count."""
+
         async def failure():
             raise ValueError("test error")
 
@@ -423,6 +433,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_opens_after_threshold(self, breaker):
         """Circuit opens after failure threshold."""
+
         async def failure():
             raise ValueError("test error")
 
@@ -442,6 +453,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_open_circuit_blocks_calls(self, breaker):
         """Open circuit blocks calls."""
+
         async def failure():
             raise ValueError("test error")
 
@@ -464,6 +476,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_fallback_when_open(self, breaker):
         """Fallback value returned when circuit is open."""
+
         async def failure():
             raise ValueError("test error")
 
@@ -482,6 +495,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_half_open_after_cooldown(self, breaker):
         """Circuit transitions to half-open after cooldown."""
+
         async def failure():
             raise ValueError("test error")
 
@@ -504,6 +518,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_closes_from_half_open_on_success(self, breaker):
         """Circuit closes from half-open on success."""
+
         async def failure():
             raise ValueError("test error")
 
@@ -1261,17 +1276,24 @@ class TestObservabilityIntegration:
         assert stats["state"] == "closed"
 
         # Health check should work
-        with patch.object(checker, "check_llm_connectivity") as mock_llm, \
-             patch.object(checker, "check_message_bus") as mock_bus, \
-             patch.object(checker, "check_memory_system") as mock_mem, \
-             patch.object(checker, "check_tool_registry") as mock_tools, \
-             patch.object(checker, "check_subagent_registry") as mock_subagents:
-
+        with (
+            patch.object(checker, "check_llm_connectivity") as mock_llm,
+            patch.object(checker, "check_message_bus") as mock_bus,
+            patch.object(checker, "check_memory_system") as mock_mem,
+            patch.object(checker, "check_tool_registry") as mock_tools,
+            patch.object(checker, "check_subagent_registry") as mock_subagents,
+        ):
             mock_llm.return_value = HealthCheckResult("llm", True, 10.0)
             mock_bus.return_value = HealthCheckResult("bus", True, 5.0, metadata={"queue_depth": 0})
-            mock_mem.return_value = HealthCheckResult("mem", True, 2.0, metadata={"memory_mb": 100.0})
-            mock_tools.return_value = HealthCheckResult("tools", True, 1.0, metadata={"tool_count": 5})
-            mock_subagents.return_value = HealthCheckResult("subagents", True, 1.0, metadata={"subagent_count": 4})
+            mock_mem.return_value = HealthCheckResult(
+                "mem", True, 2.0, metadata={"memory_mb": 100.0}
+            )
+            mock_tools.return_value = HealthCheckResult(
+                "tools", True, 1.0, metadata={"tool_count": 5}
+            )
+            mock_subagents.return_value = HealthCheckResult(
+                "subagents", True, 1.0, metadata={"subagent_count": 4}
+            )
 
             report = await checker.check_health()
 

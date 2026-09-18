@@ -1,3 +1,8 @@
+import pytest
+
+pytest.importorskip("gradio", reason="legacy Gradio UI tests need the [ui] extra (ADR-0004)")
+pytestmark = pytest.mark.legacy_ui
+
 from unittest.mock import patch
 
 from ptpd_calibration.ui.tabs.calibration_wizard import build_calibration_wizard_tab

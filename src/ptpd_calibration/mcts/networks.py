@@ -130,7 +130,7 @@ class StateEncoder(nn.Module):
         self._depth_dim = self._num_params + 1
         self.feature_dim = self._continuous_dim + self._mask_dim + self._depth_dim
 
-        logger.debug(f"StateEncoder: {self._num_params} params, " f"feature_dim={self.feature_dim}")
+        logger.debug(f"StateEncoder: {self._num_params} params, feature_dim={self.feature_dim}")
 
     @property
     def output_dim(self) -> int:
@@ -238,7 +238,7 @@ class ValueNetwork(nn.Module):
             final_activation="sigmoid",
         )
 
-        logger.debug(f"ValueNetwork: input={input_dim}, " f"hidden={dims}, output=1")
+        logger.debug(f"ValueNetwork: input={input_dim}, hidden={dims}, output=1")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Predict value for state features.
@@ -290,9 +290,7 @@ class PolicyNetwork(nn.Module):
             final_activation=None,
         )
 
-        logger.debug(
-            f"PolicyNetwork: input={input_dim}, " f"hidden={dims}, actions={self.num_actions}"
-        )
+        logger.debug(f"PolicyNetwork: input={input_dim}, hidden={dims}, actions={self.num_actions}")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Predict action probabilities for state features.

@@ -239,6 +239,7 @@ class TestTool:
     @pytest.mark.asyncio
     async def test_execute_error(self):
         """Test executing tool with error."""
+
         def error_handler():
             raise ValueError("Test error")
 

@@ -8,6 +8,11 @@ Tests the UI layer interaction patterns for AI features including:
 - Error handling
 """
 
+import pytest
+
+pytest.importorskip("gradio", reason="legacy Gradio UI tests need the [ui] extra (ADR-0004)")
+pytestmark = pytest.mark.legacy_ui
+
 import numpy as np
 import pytest
 
@@ -40,13 +45,15 @@ class TestDeepLearningUIConfiguration:
     def test_quality_settings_metric_selection(self):
         """Test image quality settings metric selection."""
         import pytest
-        pytest.skip("Model structure has changed - primary_metric/secondary_metrics instead of metrics")
+
+        pytest.skip(
+            "Model structure has changed - primary_metric/secondary_metrics instead of metrics"
+        )
         from ptpd_calibration.deep_learning.config import ImageQualitySettings
         from ptpd_calibration.deep_learning.types import IQAMetric
 
         settings = ImageQualitySettings(
-            primary_metric=IQAMetric.MUSIQ,
-            secondary_metrics=[IQAMetric.BRISQUE, IQAMetric.NIQE]
+            primary_metric=IQAMetric.MUSIQ, secondary_metrics=[IQAMetric.BRISQUE, IQAMetric.NIQE]
         )
         assert settings.primary_metric == IQAMetric.MUSIQ
         assert len(settings.secondary_metrics) == 2
@@ -76,6 +83,7 @@ class TestDeepLearningUIResultDisplay:
     def test_detection_result_display_format(self):
         """Test detection result formatting for display."""
         import pytest
+
         pytest.skip("Model structure testing - not critical for UI migration")
         from ptpd_calibration.deep_learning.models import (
             DeepDetectionResult,
@@ -110,6 +118,7 @@ class TestDeepLearningUIResultDisplay:
     def test_quality_result_score_display(self):
         """Test quality score display formatting."""
         import pytest
+
         pytest.skip("Model structure testing - not critical for UI migration")
         from ptpd_calibration.deep_learning.models import (
             ImageQualityResult,
@@ -157,6 +166,7 @@ class TestDeepLearningUIResultDisplay:
     def test_defect_result_annotation_display(self):
         """Test defect detection result annotation display."""
         import pytest
+
         pytest.skip("Model structure testing - not critical for UI migration")
         from ptpd_calibration.deep_learning.models import (
             DefectDetectionResult,
