@@ -155,6 +155,12 @@ class CurveSettings(BaseSettings):
     default_export_format: ExportFormat = Field(default=ExportFormat.QTR)
     qtr_ink_limit: float = Field(default=100.0, ge=0.0, le=100.0)
     qtr_resolution: int = Field(default=2880, ge=360, le=5760)
+    max_export_comment_length: int = Field(
+        default=256,
+        ge=8,
+        le=4096,
+        description="Longest metadata value written into a text-export comment line",
+    )
 
 
 class MLSettings(BaseSettings):

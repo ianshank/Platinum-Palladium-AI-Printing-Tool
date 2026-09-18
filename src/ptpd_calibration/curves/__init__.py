@@ -14,6 +14,7 @@ from ptpd_calibration.curves.export import (
     PiezographyExporter,
     QTRExporter,
     load_curve,
+    safe_comment_value,
     save_curve,
 )
 from ptpd_calibration.curves.generator import (
@@ -65,6 +66,7 @@ __all__ = [
     "PiezographyExporter",
     "save_curve",
     "load_curve",
+    "safe_comment_value",
     # Analysis
     "CurveAnalyzer",
     # Parser

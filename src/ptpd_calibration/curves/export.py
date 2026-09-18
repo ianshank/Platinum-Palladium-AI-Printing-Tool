@@ -7,6 +7,7 @@ Supports QuadTone RIP, Piezography, CSV, and JSON formats.
 import csv
 import json
 import logging
+import unicodedata
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -26,6 +27,72 @@ _QTR_NAME_KEYS = ("Name:", "Profile:")
 _QTR_PAPER_KEY = "Paper:"
 _QTR_CHEMISTRY_KEY = "Chemistry:"
 _QTR_UNKNOWN = "Unknown"
+
+# Unicode general categories that must not survive into a one-line comment.
+# ``Cc``/``Cf`` cover the C0 and C1 controls plus the bidirectional-override
+# formatters that let one name render as another; ``Zl``/``Zp`` cover U+2028 and
+# U+2029, which several readers treat as line breaks. Naming categories rather
+# than characters keeps the rule complete as Unicode grows.
+_UNSAFE_COMMENT_CATEGORIES: frozenset[str] = frozenset({"Cc", "Cf", "Zl", "Zp"})
+
+
+def safe_comment_value(
+    value: object,
+    *,
+    default: str = _QTR_UNKNOWN,
+    max_length: int | None = None,
+) -> str:
+    """Reduce curve metadata to something safe to write as one ``# Key: value`` line.
+
+    QuadToneRIP and Piezography files are line-oriented: a comment ends at the
+    newline, and the loader decides what a line means from its first characters.
+    Interpolating a curve name, paper type or chemistry verbatim therefore let
+    the value forge sibling lines. A ``paper_type`` of ``"Arches\\n# Profile: X"``
+    exported and re-imported came back named ``X``, so a name chosen by whoever
+    uploaded a curve decided what a different reader saw; a newline in the name
+    injected a bare integer that ended the header block early and silently
+    dropped the paper and chemistry behind it.
+
+    Collapsing the value onto a single line removes the mechanism. A value may
+    still contain ``#`` or another field's key -- the loader only inspects the
+    start of a comment, so those stay inert and round trip unchanged.
+
+    Args:
+        value: The metadata value; anything not a string is passed to ``str``.
+        default: Returned when nothing printable survives.
+        max_length: Truncation limit; ``None`` reads it from settings.
+
+    Returns:
+        A single-line value with runs of whitespace collapsed to one space.
+    """
+    text = "" if value is None else str(value)
+    stripped = "".join(
+        " " if unicodedata.category(char) in _UNSAFE_COMMENT_CATEGORIES else char for char in text
+    )
+    # ``split`` with no argument splits on every whitespace character, so this
+    # also normalises tabs and the non-breaking spaces left by the pass above.
+    cleaned = " ".join(stripped.split())[: _comment_limit(max_length)].strip()
+    if not cleaned:
+        logger.debug("Export comment value %r sanitised to default %r", text, default)
+        return default
+    if cleaned != text:
+        logger.debug("Export comment value %r sanitised to %r", text, cleaned)
+    return cleaned
+
+
+def _comment_limit(max_length: int | None) -> int:
+    """Resolve the comment truncation limit, tolerating an unloadable config."""
+    if max_length is not None:
+        return max_length
+    try:
+        return int(get_settings().curves.max_export_comment_length)
+    except Exception:  # pragma: no cover - configuration is broken, still export
+        logger.debug("Falling back to the built-in export comment limit", exc_info=True)
+        return _FALLBACK_COMMENT_LIMIT
+
+
+#: Used only when settings cannot be loaded; the real value is a settings field.
+_FALLBACK_COMMENT_LIMIT = 256
 
 
 class CurveExporter(ABC):
@@ -91,9 +158,9 @@ class QTRExporter(CurveExporter):
             f"## QuadToneRIP {self.primary_channel}",
             "# QTR Curve File",
             f"# Generated: {datetime.now().isoformat()}",
-            f"# Name: {curve.name}",
-            f"# Paper: {curve.paper_type or 'Unknown'}",
-            f"# Chemistry: {curve.chemistry or 'Unknown'}",
+            f"# Name: {safe_comment_value(curve.name)}",
+            f"# Paper: {safe_comment_value(curve.paper_type)}",
+            f"# Chemistry: {safe_comment_value(curve.chemistry)}",
             f"# Ink Limit: {self.ink_limit}%",
             f"# {self.primary_channel} Curve",
         ]
@@ -128,10 +195,10 @@ class QTRExporter(CurveExporter):
 
         lines = [
             f"## QuadToneRIP {','.join(all_channels)}",
-            f"# Profile: {curve.name}",
+            f"# Profile: {safe_comment_value(curve.name)}",
             f"# Generated: {datetime.now().isoformat()}",
-            f"# Paper: {curve.paper_type or 'Unknown'}",
-            f"# Chemistry: {curve.chemistry or 'Unknown'}",
+            f"# Paper: {safe_comment_value(curve.paper_type)}",
+            f"# Chemistry: {safe_comment_value(curve.chemistry)}",
             f"# Resolution: {self.resolution}",
             f"# Ink Limit: {self.ink_limit}%",
         ]
@@ -203,9 +270,9 @@ class PiezographyExporter(CurveExporter):
         """Export as Piezography Print Tool format."""
         lines = [
             "# Piezography Linearization",
-            f"# Name: {curve.name}",
+            f"# Name: {safe_comment_value(curve.name)}",
             f"# Ink Set: {self.ink_set}",
-            f"# Paper: {curve.paper_type or 'Unknown'}",
+            f"# Paper: {safe_comment_value(curve.paper_type)}",
             f"# Generated: {datetime.now().isoformat()}",
             "",
             "[Linearization]",
@@ -469,9 +536,14 @@ def _load_qtr_list_curve(path: Path) -> CurveData:
 
 
 def _clean_qtr_value(comment: str, key: str) -> str | None:
-    """Value after ``key`` in a header comment; ``None`` for empty or 'Unknown'."""
-    value = comment[len(key) :].strip()
-    return value if value and value != _QTR_UNKNOWN else None
+    """Value after ``key`` in a header comment; ``None`` for empty or 'Unknown'.
+
+    The value is run through :func:`safe_comment_value` as well, because a file
+    written by another tool -- or uploaded by another user -- is not bound by
+    what this exporter writes, and the result flows on into API responses.
+    """
+    value = safe_comment_value(comment[len(key) :], default=_QTR_UNKNOWN)
+    return value if value != _QTR_UNKNOWN else None
 
 
 def _read_qtr_header_metadata(path: Path) -> tuple[str | None, str | None, str | None]:
