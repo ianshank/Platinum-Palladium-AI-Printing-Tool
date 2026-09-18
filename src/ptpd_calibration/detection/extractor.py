@@ -13,6 +13,7 @@ from PIL import Image
 from ptpd_calibration.config import ExtractionSettings, get_settings
 from ptpd_calibration.core.models import ExtractionResult, PatchData
 from ptpd_calibration.detection.detector import DetectionResult
+from ptpd_calibration.imaging.safe_image import load_image_array
 
 
 @dataclass
@@ -106,14 +107,9 @@ class DensityExtractor:
 
     def _load_image(self, image: np.ndarray | Image.Image | Path | str) -> np.ndarray:
         """Load image from various sources."""
-        if isinstance(image, np.ndarray):
-            return image
-        if isinstance(image, Image.Image):
-            return np.array(image)
-        if isinstance(image, Path | str):
-            pil_img = Image.open(image)
-            return np.array(pil_img)
-        raise TypeError(f"Unsupported image type: {type(image)}")
+        # Files are decoded through the hardened path (SEC-04); arrays and
+        # in-memory PIL images pass through unchanged.
+        return load_image_array(image)
 
     def _detect_paper_base(
         self, image: np.ndarray, detection: DetectionResult

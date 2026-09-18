@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from ptpd_calibration.core.artifacts import load_torch_checkpoint
 from ptpd_calibration.ml.deep.exceptions import CheckpointError, TrainingError
 
 if TYPE_CHECKING:
@@ -525,7 +526,8 @@ class CurveTrainer:
                 "optimizer_state_dict": self.optimizer.state_dict(),
                 "scheduler_state_dict": self.scheduler.state_dict(),
                 "val_loss": val_loss,
-                "settings": self.settings.model_dump(),
+                # JSON-safe metadata only: read back with weights_only=True.
+                "settings": self.settings.model_dump(mode="json"),
             }
             torch.save(checkpoint, path)
             logger.debug(f"Saved checkpoint to {path}")
@@ -543,7 +545,7 @@ class CurveTrainer:
             Checkpoint metadata.
         """
         try:
-            checkpoint = torch.load(path, map_location=self.device)
+            checkpoint = load_torch_checkpoint(path, map_location=self.device)
             self.model.load_state_dict(checkpoint["model_state_dict"])
             self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
             self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])

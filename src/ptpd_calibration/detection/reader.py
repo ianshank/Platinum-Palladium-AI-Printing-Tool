@@ -13,6 +13,7 @@ from ptpd_calibration.core.types import MeasurementUnit
 from ptpd_calibration.detection.detector import StepTabletDetector
 from ptpd_calibration.detection.extractor import DensityExtractor
 from ptpd_calibration.detection.scanner import ScannerCalibration
+from ptpd_calibration.imaging.safe_image import load_image_array
 
 # Step tablet specifications
 TABLET_SPECS: dict[TabletType, dict] = {
@@ -110,14 +111,9 @@ class StepTabletReader:
 
     def _load_image(self, image: np.ndarray | Image.Image | Path | str) -> np.ndarray:
         """Load image from various sources."""
-        if isinstance(image, np.ndarray):
-            return image
-        if isinstance(image, Image.Image):
-            return np.array(image)
-        if isinstance(image, Path | str):
-            pil_img = Image.open(image)
-            return np.array(pil_img)
-        raise TypeError(f"Unsupported image type: {type(image)}")
+        # Files are decoded through the hardened path (SEC-04); arrays and
+        # in-memory PIL images pass through unchanged.
+        return load_image_array(image)
 
     def _create_measurements(self, extraction: ExtractionResult) -> list[DensityMeasurement]:
         """Create density measurements from extraction."""

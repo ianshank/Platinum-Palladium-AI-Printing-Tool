@@ -17,6 +17,8 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
+from ptpd_calibration.imaging.safe_image import open_image_safely
+
 
 class HistogramScale(str, Enum):
     """Scale for histogram display."""
@@ -148,7 +150,8 @@ class HistogramAnalyzer:
         """
         # Load image
         if isinstance(image, str | Path):
-            img = Image.open(image)
+            # Hardened decode (SEC-04): format allow-list, pixel/frame caps.
+            img = open_image_safely(image)
         elif isinstance(image, np.ndarray):
             if image.ndim == 2:
                 img = Image.fromarray(image.astype(np.uint8), mode="L")

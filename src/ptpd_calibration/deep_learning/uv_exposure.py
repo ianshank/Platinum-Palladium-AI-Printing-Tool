@@ -22,6 +22,7 @@ from typing import Any
 import numpy as np
 from pydantic import BaseModel
 
+from ptpd_calibration.core.artifacts import load_torch_checkpoint
 from ptpd_calibration.deep_learning.config import UVExposureSettings
 from ptpd_calibration.deep_learning.models import UVExposurePrediction
 from ptpd_calibration.deep_learning.types import (
@@ -584,7 +585,8 @@ class UVExposurePredictor:
                     "embeddings": model.embeddings.state_dict(),
                     "feature_extractor": model.feature_extractor.state_dict(),
                     "output_head": model.output_head.state_dict(),
-                    "settings": self.settings.model_dump(),
+                    # JSON-safe metadata only: read back with weights_only=True.
+                    "settings": self.settings.model_dump(mode="json"),
                     "paper_type_mapping": self.paper_type_mapping,
                 },
                 model_path,
@@ -607,7 +609,9 @@ class UVExposurePredictor:
             if not model_path.exists():
                 continue
 
-            checkpoint = torch.load(model_path, map_location=self.ensemble_models[idx].device)
+            checkpoint = load_torch_checkpoint(
+                model_path, map_location=self.ensemble_models[idx].device
+            )
 
             self.ensemble_models[idx].embeddings.load_state_dict(checkpoint["embeddings"])
             self.ensemble_models[idx].feature_extractor.load_state_dict(

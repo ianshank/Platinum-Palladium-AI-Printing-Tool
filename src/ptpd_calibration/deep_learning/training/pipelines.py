@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Generic, TypeVar
 
@@ -44,6 +44,7 @@ except ImportError:
     DataLoader = None  # type: ignore
     TensorDataset = None  # type: ignore
 
+from ptpd_calibration.core.artifacts import load_torch_checkpoint
 from ptpd_calibration.deep_learning.training.data_generators import (
     CurveDataGenerator,
     DefectDataGenerator,
@@ -346,8 +347,9 @@ class BaseTrainingPipeline(ABC, Generic[ModelT]):
             "epoch": epoch,
             "model_state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
-            "metrics": metrics,
-            "config": self.config.model_dump(),
+            # Plain dicts only: the checkpoint is read back with weights_only=True.
+            "metrics": asdict(metrics),
+            "config": self.config.model_dump(mode="json"),
         }
 
         if self.scheduler is not None:
@@ -388,7 +390,7 @@ class BaseTrainingPipeline(ABC, Generic[ModelT]):
         if self.model is None or self.optimizer is None:
             raise RuntimeError("Model and optimizer must be created before loading")
 
-        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
+        checkpoint = load_torch_checkpoint(path, map_location=self.device)
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 

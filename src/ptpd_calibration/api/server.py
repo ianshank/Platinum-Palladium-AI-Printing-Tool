@@ -56,6 +56,7 @@ def create_app(settings: Settings | None = None):
         save_curve,
     )
     from ptpd_calibration.detection import StepTabletReader
+    from ptpd_calibration.imaging.safe_image import ImageTooLargeError
     from ptpd_calibration.ml import CalibrationDatabase
 
     # Initialize app
@@ -302,6 +303,11 @@ def create_app(settings: Settings | None = None):
                 "quality": result.extraction.overall_quality,
                 "warnings": result.extraction.warnings,
             }
+        except ImageTooLargeError as e:
+            # Decode guard tripped on the header (pixel or frame cap, SEC-04):
+            # the request is well-formed but exceeds configured limits.
+            _log.warning("Scan upload rejected before decode: %s", e)
+            raise HTTPException(status_code=413, detail=str(e)) from None
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e)) from None
         finally:

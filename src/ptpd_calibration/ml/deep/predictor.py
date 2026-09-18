@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ptpd_calibration.core.artifacts import load_torch_checkpoint
 from ptpd_calibration.ml.deep.exceptions import (
     CheckpointError,
     ModelNotTrainedError,
@@ -528,7 +529,7 @@ class DeepCurvePredictor:
                 hidden_dims=metadata["hidden_dims"],
             )
             predictor.model.load_state_dict(
-                torch.load(path / "model.pt", map_location=predictor.device)
+                load_torch_checkpoint(path / "model.pt", map_location=predictor.device)
             )
             predictor.model.to(predictor.device)
             predictor.model.eval()
@@ -545,7 +546,9 @@ class DeepCurvePredictor:
                         hidden_dims=metadata["hidden_dims"],
                     )
                     model.load_state_dict(
-                        torch.load(ensemble_dir / f"model_{i}.pt", map_location=predictor.device)
+                        load_torch_checkpoint(
+                            ensemble_dir / f"model_{i}.pt", map_location=predictor.device
+                        )
                     )
                     model.to(predictor.device)
                     model.eval()

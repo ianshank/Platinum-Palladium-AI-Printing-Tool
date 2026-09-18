@@ -20,6 +20,7 @@ from typing import Any
 
 import numpy as np
 
+from ptpd_calibration.core.artifacts import UnsafeArtifactError, load_torch_checkpoint
 from ptpd_calibration.deep_learning.config import NeuralCurveSettings
 from ptpd_calibration.deep_learning.models import CurvePredictionResult
 from ptpd_calibration.deep_learning.types import (
@@ -744,7 +745,8 @@ class NeuralCurvePredictor:
 
         checkpoint = {
             "model_state_dict": self.model.get_model().state_dict(),
-            "settings": self.settings.model_dump(),
+            # JSON-safe metadata only: read back with weights_only=True.
+            "settings": self.settings.model_dump(mode="json"),
             "architecture": self.settings.architecture.value,
         }
 
@@ -772,12 +774,14 @@ class NeuralCurvePredictor:
         self._initialize_model()
 
         try:
-            checkpoint = self._torch.load(path, map_location=self.device)
+            checkpoint = load_torch_checkpoint(path, map_location=self.device)
             self.model.get_model().load_state_dict(checkpoint["model_state_dict"])
 
             if "optimizer_state_dict" in checkpoint and self.optimizer is not None:
                 self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
+        except UnsafeArtifactError:
+            raise
         except Exception as e:
             raise RuntimeError(f"Failed to load checkpoint: {e}") from e
 

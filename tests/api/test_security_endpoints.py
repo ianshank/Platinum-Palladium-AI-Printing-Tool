@@ -516,3 +516,21 @@ class TestCORSDefaults:
 
         with pytest.raises(ValueError, match="wildcard"):
             APISettings(cors_origins=["*"], cors_allow_credentials=True)
+
+
+def test_scan_upload_rejects_oversized_image_before_decode(client, tmp_path):
+    """A tiny file declaring a huge canvas is refused with 413 before any pixel decode (SEC-04)."""
+    from PIL import Image
+
+    huge = tmp_path / "huge.png"
+    # A 1-bit 20000x20000 PNG compresses to a few kilobytes but would decode to 400 MP.
+    Image.new("1", (20000, 20000)).save(huge, format="PNG", optimize=True)
+    assert huge.stat().st_size < 200_000
+
+    with open(huge, "rb") as fh:
+        response = client.post("/api/scan/upload", files={"file": ("huge.png", fh, "image/png")})
+
+    assert response.status_code == 413, response.text
+    assert (
+        "pixel" in response.json()["detail"].lower() or "large" in response.json()["detail"].lower()
+    )
