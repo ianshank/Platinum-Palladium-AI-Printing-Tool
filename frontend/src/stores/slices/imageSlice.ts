@@ -95,7 +95,7 @@ export const createImageSlice: StateCreator<
   [['zustand/immer', never]],
   [],
   ImageSlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...initialState,
 
   setCurrentImage: (image) => {

@@ -68,7 +68,7 @@ export const createMCTSSlice: StateCreator<
   [['zustand/immer', never]],
   [],
   MCTSSlice
-> = (set, _get) => ({
+> = (set, _get, _store) => ({
   ...initialState,
 
   setSearchConfig: (config) => {

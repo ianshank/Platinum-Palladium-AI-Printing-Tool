@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from ptpd_calibration.core.time import utc_now
 from ptpd_calibration.deep_learning.types import (
     ComparisonResult,
     DefectSeverity,
@@ -36,7 +37,7 @@ class BaseAIResult(BaseModel):
     )
 
     id: UUID = Field(default_factory=uuid4)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=utc_now)
     inference_time_ms: float = Field(
         default=0.0,
         ge=0.0,

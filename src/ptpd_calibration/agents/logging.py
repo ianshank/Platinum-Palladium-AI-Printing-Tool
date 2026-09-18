@@ -11,13 +11,13 @@ import time
 from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
 from enum import Enum
 from functools import wraps
 from typing import Any
 from uuid import uuid4
 
 from ptpd_calibration.config import get_settings
+from ptpd_calibration.core.time import utc_timestamp
 
 
 class LogLevel(str, Enum):
@@ -133,7 +133,7 @@ class JSONFormatter(logging.Formatter):
         """Format log record as JSON."""
         # Base log data
         log_data = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": utc_timestamp(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

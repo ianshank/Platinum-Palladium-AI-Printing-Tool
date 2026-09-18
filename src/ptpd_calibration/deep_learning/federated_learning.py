@@ -8,12 +8,12 @@ gradient compression, and multiple aggregation strategies.
 
 import asyncio
 import logging
-from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
 import numpy as np
 
+from ptpd_calibration.core.time import utc_now
 from ptpd_calibration.deep_learning.config import FederatedLearningSettings
 from ptpd_calibration.deep_learning.models import (
     FederatedRoundResult,
@@ -329,7 +329,7 @@ class FederatedClient:
         Returns:
             FederatedUpdate: Training update
         """
-        start_time = datetime.utcnow()
+        start_time = utc_now()
 
         epochs = epochs or self.settings.local_epochs
         num_samples = self._get_num_local_samples()
@@ -363,7 +363,7 @@ class FederatedClient:
         # Compute loss (mock)
         local_loss = np.random.uniform(0.1, 0.5)
 
-        training_time = (datetime.utcnow() - start_time).total_seconds()
+        training_time = (utc_now() - start_time).total_seconds()
 
         return FederatedUpdate(
             client_id=self.client_id,
@@ -657,7 +657,7 @@ class FederatedServer:
         Returns:
             FederatedRoundResult: Round result
         """
-        start_time = datetime.utcnow()
+        start_time = utc_now()
         self.round_number += 1
 
         logger.info(f"Starting round {self.round_number} with {len(participating_clients)} clients")
@@ -702,7 +702,7 @@ class FederatedServer:
             [u.local_accuracy for u in update_objects if u.local_accuracy is not None]
         )
 
-        inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        inference_time = (utc_now() - start_time).total_seconds() * 1000
 
         return FederatedRoundResult(
             round_number=self.round_number,

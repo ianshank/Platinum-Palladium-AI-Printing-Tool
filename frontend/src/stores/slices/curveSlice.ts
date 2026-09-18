@@ -94,7 +94,7 @@ export const createCurveSlice: StateCreator<
   [['zustand/immer', never]],
   [],
   CurveSlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...initialState,
 
   setCurve: (curve) => {

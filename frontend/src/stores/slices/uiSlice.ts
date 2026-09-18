@@ -67,7 +67,7 @@ export const createUISlice: StateCreator<
   [['zustand/immer', never]],
   [],
   UISlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...initialState,
 
   setActiveTab: (tab) => {

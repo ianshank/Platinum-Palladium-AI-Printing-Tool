@@ -81,7 +81,7 @@ export const createChatSlice: StateCreator<
   [['zustand/immer', never]],
   [],
   ChatSlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...initialState,
 
   addMessage: (message) => {

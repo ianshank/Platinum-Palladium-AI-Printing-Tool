@@ -94,7 +94,7 @@ export const createChemistrySlice: StateCreator<
   [['zustand/immer', never]],
   [],
   ChemistrySlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...initialState,
 
   setPaperSize: (size) => {

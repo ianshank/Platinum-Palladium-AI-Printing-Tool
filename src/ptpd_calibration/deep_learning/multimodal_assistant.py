@@ -11,7 +11,6 @@ import base64
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
-from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -19,6 +18,7 @@ from uuid import uuid4
 
 import numpy as np
 
+from ptpd_calibration.core.time import utc_now
 from ptpd_calibration.deep_learning.config import MultiModalSettings
 from ptpd_calibration.deep_learning.models import (
     ImageAnalysis,
@@ -573,7 +573,7 @@ class MultiModalAssistant:
         Returns:
             MultiModalResponse: Assistant response
         """
-        start_time = datetime.utcnow()
+        start_time = utc_now()
         stream_enabled = stream if stream is not None else self.settings.stream_response
 
         # Add message to history
@@ -616,7 +616,7 @@ class MultiModalAssistant:
             ]
 
         # Build response
-        inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        inference_time = (utc_now() - start_time).total_seconds() * 1000
 
         return MultiModalResponse(
             response_text=response_text,
@@ -687,7 +687,7 @@ class MultiModalAssistant:
         Returns:
             ToolCall: Tool execution result
         """
-        start_time = datetime.utcnow()
+        start_time = utc_now()
 
         if tool_name not in self.tools:
             return ToolCall(
@@ -719,7 +719,7 @@ class MultiModalAssistant:
             error = str(e)
             logger.error(f"Error executing tool {tool_name}: {e}")
 
-        execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        execution_time = (utc_now() - start_time).total_seconds() * 1000
 
         return ToolCall(
             tool_name=tool_name,

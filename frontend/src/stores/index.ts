@@ -72,6 +72,12 @@ export type AppStore = UseBoundStore<StoreApi<StoreState>>;
 
 /**
  * Compose every slice into the root state.
+ *
+ * Every slice creator is a zustand `StateCreator`, whose call signature takes
+ * `(set, get, store)`. The slices declare the third parameter as `_store` even
+ * though none uses it: omitting it made static analysis read the three-argument
+ * calls below as passing a superfluous argument, and the type forbids dropping
+ * it at the call site.
  */
 const createRootState: StateCreator<StoreState, StoreMutators, []> = (
   set,
