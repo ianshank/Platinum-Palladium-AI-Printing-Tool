@@ -17,11 +17,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Knowledge-base protocol minimised**: capped startup-only digest with staleness banner, non-blocking Stop hook, February 2026 summaries archived, protocol in `docs/agents/kb-protocol.md` (ADR-0015)
 - **Repository hygiene**: root `node_modules/`, `.gradio/certificate.pem`, `hf_check/`, root npm/husky tooling and `.claude/settings.local.json` untracked; `.pre-commit-config.yaml`, `CODEOWNERS`, Dependabot added
 
+### Added
+
+- **Property-based suites** under `tests/property/` (Hypothesis) for the curve modifier, generator and linearisation, export round trips, chemistry, and the search constraints and simulator, with shared strategies, named bounds, and `ci`/`nightly` profiles selected by `PTPD_HYPOTHESIS_PROFILE` (TST-05…09)
+- **`core/time`**: `utc_now()` and `utc_timestamp()`, replacing `datetime.utcnow()`, which is deprecated from Python 3.12 and would fail the suite under warnings-as-errors; a test fails if the deprecated call returns
+- **`api/security.stored_record_path`**: a record id from a URL is matched against a pattern (the curve endpoints pass a UUID pattern), checked as a basename, and the resolved path is confirmed to be inside its directory before any read
+
+### Changed
+
+- `pytest` runs with `filterwarnings = ["error", …]`; the single exemption is a deprecated anyio alias imported by `starlette.testclient`
+- `curves/visualization.py` builds figures with `matplotlib.figure.Figure` instead of `pyplot`, so a long-running process no longer retains one figure per plot
+- Dead `try/import/except ImportError: skip` guards around hard dependencies removed from the MCTS export tests, so an import failure fails the suite instead of skipping it
+
 ### Fixed
 
 - `session/logger.py`: `get_paper_statistics` referenced an undefined name and silently counted one record per session
 - Five stale or incorrect frontend tests; `useKeyboardShortcuts` now ignores `<select>` elements
 - Pydantic v2 and Pillow deprecation warnings that would break under `filterwarnings = error`
+- **Curve defects found by property testing**: SPLINE smoothing collapsed short curves to a near-straight line (a knot floor now applies); `preserve_endpoints` could turn a monotone input non-monotone (the interior is clipped into the pinned range and monotonicity re-enforced); a `.quad` file written by the exporter could not be read back by `load_curve` (the QuadToneRIP list layout is now delegated to the existing parser, with its 8-bit quantisation documented)
+- An unclosed log file handle on `setup_logging` reconfiguration, `np.corrcoef` on constant input, `np.mean([])` on optional readings, and a cleanup loop that deleted only its own loop variable
+- Environment variables exported at import time by an integration test module are restored on teardown, so settings-default assertions are no longer order-dependent; a GCP test module referenced a fixture that never existed, so it had never run
 
 ### Security
 
