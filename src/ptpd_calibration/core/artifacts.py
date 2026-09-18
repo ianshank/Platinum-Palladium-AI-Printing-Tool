@@ -343,7 +343,8 @@ def load_safetensors(
         raise FileNotFoundError(f"Checkpoint not found: {resolved}")
     verify_manifest(resolved, policy)
     logger.debug("Loading safetensors file %s", resolved)
-    return load_file(str(resolved), device=device)
+    tensors: dict[str, Any] = load_file(str(resolved), device=device)
+    return tensors
 
 
 __all__ = [

@@ -7,8 +7,31 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ptpd_calibration.gcp.storage import GCSBackend, LocalBackend
-from ptpd_calibration.gcp.vertex import VertexClient
+from ptpd_calibration.gcp.config import GCPConfig
+from ptpd_calibration.gcp.storage import GOOGLE_CLOUD_AVAILABLE, GCSBackend, LocalBackend
+from ptpd_calibration.gcp.vertex import VERTEX_AVAILABLE, VertexClient
+
+# The GCS and Vertex wrappers only exist when the optional [gcp] extra is
+# installed; patching their SDK handles is impossible otherwise. The local
+# backend tests below need no SDK and always run.
+requires_gcs = pytest.mark.skipif(
+    not GOOGLE_CLOUD_AVAILABLE, reason="google-cloud-storage is not installed (extra: gcp)"
+)
+requires_vertex = pytest.mark.skipif(
+    not VERTEX_AVAILABLE, reason="google-cloud-aiplatform is not installed (extra: gcp)"
+)
+
+
+@pytest.fixture
+def gcp_config() -> GCPConfig:
+    """Config for the mocked GCS and Vertex clients.
+
+    Values are literal because the clients they are passed to are mocked; no
+    credentials are read and no network call is made. The live integration
+    tests below are skipped unless PTPD_RUN_GCP_INTEGRATION=1.
+    """
+    return GCPConfig(project_id="test-project", bucket_name="test-bucket", region="us-central1")
+
 
 # --- LOCAL BACKEND TESTS ---
 
@@ -36,6 +59,7 @@ def test_local_backend(tmp_path):
 # --- GCS MOCK TESTS ---
 
 
+@requires_gcs
 @patch("ptpd_calibration.gcp.storage.storage.Client")
 def test_gcs_backend_mock(mock_client_cls, gcp_config):
     """Test GCSBackend with mocked storage client."""
@@ -67,6 +91,7 @@ def test_gcs_backend_mock(mock_client_cls, gcp_config):
     assert not backend.exists("models/missing.pt")
 
 
+@requires_vertex
 @patch("ptpd_calibration.gcp.vertex.aiplatform")
 def test_vertex_client_mock(mock_aiplatform, gcp_config):
     """Test VertexClient initialization and operations."""
@@ -96,6 +121,7 @@ def has_gcp_credentials():
     return os.getenv("PTPD_RUN_GCP_INTEGRATION") == "1"
 
 
+@requires_gcs
 @pytest.mark.skipif(not has_gcp_credentials(), reason="Requires PTPD_RUN_GCP_INTEGRATION=1")
 def test_gcs_integration(gcp_config):
     """Live test against a real GCS bucket."""
@@ -117,6 +143,7 @@ def test_gcs_integration(gcp_config):
             blob.delete()
 
 
+@requires_vertex
 @pytest.mark.skipif(not has_gcp_credentials(), reason="Requires PTPD_RUN_GCP_INTEGRATION=1")
 def test_vertex_integration(gcp_config):
     """Live test against Vertex AI."""

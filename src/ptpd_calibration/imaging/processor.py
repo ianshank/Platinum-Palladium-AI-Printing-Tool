@@ -113,6 +113,10 @@ class ImageProcessor:
         if isinstance(source, str | Path):
             img = Image.open(source)
             original_format = img.format
+            # Read the pixel data now so Pillow closes its file handle. A lazily
+            # loaded image keeps the file open until garbage collection, which
+            # surfaces as ResourceWarning under warnings-as-errors.
+            img.load()
         elif isinstance(source, bytes):
             img = Image.open(io.BytesIO(source))
             original_format = img.format
@@ -612,7 +616,9 @@ class ImageProcessor:
             elif fmt == "PNG":
                 # PIL can handle 16-bit PNG for grayscale
                 if img.mode == "L":
-                    img = Image.fromarray(arr, mode="I;16")
+                    # Pillow infers "I;16" from the uint16 dtype; the explicit
+                    # ``mode`` argument is deprecated and removed in Pillow 13.
+                    img = Image.fromarray(arr)
                 else:
                     # For RGB, need to use array directly
                     pass  # Fall through to standard save
@@ -747,8 +753,9 @@ class ImageProcessor:
             kwargs: Additional save arguments (dpi, compression, etc.)
         """
         if arr.ndim == 2:
-            # Grayscale - PIL handles this fine
-            img = Image.fromarray(arr, mode="I;16")
+            # Grayscale - PIL handles this fine ("I;16" is inferred from uint16;
+            # the explicit ``mode`` argument is deprecated and removed in Pillow 13)
+            img = Image.fromarray(arr)
             img.save(path, format="TIFF", **kwargs)
         elif HAS_TIFFFILE:
             # RGB 16-bit - use tifffile for proper support

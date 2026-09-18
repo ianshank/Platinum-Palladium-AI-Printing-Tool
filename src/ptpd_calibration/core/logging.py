@@ -138,8 +138,12 @@ def setup_logging(
     root_logger = logging.getLogger("ptpd_calibration")
     root_logger.setLevel(getattr(logging, level.upper()))
 
-    # Clear existing handlers on reconfiguration
-    root_logger.handlers.clear()
+    # Clear existing handlers on reconfiguration. Close each one first so a
+    # previous setup_logging() call (tests, long-lived processes) never leaks
+    # an open file descriptor.
+    for existing in list(root_logger.handlers):
+        root_logger.removeHandler(existing)
+        existing.close()
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)

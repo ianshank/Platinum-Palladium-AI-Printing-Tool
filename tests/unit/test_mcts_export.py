@@ -104,9 +104,7 @@ class TestCsvExport:
         result = exporter.to_csv(sample_result)
         assert isinstance(result, str)
 
-    def test_csv_parseable(
-        self, exporter: MCTSResultExporter, sample_result: SearchResult
-    ) -> None:
+    def test_csv_parseable(self, exporter: MCTSResultExporter, sample_result: SearchResult) -> None:
         result = exporter.to_csv(sample_result)
         reader = csv.reader(io.StringIO(result))
         rows = list(reader)
@@ -131,15 +129,11 @@ class TestCsvExport:
 
 
 class TestQtrCurveExport:
-    def test_returns_list(
-        self, exporter: MCTSResultExporter, sample_result: SearchResult
-    ) -> None:
+    def test_returns_list(self, exporter: MCTSResultExporter, sample_result: SearchResult) -> None:
         result = exporter.to_qtr_curve(sample_result)
         assert isinstance(result, list)
 
-    def test_256_values(
-        self, exporter: MCTSResultExporter, sample_result: SearchResult
-    ) -> None:
+    def test_256_values(self, exporter: MCTSResultExporter, sample_result: SearchResult) -> None:
         result = exporter.to_qtr_curve(sample_result)
         assert len(result) == 256
 
@@ -149,15 +143,11 @@ class TestQtrCurveExport:
         result = exporter.to_qtr_curve(sample_result)
         assert all(0 <= v <= 255 for v in result)
 
-    def test_integers(
-        self, exporter: MCTSResultExporter, sample_result: SearchResult
-    ) -> None:
+    def test_integers(self, exporter: MCTSResultExporter, sample_result: SearchResult) -> None:
         result = exporter.to_qtr_curve(sample_result)
         assert all(isinstance(v, int) for v in result)
 
-    def test_monotonic(
-        self, exporter: MCTSResultExporter, sample_result: SearchResult
-    ) -> None:
+    def test_monotonic(self, exporter: MCTSResultExporter, sample_result: SearchResult) -> None:
         """QTR curves should be monotonically non-decreasing or non-increasing."""
         result = exporter.to_qtr_curve(sample_result)
         diffs = [result[i + 1] - result[i] for i in range(len(result) - 1)]

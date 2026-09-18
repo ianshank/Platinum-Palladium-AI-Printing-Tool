@@ -1,8 +1,5 @@
 """Tests for MCTS configuration settings."""
 
-import os
-from pathlib import Path
-
 import pytest
 
 from ptpd_calibration.mcts.config import (
@@ -78,9 +75,9 @@ class TestDefaultParameterRanges:
         """Test that all ranges have min < max."""
         for name, pr in DEFAULT_PARAMETER_RANGES.items():
             assert pr.min_value < pr.max_value, f"{name}: min must be < max"
-            assert (
-                pr.min_value <= pr.default_value <= pr.max_value
-            ), f"{name}: default must be in [min, max]"
+            assert pr.min_value <= pr.default_value <= pr.max_value, (
+                f"{name}: default must be in [min, max]"
+            )
 
     def test_range_names_match_keys(self) -> None:
         """Test that ParameterRange.name matches dictionary key."""

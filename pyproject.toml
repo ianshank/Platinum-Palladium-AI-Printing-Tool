@@ -217,6 +217,11 @@ markers = [
     "realdata: requires the real-print holdout dataset",
     "legacy_ui: exercises the retired Gradio UI (requires gradio)",
 ]
+filterwarnings = [
+    "error",
+    # starlette.testclient imports a deprecated anyio alias; third-party, re-check on each starlette/anyio bump
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
 
 # ---------------------------------------------------------------------------
 # coverage: branch coverage on; per-package floors are enforced as separate

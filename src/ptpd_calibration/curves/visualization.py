@@ -4,6 +4,7 @@ Curve visualization module for PTPD Calibration System.
 Provides comprehensive curve plotting, comparison, and statistics display.
 """
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from io import BytesIO
@@ -14,7 +15,11 @@ import numpy as np
 
 matplotlib.use("Agg")
 
+from matplotlib.figure import Figure  # noqa: E402 - must follow matplotlib.use("Agg")
+
 from ptpd_calibration.core.models import CurveData
+
+logger = logging.getLogger(__name__)
 
 
 class PlotStyle(str, Enum):
@@ -215,6 +220,39 @@ class CurveVisualizer:
         """
         self.config = config or VisualizationConfig()
 
+    def _new_figure(self, width_scale: float = 1.0, height_scale: float = 1.0) -> Figure:
+        """Create a figure detached from the pyplot state machine.
+
+        Library code must not use ``matplotlib.pyplot``: pyplot keeps every
+        figure it creates in a global registry until it is explicitly closed,
+        so a long-running process leaks one figure per plot and matplotlib
+        eventually emits ``RuntimeWarning: More than 20 figures have been
+        opened``. A bare :class:`~matplotlib.figure.Figure` is garbage
+        collected with its last reference and still renders and saves through
+        the canvas matplotlib attaches on demand.
+
+        Args:
+            width_scale: Multiplier applied to the configured figure width.
+            height_scale: Multiplier applied to the configured figure height.
+
+        Returns:
+            An empty figure sized and scaled from :class:`VisualizationConfig`.
+        """
+        figure = Figure(
+            figsize=(
+                self.config.figure_width * width_scale,
+                self.config.figure_height * height_scale,
+            ),
+            dpi=self.config.dpi,
+        )
+        logger.debug(
+            "created figure %.1fx%.1f in at %d dpi",
+            self.config.figure_width * width_scale,
+            self.config.figure_height * height_scale,
+            self.config.dpi,
+        )
+        return figure
+
     def compute_statistics(self, curve: CurveData) -> CurveStatistics:
         """
         Compute comprehensive statistics for a curve.
@@ -383,12 +421,8 @@ class CurveVisualizer:
         Returns:
             Matplotlib figure.
         """
-        import matplotlib.pyplot as plt
-
-        fig, ax = plt.subplots(
-            figsize=(self.config.figure_width, self.config.figure_height),
-            dpi=self.config.dpi,
-        )
+        fig = self._new_figure()
+        ax = fig.subplots()
 
         color = color or self.config.get_color_palette(1)[0]
         self._plot_curve_on_axis(ax, curve, style, color, curve.name)
@@ -416,7 +450,7 @@ class CurveVisualizer:
         if self.config.show_legend:
             ax.legend(loc="lower right", fontsize=self.config.legend_fontsize)
 
-        plt.tight_layout()
+        fig.tight_layout()
         return fig
 
     def plot_multiple_curves(
@@ -442,8 +476,6 @@ class CurveVisualizer:
         Returns:
             Matplotlib figure.
         """
-        import matplotlib.pyplot as plt
-
         if not curves:
             raise ValueError("No curves provided")
 
@@ -454,18 +486,11 @@ class CurveVisualizer:
         colors = colors or self.config.get_color_palette(len(curves))
 
         if show_difference and len(curves) >= 2:
-            fig, (ax_main, ax_diff) = plt.subplots(
-                2,
-                1,
-                figsize=(self.config.figure_width, self.config.figure_height * 1.5),
-                dpi=self.config.dpi,
-                height_ratios=[3, 1],
-            )
+            fig = self._new_figure(height_scale=1.5)
+            ax_main, ax_diff = fig.subplots(2, 1, height_ratios=[3, 1])
         else:
-            fig, ax_main = plt.subplots(
-                figsize=(self.config.figure_width, self.config.figure_height),
-                dpi=self.config.dpi,
-            )
+            fig = self._new_figure()
+            ax_main = fig.subplots()
             ax_diff = None
 
         # Plot all curves
@@ -512,7 +537,7 @@ class CurveVisualizer:
                 ax_diff.set_facecolor(self.config.background_color)
                 ax_diff.set_xlim(0, 1)
 
-        plt.tight_layout()
+        fig.tight_layout()
         return fig
 
     def plot_with_statistics(
@@ -530,13 +555,9 @@ class CurveVisualizer:
         Returns:
             Matplotlib figure.
         """
-        import matplotlib.pyplot as plt
         from matplotlib.gridspec import GridSpec
 
-        fig = plt.figure(
-            figsize=(self.config.figure_width * 1.4, self.config.figure_height),
-            dpi=self.config.dpi,
-        )
+        fig = self._new_figure(width_scale=1.4)
         gs = GridSpec(1, 5, figure=fig)
 
         # Main plot area
@@ -566,7 +587,7 @@ class CurveVisualizer:
         stats_list = [self.compute_statistics(curve) for curve in curves]
         self._render_stats_table(ax_stats, stats_list, colors)
 
-        plt.tight_layout()
+        fig.tight_layout()
         return fig
 
     def plot_histogram(
@@ -586,12 +607,8 @@ class CurveVisualizer:
         Returns:
             Matplotlib figure.
         """
-        import matplotlib.pyplot as plt
-
-        fig, ax = plt.subplots(
-            figsize=(self.config.figure_width, self.config.figure_height),
-            dpi=self.config.dpi,
-        )
+        fig = self._new_figure()
+        ax = fig.subplots()
 
         color = self.config.get_color_palette(1)[0]
         ax.hist(curve.output_values, bins=bins, color=color, alpha=0.7, edgecolor="white")
@@ -605,7 +622,7 @@ class CurveVisualizer:
         fig.patch.set_facecolor(self.config.background_color)
         ax.grid(True, alpha=self.config.grid_alpha)
 
-        plt.tight_layout()
+        fig.tight_layout()
         return fig
 
     def plot_slope_analysis(
@@ -623,14 +640,8 @@ class CurveVisualizer:
         Returns:
             Matplotlib figure.
         """
-        import matplotlib.pyplot as plt
-
-        fig, (ax_curve, ax_slope) = plt.subplots(
-            2,
-            1,
-            figsize=(self.config.figure_width, self.config.figure_height * 1.3),
-            dpi=self.config.dpi,
-        )
+        fig = self._new_figure(height_scale=1.3)
+        ax_curve, ax_slope = fig.subplots(2, 1)
 
         inputs = np.array(curve.input_values)
         outputs = np.array(curve.output_values)
@@ -658,7 +669,7 @@ class CurveVisualizer:
             ax_slope.set_facecolor(self.config.background_color)
             ax_slope.legend(loc="upper right")
 
-        plt.tight_layout()
+        fig.tight_layout()
         return fig
 
     def _plot_curve_on_axis(

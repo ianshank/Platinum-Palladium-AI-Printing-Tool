@@ -74,7 +74,7 @@ recipe = manager.create_recipe(
     humidity_percent=50.0,
     temperature_f=68.0,
     tags=["beginner", "palladium"],
-    notes="Excellent starting point for palladium printing"
+    notes="Excellent starting point for palladium printing",
 )
 
 print(f"Created recipe: {recipe.name} (ID: {recipe.recipe_id})")
@@ -108,9 +108,7 @@ beginner_recipes = manager.list_recipes({"tags": ["beginner"]})
 
 # Find similar recipes
 similar = manager.suggest_similar_recipes(
-    {"paper_type": "Arches Platine", "pt_pd_ratio": 0.0},
-    limit=5,
-    min_similarity=0.5
+    {"paper_type": "Arches Platine", "pt_pd_ratio": 0.0}, limit=5, min_similarity=0.5
 )
 ```
 
@@ -159,9 +157,11 @@ print(f"Created job with {len(job.steps)} steps")
 status = workflow.get_workflow_status(job.job_id)
 print(f"Job status: {status.status.value}, Progress: {status.progress:.0%}")
 
+
 # Register completion callback
 def on_complete(job):
     print(f"Job {job.name} completed!")
+
 
 workflow.register_callback(job.job_id, on_complete)
 ```
@@ -182,10 +182,7 @@ db.add_recipe(recipe)
 retrieved = db.get_recipe(recipe.recipe_id)
 
 # Query recipes
-results = db.query_recipes({
-    "paper_type": "Arches Platine",
-    "min_quality_rating": 4.0
-})
+results = db.query_recipes({"paper_type": "Arches Platine", "min_quality_rating": 4.0})
 
 # Get statistics
 stats = db.get_statistics()
@@ -207,7 +204,7 @@ print(f"Imported {count} recipes")
 recipe.update_quality(
     rating=4.5,  # 0-5 scale
     dmin=0.07,
-    dmax=1.72
+    dmax=1.72,
 )
 
 print(f"Quality rating: {recipe.quality_rating:.2f}")

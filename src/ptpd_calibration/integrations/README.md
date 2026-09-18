@@ -30,7 +30,7 @@ from ptpd_calibration.integrations import (
     XRiteIntegration,
     MeasurementMode,
     ApertureSize,
-    SpectroExportFormat
+    SpectroExportFormat,
 )
 
 # Initialize device (simulated)
@@ -38,7 +38,7 @@ spectro = XRiteIntegration(
     device_id="XRITE-12345",
     mode=MeasurementMode.REFLECTION,
     aperture=ApertureSize.MEDIUM,
-    simulate=True
+    simulate=True,
 )
 
 # Connect and calibrate
@@ -54,11 +54,7 @@ print(f"L*a*b*: {measurement.lab.L:.1f}, {measurement.lab.a:.1f}, {measurement.l
 strip = spectro.read_strip(num_patches=21, patch_prefix="stouffer")
 
 # Export measurements
-spectro.export_measurements(
-    strip,
-    output_path="measurements.csv",
-    format=SpectroExportFormat.CSV
-)
+spectro.export_measurements(strip, output_path="measurements.csv", format=SpectroExportFormat.CSV)
 
 spectro.disconnect()
 ```
@@ -78,41 +74,34 @@ Monitor environmental conditions to optimize coating and drying times.
 
 ```python
 import asyncio
-from ptpd_calibration.integrations import (
-    OpenWeatherMapProvider,
-    PaperType
-)
+from ptpd_calibration.integrations import OpenWeatherMapProvider, PaperType
+
 
 async def main():
     # Initialize provider
     weather = OpenWeatherMapProvider(
         api_key="your_api_key",  # Or None for simulated data
-        units="metric"
+        units="metric",
     )
 
     # Get current conditions
-    conditions = await weather.get_current_conditions(
-        location="Portland, OR"
-    )
+    conditions = await weather.get_current_conditions(location="Portland, OR")
     print(f"Temp: {conditions.temperature_c:.1f}°C")
     print(f"Humidity: {conditions.humidity_percent:.0f}%")
     print(f"Suitable for coating: {conditions.is_suitable_for_coating}")
 
     # Calculate drying time
-    drying = weather.calculate_drying_time(
-        conditions,
-        paper_type=PaperType.COLD_PRESS
-    )
+    drying = weather.calculate_drying_time(conditions, paper_type=PaperType.COLD_PRESS)
     print(f"Estimated drying time: {drying.estimated_hours:.1f} hours")
     print(f"Recommendations: {drying.recommendations}")
 
     # Find best coating time
     recommendation = await weather.recommend_coating_time(
-        location="Portland, OR",
-        forecast_hours=48
+        location="Portland, OR", forecast_hours=48
     )
     print(f"Best time to coat: {recommendation.best_time}")
     print(f"Reason: {recommendation.reason}")
+
 
 asyncio.run(main())
 ```
@@ -141,16 +130,12 @@ from ptpd_calibration.integrations import (
     PrintSettings,
     PrintQuality,
     MediaType,
-    ColorMode
+    ColorMode,
 )
 from PIL import Image
 
 # Initialize printer (simulated)
-printer = EpsonDriver(
-    printer_name="Epson Stylus Photo R2400",
-    model="R2400",
-    simulate=True
-)
+printer = EpsonDriver(printer_name="Epson Stylus Photo R2400", model="R2400", simulate=True)
 
 # Connect
 printer.connect()
@@ -175,8 +160,8 @@ settings = PrintSettings(
     media_type=MediaType.TRANSPARENCY,
     color_mode=ColorMode.GRAYSCALE,
     resolution_dpi=2880,
-    invert=True,   # Create negative
-    mirror=True,   # Mirror for contact printing
+    invert=True,  # Create negative
+    mirror=True,  # Mirror for contact printing
 )
 
 job = printer.print_negative(image, settings)
@@ -201,22 +186,14 @@ Load, apply, create, and manage ICC color profiles.
 #### Example Usage
 
 ```python
-from ptpd_calibration.integrations import (
-    ICCProfileManager,
-    RenderingIntent,
-    ColorSpace
-)
+from ptpd_calibration.integrations import ICCProfileManager, RenderingIntent, ColorSpace
 from PIL import Image
 
 # Initialize manager
-manager = ICCProfileManager(
-    custom_profile_dir="/path/to/custom/profiles"
-)
+manager = ICCProfileManager(custom_profile_dir="/path/to/custom/profiles")
 
 # List installed profiles
-profiles = manager.list_installed_profiles(
-    color_space=ColorSpace.RGB
-)
+profiles = manager.list_installed_profiles(color_space=ColorSpace.RGB)
 print(f"Found {len(profiles)} RGB profiles")
 
 # Load specific profile
@@ -224,21 +201,14 @@ profile = manager.load_profile("path/to/profile.icc")
 
 # Apply profile to image
 image = Image.open("image.jpg")
-profiled_image = manager.apply_profile(
-    image,
-    profile,
-    rendering_intent=RenderingIntent.PERCEPTUAL
-)
+profiled_image = manager.apply_profile(image, profile, rendering_intent=RenderingIntent.PERCEPTUAL)
 
 # Convert between color spaces
 source_profile = manager.get_default_rgb_profile()
 target_profile = manager.get_default_gray_profile()
 
 converted = manager.convert_colorspace(
-    image,
-    source_profile,
-    target_profile,
-    rendering_intent=RenderingIntent.RELATIVE_COLORIMETRIC
+    image, source_profile, target_profile, rendering_intent=RenderingIntent.RELATIVE_COLORIMETRIC
 )
 
 # Embed profile in image

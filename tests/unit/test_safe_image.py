@@ -143,8 +143,8 @@ class TestFormatAndFrameGuards:
         Image.new("L", (8, 8)).save(
             path, format="TIFF", save_all=True, append_images=[Image.new("L", (8, 8))]
         )
-        im = open_image_safely(path, ImageDecodeSettings(max_frames=2))
-        assert im.size == (8, 8)
+        with open_image_safely(path, ImageDecodeSettings(max_frames=2)) as im:
+            assert im.size == (8, 8)
 
     def test_gif_renamed_to_png_rejected(self, tmp_path: Path) -> None:
         path = tmp_path / "actually.png"

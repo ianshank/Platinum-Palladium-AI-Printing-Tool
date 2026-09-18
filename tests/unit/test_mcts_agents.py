@@ -7,8 +7,6 @@ and MCTS API router endpoints.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
 
 from ptpd_calibration.agents.subagents.base import SubagentCapability, SubagentResult
@@ -18,7 +16,6 @@ from ptpd_calibration.mcts.agents import (
     ExposureSubagent,
 )
 from ptpd_calibration.mcts.config import DEFAULT_PARAMETER_RANGES, PhysicsConstants
-
 
 # =============================================================================
 # ChemistrySubagent Tests
@@ -64,12 +61,11 @@ class TestChemistrySubagent:
         assert DEFAULT_PARAMETER_RANGES["metal_ratio"].min_value <= result["metal_ratio"]
         assert result["metal_ratio"] <= DEFAULT_PARAMETER_RANGES["metal_ratio"].max_value
 
-        assert DEFAULT_PARAMETER_RANGES["ferric_oxalate_pct"].min_value <= result[
-            "ferric_oxalate_pct"
-        ]
         assert (
-            result["ferric_oxalate_pct"]
-            <= DEFAULT_PARAMETER_RANGES["ferric_oxalate_pct"].max_value
+            DEFAULT_PARAMETER_RANGES["ferric_oxalate_pct"].min_value <= result["ferric_oxalate_pct"]
+        )
+        assert (
+            result["ferric_oxalate_pct"] <= DEFAULT_PARAMETER_RANGES["ferric_oxalate_pct"].max_value
         )
 
         assert DEFAULT_PARAMETER_RANGES["coating_weight"].min_value <= result["coating_weight"]
@@ -274,9 +270,7 @@ class TestExposureSubagent:
         led_result = exposure_agent.suggest_exposure(chemistry_params, uv_source="uv_led")
 
         # Metal halide is standard (1.0x multiplier)
-        halide_result = exposure_agent.suggest_exposure(
-            chemistry_params, uv_source="metal_halide"
-        )
+        halide_result = exposure_agent.suggest_exposure(chemistry_params, uv_source="metal_halide")
 
         assert sun_result["exposure_time"] < halide_result["exposure_time"]
         assert led_result["exposure_time"] > halide_result["exposure_time"]

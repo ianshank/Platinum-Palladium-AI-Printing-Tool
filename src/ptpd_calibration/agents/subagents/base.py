@@ -13,7 +13,7 @@ from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ptpd_calibration.agents.logging import EventType, LogContext, get_agent_logger
 from ptpd_calibration.agents.tools import ToolRegistry
@@ -57,10 +57,7 @@ class SubagentMessage(BaseModel):
     correlation_id: str | None = None  # Links response to request
     priority: int = Field(default=0, ge=0, le=10)
 
-    class Config:
-        """Pydantic config."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class SubagentResult(BaseModel):
@@ -76,10 +73,7 @@ class SubagentResult(BaseModel):
     metadata: dict = Field(default_factory=dict)
     artifacts: list[dict] = Field(default_factory=list)  # Generated files, tests, etc.
 
-    class Config:
-        """Pydantic config."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 @dataclass

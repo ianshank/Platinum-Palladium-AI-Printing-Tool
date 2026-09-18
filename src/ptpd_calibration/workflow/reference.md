@@ -35,8 +35,7 @@ recipe = manager.create_recipe(
 
 ```python
 cloned = manager.clone_recipe(
-    recipe.recipe_id,
-    {"paper_type": "Bergger COT320", "exposure_time_minutes": 12.0}
+    recipe.recipe_id, {"paper_type": "Bergger COT320", "exposure_time_minutes": 12.0}
 )
 ```
 
@@ -60,9 +59,7 @@ high_quality = manager.list_recipes({"min_quality_rating": 4.0})
 
 ```python
 similar = manager.suggest_similar_recipes(
-    {"paper_type": "Arches Platine", "pt_pd_ratio": 0.0},
-    limit=5,
-    min_similarity=0.5
+    {"paper_type": "Arches Platine", "pt_pd_ratio": 0.0}, limit=5, min_similarity=0.5
 )
 
 for recipe, score in similar:
@@ -82,8 +79,7 @@ print("Different:", comparison["differences"])
 
 ```python
 updated = manager.update_recipe(
-    recipe.recipe_id,
-    {"exposure_time_minutes": 11.0, "notes": "Increased exposure"}
+    recipe.recipe_id, {"exposure_time_minutes": 11.0, "notes": "Increased exposure"}
 )
 ```
 
@@ -200,7 +196,7 @@ new_recipe = manager.clone_recipe(
     {
         "name": f"{original.name} - Modified",
         "exposure_time_minutes": original.exposure_time_minutes * 1.2,
-    }
+    },
 )
 ```
 
@@ -213,14 +209,14 @@ ratios = [0.0, 0.25, 0.5, 1.0]  # Pd, 25% Pt, 50% Pt, Pt
 for paper in papers:
     for ratio in ratios:
         manager.create_recipe(
-            name=f"{paper} - {int(ratio*100)}% Pt",
+            name=f"{paper} - {int(ratio * 100)}% Pt",
             paper_type=paper,
             pt_pd_ratio=ratio,
             ferric_oxalate_1_drops=24.0,
             metal_drops=24.0,
             exposure_time_minutes=10.0,
             uv_source="UV LED",
-            tags=[paper.lower().replace(" ", "_"), f"pt_{int(ratio*100)}"],
+            tags=[paper.lower().replace(" ", "_"), f"pt_{int(ratio * 100)}"],
         )
 ```
 
@@ -270,9 +266,7 @@ best = manager.list_recipes({"min_quality_rating": 4.5})
 beginner = manager.list_recipes({"tags": ["beginner"]})
 
 # Pure palladium recipes
-palladium = manager.list_recipes({
-    "chemistry_type": ChemistryType.PURE_PALLADIUM.value
-})
+palladium = manager.list_recipes({"chemistry_type": ChemistryType.PURE_PALLADIUM.value})
 
 # Quick exposure recipes (< 10 min)
 # Note: This requires custom filtering

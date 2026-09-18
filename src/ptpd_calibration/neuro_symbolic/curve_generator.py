@@ -17,7 +17,7 @@ from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ptpd_calibration.config import (
     CurveSettings,
@@ -44,8 +44,7 @@ from ptpd_calibration.neuro_symbolic.symbolic_regression import (
 class CurveGenerationResult(BaseModel):
     """Complete result from neuro-symbolic curve generation."""
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # Core curve data
     curve: CurveData

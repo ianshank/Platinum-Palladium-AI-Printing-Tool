@@ -5,7 +5,6 @@ Tests target uncovered code paths to maximize coverage improvement.
 """
 
 import json
-import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
@@ -32,7 +31,7 @@ from ptpd_calibration.agents.tools import (
 )
 from ptpd_calibration.config import QASettings
 from ptpd_calibration.core.models import CalibrationRecord, CurveData
-from ptpd_calibration.core.types import ChemistryType, ContrastAgent, CurveType, DeveloperType
+from ptpd_calibration.core.types import ChemistryType, ContrastAgent, DeveloperType
 from ptpd_calibration.curves.analysis import CurveAnalyzer
 from ptpd_calibration.curves.export import (
     CSVExporter,
@@ -44,12 +43,10 @@ from ptpd_calibration.curves.export import (
 )
 from ptpd_calibration.ml.database import CalibrationDatabase
 from ptpd_calibration.qa.quality_assurance import (
-    Alert,
     AlertSeverity,
     AlertSystem,
     AlertType,
     ChemistryFreshnessTracker,
-    ChemistrySolution,
     DensityAnalysis,
     NegativeDensityValidator,
     PaperHumidityChecker,
@@ -71,11 +68,9 @@ from ptpd_calibration.workflow.recipe_manager import (
     RecipeFormat,
     RecipeManager,
     WorkflowAutomation,
-    WorkflowJob,
     WorkflowStatus,
     WorkflowStep,
 )
-
 
 # =============================================================================
 # SESSION LOGGER TESTS
@@ -489,7 +484,9 @@ class TestRecipeDatabase:
 
     def test_query_recipes(self, tmp_path):
         db = RecipeDatabase(db_path=tmp_path / "test.db")
-        db.add_recipe(PrintRecipe(name="R1", paper_type="Bergger", tags=["test"], uv_source="NuArc"))
+        db.add_recipe(
+            PrintRecipe(name="R1", paper_type="Bergger", tags=["test"], uv_source="NuArc")
+        )
         db.add_recipe(
             PrintRecipe(
                 name="R2",
@@ -605,9 +602,7 @@ class TestRecipeManager:
 
     def test_search_recipes(self):
         manager = RecipeManager()
-        manager.create_recipe(
-            name="Platinum Test", paper_type="Bergger", notes="Special recipe"
-        )
+        manager.create_recipe(name="Platinum Test", paper_type="Bergger", notes="Special recipe")
         manager.create_recipe(name="Palladium", paper_type="Arches")
 
         results = manager.search_recipes("platinum")
@@ -685,12 +680,8 @@ class TestRecipeManager:
 
     def test_compare_recipes(self):
         manager = RecipeManager()
-        r1 = manager.create_recipe(
-            name="R1", paper_type="Bergger", exposure_time_minutes=15.0
-        )
-        r2 = manager.create_recipe(
-            name="R2", paper_type="Arches", exposure_time_minutes=20.0
-        )
+        r1 = manager.create_recipe(name="R1", paper_type="Bergger", exposure_time_minutes=15.0)
+        r2 = manager.create_recipe(name="R2", paper_type="Arches", exposure_time_minutes=20.0)
 
         comparison = manager.compare_recipes([r1.recipe_id, r2.recipe_id])
         assert "differences" in comparison
@@ -794,9 +785,7 @@ class TestWorkflowAutomation:
         steps = [WorkflowStep(name="Step 1", action="test")]
         job = automation.schedule_workflow(steps, datetime.now())
 
-        logged = automation.log_workflow_result(
-            job.job_id, {"result": "success"}, success=True
-        )
+        logged = automation.log_workflow_result(job.job_id, {"result": "success"}, success=True)
         assert logged is True
         assert job.status == WorkflowStatus.COMPLETED
 
@@ -965,18 +954,14 @@ class TestChemistryFreshnessTracker:
     def test_check_freshness_expired(self):
         tracker = ChemistryFreshnessTracker()
         old_date = datetime.now() - timedelta(days=365)
-        solution_id = tracker.register_solution(
-            SolutionType.FERRIC_OXALATE_1, old_date, 100.0
-        )
+        solution_id = tracker.register_solution(SolutionType.FERRIC_OXALATE_1, old_date, 100.0)
         is_fresh, msg = tracker.check_freshness(solution_id)
         assert is_fresh is False
         assert "Expired" in msg
 
     def test_get_expiration_date(self):
         tracker = ChemistryFreshnessTracker()
-        solution_id = tracker.register_solution(
-            SolutionType.PALLADIUM, datetime.now(), 50.0
-        )
+        solution_id = tracker.register_solution(SolutionType.PALLADIUM, datetime.now(), 50.0)
         exp_date = tracker.get_expiration_date(solution_id)
         assert exp_date is not None
 
@@ -987,18 +972,14 @@ class TestChemistryFreshnessTracker:
 
     def test_log_usage(self):
         tracker = ChemistryFreshnessTracker()
-        solution_id = tracker.register_solution(
-            SolutionType.PALLADIUM, datetime.now(), 100.0
-        )
+        solution_id = tracker.register_solution(SolutionType.PALLADIUM, datetime.now(), 100.0)
         success = tracker.log_usage(solution_id, 10.0)
         assert success is True
         assert tracker.get_remaining_volume(solution_id) == 90.0
 
     def test_log_usage_insufficient_volume(self):
         tracker = ChemistryFreshnessTracker()
-        solution_id = tracker.register_solution(
-            SolutionType.PALLADIUM, datetime.now(), 10.0
-        )
+        solution_id = tracker.register_solution(SolutionType.PALLADIUM, datetime.now(), 10.0)
         success = tracker.log_usage(solution_id, 20.0)
         assert success is False
 
@@ -1033,9 +1014,7 @@ class TestChemistryFreshnessTracker:
 
     def test_recommend_replenishment(self):
         tracker = ChemistryFreshnessTracker()
-        solution_id = tracker.register_solution(
-            SolutionType.PALLADIUM, datetime.now(), 100.0
-        )
+        solution_id = tracker.register_solution(SolutionType.PALLADIUM, datetime.now(), 100.0)
         tracker.log_usage(solution_id, 10.0, timestamp=datetime.now() - timedelta(days=1))
         tracker.log_usage(solution_id, 10.0, timestamp=datetime.now())
 
@@ -1044,9 +1023,7 @@ class TestChemistryFreshnessTracker:
 
     def test_recommend_replenishment_insufficient_data(self):
         tracker = ChemistryFreshnessTracker()
-        solution_id = tracker.register_solution(
-            SolutionType.PALLADIUM, datetime.now(), 100.0
-        )
+        solution_id = tracker.register_solution(SolutionType.PALLADIUM, datetime.now(), 100.0)
         tracker.log_usage(solution_id, 10.0)
 
         recommendation = tracker.recommend_replenishment(solution_id)
@@ -1059,9 +1036,7 @@ class TestChemistryFreshnessTracker:
 
     def test_get_solution_info(self):
         tracker = ChemistryFreshnessTracker()
-        solution_id = tracker.register_solution(
-            SolutionType.PALLADIUM, datetime.now(), 100.0
-        )
+        solution_id = tracker.register_solution(SolutionType.PALLADIUM, datetime.now(), 100.0)
         info = tracker.get_solution_info(solution_id)
         assert info is not None
         assert "solution_id" in info
@@ -1152,6 +1127,7 @@ class TestUVLightMeterIntegration:
         meter = UVLightMeterIntegration()
         meter.read_intensity(100.0)
         msg = meter.calibrate_meter(reference_intensity=110.0)
+        assert isinstance(msg, str) and msg
         assert meter.calibration_factor == 1.1
 
     def test_read_intensity(self):
@@ -1183,9 +1159,7 @@ class TestUVLightMeterIntegration:
         # Add readings showing degradation
         for i in range(10):
             intensity = 100.0 - i * 2
-            meter.read_intensity(
-                intensity, timestamp=datetime.now() - timedelta(days=10 - i)
-            )
+            meter.read_intensity(intensity, timestamp=datetime.now() - timedelta(days=10 - i))
 
         needs_replacement, msg = meter.check_bulb_degradation(readings_window_hours=240)
         assert isinstance(needs_replacement, bool)
@@ -1262,9 +1236,7 @@ class TestQualityReport:
     def test_generate_post_print_analysis_with_expected(self):
         report = QualityReport()
         scan = Image.new("L", (100, 100), 128)
-        analysis = report.generate_post_print_analysis(
-            scan, expected_density_range=(0.1, 2.0)
-        )
+        analysis = report.generate_post_print_analysis(scan, expected_density_range=(0.1, 2.0))
         assert "recommendations" in analysis
 
     def test_export_report_json(self, tmp_path):
@@ -1444,9 +1416,7 @@ class TestToolRegistry:
             Tool(
                 name="test",
                 description="Test tool",
-                parameters=[
-                    ToolParameter(name="param1", type="string", description="Test param")
-                ],
+                parameters=[ToolParameter(name="param1", type="string", description="Test param")],
                 handler=lambda: None,
             )
         )

@@ -13,7 +13,7 @@ from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ptpd_calibration.agents.logging import EventType, get_agent_logger
 
@@ -55,10 +55,7 @@ class AgentMessage(BaseModel):
     ttl_seconds: int = 300  # Time to live
     requires_response: bool = False
 
-    class Config:
-        """Pydantic config."""
-
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class MessageHandler:

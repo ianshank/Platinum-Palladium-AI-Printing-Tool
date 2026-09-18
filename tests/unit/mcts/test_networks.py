@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 
-import numpy as np
 import pytest
 
 from ptpd_calibration.mcts.config import DEFAULT_PARAMETER_RANGES, MCTSSettings
@@ -127,15 +126,13 @@ class TestStateEncoder:
 
         # Use minimum values
         params_min = {
-            name: param_range.min_value
-            for name, param_range in DEFAULT_PARAMETER_RANGES.items()
+            name: param_range.min_value for name, param_range in DEFAULT_PARAMETER_RANGES.items()
         }
         features_min = encoder.encode_state(params_min, depth=0)
 
         # Use maximum values
         params_max = {
-            name: param_range.max_value
-            for name, param_range in DEFAULT_PARAMETER_RANGES.items()
+            name: param_range.max_value for name, param_range in DEFAULT_PARAMETER_RANGES.items()
         }
         features_max = encoder.encode_state(params_max, depth=0)
 
@@ -332,7 +329,9 @@ class TestDualNetwork:
         )
 
         total, value_loss, policy_loss = network.compute_loss(
-            features, target_values, target_policies,
+            features,
+            target_values,
+            target_policies,
         )
 
         assert total.item() >= 0.0
@@ -361,7 +360,9 @@ class TestDualNetwork:
         for _ in range(20):
             optimizer.zero_grad()
             total, _, _ = network.compute_loss(
-                features, target_values, target_policies,
+                features,
+                target_values,
+                target_policies,
             )
             total.backward()
             optimizer.step()

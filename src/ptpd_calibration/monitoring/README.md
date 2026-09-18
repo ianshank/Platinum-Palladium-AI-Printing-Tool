@@ -134,10 +134,12 @@ from ptpd_calibration.monitoring import ImageProcessingProfiler
 
 profiler = ImageProcessingProfiler()
 
+
 # Profile an operation
 def process_image(image):
     # Your image processing code
     return processed_image
+
 
 result, profile = profiler.profile_operation(process_image, my_image)
 print(f"Wall time: {profile['wall_time_s']:.3f}s")
@@ -208,7 +210,7 @@ print(f"Overall error rate: {report['overall_error_rate']:.2%}")
 print(f"Overall P95: {report['overall_p95_ms']:.1f}ms")
 
 # Slowest endpoints
-for ep in report['slowest_endpoints']:
+for ep in report["slowest_endpoints"]:
     print(f"{ep['endpoint']}: {ep['p95_ms']:.1f}ms")
 ```
 
@@ -240,6 +242,7 @@ user = cache.get("user:123")
 # Custom TTL (5 minutes)
 cache.set("session:abc", session_data, ttl=300)
 
+
 # Cache pattern for expensive operations
 def get_user(user_id):
     cache_key = f"user:{user_id}"
@@ -248,6 +251,7 @@ def get_user(user_id):
         user = database.fetch_user(user_id)
         cache.set(cache_key, user, ttl=600)
     return user
+
 
 # Get statistics
 stats = cache.get_stats()
@@ -279,11 +283,7 @@ Monitor system resources and alert on high usage.
 ```python
 from ptpd_calibration.monitoring import ResourceMonitor
 
-monitor = ResourceMonitor(
-    cpu_threshold=80.0,
-    memory_threshold=80.0,
-    disk_threshold=90.0
-)
+monitor = ResourceMonitor(cpu_threshold=80.0, memory_threshold=80.0, disk_threshold=90.0)
 
 # Get CPU usage
 cpu = monitor.get_cpu_usage()
@@ -344,9 +344,7 @@ api_tracker = APIPerformanceTracker()
 resource_monitor = ResourceMonitor()
 
 report_gen = PerformanceReport(
-    monitor=monitor,
-    api_tracker=api_tracker,
-    resource_monitor=resource_monitor
+    monitor=monitor, api_tracker=api_tracker, resource_monitor=resource_monitor
 )
 
 # Generate daily report
@@ -364,7 +362,7 @@ period1 = (now - timedelta(days=7), now - timedelta(days=6))
 period2 = (now - timedelta(days=1), now)
 comparison = report_gen.compare_performance(period1, period2)
 
-for op_name, change in comparison['changes'].items():
+for op_name, change in comparison["changes"].items():
     print(f"{op_name}: {change['percentage']:.1f}% {change['direction']}")
 
 # Export report
@@ -389,11 +387,7 @@ settings = get_settings()
 # Or programmatically
 monitor = PerformanceMonitor(max_history=5000)
 cache = CacheManager(max_size=2000, default_ttl=1800)
-resource_monitor = ResourceMonitor(
-    cpu_threshold=75.0,
-    memory_threshold=85.0,
-    disk_threshold=95.0
-)
+resource_monitor = ResourceMonitor(cpu_threshold=75.0, memory_threshold=85.0, disk_threshold=95.0)
 ```
 
 ## Global Instances
@@ -447,6 +441,7 @@ import time
 app = FastAPI()
 tracker = get_api_tracker()
 
+
 @app.middleware("http")
 async def track_performance(request: Request, call_next):
     start_time = time.perf_counter()
@@ -457,7 +452,7 @@ async def track_performance(request: Request, call_next):
         endpoint=request.url.path,
         duration=duration,
         status=response.status_code,
-        method=request.method
+        method=request.method,
     )
 
     return response
@@ -470,6 +465,7 @@ import threading
 from ptpd_calibration.monitoring import get_resource_monitor
 import time
 
+
 def background_resource_monitor():
     monitor = get_resource_monitor()
     while True:
@@ -477,6 +473,7 @@ def background_resource_monitor():
         for alert in alerts:
             logger.warning(f"Resource alert: {alert['message']}")
         time.sleep(60)  # Check every minute
+
 
 # Start background thread
 thread = threading.Thread(target=background_resource_monitor, daemon=True)
@@ -490,6 +487,7 @@ import threading
 from ptpd_calibration.monitoring import get_cache
 import time
 
+
 def cleanup_cache_periodically():
     cache = get_cache()
     while True:
@@ -497,6 +495,7 @@ def cleanup_cache_periodically():
         removed = cache.cleanup_expired()
         if removed > 0:
             logger.info(f"Cleaned up {removed} expired cache entries")
+
 
 # Start background thread
 thread = threading.Thread(target=cleanup_cache_periodically, daemon=True)

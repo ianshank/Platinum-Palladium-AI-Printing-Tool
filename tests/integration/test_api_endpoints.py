@@ -6,17 +6,40 @@ without spinning up a live server.
 """
 
 import os
+import shutil
 import tempfile
 
-# Ensure config env vars are set BEFORE importing create_app,
-# since Pydantic settings validation occurs at import time.
-os.environ.setdefault("PTPD_GCP_PROJECT_ID", "test-project")
-os.environ.setdefault("PTPD_GCS_BUCKET", "test-bucket")
-os.environ.setdefault("PTPD_GCP_REGION", "us-central1")
-# Force local filesystem backend to avoid hitting real GCS:
-os.environ["PTPD_FORCE_LOCAL_STORAGE"] = "true"
+# Ensure config env vars are set BEFORE importing create_app, since pydantic
+# settings validation happens at import time. monkeypatch cannot be used here
+# (fixtures do not run at import time), so the previous values are captured and
+# restored in teardown_module: leaving them set would make any later module
+# that asserts settings defaults fail depending on test order.
 _staging_dir = tempfile.mkdtemp(prefix="ptpd_test_")
-os.environ["PTPD_STAGING_DIR"] = _staging_dir
+_ENV_DEFAULTS = {
+    "PTPD_GCP_PROJECT_ID": "test-project",
+    "PTPD_GCS_BUCKET": "test-bucket",
+    "PTPD_GCP_REGION": "us-central1",
+}
+# Force the local filesystem backend so no test can reach real GCS.
+_ENV_OVERRIDES = {
+    "PTPD_FORCE_LOCAL_STORAGE": "true",
+    "PTPD_STAGING_DIR": _staging_dir,
+}
+_ENV_BEFORE = {key: os.environ.get(key) for key in (*_ENV_DEFAULTS, *_ENV_OVERRIDES)}
+for _key, _value in _ENV_DEFAULTS.items():
+    os.environ.setdefault(_key, _value)
+os.environ.update(_ENV_OVERRIDES)
+
+
+def teardown_module(module: object) -> None:
+    """Restore the environment and the temporary directory this module created."""
+    for key, previous in _ENV_BEFORE.items():
+        if previous is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = previous
+    shutil.rmtree(_staging_dir, ignore_errors=True)
+
 
 from unittest.mock import AsyncMock, MagicMock, patch
 

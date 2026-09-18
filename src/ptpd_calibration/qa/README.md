@@ -109,7 +109,7 @@ solution_id = tracker.register_solution(
     solution_type=SolutionType.PALLADIUM,
     date_mixed=datetime.now(),
     volume_ml=100.0,
-    notes="Fresh batch for portrait series"
+    notes="Fresh batch for portrait series",
 )
 
 # Check freshness
@@ -170,17 +170,14 @@ from ptpd_calibration.qa import PaperHumidityChecker
 checker = PaperHumidityChecker()
 
 # Log ambient conditions
-checker.log_ambient_conditions(
-    humidity_percent=45.0,
-    temperature_celsius=22.0
-)
+checker.log_ambient_conditions(humidity_percent=45.0, temperature_celsius=22.0)
 
 # Measure paper humidity
 reading = checker.measure_paper_humidity(
     humidity_percent=52.0,
     temperature_celsius=21.5,
     paper_type="Hahnemuhle Platinum Rag",
-    notes="Stored in dry cabinet 24hrs"
+    notes="Stored in dry cabinet 24hrs",
 )
 
 # Check if ready to coat
@@ -226,10 +223,7 @@ print(status)
 
 # Take readings
 reading = uv_meter.read_intensity(
-    intensity=95.0,
-    wavelength=365.0,
-    bulb_hours=150.0,
-    notes="Morning reading"
+    intensity=95.0, wavelength=365.0, bulb_hours=150.0, notes="Morning reading"
 )
 
 # Calculate exposure adjustment
@@ -283,15 +277,12 @@ checklist = report.generate_pre_print_checklist(
 print(f"Ready to Print: {checklist['ready_to_print']}")
 
 # Check individual components
-for check_name, check_data in checklist['checks'].items():
+for check_name, check_data in checklist["checks"].items():
     print(f"{check_name}: {check_data['status']}")
 
 # Generate post-print analysis
 scan = Image.open("finished_print_scan.tif")
-analysis = report.generate_post_print_analysis(
-    scan=scan,
-    expected_density_range=(0.10, 2.0)
-)
+analysis = report.generate_post_print_analysis(scan=scan, expected_density_range=(0.10, 2.0))
 
 print(f"Quality Score: {analysis['quality_score']}/100")
 print(f"Grade: {analysis['grade']}")
@@ -301,11 +292,7 @@ markdown = report.export_report(checklist, ReportFormat.MARKDOWN)
 print(markdown)
 
 # Save to file
-report.export_report(
-    checklist,
-    ReportFormat.HTML,
-    output_path="/path/to/report.html"
-)
+report.export_report(checklist, ReportFormat.HTML, output_path="/path/to/report.html")
 ```
 
 **Quality Grading:**
@@ -338,7 +325,7 @@ alerts = AlertSystem()
 alert_id = alerts.add_alert(
     alert_type=AlertType.CHEMISTRY,
     message="Palladium solution expires in 3 days",
-    severity=AlertSeverity.ERROR
+    severity=AlertSeverity.ERROR,
 )
 
 # Get active alerts
@@ -476,36 +463,27 @@ checklist = report.generate_pre_print_checklist(
 )
 
 # 4. Review checklist
-if checklist['ready_to_print']:
+if checklist["ready_to_print"]:
     print("✓ Ready to print!")
 
     # Export checklist
-    report.export_report(
-        checklist,
-        ReportFormat.HTML,
-        output_path="pre_print_checklist.html"
-    )
+    report.export_report(checklist, ReportFormat.HTML, output_path="pre_print_checklist.html")
 else:
     print("✗ Not ready to print")
-    print("Errors:", checklist['errors'])
-    print("Warnings:", checklist['warnings'])
+    print("Errors:", checklist["errors"])
+    print("Warnings:", checklist["warnings"])
 
 # 5. After printing, analyze result
 print_scan = Image.open("finished_print_scan.tif")
 post_analysis = report.generate_post_print_analysis(
-    scan=print_scan,
-    expected_density_range=(0.10, 2.0)
+    scan=print_scan, expected_density_range=(0.10, 2.0)
 )
 
 print(f"Quality Score: {post_analysis['quality_score']}/100")
 print(f"Grade: {post_analysis['grade']}")
 
 # Export post-print report
-report.export_report(
-    post_analysis,
-    ReportFormat.MARKDOWN,
-    output_path="post_print_analysis.md"
-)
+report.export_report(post_analysis, ReportFormat.MARKDOWN, output_path="post_print_analysis.md")
 ```
 
 ## Data Models
@@ -675,6 +653,7 @@ See the main module docstrings for complete API documentation:
 
 ```python
 from ptpd_calibration.qa import NegativeDensityValidator
+
 help(NegativeDensityValidator)
 ```
 

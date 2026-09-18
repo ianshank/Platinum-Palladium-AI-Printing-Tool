@@ -7,7 +7,6 @@ and density curve generation.
 
 import logging
 
-import numpy as np
 import pytest
 
 from ptpd_calibration.mcts.config import DEFAULT_PARAMETER_RANGES, PhysicsConstants
@@ -52,8 +51,7 @@ def pure_palladium_params() -> dict[str, float]:
 def default_params() -> dict[str, float]:
     """Default calibration parameters."""
     return {
-        param: param_range.default_value
-        for param, param_range in DEFAULT_PARAMETER_RANGES.items()
+        param: param_range.default_value for param, param_range in DEFAULT_PARAMETER_RANGES.items()
     }
 
 

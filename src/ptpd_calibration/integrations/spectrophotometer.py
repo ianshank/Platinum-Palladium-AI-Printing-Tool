@@ -14,7 +14,7 @@ from enum import Enum
 from pathlib import Path
 
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +85,7 @@ class PatchMeasurement(BaseModel):
     spectral: SpectralData | None = Field(default=None, description="Spectral data")
     timestamp: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class CalibrationResult(BaseModel):
@@ -98,8 +97,7 @@ class CalibrationResult(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     message: str = Field(default="", description="Status message")
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class SpectrophotometerInterface(ABC):
@@ -589,7 +587,7 @@ class XRiteIntegration(SpectrophotometerInterface):
         # Serialize calibration data if present
         calibration_data = None
         if self.last_calibration:
-            cal_dict = self.last_calibration.dict()
+            cal_dict = self.last_calibration.model_dump()
             # Convert datetime to ISO format string
             if "timestamp" in cal_dict and isinstance(cal_dict["timestamp"], datetime):
                 cal_dict["timestamp"] = cal_dict["timestamp"].isoformat()

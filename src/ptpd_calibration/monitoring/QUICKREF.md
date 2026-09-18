@@ -109,9 +109,7 @@ gpu = monitor.get_gpu_usage()  # If available
 
 ```python
 report_gen = PerformanceReport(
-    monitor=get_monitor(),
-    api_tracker=get_api_tracker(),
-    resource_monitor=get_resource_monitor()
+    monitor=get_monitor(), api_tracker=get_api_tracker(), resource_monitor=get_resource_monitor()
 )
 
 # Daily report
@@ -180,8 +178,7 @@ from ptpd_calibration.monitoring import get_profiler
 
 profiler = get_profiler()
 result, profile = profiler.profile_operation(process_image, image)
-logger.info(f"Processed in {profile['wall_time_s']:.2f}s, "
-           f"used {profile['memory_delta_mb']:.1f}MB")
+logger.info(f"Processed in {profile['wall_time_s']:.2f}s, used {profile['memory_delta_mb']:.1f}MB")
 ```
 
 ## Data Models
@@ -232,9 +229,5 @@ Or programmatically:
 ```python
 monitor = PerformanceMonitor(max_history=5000)
 cache = CacheManager(max_size=2000, default_ttl=1800)
-resource_monitor = ResourceMonitor(
-    cpu_threshold=75.0,
-    memory_threshold=85.0,
-    disk_threshold=95.0
-)
+resource_monitor = ResourceMonitor(cpu_threshold=75.0, memory_threshold=85.0, disk_threshold=95.0)
 ```

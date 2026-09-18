@@ -17,6 +17,25 @@ from typing import Any, cast
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+
+def _safe_correlation(a: np.ndarray, b: np.ndarray) -> float:
+    """Pearson correlation clipped to [-1, 1]; 0.0 when either input has zero variance.
+
+    ``np.corrcoef`` emits ``RuntimeWarning: invalid value`` and returns NaN for a
+    constant input (e.g. a single-bin histogram); callers treat that as "no
+    correlation" rather than a warning.
+    """
+    a = np.asarray(a, dtype=float).ravel()
+    b = np.asarray(b, dtype=float).ravel()
+    if a.size < 2 or b.size < 2 or np.std(a) == 0.0 or np.std(b) == 0.0:
+        return 0.0
+    with np.errstate(invalid="ignore", divide="ignore"):
+        corr = np.corrcoef(a, b)[0, 1]
+    if not np.isfinite(corr):
+        return 0.0
+    return float(np.clip(corr, -1.0, 1.0))
+
+
 try:
     import qrcode
 
@@ -1499,7 +1518,7 @@ class PrintComparison:
         # Histogram comparison
         orig_hist = np.histogram(orig_arr, bins=50, range=(0, 1))[0]
         scan_hist = np.histogram(scan_arr, bins=50, range=(0, 1))[0]
-        hist_correlation = float(np.clip(np.corrcoef(orig_hist, scan_hist)[0, 1], -1.0, 1.0))
+        hist_correlation = _safe_correlation(orig_hist, scan_hist)
 
         # Tonal range comparison
         orig_range = float(orig_arr.max() - orig_arr.min())
@@ -1618,7 +1637,7 @@ class PrintComparison:
             return float(np.clip(1.0 - np.sqrt(mse), 0.0, 1.0))
 
         elif method == "correlation":
-            corr = np.corrcoef(arr1.flatten(), arr2.flatten())[0, 1]
+            corr = _safe_correlation(arr1.flatten(), arr2.flatten())
             return float(np.clip((corr + 1) / 2, 0.0, 1.0))  # Map from [-1, 1] to [0, 1]
 
         elif method == "ssim":

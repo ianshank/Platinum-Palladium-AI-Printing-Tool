@@ -344,8 +344,8 @@ class TestImageProcessor:
 
         assert output_path.exists()
         # Verify it's a valid image
-        loaded = Image.open(output_path)
-        assert loaded.size == grayscale_image.size
+        with Image.open(output_path) as loaded:
+            assert loaded.size == grayscale_image.size
 
     def test_export_to_file_jpeg(self, processor, rgb_image, tmp_path):
         """Export to JPEG file."""
@@ -356,8 +356,8 @@ class TestImageProcessor:
         processor.export(result, output_path, settings)
 
         assert output_path.exists()
-        loaded = Image.open(output_path)
-        assert loaded.size == rgb_image.size
+        with Image.open(output_path) as loaded:
+            assert loaded.size == rgb_image.size
 
     def test_export_to_file_tiff(self, processor, grayscale_image, tmp_path):
         """Export to TIFF file."""
@@ -745,8 +745,8 @@ class Test16BitTiffExport:
 
         assert output_path.exists()
         # Verify it can be loaded
-        loaded = Image.open(output_path)
-        assert loaded is not None
+        with Image.open(output_path) as loaded:
+            assert loaded is not None
 
     def test_export_16bit_rgb_tiff(self, processor, tmp_path):
         """Export 16-bit RGB TIFF (uses tifffile if available)."""

@@ -36,11 +36,20 @@ from ptpd_calibration.agents.subagents.reviewer import (
     ReviewerAgent,
     ReviewScore,
 )
+
+# The SQA models are named ``Test*``; alias them so pytest does not try to
+# collect them as test classes (PytestCollectionWarning).
 from ptpd_calibration.agents.subagents.sqa import (
     SQEAgent,
-    TestCase,
-    TestPlan,
-    TestSuite,
+)
+from ptpd_calibration.agents.subagents.sqa import (
+    TestCase as SqaTestCase,
+)
+from ptpd_calibration.agents.subagents.sqa import (
+    TestPlan as SqaTestPlan,
+)
+from ptpd_calibration.agents.subagents.sqa import (
+    TestSuite as SqaTestSuite,
 )
 
 # =============================================================================
@@ -82,9 +91,7 @@ class TestSubagentResult:
             agent_id="test-agent",
             agent_type="coder",
             task="Generate code",
-            artifacts=[
-                {"type": "code_file", "filename": "test.py", "content": "print('hello')"}
-            ],
+            artifacts=[{"type": "code_file", "filename": "test.py", "content": "print('hello')"}],
         )
         assert len(result.artifacts) == 1
         assert result.artifacts[0]["type"] == "code_file"
@@ -198,7 +205,7 @@ class TestPlannerAgent:
     @pytest.mark.asyncio
     async def test_planner_run_with_mock(self, planner):
         """Test planner run with mocked LLM."""
-        mock_response = '''
+        mock_response = """
         {
             "goal": "Test feature",
             "summary": "Test summary",
@@ -214,7 +221,7 @@ class TestPlannerAgent:
             "risks": [],
             "assumptions": []
         }
-        '''
+        """
         planner._client = AsyncMock()
         planner._client.complete = AsyncMock(return_value=mock_response)
 
@@ -251,7 +258,7 @@ class TestSQEAgent:
     @pytest.mark.asyncio
     async def test_sqa_run_creates_test_plan(self, sqa):
         """Test SQE run creates test plan."""
-        mock_response = '''
+        mock_response = """
         {
             "title": "Test Plan",
             "scope": "Testing",
@@ -260,7 +267,7 @@ class TestSQEAgent:
             "entry_criteria": [],
             "exit_criteria": []
         }
-        '''
+        """
         sqa._client = AsyncMock()
         sqa._client.complete = AsyncMock(return_value=mock_response)
 
@@ -337,13 +344,13 @@ def hello_world():
 
     def test_extract_code_from_markdown(self, coder):
         """Test extracting code from markdown."""
-        response = '''
+        response = """
 Here's the code:
 ```python
 def test():
     pass
 ```
-'''
+"""
         code = coder._extract_code(response)
         assert "def test():" in code
 
@@ -395,7 +402,7 @@ class TestReviewerAgent:
     @pytest.mark.asyncio
     async def test_reviewer_run(self, reviewer):
         """Test reviewer run."""
-        mock_response = '''
+        mock_response = """
         {
             "summary": "Good code overall",
             "overall_score": 8.0,
@@ -406,7 +413,7 @@ class TestReviewerAgent:
             "security_concerns": [],
             "approved": true
         }
-        '''
+        """
         reviewer._client = AsyncMock()
         reviewer._client.complete = AsyncMock(return_value=mock_response)
 
@@ -485,9 +492,7 @@ class TestPlannerModels:
             id="S1",
             title="Implement feature",
             description="Build the feature",
-            acceptance_criteria=[
-                AcceptanceCriteria(id="AC1", description="Works")
-            ],
+            acceptance_criteria=[AcceptanceCriteria(id="AC1", description="Works")],
             estimated_complexity="medium",
         )
         assert story.id == "S1"
@@ -499,9 +504,7 @@ class TestPlannerModels:
             id="E1",
             title="Core Feature",
             description="Main feature implementation",
-            stories=[
-                Story(id="S1", title="Task 1", description="Do task 1")
-            ],
+            stories=[Story(id="S1", title="Task 1", description="Do task 1")],
             priority=5,
         )
         assert epic.id == "E1"
@@ -513,9 +516,7 @@ class TestPlannerModels:
             id="M1",
             title="Phase 1",
             goal="Complete foundation",
-            epics=[
-                Epic(id="E1", title="Setup", description="Initial setup")
-            ],
+            epics=[Epic(id="E1", title="Setup", description="Initial setup")],
             success_metrics=["All tests pass"],
         )
         assert milestone.id == "M1"
@@ -526,9 +527,7 @@ class TestPlannerModels:
         plan = ImplementationPlan(
             goal="Build new feature",
             summary="Implementation plan summary",
-            milestones=[
-                Milestone(id="M1", title="Phase 1", goal="Foundation")
-            ],
+            milestones=[Milestone(id="M1", title="Phase 1", goal="Foundation")],
             architectural_decisions=["Use microservices"],
             risks=["Tight timeline"],
             assumptions=["API is stable"],
@@ -542,7 +541,7 @@ class TestSQAModels:
 
     def test_test_case(self):
         """Test TestCase model."""
-        tc = TestCase(
+        tc = SqaTestCase(
             id="TC1",
             name="test_login",
             description="Test login functionality",
@@ -556,13 +555,11 @@ class TestSQAModels:
 
     def test_test_suite(self):
         """Test TestSuite model."""
-        suite = TestSuite(
+        suite = SqaTestSuite(
             id="TS1",
             name="Auth Tests",
             description="Authentication test suite",
-            test_cases=[
-                TestCase(id="TC1", name="test_login", description="Login test")
-            ],
+            test_cases=[SqaTestCase(id="TC1", name="test_login", description="Login test")],
             fixtures=["auth_client"],
         )
         assert suite.id == "TS1"
@@ -570,13 +567,11 @@ class TestSQAModels:
 
     def test_test_plan(self):
         """Test TestPlan model."""
-        plan = TestPlan(
+        plan = SqaTestPlan(
             title="Feature Test Plan",
             scope="Login feature",
             objectives=["Verify login works"],
-            test_suites=[
-                TestSuite(id="TS1", name="Unit Tests", description="Unit tests")
-            ],
+            test_suites=[SqaTestSuite(id="TS1", name="Unit Tests", description="Unit tests")],
             coverage_target=90.0,
         )
         assert plan.title == "Feature Test Plan"

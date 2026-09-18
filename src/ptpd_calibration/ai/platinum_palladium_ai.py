@@ -1189,14 +1189,19 @@ class PlatinumPalladiumAI:
             # Calculate average optimal parameters
             avg_exposure = np.mean([r.exposure_time for r in successful])
             avg_metal_ratio = np.mean([r.metal_ratio for r in successful])
-            avg_humidity = np.mean([r.humidity for r in successful if r.humidity])
-            avg_temp = np.mean([r.temperature for r in successful if r.temperature])
+            # Humidity/temperature are optional; np.mean([]) returns nan with a
+            # "Mean of empty slice" RuntimeWarning, so check emptiness explicitly
+            # (same result: None when no record carries the value).
+            humidities = [r.humidity for r in successful if r.humidity]
+            temperatures = [r.temperature for r in successful if r.temperature]
+            avg_humidity = float(np.mean(humidities)) if humidities else None
+            avg_temp = float(np.mean(temperatures)) if temperatures else None
 
             optimal_params = {
                 "avg_exposure_time": float(avg_exposure),
                 "avg_metal_ratio": float(avg_metal_ratio),
-                "avg_humidity": float(avg_humidity) if not np.isnan(avg_humidity) else None,
-                "avg_temperature": float(avg_temp) if not np.isnan(avg_temp) else None,
+                "avg_humidity": avg_humidity,
+                "avg_temperature": avg_temp,
             }
 
             # Identify trends
