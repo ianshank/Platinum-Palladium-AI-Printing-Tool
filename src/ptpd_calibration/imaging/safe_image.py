@@ -40,6 +40,18 @@ logger = logging.getLogger(__name__)
 ImageSource = Path | str | bytes | bytearray | memoryview | BinaryIO
 """Sources :func:`open_image_safely` accepts (a path, raw bytes or a binary stream)."""
 
+#: Pillow modes for single-channel images carrying more than eight bits per
+#: sample. ``I`` is 32-bit signed integer; the ``I;16*`` family is unsigned
+#: 16-bit in the byte orders a scanner may produce. Defined here, at the
+#: decode boundary, because both the decoder and the processor need them and
+#: the processor is the higher layer.
+HIGH_DEPTH_GRAY_MODES: frozenset[str] = frozenset({"I", "I;16", "I;16B", "I;16L", "I;16N"})
+
+#: The widest integer mode Pillow can actually resample. ``resize`` raises
+#: "image has wrong mode" for every ``I;16*`` mode, so a high-depth image is
+#: converted to this first. The conversion is lossless: ``I`` is wider.
+RESAMPLE_INTEGER_MODE = "I"
+
 # ``Image.MAX_IMAGE_PIXELS`` and the warnings registry are process-global; the
 # header read that depends on them is serialised so concurrent callers with
 # different settings cannot observe each other's limit.
@@ -211,18 +223,39 @@ def _check_header(im: Image.Image, settings: ImageDecodeSettings, label: str) ->
         )
 
 
-def _maybe_downsample(im: Image.Image, settings: ImageDecodeSettings, label: str) -> None:
-    """Shrink ``im`` in place so its longest side is at most ``downsample_max_side``."""
-    max_side = settings.downsample_max_side
-    if max_side is None:
-        return
+def resize_to_fit(im: Image.Image, max_side: int, label: str = "image") -> Image.Image:
+    """Shrink ``im`` so its longest side is at most ``max_side``.
+
+    Returns the same object when no work is needed or when it could be resized
+    in place, and a new image when the mode had to change first. Callers must
+    use the return value.
+
+    Pillow cannot resample the ``I;16*`` modes at all: ``resize`` raises
+    ``ValueError: image has wrong mode``. Every 16-bit scan wider than the
+    configured limit therefore failed to open, which is most real scanner
+    output. Converting to :data:`RESAMPLE_INTEGER_MODE` first is lossless and
+    keeps the depth the scan was made at, where dropping to "L" would clip
+    every sample above 255 to white.
+    """
     original = im.size
     if max(original) <= max_side:
-        return
+        return im
+    if im.mode in HIGH_DEPTH_GRAY_MODES and im.mode != RESAMPLE_INTEGER_MODE:
+        im = im.convert(RESAMPLE_INTEGER_MODE)
+        logger.debug("Converted %s to %s so it can be resampled", label, RESAMPLE_INTEGER_MODE)
     # ``thumbnail`` keeps the aspect ratio, only ever shrinks, and uses the JPEG
     # DCT-scaling ``draft`` mode internally so oversized JPEGs never fully decode.
     im.thumbnail((max_side, max_side))
     logger.debug("Downsampled %s from %sx%s to %sx%s", label, *original, *im.size)
+    return im
+
+
+def _maybe_downsample(im: Image.Image, settings: ImageDecodeSettings, label: str) -> Image.Image:
+    """Apply :func:`resize_to_fit` when ``downsample_max_side`` is configured."""
+    max_side = settings.downsample_max_side
+    if max_side is None:
+        return im
+    return resize_to_fit(im, max_side, label)
 
 
 def open_image_safely(
@@ -257,7 +290,7 @@ def open_image_safely(
         im.close()
         raise
 
-    _maybe_downsample(im, settings, label)
+    im = _maybe_downsample(im, settings, label)
     # Decode now (bounded by the checks above). For path sources this also
     # closes the underlying file handle, matching the old eager ``np.array``.
     im.load()
@@ -296,6 +329,8 @@ def load_image_array(
 
 
 __all__ = [
+    "HIGH_DEPTH_GRAY_MODES",
+    "RESAMPLE_INTEGER_MODE",
     "ImageDecodeError",
     "ImageDecodeSettings",
     "ImageSource",
@@ -303,4 +338,5 @@ __all__ = [
     "UnsupportedImageError",
     "load_image_array",
     "open_image_safely",
+    "resize_to_fit",
 ]

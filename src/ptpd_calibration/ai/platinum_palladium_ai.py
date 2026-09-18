@@ -41,6 +41,7 @@ from ptpd_calibration.imaging.processor import (
     ImageFormat,
     ImageProcessor,
     ProcessingResult,
+    is_high_depth_gray,
 )
 
 # ============================================================================
@@ -866,8 +867,13 @@ class PlatinumPalladiumAI:
         # Load image
         processing_result = self.image_processor.load_image(image)
 
-        # Convert to grayscale for negatives
-        if processing_result.image.mode not in ("L", "LA"):
+        # Convert to grayscale for negatives. A high-depth grayscale scan is
+        # grayscale already, and Pillow's convert("L") clips it at 255 rather
+        # than scaling, which blew almost the whole frame to white; leave it to
+        # ImageProcessor, which carries the depth through (ADR-0016).
+        if processing_result.image.mode not in ("L", "LA") and not is_high_depth_gray(
+            processing_result.image
+        ):
             gray_image = processing_result.image.convert("L")
             processing_result = ProcessingResult(
                 image=gray_image,
@@ -880,7 +886,9 @@ class PlatinumPalladiumAI:
                 processing_notes=processing_result.processing_notes + ["Converted to grayscale"],
             )
 
-        steps_applied = ["Loaded image", "Converted to grayscale"]
+        steps_applied = ["Loaded image"]
+        if processing_result.image.mode in ("L", "LA"):
+            steps_applied.append("Converted to grayscale")
 
         # Apply calibration curve if provided
         if curve is not None:

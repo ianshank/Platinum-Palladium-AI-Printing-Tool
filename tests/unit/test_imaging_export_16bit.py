@@ -8,7 +8,10 @@ to be behaviour-preserving.
 
 from __future__ import annotations
 
+import io
 import logging
+import sys
+import threading
 import warnings
 from pathlib import Path
 
@@ -20,6 +23,7 @@ from ptpd_calibration.config import ImagingSettings
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.imaging.processor import (
     EIGHT_BIT_LEVELS,
+    EIGHT_BIT_MAX,
     SIXTEEN_BIT_LEVELS,
     SIXTEEN_BIT_MAX,
     ColorMode,
@@ -28,6 +32,12 @@ from ptpd_calibration.imaging.processor import (
     ImageProcessor,
     to_eight_bit_gray,
     to_uint16,
+)
+from ptpd_calibration.imaging.safe_image import (
+    HIGH_DEPTH_GRAY_MODES,
+    ImageDecodeSettings,
+    open_image_safely,
+    resize_to_fit,
 )
 
 EXPECTED_16BIT_MODE = "I;16"
@@ -300,23 +310,51 @@ class TestHighDepthPipeline:
         assert result.image.mode == EXPECTED_16BIT_MODE
         assert np.array_equal(np.asarray(result.image), ramp)
 
-    def test_explicit_rgb_request_is_still_honoured(self, tmp_path: Path) -> None:
-        """Asking for colour is a caller decision, not an accident of dispatch."""
+    def test_explicit_rgb_request_scales_rather_than_clips(self, tmp_path: Path) -> None:
+        """Asking for colour is a caller decision, not an accident of dispatch.
+
+        Pillow's convert() clips a high-depth image at 255, so asserting only
+        the mode would pass on a frame that is almost entirely white.
+        """
         processor = ImageProcessor()
         loaded = processor.load_image(self._scan(tmp_path))
 
         curved = processor.apply_curve(loaded, self._curve(), ColorMode.RGB)
 
         assert curved.image.mode == "RGB"
+        data = np.asarray(curved.image)
+        assert float((data == EIGHT_BIT_MAX).mean()) < 0.1, "the frame was clipped to white"
+        assert np.unique(data).size > 2
 
-    def test_preserve_bit_depth_can_be_turned_off(self, tmp_path: Path) -> None:
-        """The old behaviour stays reachable for downstream 8-bit tooling."""
+    def test_preview_thumbnails_a_high_depth_source(self, tmp_path: Path) -> None:
+        """Pillow cannot resample "I;16", so this raised for every 16-bit scan."""
+        processor = ImageProcessor()
+
+        original, processed = processor.preview_curve_effect(
+            self._scan(tmp_path), self._curve(), thumbnail_size=(16, 16)
+        )
+
+        assert max(original.size) <= 16
+        assert max(processed.size) <= 16
+        assert np.unique(np.asarray(processed)).size > 2
+
+    def test_preserve_bit_depth_off_coarsens_rather_than_wraps(self) -> None:
+        """Opting out must mean fewer levels, not scrambled ones.
+
+        The escape hatch used to route the array back through
+        ``astype(np.uint8)``, which wraps modulo 256: level 256 became 0.
+        """
         processor = ImageProcessor(ImagingSettings(preserve_bit_depth=False))
-        loaded = processor.load_image(self._scan(tmp_path))
+        source = np.array(
+            [[0, SCALE_8_TO_16, 128 * SCALE_8_TO_16, SIXTEEN_BIT_MAX]], dtype=np.uint16
+        )
 
-        curved = processor.apply_curve(loaded, self._curve())
+        loaded = processor.load_image(source)
 
-        assert curved.image.mode != EXPECTED_16BIT_MODE
+        assert loaded.image.mode == "L"
+        assert np.array_equal(
+            np.asarray(loaded.image), np.array([[0, 1, 128, 255]], dtype=np.uint8)
+        )
 
     def test_both_depths_describe_the_same_transfer_function(self) -> None:
         """One builder serves both tables, so they cannot drift apart."""
@@ -351,7 +389,7 @@ class TestLutCacheBounds:
         axis = np.linspace(0.0, 1.0, 16)
         return CurveData(name="c", input_values=list(axis), output_values=list(axis**gamma))
 
-    def test_least_recently_used_tables_are_evicted(self) -> None:
+    def test_the_cache_is_bounded(self) -> None:
         limit = 3
         processor = ImageProcessor(ImagingSettings(lut_cache_entries=limit))
 
@@ -359,6 +397,55 @@ class TestLutCacheBounds:
             processor._create_lut(self._curve(1.0 + index / 10))
 
         assert len(processor._lut_cache) == limit
+
+    def test_a_re_read_table_outlives_a_newer_one(self) -> None:
+        """Eviction must be least-recently-*used*, not first-in-first-out.
+
+        A bound alone is satisfied by FIFO or by clearing the cache, so this
+        reads the oldest entry back before overflowing it.
+        """
+        processor = ImageProcessor(ImagingSettings(lut_cache_entries=2))
+        oldest, newer, newest = (self._curve(g) for g in (1.1, 1.2, 1.3))
+
+        processor._create_lut(oldest)
+        processor._create_lut(newer)
+        processor._create_lut(oldest)  # touch the oldest: it is now most recent
+        processor._create_lut(newest)  # evicts `newer`, not `oldest`
+
+        keys = list(processor._lut_cache)
+        assert processor._cache_key_for(oldest) in keys
+        assert processor._cache_key_for(newer) not in keys
+
+    def test_concurrent_callers_do_not_race(self) -> None:
+        """BatchProcessor shares one ImageProcessor across a thread pool.
+
+        An interleaved read and eviction raised KeyError inside move_to_end.
+        """
+        processor = ImageProcessor(ImagingSettings(lut_cache_entries=2))
+        curves = [self._curve(1.0 + index / 10) for index in range(8)]
+        errors: list[str] = []
+
+        def hammer() -> None:
+            try:
+                for _ in range(40):
+                    for curve in curves:
+                        processor._create_lut(curve)
+                        processor._create_lut_16(curve)
+            except Exception as exc:  # pragma: no cover - the bug being pinned
+                errors.append(f"{type(exc).__name__}: {exc}")
+
+        previous = sys.getswitchinterval()
+        sys.setswitchinterval(1e-6)
+        try:
+            threads = [threading.Thread(target=hammer) for _ in range(4)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+        finally:
+            sys.setswitchinterval(previous)
+
+        assert errors == []
 
     def test_the_two_depths_do_not_share_a_cache_entry(self) -> None:
         processor = ImageProcessor()
@@ -415,8 +502,8 @@ class TestEightBitDestinations:
         with Image.open(path) as saved:
             saved.load()
             assert saved.mode == "L"
-        # A clipping conversion would have left almost the whole frame white.
-        assert np.asarray(saved).mean() < 200
+            # A clipping conversion would have left almost the whole frame white.
+            assert np.asarray(saved).mean() < 200
 
     @pytest.mark.parametrize(
         "fmt", [ImageFormat.JPEG, ImageFormat.JPEG_HIGH], ids=["jpeg", "jpeg_high"]
@@ -449,4 +536,230 @@ class TestEightBitDestinations:
             narrowed = to_uint16(wider)
 
         assert narrowed[0, 1] == SIXTEEN_BIT_MAX
-        assert "Clipped 1 sample" in caplog.text
+        assert "Clamped 1 sample(s) above" in caplog.text
+
+    def test_clamping_a_negative_sample_is_logged_too(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """ "I" is signed, so a source can carry values below zero."""
+        signed = np.array([[-5, 100]], dtype=np.int32)
+
+        with caplog.at_level(logging.WARNING, logger="ptpd_calibration.imaging.processor"):
+            narrowed = to_uint16(signed)
+
+        assert narrowed[0, 0] == 0
+        assert "1 below zero" in caplog.text
+
+    def test_an_in_range_source_logs_nothing(self, caplog: pytest.LogCaptureFixture) -> None:
+        in_range = np.array([[0, SIXTEEN_BIT_MAX]], dtype=np.int32)
+
+        with caplog.at_level(logging.WARNING, logger="ptpd_calibration.imaging.processor"):
+            to_uint16(in_range)
+
+        assert caplog.text == ""
+
+
+class TestHighDepthDecode:
+    """A 16-bit scan larger than the decode limit must open, not raise.
+
+    ``ImageDecodeSettings.downsample_max_side`` defaults to 4096 and
+    ``Image.thumbnail`` cannot resample any ``I;16`` mode, so every real
+    scanner file above that size raised ``ValueError: image has wrong mode``
+    from inside the decode guard. That made the whole 16-bit path unreachable
+    for the input it exists to serve, and ``BatchProcessor`` reported it as a
+    per-file failure with an opaque message.
+    """
+
+    WIDE = 200
+    TALL = 100
+    LIMIT = 64
+
+    @classmethod
+    def _wide_scan(cls, tmp_path: Path) -> Path:
+        path = tmp_path / "wide.tiff"
+        ramp = (
+            np.linspace(0, SIXTEEN_BIT_MAX, cls.WIDE * cls.TALL)
+            .astype(np.uint16)
+            .reshape(cls.TALL, cls.WIDE)
+        )
+        Image.fromarray(ramp).save(path, format="TIFF")
+        return path
+
+    def test_an_oversized_high_depth_scan_decodes(self, tmp_path: Path) -> None:
+        image = open_image_safely(
+            self._wide_scan(tmp_path), ImageDecodeSettings(downsample_max_side=self.LIMIT)
+        )
+
+        assert max(image.size) <= self.LIMIT
+        assert image.mode in HIGH_DEPTH_GRAY_MODES
+        # Clipping to "L" would have capped the ramp at 255.
+        assert int(np.asarray(image).max()) > EIGHT_BIT_MAX
+
+    def test_an_eight_bit_scan_is_unaffected(self, tmp_path: Path) -> None:
+        path = tmp_path / "wide.png"
+        Image.new("L", (self.WIDE, self.TALL), 128).save(path)
+
+        image = open_image_safely(path, ImageDecodeSettings(downsample_max_side=self.LIMIT))
+
+        assert image.mode == "L"
+        assert max(image.size) <= self.LIMIT
+
+    def test_resize_to_fit_leaves_a_small_image_alone(self) -> None:
+        image = Image.fromarray(np.zeros((4, 4), dtype=np.uint16))
+
+        assert resize_to_fit(image, 64) is image
+
+    @pytest.mark.parametrize("mode", ["I", "I;16B"], ids=["int32", "big-endian"])
+    def test_other_high_depth_modes_carry_through(self, mode: str) -> None:
+        """ "I" and the big-endian variants are decode modes the guard allows."""
+        values = np.array([[0, SCALE_8_TO_16, 128 * SCALE_8_TO_16, SIXTEEN_BIT_MAX]], np.uint16)
+        image = Image.fromarray(values)
+        if mode != "I;16B":
+            image = image.convert(mode)
+
+        assert np.array_equal(to_uint16(np.asarray(image)), values)
+
+
+class TestExportDepthMatchesTheRequestedFormat:
+    """The eight-bit and sixteen-bit menu entries must produce different files.
+
+    ``ImageFormat.TIFF`` sits beside ``ImageFormat.TIFF_16BIT`` in the format
+    list, and ``BatchSettings.export_format`` defaults to the plain one. With
+    depth carried through the pipeline, both wrote a 16-bit file and the two
+    choices became indistinguishable.
+    """
+
+    @staticmethod
+    def _high_depth_result() -> object:
+        ramp = np.linspace(0, SIXTEEN_BIT_MAX, 32 * 32).astype(np.uint16).reshape(32, 32)
+        return ImageProcessor().load_image(Image.fromarray(ramp))
+
+    @pytest.mark.parametrize(
+        ("fmt", "suffix", "expected_mode"),
+        [
+            (ImageFormat.TIFF, ".tiff", "L"),
+            (ImageFormat.PNG, ".png", "L"),
+            (ImageFormat.TIFF_16BIT, ".tiff", EXPECTED_16BIT_MODE),
+            (ImageFormat.PNG_16BIT, ".png", EXPECTED_16BIT_MODE),
+        ],
+        ids=["tiff-8", "png-8", "tiff-16", "png-16"],
+    )
+    def test_requested_format_decides_the_depth(
+        self, tmp_path: Path, fmt: ImageFormat, suffix: str, expected_mode: str
+    ) -> None:
+        processor = ImageProcessor()
+        path = tmp_path / f"out{suffix}"
+
+        processor.export(self._high_depth_result(), path, ExportSettings(format=fmt))
+
+        with Image.open(path) as saved:
+            saved.load()
+            assert saved.mode == expected_mode
+
+    def test_original_keeps_the_source_depth(self, tmp_path: Path) -> None:
+        """ "Same as input" must not quietly mean "eight bits"."""
+        processor = ImageProcessor()
+        path = tmp_path / "out.tiff"
+
+        processor.export(
+            self._high_depth_result(), path, ExportSettings(format=ImageFormat.ORIGINAL)
+        )
+
+        with Image.open(path) as saved:
+            saved.load()
+            assert saved.mode == EXPECTED_16BIT_MODE
+
+    @pytest.mark.parametrize(
+        ("fmt", "suffix"),
+        [(ImageFormat.TIFF_16BIT, ".tiff"), (ImageFormat.PNG_16BIT, ".png")],
+        ids=["tiff", "png"],
+    )
+    def test_export_to_bytes_honours_a_sixteen_bit_request(
+        self, fmt: ImageFormat, suffix: str
+    ) -> None:
+        """Only the file path widened an 8-bit image; the bytes path did not.
+
+        An HTTP export endpoint returns bytes, so it silently served 8-bit
+        files to callers who asked for 16.
+        """
+        gradient = _gradient()
+        processor = ImageProcessor()
+
+        payload, extension = processor.export_to_bytes(
+            processor.load_image(Image.fromarray(gradient)), ExportSettings(format=fmt)
+        )
+
+        assert extension == suffix
+        with Image.open(io.BytesIO(payload)) as saved:
+            saved.load()
+            assert saved.mode == EXPECTED_16BIT_MODE
+            assert np.array_equal(np.asarray(saved), gradient.astype(np.uint16) * SCALE_8_TO_16)
+
+    def test_export_to_bytes_keeps_a_high_depth_source(self) -> None:
+        processor = ImageProcessor()
+
+        payload, _ = processor.export_to_bytes(
+            self._high_depth_result(), ExportSettings(format=ImageFormat.TIFF_16BIT)
+        )
+
+        with Image.open(io.BytesIO(payload)) as saved:
+            saved.load()
+            data = np.asarray(saved)
+        assert saved.mode == EXPECTED_16BIT_MODE
+        assert not np.all(data % SCALE_8_TO_16 == 0)
+
+    @pytest.mark.parametrize(
+        ("array", "expected"),
+        [
+            (np.array([[EIGHT_BIT_MAX]], dtype=np.uint8), SIXTEEN_BIT_MAX),
+            (np.array([[True]], dtype=bool), SIXTEEN_BIT_MAX),
+            (np.array([[float(EIGHT_BIT_MAX)]], dtype=np.float32), SIXTEEN_BIT_MAX),
+            (np.array([[float(SIXTEEN_BIT_MAX)]], dtype=np.float32), SIXTEEN_BIT_MAX),
+            (np.array([[SIXTEEN_BIT_MAX]], dtype=np.uint16), SIXTEEN_BIT_MAX),
+        ],
+        ids=["uint8", "bool", "float-8bit-range", "float-16bit-range", "uint16"],
+    )
+    def test_full_scale_stays_full_scale(self, array: np.ndarray, expected: int) -> None:
+        """Multiplying by 257 wrapped float and bool full-scale to near black."""
+        assert int(ImageProcessor._as_16bit(array)[0, 0]) == expected
+
+
+class TestAIFacadeKeepsTheDepth:
+    """``PlatinumPalladiumAI`` builds negatives without ``ImageProcessor``.
+
+    It carried its own ``convert("L")`` block, which clips rather than scales,
+    so the public AI entry point produced an almost entirely white negative
+    from a 16-bit scan even after the processor was fixed. A guard in one
+    place is not a guard.
+    """
+
+    SIDE = 32
+
+    def test_a_sixteen_bit_scan_survives_the_ai_entry_point(self, tmp_path: Path) -> None:
+        from ptpd_calibration.ai.platinum_palladium_ai import PlatinumPalladiumAI
+
+        ramp = (
+            np.linspace(0, SIXTEEN_BIT_MAX, self.SIDE * self.SIDE)
+            .astype(np.uint16)
+            .reshape(self.SIDE, self.SIDE)
+        )
+        source = tmp_path / "scan.tiff"
+        Image.fromarray(ramp).save(source, format="TIFF")
+        axis = np.linspace(0.0, 1.0, 32)
+        curve = CurveData(name="ai", input_values=list(axis), output_values=list(axis**1.5))
+
+        result = PlatinumPalladiumAI().generate_digital_negative(
+            source,
+            curve=curve,
+            output_path=tmp_path / "negative.tiff",
+            output_format=ImageFormat.TIFF_16BIT,
+        )
+
+        with Image.open(result.output_path) as saved:
+            saved.load()
+            data = np.asarray(saved)
+            assert saved.mode == EXPECTED_16BIT_MODE
+        assert np.unique(data).size > EIGHT_BIT_LEVELS
+        assert not np.all(data % SCALE_8_TO_16 == 0)
+        # Clipping blew 99.6% of the frame to white.
+        assert float((data >= SIXTEEN_BIT_MAX - SCALE_8_TO_16).mean()) < 0.5

@@ -12,10 +12,16 @@ from ptpd_calibration.imaging.histogram import (
     HistogramStats,
 )
 from ptpd_calibration.imaging.processor import (
+    HIGH_DEPTH_GRAY_MODES,
+    SIXTEEN_BIT_FORMATS,
+    ColorMode,
     ExportSettings,
     ImageFormat,
     ImageProcessor,
     ProcessingResult,
+    is_high_depth_gray,
+    to_eight_bit_gray,
+    to_uint16,
 )
 from ptpd_calibration.imaging.split_grade import (
     BlendMode,
@@ -33,6 +39,13 @@ __all__ = [
     "ImageFormat",
     "ProcessingResult",
     "ExportSettings",
+    "ColorMode",
+    # Bit depth (ADR-0016)
+    "HIGH_DEPTH_GRAY_MODES",
+    "SIXTEEN_BIT_FORMATS",
+    "is_high_depth_gray",
+    "to_eight_bit_gray",
+    "to_uint16",
     # Histogram
     "HistogramAnalyzer",
     "HistogramResult",
