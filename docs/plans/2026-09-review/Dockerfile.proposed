@@ -1,0 +1,67 @@
+# syntax=docker/dockerfile:1.7
+# Proposed Dockerfile for the Hugging Face *Docker* Space (sdk: docker, app_port: 7860).
+# Multi-stage: (1) node builds the React app, (2) uv resolves the locked Python env,
+# (3) slim runtime image serving FastAPI + static build on :7860 as UID 1000.
+#
+# Local test:   docker build -t ptpd . && docker run --rm -p 7860:7860 ptpd
+# CI:           built by the `release` job on tags; the `deploy-hf` job pushes the
+#               git tree to the Space, which rebuilds this file server-side.
+
+############################ 1. frontend build ###############################
+FROM node:22-bookworm-slim AS web
+WORKDIR /web
+# TODO: pin pnpm to the "packageManager" value in frontend/package.json
+RUN corepack enable && corepack prepare pnpm@10 --activate
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+COPY frontend/ ./
+# Same-origin API: the SPA is served by FastAPI, so no absolute API URL.
+# getEnv() in frontend/src/config/index.ts:53-57 treats "" as unset (falls back to
+# http://127.0.0.1:8000), so use "/" - axios joins "/" + "/api/x" -> "/api/x".
+ENV VITE_API_URL=/
+RUN pnpm build            # -> /web/dist
+
+############################ 2. python deps ##################################
+# Official uv image: uv + CPython 3.12 preinstalled (tag pinned to the uv version in CI).
+FROM ghcr.io/astral-sh/uv:0.8.17-python3.12-bookworm-slim AS py
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=0 \
+    UV_FROZEN=1
+WORKDIR /app
+# Layer 1: third-party deps only (cache survives source edits)
+COPY pyproject.toml uv.lock README.md LICENSE ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev --no-install-project --extra server
+# Layer 2: the project itself
+COPY src ./src
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev --extra server
+
+############################ 3. runtime ######################################
+FROM python:3.12-slim-bookworm AS runtime
+# HF Docker Spaces run the container as UID 1000 - create the user first,
+# then COPY --chown so no chown layer is needed (per HF docs).
+RUN useradd -m -u 1000 user \
+ && mkdir -p /data && chown user:user /data
+WORKDIR /app
+COPY --from=py  --chown=user /app/.venv   /app/.venv
+COPY --from=py  --chown=user /app/src     /app/src
+COPY --from=web --chown=user /web/dist    /app/static
+USER user
+ENV HOME=/home/user \
+    PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PTPD_API_HOST=0.0.0.0 \
+    PTPD_API_PORT=7860 \
+    PTPD_API_STATIC_DIR=/app/static \
+    PTPD_DATA_DIR=/data
+# ^ APISettings uses env_prefix "PTPD_API_" (src/ptpd_calibration/config.py:355-364),
+#   fields host/port/reload/cors_origins. PTPD_API_STATIC_DIR is a NEW field the API
+#   must learn (mount StaticFiles(html=True) at "/" after the /api routes) - see report §4.
+EXPOSE 7860
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:7860/api/health', timeout=4).status==200 else 1)"
+CMD ["uvicorn", "ptpd_calibration.api.server:create_app", "--factory", \
+     "--host", "0.0.0.0", "--port", "7860", "--proxy-headers", "--forwarded-allow-ips=*"]
