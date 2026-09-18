@@ -27,6 +27,10 @@ logger = logging.getLogger(__name__)
 
 _PATH_SEPARATORS: tuple[str, ...] = ("/", "\\")
 _UNSAFE_NAME_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
+# Conservative default for record identifiers that come from a URL: letters,
+# digits, dash and underscore only. Callers with a known id format (a UUID,
+# say) pass a stricter pattern.
+RECORD_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}")
 _BYTES_PER_MB = 1024 * 1024
 _BYTES_PER_KB = 1024
 
@@ -115,14 +119,23 @@ def server_upload_path(upload_dir: Path, suffix: str) -> Path:
     return upload_dir / f"{uuid4().hex}{suffix}"
 
 
-def stored_record_path(directory: Path, identifier: str, suffix: str) -> Path | None:
+def stored_record_path(
+    directory: Path,
+    identifier: str,
+    suffix: str,
+    *,
+    pattern: re.Pattern[str] = RECORD_ID_PATTERN,
+) -> Path | None:
     """Return the path of a stored record inside ``directory``, or None if unsafe.
 
     ``identifier`` reaches this function straight from a URL path parameter, so
-    it is never trusted: it must be a plain component (no separators, no NUL,
-    no leading dot, so ``..`` is excluded) and the resolved path must still sit
-    inside ``directory``. The containment check is what makes this safe even if
-    a future identifier format allows more characters.
+    it is never trusted. Three independent checks apply, in order:
+
+    1. it must match ``pattern`` in full, which admits no separator, dot or NUL
+       and so cannot express traversal;
+    2. it must still be a plain basename;
+    3. the resolved path must sit inside ``directory``, which holds even if a
+       future caller passes a looser pattern.
 
     Returning ``None`` rather than raising lets callers answer 404, which tells
     an attacker nothing about what does or does not exist on disk.
@@ -131,17 +144,21 @@ def stored_record_path(directory: Path, identifier: str, suffix: str) -> Path | 
         directory: Directory the record must live in.
         identifier: Untrusted record id from the request.
         suffix: Extension to append, including the leading dot.
+        pattern: Full-match pattern the identifier must satisfy.
 
     Returns:
         The resolved path, or ``None`` when the identifier is not safe.
     """
-    if not is_safe_basename(identifier):
+    if not identifier or not pattern.fullmatch(identifier):
+        logger.debug("Rejected record identifier not matching %s: %r", pattern.pattern, identifier)
+        return None
+    if not is_safe_basename(identifier):  # pragma: no cover - implied by the pattern
         logger.debug("Rejected unsafe record identifier: %r", identifier)
         return None
 
-    candidate = (directory / f"{identifier}{suffix}").resolve()
     root = directory.resolve()
-    if not candidate.is_relative_to(root):
+    candidate = (root / f"{identifier}{suffix}").resolve()
+    if not candidate.is_relative_to(root):  # pragma: no cover - implied by the pattern
         logger.warning("Rejected record identifier escaping %s: %r", root, identifier)
         return None
     return candidate

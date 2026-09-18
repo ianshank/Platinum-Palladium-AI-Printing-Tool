@@ -3,6 +3,7 @@ FastAPI server for PTPD Calibration System.
 """
 
 import logging
+import re
 import tempfile
 from pathlib import Path
 from uuid import UUID
@@ -13,6 +14,10 @@ _log = logging.getLogger(__name__)
 
 # Extension of the JSON records written for stored curves.
 _CURVE_SUFFIX = ".json"
+
+# Stored curve ids are UUIDs (CurveData.id), so the id taken from the URL is
+# matched against that shape before it is ever joined to a path.
+_CURVE_ID_PATTERN = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
 
 
 def create_app(settings: Settings | None = None):
@@ -227,7 +232,7 @@ def create_app(settings: Settings | None = None):
         ``stored_record_path``, which rejects separators and traversal and
         re-checks that the resolved path is still under ``curves_dir``.
         """
-        return stored_record_path(curves_dir, curve_id, _CURVE_SUFFIX)
+        return stored_record_path(curves_dir, curve_id, _CURVE_SUFFIX, pattern=_CURVE_ID_PATTERN)
 
     def _store_curve(curve: CurveData) -> None:
         """Cache curve in memory and persist to disk."""

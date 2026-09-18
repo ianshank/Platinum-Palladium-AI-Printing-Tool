@@ -9,6 +9,7 @@ endpoint-level behaviour lives in ``tests/api/test_security_endpoints.py``.
 from __future__ import annotations
 
 import io
+import re
 from pathlib import Path
 
 import pytest
@@ -151,6 +152,19 @@ class TestStoredRecordPath:
     def test_returns_none_rather_than_raising(self, records: Path) -> None:
         """Callers answer 404, so an attacker learns nothing about what exists."""
         assert stored_record_path(records, "../secret", ".json") is None
+
+    def test_default_pattern_admits_plain_ids_only(self, records: Path) -> None:
+        assert stored_record_path(records, "abc_123-XY", ".json") is not None
+        assert stored_record_path(records, "has space", ".json") is None
+        assert stored_record_path(records, "has.dot", ".json") is None
+        assert stored_record_path(records, "x" * 200, ".json") is None
+
+    def test_caller_supplied_pattern_narrows_further(self, records: Path) -> None:
+        """The API passes a UUID pattern, so a valid-looking but wrong id is refused."""
+        uuid_pattern = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+        good = "9f6b2c61-0000-4000-8000-000000000000"
+        assert stored_record_path(records, good, ".json", pattern=uuid_pattern) is not None
+        assert stored_record_path(records, "not-a-uuid", ".json", pattern=uuid_pattern) is None
 
 
 class TestSafeExportName:
