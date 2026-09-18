@@ -6,12 +6,71 @@ for AlphaZero-style calibration parameter search.
 """
 
 import logging
+import random
+from collections.abc import Iterable, Sequence
 from datetime import datetime
+from typing import Any, Protocol
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+
+
+class RandomSource(Protocol):
+    """Structural type for the random draws the MCTS package makes.
+
+    Satisfied by both the stdlib ``random`` module and a ``random.Random``
+    instance, so callers can inject a seeded generator (reproducible search and
+    training) while the module-level generator remains the backward-compatible
+    default.
+    """
+
+    def random(self) -> float: ...
+
+    def randint(self, a: int, b: int) -> int: ...
+
+    def uniform(self, a: float, b: float) -> float: ...
+
+    def getrandbits(self, k: int) -> int: ...
+
+    def choice(self, seq: Sequence[Any]) -> Any: ...
+
+    def choices(
+        self,
+        population: Sequence[Any],
+        weights: Sequence[float] | None = None,
+        *,
+        cum_weights: Sequence[float] | None = None,
+        k: int = 1,
+    ) -> list[Any]: ...
+
+    def sample(
+        self,
+        population: Sequence[Any],
+        k: int,
+        *,
+        counts: Iterable[int] | None = None,
+    ) -> list[Any]: ...
+
+
+def make_rng(seed: int | None) -> RandomSource:
+    """Return the random source to use for a given seed.
+
+    Args:
+        seed: ``None`` returns the module-level ``random`` generator (so existing
+            callers, and tests that call ``random.seed()``, behave exactly as
+            before). Any integer returns a private ``random.Random(seed)`` whose
+            stream is independent of global state.
+
+    Returns:
+        An object satisfying :class:`RandomSource`.
+    """
+    if seed is None:
+        logger.debug("make_rng: no seed given, using module-level random generator")
+        return random
+    logger.debug(f"make_rng: creating private random.Random(seed={seed})")
+    return random.Random(seed)
 
 
 class CalibrationAction(BaseModel):

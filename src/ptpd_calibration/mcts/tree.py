@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import logging
 import math
+import random
 
-from ptpd_calibration.mcts.types import CalibrationAction, CalibrationState
+from ptpd_calibration.mcts.types import CalibrationAction, CalibrationState, RandomSource
 
 logger = logging.getLogger(__name__)
 
@@ -191,12 +192,19 @@ class TreeNode:
                 distribution[child.action.bin_index] = child.visit_count
         return distribution
 
-    def best_child(self, temperature: float = 0.0) -> TreeNode:
+    def best_child(
+        self,
+        temperature: float = 0.0,
+        rng: RandomSource | None = None,
+    ) -> TreeNode:
         """Select best child by visit count (with temperature for exploration).
 
         Args:
             temperature: Temperature for selection. 0 = greedy (highest visit count),
                         higher values = more stochastic sampling by visit distribution.
+            rng: Random source for the stochastic branch. ``None`` uses the
+                module-level ``random`` generator (backward compatible); pass a
+                seeded ``random.Random`` for reproducible selection.
 
         Returns:
             Best child node
@@ -216,7 +224,7 @@ class TreeNode:
             return best
         else:
             # Stochastic: sample proportional to visits^(1/temperature)
-            import random
+            source: RandomSource = rng if rng is not None else random
 
             visits = [child.visit_count for child in self.children]
             # Apply temperature
@@ -225,13 +233,13 @@ class TreeNode:
 
             if total_weight == 0:
                 # All children unvisited, pick randomly
-                best = random.choice(self.children)
+                best = source.choice(self.children)
                 logger.debug("Best child (random): all unvisited")
                 return best
 
             # Normalize and sample
             probabilities = [w / total_weight for w in weights]
-            best = random.choices(self.children, weights=probabilities, k=1)[0]
+            best = source.choices(self.children, weights=probabilities, k=1)[0]
             logger.debug(
                 f"Best child (temp={temperature:.2f}): "
                 f"visits={best.visit_count}, "

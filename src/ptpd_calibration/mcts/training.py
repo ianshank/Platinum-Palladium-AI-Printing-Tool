@@ -10,14 +10,18 @@ All neural network code is guarded behind TORCH_AVAILABLE.
 from __future__ import annotations
 
 import logging
-import random
 import time
 from collections import deque
 
 import numpy as np
 
 from ptpd_calibration.mcts.config import DEFAULT_PARAMETER_RANGES, MCTSSettings, PhysicsConstants
-from ptpd_calibration.mcts.types import TrainingExample, TrainingMetrics
+from ptpd_calibration.mcts.types import (
+    RandomSource,
+    TrainingExample,
+    TrainingMetrics,
+    make_rng,
+)
 
 # PyTorch guard
 try:
@@ -42,6 +46,26 @@ def _check_torch() -> None:
         )
 
 
+def seed_torch(seed: int | None) -> bool:
+    """Seed PyTorch's global generator when torch is installed.
+
+    Must run *before* any ``nn.Module`` is constructed for the seed to govern
+    weight initialisation.
+
+    Args:
+        seed: Seed to apply. ``None`` is a no-op.
+
+    Returns:
+        True when ``torch.manual_seed`` was called, False otherwise.
+    """
+    if seed is None or not TORCH_AVAILABLE or torch is None:
+        logger.debug(f"seed_torch: skipped (seed={seed}, torch_available={TORCH_AVAILABLE})")
+        return False
+    torch.manual_seed(seed)
+    logger.debug(f"seed_torch: torch.manual_seed({seed})")
+    return True
+
+
 class ReplayBuffer:
     """Fixed-size replay buffer for training examples.
 
@@ -49,18 +73,28 @@ class ReplayBuffer:
     from MCTS self-play episodes with FIFO eviction.
     """
 
-    def __init__(self, max_size: int | None = None, settings: MCTSSettings | None = None):
+    def __init__(
+        self,
+        max_size: int | None = None,
+        settings: MCTSSettings | None = None,
+        seed: int | None = None,
+    ):
         """Initialize ReplayBuffer.
 
         Args:
             max_size: Maximum buffer size. If None, uses settings.
             settings: MCTS settings for buffer configuration.
+            seed: Seed for the private generator used by ``sample``. Overrides
+                ``settings.seed`` when given; ``None`` with no configured seed
+                falls back to the module-level ``random`` generator.
         """
         self.settings = settings or MCTSSettings()
         self._max_size = max_size or self.settings.replay_buffer_size
         self._buffer: deque[TrainingExample] = deque(maxlen=self._max_size)
+        self.seed: int | None = seed if seed is not None else self.settings.seed
+        self._rng: RandomSource = make_rng(self.seed)
 
-        logger.debug(f"ReplayBuffer initialized with max_size={self._max_size}")
+        logger.debug(f"ReplayBuffer initialized with max_size={self._max_size}, seed={self.seed}")
 
     @property
     def size(self) -> int:
@@ -118,7 +152,7 @@ class ReplayBuffer:
         if batch_size > self.size:
             raise ValueError(f"Requested batch_size={batch_size} exceeds buffer size={self.size}")
 
-        return random.sample(list(self._buffer), batch_size)
+        return self._rng.sample(list(self._buffer), batch_size)
 
     def sample_tensors(
         self,
@@ -199,17 +233,30 @@ class MCTSTrainer:
         self,
         settings: MCTSSettings | None = None,
         physics: PhysicsConstants | None = None,
+        seed: int | None = None,
     ):
         """Initialize MCTSTrainer.
 
         Args:
             settings: MCTS settings for training configuration.
             physics: Physics constants for simulator.
+            seed: Seed for episode parameter sampling, replay sampling and
+                (via ``torch.manual_seed``) network initialisation. Overrides
+                ``settings.seed`` when given; ``None`` with no configured seed
+                keeps the previous non-deterministic behaviour.
         """
         _check_torch()
 
         self.settings = settings or MCTSSettings()
         self.physics = physics or PhysicsConstants()
+
+        # Seed everything *before* the network is built so weight init is covered.
+        self.seed: int | None = seed if seed is not None else self.settings.seed
+        self._rng: RandomSource = make_rng(self.seed)
+        seed_torch(self.seed)
+        # Give the replay buffer its own stream, derived from (not equal to) ours,
+        # so parameter sampling and batch sampling are not correlated.
+        buffer_seed = self._rng.getrandbits(32) if self.seed is not None else None
 
         # Lazy imports to avoid circular dependencies
         from ptpd_calibration.mcts.networks import DualNetwork
@@ -220,7 +267,7 @@ class MCTSTrainer:
             lr=self.settings.network_learning_rate,
             weight_decay=self.settings.network_weight_decay,
         )
-        self.replay_buffer = ReplayBuffer(settings=self.settings)
+        self.replay_buffer = ReplayBuffer(settings=self.settings, seed=buffer_seed)
 
         # Tracking
         self._best_quality = 0.0
@@ -231,7 +278,8 @@ class MCTSTrainer:
             f"MCTSTrainer initialized: "
             f"lr={self.settings.network_learning_rate}, "
             f"buffer_size={self.settings.replay_buffer_size}, "
-            f"batch_size={self.settings.training_batch_size}"
+            f"batch_size={self.settings.training_batch_size}, "
+            f"seed={self.seed}"
         )
 
     def train_episode(self) -> TrainingMetrics:
@@ -270,7 +318,7 @@ class MCTSTrainer:
         if episode_quality > self._best_quality:
             self._best_quality = episode_quality
             logger.info(
-                f"New best quality: {self._best_quality:.4f} " f"(episode {self._episode_count})"
+                f"New best quality: {self._best_quality:.4f} (episode {self._episode_count})"
             )
 
         metrics = TrainingMetrics(
@@ -325,7 +373,7 @@ class MCTSTrainer:
                 callback(i, metrics)
 
         logger.info(
-            f"Training complete: {episodes} episodes, " f"best_quality={self._best_quality:.4f}"
+            f"Training complete: {episodes} episodes, best_quality={self._best_quality:.4f}"
         )
 
         return all_metrics
@@ -393,11 +441,11 @@ class MCTSTrainer:
                 num_steps = (
                     int((param_range.max_value - param_range.min_value) / param_range.step) + 1
                 )
-                idx = random.randint(0, num_steps - 1)
+                idx = self._rng.randint(0, num_steps - 1)
                 params[name] = param_range.min_value + idx * param_range.step
             else:
                 # Continuous: uniform sample
-                params[name] = random.uniform(
+                params[name] = self._rng.uniform(
                     param_range.min_value,
                     param_range.max_value,
                 )
@@ -545,7 +593,9 @@ class MCTSTrainer:
             path: File path for checkpoint
         """
         _check_torch()
-        checkpoint = torch.load(path, weights_only=False)
+        from ptpd_calibration.core.artifacts import load_torch_checkpoint
+
+        checkpoint = load_torch_checkpoint(path)
         self.network.load_state_dict(checkpoint["network_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self._episode_count = checkpoint.get("episode_count", 0)

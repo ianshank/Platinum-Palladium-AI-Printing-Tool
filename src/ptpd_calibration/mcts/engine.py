@@ -8,7 +8,6 @@ for continuous action spaces.
 from __future__ import annotations
 
 import logging
-import random
 import time
 
 from ptpd_calibration.mcts.config import (
@@ -22,7 +21,9 @@ from ptpd_calibration.mcts.tree import TreeNode
 from ptpd_calibration.mcts.types import (
     CalibrationAction,
     CalibrationState,
+    RandomSource,
     SearchResult,
+    make_rng,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ class MCTSEngine:
         physics: PhysicsConstants | None = None,
         simulator: ExtendedProcessSimulator | None = None,
         scorer: QualityScorer | None = None,
+        seed: int | None = None,
     ):
         """Initialize MCTS engine.
 
@@ -49,6 +51,11 @@ class MCTSEngine:
             physics: Physics model parameters. If None, uses defaults.
             simulator: Process simulator. If None, creates one with physics.
             scorer: Quality scorer. If None, creates one with settings.
+            seed: Random seed for this engine's private generator. Overrides
+                ``settings.seed`` (``PTPD_MCTS_SEED``) when given. ``None`` with no
+                configured seed keeps the module-level ``random`` generator, so
+                behaviour is unchanged for existing callers. Two engines built with
+                the same seed produce identical ``search()`` results.
         """
         self.settings = settings or MCTSSettings()
         self.physics = physics or PhysicsConstants()
@@ -58,11 +65,25 @@ class MCTSEngine:
         )
         self.scorer = scorer or QualityScorer(settings=self.settings)
 
+        self.seed: int | None = seed if seed is not None else self.settings.seed
+        self._rng: RandomSource = make_rng(self.seed)
+        self._last_root: TreeNode | None = None
+
         logger.info(
             f"Initialized MCTSEngine: {self.settings.num_simulations} simulations, "
             f"c_puct={self.settings.c_puct:.2f}, "
-            f"progressive_widening_alpha={self.settings.progressive_widening_alpha:.2f}"
+            f"progressive_widening_alpha={self.settings.progressive_widening_alpha:.2f}, "
+            f"seed={self.seed}"
         )
+
+    @property
+    def last_root(self) -> TreeNode | None:
+        """Root of the most recent ``search()`` tree (diagnostics and golden tests).
+
+        Exposes the integer visit counts that ``SearchResult.visit_distribution``
+        normalises away. ``None`` until ``search()`` has run.
+        """
+        return self._last_root
 
     def search(
         self,
@@ -132,6 +153,7 @@ class MCTSEngine:
                 )
 
         # 3. Extract results
+        self._last_root = root
         search_time = time.time() - start_time
         result = self._extract_result(
             root=root,
@@ -291,8 +313,8 @@ class MCTSEngine:
         if param_range is None:
             raise ValueError(f"Unknown parameter dimension: {dimension}")
 
-        # Sample bin index uniformly
-        bin_index = random.randint(0, self.settings.action_bins - 1)
+        # Sample bin index uniformly from the engine's (possibly seeded) generator
+        bin_index = self._rng.randint(0, self.settings.action_bins - 1)
 
         # Convert bin to value
         bin_fraction = bin_index / (self.settings.action_bins - 1)
@@ -370,8 +392,8 @@ class MCTSEngine:
                 logger.warning(f"Unknown parameter dimension: {dimension}")
                 continue
 
-            # Sample uniformly
-            value = random.uniform(param_range.min_value, param_range.max_value)
+            # Sample uniformly from the engine's (possibly seeded) generator
+            value = self._rng.uniform(param_range.min_value, param_range.max_value)
             parameters[dimension] = value
 
             logger.debug(
@@ -457,8 +479,8 @@ class MCTSEngine:
                         dist_list[bin_idx] = count / total_visits
                 visit_distribution[dimension] = dist_list
 
-            # Move to best child
-            current = current.best_child(temperature=0.0)
+            # Move to best child (greedy; rng only matters for temperature > 0)
+            current = current.best_child(temperature=0.0, rng=self._rng)
 
             # Add to best parameters
             if current.action is not None:
@@ -534,7 +556,7 @@ class MCTSEngine:
 
         # Score each terminal node
         scored_alternatives: list[tuple[float, dict[str, float]]] = []
-        for node, params in terminal_nodes:
+        for _node, params in terminal_nodes:
             sim_result = self.simulator.simulate(params)
             quality = self.scorer.score(sim_result, target_curve=target_curve)
             scored_alternatives.append((quality, params))

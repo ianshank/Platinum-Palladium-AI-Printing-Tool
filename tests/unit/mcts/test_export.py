@@ -155,9 +155,7 @@ class TestMCTSResultExporter:
         assert "MCTS" in curve_data.notes
         assert "Quality Score: 0.87" in curve_data.notes
 
-    def test_to_curve_data_correct_number_of_points(
-        self, exporter, sample_search_result
-    ):
+    def test_to_curve_data_correct_number_of_points(self, exporter, sample_search_result):
         """Test that CurveData has correct number of points."""
         try:
             curve_data = exporter.to_curve_data(sample_search_result)
@@ -189,7 +187,15 @@ class TestMCTSResultExporter:
         assert record.metal_ratio == 0.6
         assert record.exposure_time == 180.0
         assert record.humidity == 50.0
-        assert record.temperature == 25.0
+
+        # SCI-08: the search decides the *developer bath* temperature. It must land
+        # in developer_temp_c and never be written into the ambient ``temperature``.
+        assert record.developer_temp_c == 25.0
+        assert record.temperature is None
+
+        # SCI-08: densities sampled from the simulated curve are tagged as such.
+        assert record.provenance == "simulated"
+        assert record.is_simulated is True
 
         # Verify chemistry type inference
         assert record.chemistry_type == ChemistryType.PLATINUM_PALLADIUM
@@ -198,9 +204,13 @@ class TestMCTSResultExporter:
         assert record.paper_type == "Arches Platine"
         assert record.uv_source == "LED 365nm"
 
-        # Verify measured densities
+        # Simulated densities are still exported (under simulated provenance only)
         assert len(record.measured_densities) > 0
         assert len(record.measured_densities) <= 21  # Standard step wedge
+        curve = sample_search_result.predicted_curve
+        assert record.measured_densities[0] == curve[0]
+        assert record.measured_densities[-1] == curve[-1]
+        assert all(value in curve for value in record.measured_densities)
 
         # Verify tags
         assert "mcts" in record.tags
@@ -245,6 +255,40 @@ class TestMCTSResultExporter:
         )
         record_mix = exporter.to_calibration_record(result_mix)
         assert record_mix.chemistry_type == ChemistryType.PLATINUM_PALLADIUM
+
+    def test_to_calibration_record_is_excluded_from_measured_queries(
+        self, exporter, sample_search_result
+    ):
+        """An exported record must not leak into measured-only database queries."""
+        try:
+            from ptpd_calibration.ml.database import CalibrationDatabase
+        except ImportError:
+            pytest.skip("CalibrationDatabase not available")
+
+        record = exporter.to_calibration_record(sample_search_result)
+        db = CalibrationDatabase()
+        db.add_record(record)
+
+        assert db.get_all_records() == []
+        assert db.get_all_records(include_simulated=True) == [record]
+        assert db.query(paper_type=record.paper_type) == []
+        assert db.query(paper_type=record.paper_type, include_simulated=True) == [record]
+
+    def test_to_calibration_record_uses_default_developer_temp_when_missing(self, exporter):
+        """developer_temp_c falls back to the configured parameter default."""
+        from ptpd_calibration.mcts.config import DEFAULT_PARAMETER_RANGES
+
+        result = SearchResult(
+            best_parameters={"metal_ratio": 0.5},
+            predicted_curve=[0.1, 1.0, 2.0],
+            quality_score=0.8,
+            num_simulations=100,
+            search_time_seconds=1.0,
+        )
+        record = exporter.to_calibration_record(result)
+        assert record.developer_temp_c == DEFAULT_PARAMETER_RANGES["developer_temp"].default_value
+        assert record.temperature is None
+        assert record.provenance == "simulated"
 
     def test_to_recipe_json_contains_all_keys(self, exporter, sample_search_result):
         """Test recipe JSON contains all required keys."""
@@ -333,9 +377,7 @@ class TestMCTSResultExporter:
         qtr_values = exporter.to_qtr_curve(sample_search_result)
 
         # Count inversions (where value decreases)
-        inversions = sum(
-            1 for i in range(len(qtr_values) - 1) if qtr_values[i] > qtr_values[i + 1]
-        )
+        inversions = sum(1 for i in range(len(qtr_values) - 1) if qtr_values[i] > qtr_values[i + 1])
 
         # Allow up to 10% inversions due to noise
         max_inversions = len(qtr_values) * 0.1
@@ -416,9 +458,7 @@ class TestMCTSResultExporter:
         assert "# QuadTone RIP Curve" in lines[0]
         assert "# Quality Score: 0.870" in lines[2]
 
-    def test_export_to_file_creates_directory(
-        self, exporter, sample_search_result, tmp_path
-    ):
+    def test_export_to_file_creates_directory(self, exporter, sample_search_result, tmp_path):
         """Test export creates directory if it doesn't exist."""
         nested_path = tmp_path / "nested" / "dir"
         assert not nested_path.exists()
@@ -592,9 +632,7 @@ class TestExportIntegration:
             lines = f.readlines()
         # Header comments + 256 values
         qtr_values = [
-            int(line.strip())
-            for line in lines
-            if not line.startswith("#") and line.strip()
+            int(line.strip()) for line in lines if not line.startswith("#") and line.strip()
         ]
         assert len(qtr_values) == 256
 
@@ -623,4 +661,6 @@ class TestExportIntegration:
             recipe = json.load(f)
 
         # Should have default parameter values
-        assert "metal_ratio" in recipe["parameters"] or len(recipe["parameters"]) == 1  # quality_score
+        assert (
+            "metal_ratio" in recipe["parameters"] or len(recipe["parameters"]) == 1
+        )  # quality_score

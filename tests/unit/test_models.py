@@ -284,6 +284,71 @@ class TestCalibrationRecord:
         assert features[0] == 0.5  # metal_ratio
         assert features[1] == 1.0  # has_contrast_agent
 
+    def test_provenance_defaults_to_measured(self):
+        """New records are measured unless stated otherwise (SCI-08)."""
+        record = CalibrationRecord(paper_type="Paper", exposure_time=120.0)
+        assert record.provenance == "measured"
+        assert record.is_simulated is False
+        assert record.developer_temp_c is None
+
+    def test_provenance_simulated_is_explicit(self):
+        """Simulated provenance must be opted into explicitly."""
+        record = CalibrationRecord(
+            paper_type="Paper",
+            exposure_time=120.0,
+            provenance="simulated",
+            developer_temp_c=25.0,
+        )
+        assert record.provenance == "simulated"
+        assert record.is_simulated is True
+        assert record.developer_temp_c == 25.0
+        # Ambient temperature is a separate quantity and stays unset
+        assert record.temperature is None
+
+    def test_provenance_rejects_unknown_values(self):
+        """Only the two documented provenance values are accepted."""
+        with pytest.raises(ValueError):
+            CalibrationRecord(paper_type="Paper", exposure_time=120.0, provenance="guessed")
+
+    def test_developer_temp_c_is_bounded(self):
+        """developer_temp_c has physical bounds like the other temperature field."""
+        with pytest.raises(ValueError):
+            CalibrationRecord(paper_type="Paper", exposure_time=120.0, developer_temp_c=95.0)
+        with pytest.raises(ValueError):
+            CalibrationRecord(paper_type="Paper", exposure_time=120.0, developer_temp_c=-5.0)
+
+    def test_legacy_json_without_provenance_loads_as_measured(self):
+        """Records serialized before SCI-08 (no provenance/developer_temp_c) still load."""
+        legacy = {
+            "id": "12345678-1234-5678-1234-567812345678",
+            "timestamp": "2025-01-01T12:00:00",
+            "paper_type": "Arches Platine",
+            "exposure_time": 180.0,
+            "humidity": 50.0,
+            "temperature": 21.0,
+            "measured_densities": [0.1, 0.5, 1.0, 1.5, 2.0],
+            "tags": ["legacy"],
+        }
+        record = CalibrationRecord.model_validate(legacy)
+        assert record.provenance == "measured"
+        assert record.is_simulated is False
+        assert record.developer_temp_c is None
+        assert record.temperature == 21.0
+        assert record.measured_densities == [0.1, 0.5, 1.0, 1.5, 2.0]
+
+    def test_provenance_round_trips_through_json(self):
+        """provenance and developer_temp_c survive model_dump(mode='json') / validate."""
+        record = CalibrationRecord(
+            paper_type="Paper",
+            exposure_time=120.0,
+            provenance="simulated",
+            developer_temp_c=28.5,
+        )
+        restored = CalibrationRecord.model_validate(record.model_dump(mode="json"))
+        assert restored.provenance == "simulated"
+        assert restored.developer_temp_c == 28.5
+        assert restored.temperature is None
+
 
 class TestPaperProfile:
     """Tests for PaperProfile model."""

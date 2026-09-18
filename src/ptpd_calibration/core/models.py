@@ -6,7 +6,7 @@ All models use Pydantic for validation and serialization.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
 import numpy as np
@@ -251,7 +251,21 @@ class CalibrationRecord(BaseModel):
     exposure_time: float = Field(..., ge=0.0, description="Exposure time in seconds")
     uv_source: str | None = Field(default=None)
     humidity: float | None = Field(default=None, ge=0.0, le=100.0)
-    temperature: float | None = Field(default=None, ge=-20.0, le=50.0)
+    temperature: float | None = Field(
+        default=None,
+        ge=-20.0,
+        le=50.0,
+        description=(
+            "Ambient (room) temperature in °C at coating/exposure time. "
+            "Developer bath temperature belongs in developer_temp_c."
+        ),
+    )
+    developer_temp_c: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=60.0,
+        description="Developer bath temperature in °C (distinct from ambient temperature).",
+    )
 
     # Results
     measured_densities: list[float] = Field(default_factory=list)
@@ -261,6 +275,21 @@ class CalibrationRecord(BaseModel):
     # Metadata
     notes: str | None = Field(default=None)
     tags: list[str] = Field(default_factory=list)
+    provenance: Literal["measured", "simulated"] = Field(
+        default="measured",
+        description=(
+            "Origin of measured_densities: 'measured' for densitometer/scanner readings "
+            "of a real print, 'simulated' for values produced by a process simulator "
+            "(e.g. MCTS export). Simulated records are excluded from ML training and "
+            "database queries unless include_simulated=True is passed explicitly. "
+            "Records written before this field existed load as 'measured'."
+        ),
+    )
+
+    @property
+    def is_simulated(self) -> bool:
+        """True when the densities come from a simulator rather than a real print."""
+        return self.provenance == "simulated"
 
     def get_feature_vector(self) -> list[float]:
         """Convert to feature vector for ML."""
