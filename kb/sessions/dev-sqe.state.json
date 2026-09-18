@@ -1,25 +1,28 @@
 {
   "last_session_id": "e274d4ad-70e6-5d62-ba38-6b277fa971b0",
-  "last_timestamp": "2026-09-18T13:11:57.000Z",
+  "last_timestamp": "2026-09-18T16:30:00.000Z",
   "active_branch": "claude/ptpd-validation-sdlc-plan-j2a2gc",
-  "git_commit": "d60bc24",
+  "git_commit": "843566e",
   "pull_request": "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/pull/37",
-  "ci_run": "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/actions/runs/35348644644",
+  "ci_run": "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/actions/runs/35368643634",
   "context_files": [
     "docs/plans/2026-09-validation-sdlc-plan.md",
-    "docs/plans/2026-09-review/expert-testing.md",
+    "docs/adr/0016-bit-depth-is-preserved-end-to-end.md",
     "docs/adr/README.md",
     "AGENTS.md",
-    "pyproject.toml",
-    ".github/workflows/ci.yml"
+    "src/ptpd_calibration/imaging/processor.py",
+    "src/ptpd_calibration/api/server.py"
   ],
   "resume_pointers": {
-    "current_task": "PRE-PR validation of PR #37 once CI reports on d60bc24",
-    "last_handoff_doc": "kb/handoffs/20260918-131157_dev-sqe_to_pre-pr.md",
+    "current_task": "Wire the React export panel to POST /api/export/negative",
+    "last_file_modified": "src/ptpd_calibration/api/server.py",
+    "last_test_file": "tests/api/test_negative_export.py",
     "next_steps": [
-      "Confirm the CI run is green and record its URL in the PR",
-      "Owner performs plan section 9 actions (default branch, rulesets, stale PRs, deploy secret)",
-      "Phase 1: digital negative export endpoint, then Gradio retirement (ADR-0004)",
+      "Wire ExportPanel and ImagePreview to the negative export client call (plan ARC-07, second half)",
+      "Close the remaining Gradio gaps before retiring ui/ (ADR-0004): image preview, chemistry API, session persistence, auto-linearisation, exposure, papers, wedge analysis",
+      "Pillow 13 removes the Image.fromarray mode= argument on 2026-10-15; the repo still has calls that pass it and filterwarnings is error, so a version bump breaks everything at once",
+      "Dismantle the root __init__ facade and break the config/mcts cycle before landing import-linter contracts (ADR-0012)",
+      "Owner performs plan section 9 actions (default branch, rulesets, stale PRs, deploy secret, dependency graph)",
       "Phase 2: MCTS ablation before any further MCTS investment (ADR-0005)"
     ],
     "context_files": [
@@ -30,36 +33,32 @@
   },
   "implementation_status": {
     "completed": [
-      "TASK-002",
-      "TASK-003",
-      "TASK-004",
-      "TASK-005",
-      "TASK-006",
-      "TASK-007",
-      "TASK-008",
-      "TASK-009",
-      "TASK-010",
-      "TASK-012"
+      "Phase 0 (TASK-002..010, TASK-012)",
+      "sRGB linearisation and provenance labelling",
+      "LUT cache keyed on curve values",
+      "curve input validation",
+      "OpenAPI codegen and the frontend contract",
+      "deliberate logging, request ids, truthful health",
+      "bit depth preserved end to end (ADR-0016)",
+      "POST /api/export/negative and its client call"
     ],
     "in_progress": [],
     "blocked": [
-      "TASK-001",
-      "TASK-011"
+      "TASK-001 and TASK-011: owner actions in plan section 9",
+      "dependency review check: owner must enable the repository dependency graph"
     ],
-    "ready_for_pr": [
-      "claude/ptpd-validation-sdlc-plan-j2a2gc"
-    ]
-  },
-  "test_status": {
-    "source_of_truth": "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/actions/runs/35348644644",
-    "backend": "green (warnings-as-errors); all four coverage floors met",
-    "frontend": "green (typecheck, lint, prettier, vitest, build)",
-    "note": "Counts and percentages are read from the CI run, never recorded here (ADR-0007)."
+    "ready_for_pr": ["PR #37 is a draft with all-green passing on the current head"]
   },
   "quality_checks": {
     "lint": "pass",
-    "typecheck": "pass",
     "format": "pass",
-    "doc_rules": "pass"
+    "typecheck": "pass",
+    "schema_drift": "none",
+    "note": "Test and coverage figures are not recorded here; read them from the CI run linked above (ADR-0007)."
+  },
+  "review": {
+    "kind": "adversarial subagent review of the 16-bit imaging change",
+    "findings": 15,
+    "outcome": "all addressed in c2bb5c9; six were defects the first pass missed, one of which made the feature unreachable for any scan above the decode limit"
   }
 }
