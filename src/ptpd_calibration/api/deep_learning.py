@@ -10,8 +10,20 @@ Provides REST API endpoints for:
 from __future__ import annotations
 
 import logging
+from typing import Annotated
+
+from ptpd_calibration.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# Request bounds (SEC-03), resolved once from APISettings so they can be used
+# as literals in the module-level pydantic models below.
+_API_LIMITS = get_settings().api
+MAX_LIST_LENGTH: int = _API_LIMITS.max_list_length
+MAX_STRING_LENGTH: int = _API_LIMITS.max_string_length
+MAX_SYNTHETIC_SAMPLES: int = _API_LIMITS.max_synthetic_samples
+MAX_HIDDEN_LAYERS: int = _API_LIMITS.max_hidden_layers
+MAX_HIDDEN_DIM: int = _API_LIMITS.max_hidden_dim
 
 # Check essential dependencies
 try:
@@ -25,7 +37,7 @@ except ImportError:
 
 # Check API dependencies
 try:
-    from fastapi import APIRouter, BackgroundTasks, HTTPException
+    from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
     from pydantic import BaseModel, Field
 
     API_AVAILABLE = True
@@ -48,7 +60,9 @@ except ImportError:
 class TrainRequest(BaseModel):
     """Request to train a deep learning model."""
 
-    model_name: str = Field(default="default", description="Name for the trained model")
+    model_name: str = Field(
+        default="default", max_length=MAX_STRING_LENGTH, description="Name for the trained model"
+    )
     num_epochs: int = Field(default=50, ge=1, le=1000, description="Number of training epochs")
     batch_size: int = Field(default=32, ge=1, le=256, description="Training batch size")
     learning_rate: float = Field(default=1e-3, ge=1e-6, le=1.0, description="Learning rate")
@@ -59,9 +73,16 @@ class TrainRequest(BaseModel):
     validation_split: float = Field(default=0.2, ge=0.1, le=0.4, description="Validation split")
     # Advanced settings (configurable per Gemini feedback)
     use_ensemble: bool = Field(default=False, description="Use ensemble of models")
-    device: str = Field(default="cpu", description="Device to train on (cpu/cuda)")
+    device: str = Field(
+        default="cpu", max_length=MAX_STRING_LENGTH, description="Device to train on (cpu/cuda)"
+    )
     num_control_points: int = Field(default=16, ge=4, le=64, description="Number of control points")
-    hidden_dims: list[int] = Field(default=[128, 256, 128], description="Hidden layer dimensions")
+    hidden_dims: list[Annotated[int, Field(ge=1, le=MAX_HIDDEN_DIM)]] = Field(
+        default=[128, 256, 128],
+        min_length=1,
+        max_length=MAX_HIDDEN_LAYERS,
+        description="Hidden layer dimensions",
+    )
     early_stopping_patience: int = Field(
         default=10, ge=1, le=100, description="Early stopping patience"
     )
@@ -70,11 +91,15 @@ class TrainRequest(BaseModel):
 class PredictRequest(BaseModel):
     """Request to predict a curve from process parameters."""
 
-    model_name: str = Field(default="default", description="Name of the model to use")
-    paper_type: str = Field(..., description="Paper type")
+    model_name: str = Field(
+        default="default", max_length=MAX_STRING_LENGTH, description="Name of the model to use"
+    )
+    paper_type: str = Field(..., max_length=MAX_STRING_LENGTH, description="Paper type")
     metal_ratio: float = Field(default=0.5, ge=0.0, le=1.0, description="Platinum ratio")
     exposure_time: float = Field(default=180.0, ge=1.0, description="Exposure time (seconds)")
-    contrast_agent: str = Field(default="na2", description="Contrast agent type")
+    contrast_agent: str = Field(
+        default="na2", max_length=MAX_STRING_LENGTH, description="Contrast agent type"
+    )
     contrast_amount: float = Field(default=5.0, ge=0.0, description="Contrast agent amount")
     humidity: float | None = Field(default=50.0, ge=0.0, le=100.0, description="Humidity %")
     temperature: float | None = Field(default=21.0, ge=-20.0, le=50.0, description="Temperature °C")
@@ -84,11 +109,15 @@ class PredictRequest(BaseModel):
 class SuggestAdjustmentsRequest(BaseModel):
     """Request to get adjustment suggestions."""
 
-    model_name: str = Field(default="default", description="Model to use")
-    paper_type: str = Field(..., description="Paper type")
+    model_name: str = Field(
+        default="default", max_length=MAX_STRING_LENGTH, description="Model to use"
+    )
+    paper_type: str = Field(..., max_length=MAX_STRING_LENGTH, description="Paper type")
     metal_ratio: float = Field(default=0.5, ge=0.0, le=1.0)
     exposure_time: float = Field(default=180.0, ge=1.0)
-    target_curve: list[float] = Field(..., description="Target curve values")
+    target_curve: list[float] = Field(
+        ..., max_length=MAX_LIST_LENGTH, description="Target curve values"
+    )
 
 
 class TrainingSummary(BaseModel):
@@ -383,14 +412,16 @@ def create_deep_learning_router(database, model_storage: dict):  # type: ignore[
 
     @router.post("/generate-synthetic")
     async def generate_synthetic_data(
-        num_samples: int = 100,
-        seed: int | None = None,
+        num_samples: int = Query(100, ge=1, le=MAX_SYNTHETIC_SAMPLES),
+        seed: int | None = Query(None),
     ):
         """
         Generate synthetic calibration data and add to database.
 
-        Useful for testing without real calibration data.
+        Useful for testing without real calibration data. ``num_samples`` is
+        capped by ``APISettings.max_synthetic_samples`` (SEC-03).
         """
+        logger.debug("Generating %d synthetic records (seed=%s)", num_samples, seed)
         if not TORCH_AVAILABLE:
             raise HTTPException(status_code=503, detail="PyTorch is not available.")
 

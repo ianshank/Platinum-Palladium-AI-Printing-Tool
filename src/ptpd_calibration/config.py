@@ -363,16 +363,67 @@ class APISettings(BaseSettings):
     workers: int = Field(default=1, ge=1, le=16)
     reload: bool = Field(default=False)
 
-    # CORS
+    # CORS (SEC-07): credentials are off by default and may never be combined
+    # with the wildcard origin, which browsers reject and which would otherwise
+    # let any site make credentialed requests.
     cors_origins: list[str] = Field(default=["*"])
-    cors_allow_credentials: bool = Field(default=True)
+    cors_allow_credentials: bool = Field(
+        default=False,
+        description="Send Access-Control-Allow-Credentials; requires explicit cors_origins",
+    )
 
-    # File uploads
+    # File uploads (SEC-01 / SEC-02)
     max_upload_size_mb: int = Field(default=50, ge=1, le=500)
     upload_dir: Path | None = Field(default=None)
+    upload_chunk_size_kb: int = Field(
+        default=64, ge=4, le=4096, description="Chunk size used when streaming uploads to disk"
+    )
+    allowed_scan_extensions: list[str] = Field(
+        default=[".tif", ".tiff", ".png", ".jpg", ".jpeg", ".bmp"],
+        description="Extension allowlist for step tablet scan uploads",
+    )
+    allowed_quad_extensions: list[str] = Field(
+        default=[".quad", ".txt"],
+        description="Extension allowlist for QuadTone RIP profile uploads",
+    )
+    max_export_name_length: int = Field(
+        default=64, ge=8, le=255, description="Maximum length of a sanitised download filename"
+    )
+
+    # Request bounds (SEC-03)
+    max_request_body_mb: int = Field(
+        default=50, ge=1, le=1024, description="Global cap on any HTTP request body"
+    )
+    max_list_length: int = Field(
+        default=4096, ge=1, description="Maximum items in any list or mapping request field"
+    )
+    max_string_length: int = Field(
+        default=4096, ge=1, description="Maximum characters in any string request field"
+    )
+    max_synthetic_samples: int = Field(
+        default=5000, ge=1, description="Maximum records per /api/deep/generate-synthetic call"
+    )
+    max_hidden_layers: int = Field(
+        default=16, ge=1, description="Maximum number of hidden layers accepted in hidden_dims"
+    )
+    max_hidden_dim: int = Field(
+        default=4096, ge=1, description="Maximum width of a single hidden layer in hidden_dims"
+    )
 
     # Rate limiting
     rate_limit_per_minute: int = Field(default=60, ge=1, le=1000)
+
+    @field_validator("cors_allow_credentials")
+    @classmethod
+    def _reject_wildcard_with_credentials(cls, value: bool, info: ValidationInfo) -> bool:
+        """Refuse the unsafe ``*`` + credentials combination with a clear message."""
+        origins = info.data.get("cors_origins", [])
+        if value and "*" in origins:
+            raise ValueError(
+                "cors_allow_credentials=True cannot be combined with the wildcard origin '*'. "
+                "Set PTPD_API_CORS_ORIGINS to an explicit JSON list of origins."
+            )
+        return value
 
 
 class VisualizationSettings(BaseSettings):

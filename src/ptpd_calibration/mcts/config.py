@@ -286,6 +286,17 @@ class MCTSSettings(BaseSettings):
         description="Number of training epochs after each self-play episode",
     )
 
+    # Reproducibility
+    seed: int | None = Field(
+        default=None,
+        description=(
+            "Random seed shared by MCTSEngine, ReplayBuffer and MCTSTrainer (and passed to "
+            "torch.manual_seed when PyTorch is installed). None keeps the module-level "
+            "random generator in charge, i.e. results vary run to run unless the caller "
+            "seeds random itself. Override with PTPD_MCTS_SEED."
+        ),
+    )
+
     # Persistence
     checkpoint_dir: str = Field(
         default="data/mcts_checkpoints",
@@ -295,11 +306,25 @@ class MCTSSettings(BaseSettings):
         default="INFO",
         description="Logging level for MCTS module",
     )
+    feedback_path: str | None = Field(
+        default=None,
+        description="JSON Lines file for measured feedback; defaults to <checkpoint_dir>/feedback.jsonl",
+    )
+
+    # API bounds (SCI-06)
+    max_simulations_per_request: int = Field(
+        default=2000,
+        ge=50,
+        le=10000,
+        description="Upper bound on num_simulations honoured by POST /api/mcts/search",
+    )
 
     def __init__(self, **data: Any) -> None:
         """Initialize settings and validate decision order."""
         super().__init__(**data)
-        logger.debug(f"Initialized MCTSSettings with {self.num_simulations} simulations")
+        logger.debug(
+            f"Initialized MCTSSettings with {self.num_simulations} simulations, seed={self.seed}"
+        )
         self._validate_decision_order()
 
     def _validate_decision_order(self) -> None:
