@@ -573,7 +573,10 @@ class NegativeBlender:
     def blend_negatives(
         self,
         negatives: list[Image.Image | np.ndarray],
-        masks: list[Image.Image | np.ndarray] | None = None,
+        # None per element is the documented way to say "no mask for this
+        # layer", and the body handles it; the annotation forbade it, so a
+        # type-checked caller could not use the contract the tests rely on.
+        masks: list[Image.Image | np.ndarray | None] | None = None,
         blend_modes: list[BlendMode] | None = None,
     ) -> Image.Image:
         """Blend multiple negatives with optional masks and blend modes.
@@ -1359,20 +1362,20 @@ class StyleTransfer:
         Returns:
             Styled image
         """
-        # Get style parameters
-        if isinstance(style_name, str):
-            # Try to find matching style
-            style_params = None
-            for key, params in self.styles.items():
-                if key == style_name or key.value == style_name:
-                    style_params = params
-                    break
-            if style_params is None:
-                raise ValueError(f"Unknown style: {style_name}")
-        else:
-            style_params = self.styles.get(style_name)
-            if style_params is None:
-                raise ValueError(f"Unknown style: {style_name}")
+        # Get style parameters. HistoricStyle subclasses str, so the branch that
+        # used to split enum from name was dead and the loop ran for both. Inside
+        # it, key.value was evaluated for every key that did not match -- and
+        # create_custom_style inserts plain strings, which have no .value. So
+        # registering two custom styles made the second impossible to apply, and
+        # once any custom style existed an unknown name raised AttributeError
+        # instead of the ValueError documented above.
+        style_params = None
+        for key, params in self.styles.items():
+            if key == style_name or (isinstance(key, HistoricStyle) and key.value == style_name):
+                style_params = params
+                break
+        if style_params is None:
+            raise ValueError(f"Unknown style: {style_name}")
 
         return self._apply_style_params(image, style_params)
 

@@ -15,6 +15,7 @@ RequestBodyLimitMiddleware` raises for an oversized upload.
 from __future__ import annotations
 
 import logging
+import re
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -29,16 +30,51 @@ logger = logging.getLogger(__name__)
 REQUEST_ID_HEADER = "X-Request-ID"
 _HEADER_BYTES = REQUEST_ID_HEADER.lower().encode("latin-1")
 
+#: What a request id may contain. Deliberately narrow: this covers a uuid, a
+#: hex digest and the dotted or colon-separated trace ids tracing systems emit,
+#: and excludes everything that could terminate a header or reach a terminal.
+_SAFE_REQUEST_ID = re.compile(r"[A-Za-z0-9._:-]+")
+
+#: Used only when settings cannot be loaded; the real value is a settings field.
+_FALLBACK_REQUEST_ID_LENGTH = 128
+
 
 def _incoming_request_id(scope: Scope) -> str | None:
-    """Return a caller-supplied request id, so a client can correlate a journey."""
+    """Return a caller-supplied request id, if it is safe to echo and to log.
+
+    The value comes back to the caller as a response header and is bound to
+    every log record for the request, so it is accepted only when it matches
+    :data:`_SAFE_REQUEST_ID` in full. Bounding the length is not enough on its
+    own: a value carrying CR or LF ends the header and starts another, and a
+    control byte reaches a terminal reading the logs. A value that does not
+    match is discarded rather than repaired, and the caller gets the generated
+    id instead, because a correlation id the client did not send is more useful
+    than a mangled version of one it did.
+    """
+    limit = _max_request_id_length()
     for name, value in scope.get("headers", ()):
-        if name.lower() == _HEADER_BYTES:
-            candidate = value.decode("latin-1").strip()
-            # Bound it: the value is echoed back and written to every record.
-            if candidate and len(candidate) <= 128:
-                return candidate
+        if name.lower() != _HEADER_BYTES:
+            continue
+        candidate = value.decode("latin-1").strip()
+        if not candidate or len(candidate) > limit:
+            logger.debug("Ignoring request id of length %d (limit %d)", len(candidate), limit)
+            return None
+        if not _SAFE_REQUEST_ID.fullmatch(candidate):
+            logger.debug("Ignoring request id with unsafe characters: %r", candidate)
+            return None
+        return candidate
     return None
+
+
+def _max_request_id_length() -> int:
+    """Read the bound from settings, tolerating an unloadable config."""
+    try:
+        from ptpd_calibration.config import get_settings
+
+        return int(get_settings().api.max_request_id_length)
+    except Exception:  # pragma: no cover - configuration is broken, still serve
+        logger.debug("Falling back to the built-in request id limit", exc_info=True)
+        return _FALLBACK_REQUEST_ID_LENGTH
 
 
 class RequestContextMiddleware:

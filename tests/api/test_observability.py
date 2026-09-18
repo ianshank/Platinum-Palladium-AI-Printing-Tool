@@ -103,3 +103,83 @@ class TestHealthReportsReality:
     def test_the_documented_version_is_not_a_placeholder(self) -> None:
         """The API reported 1.0.0 whatever was deployed."""
         assert _api_version() != "0.0.0+unknown"
+
+
+class TestRequestIdIsSafeToEchoAndLog:
+    """A caller-supplied id comes back as a header and joins every log record.
+
+    Bounding only its length was not enough. A value carrying CR or LF ends the
+    ``X-Request-ID`` header and begins another, and a control byte reaches
+    whatever reads the logs. The value is now accepted only if it matches in
+    full, and a value that does not is dropped rather than repaired: a
+    correlation id the client never sent is more use than a mangled one.
+    """
+
+    @staticmethod
+    def _incoming(raw: bytes) -> str | None:
+        from ptpd_calibration.api.observability import _incoming_request_id
+
+        return _incoming_request_id({"headers": [(b"x-request-id", raw)]})
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            b"abc\r\nX-Evil: injected",  # the finding: a second header
+            b"a\nb",
+            b"a\rb",
+            b"\x07bell",  # reaches a terminal reading the logs
+            b"has space",
+            b"semi;colon",
+            b"angle<bracket>",
+            b"",
+            b"   ",
+        ],
+        ids=[
+            "crlf-injection",
+            "lf",
+            "cr",
+            "control-byte",
+            "space",
+            "semicolon",
+            "angle-brackets",
+            "empty",
+            "whitespace-only",
+        ],
+    )
+    def test_an_unsafe_value_is_refused(self, raw: bytes) -> None:
+        assert self._incoming(raw) is None
+
+    @pytest.mark.parametrize(
+        "raw",
+        [b"ok-123", b"0123456789abcdef", b"trace:1.2-3", b"A_b.c-d", b"  padded  "],
+        ids=["hyphen", "hex", "trace-id", "mixed", "trimmed"],
+    )
+    def test_a_safe_value_is_kept(self, raw: bytes) -> None:
+        assert self._incoming(raw) == raw.decode().strip()
+
+    def test_the_length_bound_is_a_setting(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("PTPD_API_MAX_REQUEST_ID_LENGTH", "16")
+        from ptpd_calibration import config
+
+        monkeypatch.setattr(config, "_settings", None)
+
+        assert self._incoming(b"a" * 16) == "a" * 16
+        assert self._incoming(b"a" * 17) is None
+
+    def test_a_refused_value_still_yields_a_usable_id(self) -> None:
+        """The request must carry an id regardless; a generated one serves."""
+        from fastapi.testclient import TestClient
+
+        from ptpd_calibration.api.observability import REQUEST_ID_HEADER
+        from ptpd_calibration.api.server import create_app
+
+        with TestClient(create_app()) as client:
+            response = client.get(
+                "/api/health", headers={REQUEST_ID_HEADER: "abc\r\nX-Evil: injected"}
+            )
+
+        echoed = response.headers[REQUEST_ID_HEADER]
+        assert echoed
+        assert "X-Evil" not in echoed
+        assert "\r" not in echoed and "\n" not in echoed
+        assert "X-Evil" not in response.headers

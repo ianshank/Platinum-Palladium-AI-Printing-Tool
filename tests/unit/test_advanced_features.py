@@ -1014,3 +1014,65 @@ class TestEdgeCases:
 
         result = blender.blend_negatives([img, img])
         assert result.size == (1, 1)
+
+
+class TestCustomStylesStayReachable:
+    """``HistoricStyle`` subclasses ``str``, which made the lookup wrong.
+
+    ``apply_style`` split on ``isinstance(style_name, str)`` and, in the branch
+    it always took, evaluated ``key.value`` for every key that did not match.
+    ``create_custom_style`` inserts plain strings, which have no ``.value``, so
+    registering two custom styles made the second impossible to apply and any
+    unknown name raised ``AttributeError`` instead of the documented
+    ``ValueError`` once a custom style existed.
+    """
+
+    @pytest.fixture
+    def image(self):
+        from PIL import Image
+
+        return Image.fromarray(np.full((8, 8), 128, np.uint8))
+
+    @pytest.fixture
+    def transfer(self):
+        from ptpd_calibration.advanced.features import StyleTransfer
+
+        instance = StyleTransfer()
+        instance.create_custom_style("mine_a", {"description": "first"})
+        instance.create_custom_style("mine_b", {"description": "second"})
+        return instance
+
+    @pytest.mark.parametrize("name", ["mine_a", "mine_b"], ids=["first", "second"])
+    def test_every_custom_style_can_be_applied(self, transfer, image, name: str) -> None:
+        assert transfer.apply_style(image, name) is not None
+
+    def test_a_built_in_style_still_works_by_member_and_by_value(self, transfer, image) -> None:
+        from ptpd_calibration.advanced.features import HistoricStyle
+
+        member = HistoricStyle.PAUL_STRAND
+
+        assert transfer.apply_style(image, member) is not None
+        assert transfer.apply_style(image, member.value) is not None
+
+    def test_an_unknown_name_raises_the_documented_error(self, transfer, image) -> None:
+        with pytest.raises(ValueError, match="Unknown style"):
+            transfer.apply_style(image, "no_such_style")
+
+
+class TestBlendMasksAcceptPerLayerNone:
+    """``None`` per element means "no mask for this layer"; the body handles it.
+
+    The annotation forbade it, so a type-checked caller could not use the
+    contract the blender implements and the existing test relies on.
+    """
+
+    def test_the_signature_admits_a_none_element(self) -> None:
+        import inspect
+
+        from ptpd_calibration.advanced.features import NegativeBlender
+
+        annotation = str(
+            inspect.signature(NegativeBlender.blend_negatives).parameters["masks"].annotation
+        )
+
+        assert "None]" in annotation.replace(" ", ""), annotation

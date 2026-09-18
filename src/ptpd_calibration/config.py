@@ -446,6 +446,15 @@ class APISettings(BaseSettings):
         default=[".quad", ".txt"],
         description="Extension allowlist for QuadTone RIP profile uploads",
     )
+    max_request_id_length: int = Field(
+        default=128,
+        ge=8,
+        le=512,
+        description=(
+            "Longest caller-supplied X-Request-ID accepted; a longer or "
+            "malformed value is replaced with a generated one"
+        ),
+    )
     max_export_name_length: int = Field(
         default=64, ge=8, le=255, description="Maximum length of a sanitised download filename"
     )
