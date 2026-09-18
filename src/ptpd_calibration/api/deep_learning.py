@@ -15,6 +15,11 @@ from typing import Annotated
 from ptpd_calibration.config import get_settings
 from ptpd_calibration.core.logging import sanitize_log_text
 
+#: Below this many measured records the route falls back to generated data
+#: rather than training on a handful of prints. Named so the threshold is not a
+#: literal buried in a condition.
+MIN_MEASURED_RECORDS = 10
+
 logger = logging.getLogger(__name__)
 
 # Request bounds (SEC-03), resolved once from APISettings so they can be used
@@ -476,8 +481,13 @@ async def _train_model_task(
 
         training_status[model_name].status = "training"
 
-        # Prepare training data
-        if request.use_synthetic_data or len(database) < 10:
+        # Prepare training data. Synthetic records carry provenance="simulated"
+        # so they cannot pass as measured (ADR-0006), which also means the
+        # dataset excludes them unless the caller says otherwise. This branch is
+        # the caller that generated them, so it opts in; the measured-only
+        # branch below deliberately does not.
+        uses_simulated = request.use_synthetic_data or len(database) < MIN_MEASURED_RECORDS
+        if uses_simulated:
             train_db = generate_training_data(
                 num_records=request.num_synthetic_samples,
                 seed=42,
@@ -513,6 +523,7 @@ async def _train_model_task(
             val_ratio=request.validation_split,
             num_epochs=request.num_epochs,
             callbacks=[update_callback],
+            include_simulated=uses_simulated,
         )
 
         # Store the trained model

@@ -66,17 +66,21 @@ class FeatureEncoder:
     feature_names: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_database(cls, database: CalibrationDatabase) -> FeatureEncoder:
+    def from_database(
+        cls, database: CalibrationDatabase, include_simulated: bool = False
+    ) -> FeatureEncoder:
         """
         Create encoder from a calibration database.
 
         Args:
             database: CalibrationDatabase with training records.
+            include_simulated: Include records whose densities came from a
+                simulator. Excluded by default, per ADR-0006.
 
         Returns:
             Configured FeatureEncoder instance.
         """
-        records = database.get_all_records()
+        records = database.get_all_records(include_simulated=include_simulated)
         if not records:
             raise DatasetError("Cannot create encoder from empty database")
 
@@ -333,6 +337,7 @@ class CalibrationDataset(Dataset):
         encoder: FeatureEncoder | None = None,
         augmentation: DataAugmentation | None = None,
         transform: Callable | None = None,
+        include_simulated: bool = False,
     ):
         """
         Initialize CalibrationDataset.
@@ -343,6 +348,10 @@ class CalibrationDataset(Dataset):
             encoder: Feature encoder (created from database if not provided).
             augmentation: Data augmentation settings.
             transform: Optional transform to apply to samples.
+            include_simulated: Train on records whose densities came from a
+                simulator. Excluded by default, so simulated data never reaches
+                a model that believes it measured (ADR-0006); a caller that
+                generated the data on purpose opts in explicitly.
         """
         _check_torch()
         super().__init__()
@@ -353,14 +362,26 @@ class CalibrationDataset(Dataset):
         self._rng = np.random.default_rng()
 
         # Filter records with valid density measurements
-        self.records = [r for r in database.get_all_records() if r.measured_densities]
+        self.records = [
+            r
+            for r in database.get_all_records(include_simulated=include_simulated)
+            if r.measured_densities
+        ]
 
         if not self.records:
+            held_back = len(database.get_all_records(include_simulated=True)) - len(
+                database.get_all_records()
+            )
+            if held_back and not include_simulated:
+                raise DatasetError(
+                    f"No measured records found; {held_back} simulated record(s) were "
+                    "excluded. Pass include_simulated=True to train on generated data."
+                )
             raise DatasetError("No records with density measurements found")
 
         # Create or use provided encoder
         if encoder is None:
-            self.encoder = FeatureEncoder.from_database(database)
+            self.encoder = FeatureEncoder.from_database(database, include_simulated)
         else:
             self.encoder = encoder
 
@@ -491,6 +512,7 @@ def create_dataloaders(
     augmentation: DataAugmentation | None = None,
     num_workers: int = 0,
     seed: int | None = None,
+    include_simulated: bool = False,
 ) -> tuple:
     """
     Create train and validation dataloaders.
@@ -503,6 +525,8 @@ def create_dataloaders(
         augmentation: Data augmentation settings.
         num_workers: Number of data loading workers.
         seed: Random seed.
+        include_simulated: Train on simulated records. Excluded by default
+            (ADR-0006); a caller that generated the data opts in explicitly.
 
     Returns:
         Tuple of (train_loader, val_loader, encoder).
@@ -515,6 +539,7 @@ def create_dataloaders(
         database=database,
         target_length=target_length,
         augmentation=augmentation,
+        include_simulated=include_simulated,
     )
 
     # Split into train/val

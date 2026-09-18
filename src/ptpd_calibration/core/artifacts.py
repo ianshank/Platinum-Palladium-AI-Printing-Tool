@@ -247,6 +247,34 @@ def verify_manifest(
     return True
 
 
+def to_plain_python(value: Any) -> Any:
+    """Recursively convert numpy scalars and arrays to built-in Python types.
+
+    ``torch.load(..., weights_only=True)`` accepts only a small set of globals,
+    and a numpy scalar is not among them. Such a value reaches a checkpoint very
+    easily: ``np.mean`` returns ``np.float64``, which ``isinstance(x, float)``
+    reports as a float and which a ``dict[str, float]`` annotation accepts, so
+    neither review nor mypy sees it. ``dataclasses.asdict`` does not help
+    either, since it unwraps dataclasses but leaves their values alone. The
+    result is a checkpoint that saves cleanly and then cannot be read back.
+
+    Run metadata through this before saving it, so "plain values only" is
+    enforced rather than asserted.
+    """
+    if isinstance(value, dict):
+        return {key: to_plain_python(item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        converted = [to_plain_python(item) for item in value]
+        return type(value)(converted) if isinstance(value, tuple) else converted
+    # numpy is an install-time dependency, but this module is imported by code
+    # paths that must not require it, so the check stays duck-typed.
+    if hasattr(value, "item") and hasattr(value, "dtype"):
+        if getattr(value, "ndim", 0) == 0:
+            return value.item()
+        return to_plain_python(value.tolist())
+    return value
+
+
 def _import_torch() -> Any:
     try:
         import torch
