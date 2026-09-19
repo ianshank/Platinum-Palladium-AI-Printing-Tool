@@ -102,7 +102,7 @@ idna==3.20
     #   httpx
     #   httpx2
     #   requests
-importlib-resources==6.5.2
+importlib-resources==7.1.0
     # via gradio
 jinja2==3.1.6
     # via gradio
