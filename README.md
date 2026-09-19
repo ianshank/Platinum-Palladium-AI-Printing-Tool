@@ -21,154 +21,104 @@ short_description: AI-powered calibration for platinum/palladium printing
 
 # Platinum/Palladium Calibration Studio
 
-An AI-powered calibration system for platinum/palladium alternative photographic printing. Combines traditional densitometry with Monte Carlo Tree Search optimization and multi-agent AI assistance.
+[![CI](https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/actions/workflows/ci.yml/badge.svg)](https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/actions/workflows/ci.yml)
+
+A calibration toolkit for platinum/palladium alternative photographic printing:
+step-tablet densitometry, linearization curves for digital negatives, curve
+editing and export (QuadTone RIP, Piezography, CSV, JSON), chemistry and
+exposure calculators, and an LLM-backed printing assistant.
+
+Test counts and coverage are published by CI on every run (job summary and the
+`backend-reports` / `frontend-coverage` artifacts), never typed into this file.
+
+## Status
+
+The project is executing a validation-first plan, see
+[docs/plans/2026-09-validation-sdlc-plan.md](docs/plans/2026-09-validation-sdlc-plan.md)
+and the decision records in [docs/adr/](docs/adr/). In particular:
+
+- The parameter-search module under `src/ptpd_calibration/mcts/` is
+  experimental. Its value is being established by a pre-registered ablation
+  against standard optimizers (ADR-0005); nothing in the product depends on it
+  until that result is in.
+- Recommendations derived from the process simulator are labelled
+  `provenance: simulated` and are never mixed with measured prints (ADR-0006).
+- The Gradio UI (`app.py`, `src/ptpd_calibration/ui/`) is being retired in
+  favour of the FastAPI + React application once the remaining feature gaps
+  are closed (ADR-0004). The Hugging Face Space still runs the Gradio build.
 
 ## Architecture
 
-The application has three main subsystems:
+| Layer | Stack | Purpose |
+| --- | --- | --- |
+| Frontend | React 18, TypeScript, Vite, Zustand, TanStack Query | Curve editor, calibration wizard, chemistry calculator, assistant |
+| Backend API | FastAPI, Pydantic | REST endpoints for scans, curves, calibrations, chat, export |
+| Scientific core | NumPy, SciPy, scikit-learn | Detection, curves, chemistry, exposure, optional simulation |
 
-| Layer                | Stack                                            | Purpose                                                           |
-| -------------------- | ------------------------------------------------ | ----------------------------------------------------------------- |
-| **Frontend**         | React 18 + TypeScript + Zustand + TanStack Query | Interactive UI with curve editing, file upload, chat              |
-| **Backend API**      | FastAPI + Pydantic                               | REST endpoints for curves, scans, calibrations, chat, MCTS        |
-| **ML / MCTS Engine** | PyTorch + NumPy + scikit-learn                   | Physics simulation, neural network-guided search, data generation |
+See [docs/architecture.md](docs/architecture.md).
 
-See [docs/architecture.md](docs/architecture.md) for full C4 diagrams.
+## Quick start
 
-## Features
-
-### Core Calibration
-
-- **Step Tablet Reading**: Automated detection and density extraction from scanned step tablets
-- **Curve Generation**: Create linearization curves for digital negatives
-- **Multi-Format Export**: Export to QuadTone RIP (.quad), Piezography, CSV, and JSON
-- **Quad File Upload**: Drag-and-drop .quad file import with channel selection and preview
-
-### AlphaZero MCTS Calibration Engine
-
-- **Monte Carlo Tree Search**: UCB1/PUCT-guided exploration of printing parameter space
-- **Physics Simulator**: Models sensitizer diffusion, UV exposure curves, humidity effects
-- **Neural Network**: Dual policy+value network trained via Expert Iteration (self-play)
-- **Quality Scorer**: Multi-metric evaluation (Dmax, tonal range, linearity, smoothness)
-- **Constraint System**: Photochemistry-aware bounds ensure safe parameter recommendations
-- **Result Export**: Optimized parameters exportable to JSON, CSV, and QTR formats
-
-### Image Processing
-
-- **Image Preview**: Preview curve effects on images before processing
-- **Digital Negative Creation**: Create inverted negatives with curves applied
-- **Histogram Analysis**: Zone-based tonal distribution analysis
-
-### Printing Tools
-
-- **Chemistry Calculator**: Calculate coating solutions based on Bostick-Sullivan formulas
-- **Exposure Calculator**: UV exposure calculations with test strip generator
-- **Zone System**: Ansel Adams zone analysis with development recommendations
-- **Soft Proofing**: Preview prints on different paper types
-
-### AI Assistance
-
-- **Multi-Agent System**: Orchestrator coordinating planner, coder, reviewer, and SQE agents
-- **Natural Language Chat**: RAG-powered Q&A about Pt/Pd printing
-- **Recipe Suggestions**: Get customized coating recipes
-- **Troubleshooting**: Diagnose common problems with AI guidance
-
-## Quick Start
-
-### Backend
+Backend (Python 3.12 pinned in `.python-version`; [uv](https://docs.astral.sh/uv/) manages the environment):
 
 ```bash
-pip install -e ".[dev]"
-uvicorn src.ptpd_calibration.api.server:app --reload
+uv sync --extra server          # api + ml + llm; add --extra dl for torch
+uv run ptpd-server              # FastAPI on http://localhost:8000
 ```
 
-### Frontend
+Frontend:
 
 ```bash
 cd frontend
-pnpm install
-pnpm dev
+pnpm install --frozen-lockfile
+pnpm dev                        # http://localhost:3000, proxies /api to :8000
 ```
 
-### Tests
+LLM features read `PTPD_LLM_PROVIDER` and `PTPD_LLM_ANTHROPIC_API_KEY` /
+`PTPD_LLM_OPENAI_API_KEY` from the environment (or a local `.env`). Never commit
+keys; see [SECURITY.md](SECURITY.md).
+
+## Tests
 
 ```bash
-# Backend (API tests — fast, no optional deps required)
-pytest tests/api/ -q
-
-# Full backend suite
-pytest tests/ -q
-
-# Frontend
-cd frontend && pnpm test
+uv run pytest                                   # backend, strict markers, 120 s timeout per test
+uv run pytest tests/property                    # Hypothesis property and metamorphic suites
+cd frontend && pnpm test:run                    # vitest
+cd frontend && pnpm exec playwright test        # e2e (needs the backend running)
 ```
 
-## Project Structure
+The CI workflow (`.github/workflows/ci.yml`) is the single source of truth for
+what must pass: ruff, mypy on the allowlisted packages, pytest with per-package
+coverage floors and diff coverage, vitest with thresholds, build, gitleaks, and
+dependency audits. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-```text
-├── frontend/                  React 18 + TypeScript + Vite
-│   ├── src/
-│   │   ├── api/              API client, TanStack Query hooks
-│   │   ├── components/       UI components (curves, chemistry, chat)
-│   │   ├── stores/           Zustand slices (curve, image, ui, mcts)
-│   │   ├── pages/            Route-level page components
-│   │   └── types/            TypeScript type definitions
-│   └── vite.config.ts
-├── src/ptpd_calibration/      Python backend
-│   ├── api/                  FastAPI REST endpoints
-│   ├── mcts/                 AlphaZero MCTS engine (5,181 LOC)
-│   ├── agents/               Multi-agent system (6,155 LOC)
-│   ├── deep_learning/        Data generators, training pipelines
-│   ├── curves/               Curve generation/modification
-│   ├── detection/            Step tablet detection
-│   ├── chemistry/            Chemistry calculations
-│   ├── llm/                  LLM integration (Anthropic, OpenAI)
-│   └── ml/                   scikit-learn predictor + database
-├── tests/                    pytest test suite (4,400+ tests)
-├── docs/architecture.md      C4 architecture diagrams
-└── CHANGELOG.md              Release history
+## Repository layout
+
+```
+frontend/                  React application
+src/ptpd_calibration/      Python package
+  api/                     FastAPI routes and request guards
+  core/                    models, types, settings
+  curves/ chemistry/ exposure/ detection/ imaging/ papers/ session/
+  mcts/                    experimental parameter search (ADR-0005)
+  llm/ agents/             assistant and (unexposed) agent framework
+tests/                     pytest suites: unit, api, integration, property, e2e
+docs/                      architecture, plans, ADRs, agent protocol
+kb/                        agent session knowledge base (docs/agents/kb-protocol.md)
 ```
 
-## Next Steps
+## Deployment
 
-### Done ✅
-- [x] React 18 + TypeScript + Zustand frontend (15/15 components migrated)
-- [x] Playwright e2e tests (9/9), vitest (726 passing), pytest API (104 passing)
-- [x] AlphaZero-style MCTS calibration engine (5,181 LOC)
-- [x] Multi-agent AI orchestration system (6,155 LOC)
-- [x] Code review hardening — 84% backend test coverage, 726 frontend tests
-- [x] Keyboard shortcuts (Ctrl+1-5 navigation, Ctrl+Z/Y undo/redo)
-- [x] Undo/redo stack for curve editing
-- [x] Equivalence tests between legacy Gradio and React
-- [x] Mobile responsive layout
-
-### In Progress / Upcoming
-- [ ] MCTS API endpoints (search, training status, result retrieval)
-- [ ] Frontend MCTS dashboard with live search visualization
-- [ ] Batch processing queue with Celery + Redis
-- [ ] Visual regression tests with Playwright snapshots
-- [ ] PWA offline mode
-- [ ] i18n internationalization support
-- [ ] Agent observability: health checks, circuit breakers, metrics dashboard
+The Hugging Face Space deploys only from `v*` tags after the CI gate, behind a
+GitHub Environment approval (`deploy-hf` job). The Docker Space cutover is
+tracked by ADR-0004.
 
 ## Requirements
 
-- Python 3.10+
-- Node.js 18+
-- PyTorch (optional, for MCTS neural network features)
-- A step tablet scan (Stouffer 21/31/41 step or similar)
-
-## Links
-
-- [GitHub Repository](https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool)
-- [Architecture Docs](docs/architecture.md)
-- [Changelog](CHANGELOG.md)
-- [Issues](https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/issues)
-
-## Created By
-
-Ian Cruickshank
+- Python 3.10 to 3.13 (CI uses 3.12)
+- Node 20 and pnpm (see `frontend/package.json` `packageManager`)
+- A step-tablet scan (Stouffer 21/31/41 step or similar)
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/blob/main/LICENSE) for details.
+MIT, see [LICENSE](LICENSE). Created by Ian Cruickshank.

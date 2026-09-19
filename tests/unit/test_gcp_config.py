@@ -10,6 +10,26 @@ import pytest
 
 from ptpd_calibration.gcp.config import GCPConfig, get_gcp_config
 
+# Derived from the model so a new setting cannot silently escape the isolation.
+GCP_ENV_ALIASES = tuple(
+    str(field.validation_alias)
+    for field in GCPConfig.model_fields.values()
+    if field.validation_alias is not None
+)
+
+
+@pytest.fixture(autouse=True)
+def isolate_gcp_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remove every GCP setting alias from the environment before each test.
+
+    ``GCPConfig`` reads these aliases, so assertions about field defaults are
+    otherwise order-dependent: any module that exports them at import time
+    (for example tests/integration/test_api_endpoints.py) would change the
+    result. Tests that need a value set do so explicitly.
+    """
+    for alias in GCP_ENV_ALIASES:
+        monkeypatch.delenv(alias, raising=False)
+
 
 class TestGCPConfig:
     """Tests for GCPConfig Pydantic model."""

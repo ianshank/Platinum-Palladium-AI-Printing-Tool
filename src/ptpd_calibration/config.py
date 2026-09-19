@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from pydantic import Field, ValidationInfo, field_validator
+from pydantic import AliasChoices, Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
@@ -94,11 +94,39 @@ class ExtractionSettings(BaseSettings):
 
     # Density calculation
     reference_white_reflectance: float = Field(default=0.9, ge=0.5, le=1.0)
-    status_a_weights: tuple[float, float, float] = Field(default=(0.2126, 0.7152, 0.0722))
+    # Rec. 709 luminance coefficients. The field was named for Status A, which
+    # is a spectral-responsivity standard these numbers do not implement; the
+    # old name is kept as a deprecated alias so existing configuration loads.
+    visual_density_weights: tuple[float, float, float] = Field(
+        default=(0.2126, 0.7152, 0.0722),
+        validation_alias=AliasChoices(
+            "PTPD_EXTRACTION_VISUAL_DENSITY_WEIGHTS",
+            "PTPD_EXTRACTION_STATUS_A_WEIGHTS",
+            "visual_density_weights",
+            "status_a_weights",
+        ),
+        description="Channel weights used to combine reflectance into a visual density",
+    )
+    linearize_srgb: bool = Field(
+        default=True,
+        description=(
+            "Convert gamma-encoded scanner values to linear reflectance before "
+            "taking the log. Disable only for input that is already linear."
+        ),
+    )
 
     # Paper base detection
     paper_margin_ratio: float = Field(default=0.05, ge=0.01, le=0.2)
     paper_sample_size: int = Field(default=50, ge=10, le=500)
+    paper_sample_pixels: int = Field(
+        default=20000,
+        ge=100,
+        le=1_000_000,
+        description=(
+            "Largest number of margin pixels used to estimate the paper base. "
+            "A margin wider than this is strided evenly, never sampled randomly"
+        ),
+    )
 
 
 class CurveSettings(BaseSettings):
@@ -114,6 +142,20 @@ class CurveSettings(BaseSettings):
     smoothing_factor: float = Field(default=0.0, ge=0.0, le=1.0)
     monotonicity_enforcement: bool = Field(default=True)
 
+    # Input validation. A step wedge read from the wrong end arrives descending;
+    # that is recoverable by reversing it. A wedge that rises and falls is not,
+    # because the density-to-input inversion has no single answer there.
+    auto_orient_densities: bool = Field(
+        default=True,
+        description="Reverse a descending density series instead of refusing it",
+    )
+    density_monotonicity_tolerance: float = Field(
+        default=0.02,
+        ge=0.0,
+        le=1.0,
+        description="Largest backwards step tolerated in a measured density series",
+    )
+
     # Highlight preservation
     highlight_hold_point: float = Field(default=0.05, ge=0.0, le=0.2)
     shadow_hold_point: float = Field(default=0.95, ge=0.8, le=1.0)
@@ -122,6 +164,12 @@ class CurveSettings(BaseSettings):
     default_export_format: ExportFormat = Field(default=ExportFormat.QTR)
     qtr_ink_limit: float = Field(default=100.0, ge=0.0, le=100.0)
     qtr_resolution: int = Field(default=2880, ge=360, le=5760)
+    max_export_comment_length: int = Field(
+        default=256,
+        ge=8,
+        le=4096,
+        description="Longest metadata value written into a text-export comment line",
+    )
 
 
 class MLSettings(BaseSettings):
@@ -138,6 +186,14 @@ class MLSettings(BaseSettings):
     validation_split: float = Field(default=0.2, ge=0.1, le=0.4)
     min_training_samples: int = Field(default=5, ge=3, le=50)
     cross_validation_folds: int = Field(default=5, ge=2, le=10)
+    random_seed: int = Field(
+        default=42,
+        ge=0,
+        description=(
+            "Seed for the train/validation shuffle and the estimators, so the "
+            "same records produce the same model and the same reported error"
+        ),
+    )
 
     # Active learning
     uncertainty_threshold: float = Field(default=0.1, ge=0.01, le=0.5)
@@ -324,7 +380,11 @@ class LLMSettings(BaseSettings):
             return self.openai_api_key or self.api_key
         elif self.provider == LLMProvider.VERTEX_AI:
             return None  # Vertex AI uses service account credentials, not API keys
-        return self.api_key
+        # Unreachable while LLMProvider has exactly the three members above, and
+        # pydantic rejects anything else before it reaches here. Kept rather than
+        # deleted so a fourth provider gets a defined answer instead of None; the
+        # ignore goes stale on its own if that happens.
+        return self.api_key  # type: ignore[unreachable]
 
 
 class AgentSettings(BaseSettings):
@@ -363,16 +423,92 @@ class APISettings(BaseSettings):
     workers: int = Field(default=1, ge=1, le=16)
     reload: bool = Field(default=False)
 
-    # CORS
+    # CORS (SEC-07): credentials are off by default and may never be combined
+    # with the wildcard origin, which browsers reject and which would otherwise
+    # let any site make credentialed requests.
     cors_origins: list[str] = Field(default=["*"])
-    cors_allow_credentials: bool = Field(default=True)
+    cors_allow_credentials: bool = Field(
+        default=False,
+        description="Send Access-Control-Allow-Credentials; requires explicit cors_origins",
+    )
 
-    # File uploads
+    # File uploads (SEC-01 / SEC-02)
     max_upload_size_mb: int = Field(default=50, ge=1, le=500)
     upload_dir: Path | None = Field(default=None)
+    upload_chunk_size_kb: int = Field(
+        default=64, ge=4, le=4096, description="Chunk size used when streaming uploads to disk"
+    )
+    allowed_scan_extensions: list[str] = Field(
+        default=[".tif", ".tiff", ".png", ".jpg", ".jpeg", ".bmp"],
+        description="Extension allowlist for step tablet scan uploads",
+    )
+    allowed_quad_extensions: list[str] = Field(
+        default=[".quad", ".txt"],
+        description="Extension allowlist for QuadTone RIP profile uploads",
+    )
+    max_request_id_length: int = Field(
+        default=128,
+        ge=8,
+        le=512,
+        description=(
+            "Longest caller-supplied X-Request-ID accepted; a longer or "
+            "malformed value is replaced with a generated one"
+        ),
+    )
+    max_export_name_length: int = Field(
+        default=64, ge=8, le=255, description="Maximum length of a sanitised download filename"
+    )
+
+    # Digital-negative export. The shared decode defaults shrink an image so
+    # the analysis work downstream stays bounded; a negative is printed at
+    # full size, so shrinking it would throw away resolution the print needs.
+    # An 8x10 inch negative at 720 dpi is about 41 megapixels, above the
+    # shared decode cap, so this path carries its own.
+    negative_export_max_side: int | None = Field(
+        default=None,
+        ge=1,
+        description="Longest side of an uploaded negative source; None keeps the full size",
+    )
+    negative_export_max_pixels: int = Field(
+        default=100_000_000,
+        ge=1,
+        description="Pixel-count cap for a negative source, checked from the header before decode",
+    )
+
+    # Request bounds (SEC-03)
+    max_request_body_mb: int = Field(
+        default=50, ge=1, le=1024, description="Global cap on any HTTP request body"
+    )
+    max_list_length: int = Field(
+        default=4096, ge=1, description="Maximum items in any list or mapping request field"
+    )
+    max_string_length: int = Field(
+        default=4096, ge=1, description="Maximum characters in any string request field"
+    )
+    max_synthetic_samples: int = Field(
+        default=5000, ge=1, description="Maximum records per /api/deep/generate-synthetic call"
+    )
+    max_hidden_layers: int = Field(
+        default=16, ge=1, description="Maximum number of hidden layers accepted in hidden_dims"
+    )
+    max_hidden_dim: int = Field(
+        default=4096, ge=1, description="Maximum width of a single hidden layer in hidden_dims"
+    )
 
     # Rate limiting
     rate_limit_per_minute: int = Field(default=60, ge=1, le=1000)
+
+    @field_validator("cors_allow_credentials")
+    @classmethod
+    def _reject_wildcard_with_credentials(cls, value: bool, info: ValidationInfo) -> bool:
+        """Refuse the unsafe ``*`` + credentials combination with a clear message."""
+        origins = info.data.get("cors_origins", [])
+        if value and "*" in origins:
+            raise ValueError(
+                "cors_allow_credentials=True cannot be combined with the wildcard origin '*'. "
+                "Set PTPD_API_CORS_ORIGINS to an explicit JSON list of origins."
+            )
+        return value
 
 
 class VisualizationSettings(BaseSettings):
@@ -404,6 +540,29 @@ class VisualizationSettings(BaseSettings):
     show_grid: bool = Field(default=True)
     show_legend: bool = Field(default=True)
     show_reference_line: bool = Field(default=True)
+
+
+class ImagingSettings(BaseSettings):
+    """Settings for applying curves to images and exporting negatives."""
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_IMAGING_")
+
+    # A 16-bit scan carries 65536 grey levels. Routing it through the 256-entry
+    # lookup table quantises it to 8 bits, and the export then multiplies the
+    # result back up, so a "16-bit" negative held fewer distinct levels than an
+    # 8-bit one would. Highlight banding in the print is exactly what the wider
+    # file exists to avoid. Setting this false restores the old behaviour for
+    # anyone whose downstream tooling depends on 8-bit output.
+    preserve_bit_depth: bool = Field(
+        default=True,
+        description="Carry 16-bit sources through curve, inversion and export at 16 bits",
+    )
+    lut_cache_entries: int = Field(
+        default=16,
+        ge=1,
+        le=1024,
+        description="Lookup tables held in memory before the least recently used is evicted",
+    )
 
 
 class ChemistrySettings(BaseSettings):
@@ -1303,6 +1462,24 @@ class Settings(BaseSettings):
     app_name: str = Field(default="PTPD Calibration Studio")
     debug: bool = Field(default=False)
     log_level: str = Field(default="INFO")
+    log_json: bool = Field(
+        default=False,
+        description="Emit structured JSON log records instead of human-readable lines",
+    )
+    log_file: Path | None = Field(
+        default=None,
+        description="Optional file to receive log records in addition to stdout",
+    )
+    log_sanitize: bool = Field(
+        default=True,
+        description="Escape line breaks in formatted log messages so untrusted text cannot forge a record",
+    )
+    log_sanitize_max_length: int = Field(
+        default=2048,
+        ge=64,
+        le=65536,
+        description="Length at which a formatted log message is truncated",
+    )
 
     # Data directories
     data_dir: Path = Field(default=Path.home() / ".ptpd")
@@ -1319,6 +1496,7 @@ class Settings(BaseSettings):
     agent: AgentSettings = Field(default_factory=AgentSettings)
     api: APISettings = Field(default_factory=APISettings)
     visualization: VisualizationSettings = Field(default_factory=VisualizationSettings)
+    imaging: ImagingSettings = Field(default_factory=ImagingSettings)
     wedge_analysis: WedgeAnalysisSettings = Field(default_factory=WedgeAnalysisSettings)
     chemistry: ChemistrySettings = Field(default_factory=ChemistrySettings)
     workflow: WorkflowSettings = Field(default_factory=WorkflowSettings)

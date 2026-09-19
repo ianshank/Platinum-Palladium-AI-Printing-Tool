@@ -68,6 +68,48 @@ from pathlib import Path
 
 
 @pytest.fixture
-def real_quad_path():
-    """Path to the real-world .quad fixture file."""
-    return Path(__file__).parent.parent / "fixtures" / "Platinum_Palladium_V6-CC.quad"
+def real_quad_path(tmp_path_factory):
+    """Path to a real-world style multi-channel .quad profile.
+
+    ``*.quad`` files are git-ignored, so the original vendor profile is never
+    present in a clean checkout. When it is absent a deterministic synthetic
+    QuadToneRIP profile with the same shape (8 channels x 256 16-bit values,
+    K as a full ramp, LK/LLK partial, the rest empty) is generated instead, so
+    the tests exercise the real parser and exporter on a realistic file.
+    """
+    real = Path(__file__).parent.parent / "fixtures" / "Platinum_Palladium_V6-CC.quad"
+    if real.exists():
+        return real
+    channels = ["K", "C", "M", "Y", "LC", "LM", "LK", "LLK"]
+    max_value = 65535
+    lines = [
+        f"## QuadToneRIP {','.join(channels)}",
+        "# Platinum-Palladium V6 CC (synthetic profile generated for tests)",
+    ]
+    for name in channels:
+        lines.append(f"# {name} Curve")
+        if name == "K":
+            values = [round(i / 255 * max_value) for i in range(256)]
+        elif name == "LK":
+            values = [round(min(i / 255, 0.5) * max_value) for i in range(256)]
+        elif name == "LLK":
+            values = [round(min(i / 255, 0.25) * max_value) for i in range(256)]
+        else:
+            values = [0] * 256
+        lines.extend(str(v) for v in values)
+    path = tmp_path_factory.mktemp("quad") / "synthetic_platinum_palladium.quad"
+    path.write_text("\n".join(lines) + "\n")
+    return path
+
+
+@pytest.fixture(autouse=True)
+def _legacy_ui_requires_gradio(request: pytest.FixtureRequest) -> None:
+    """Skip tests marked ``legacy_ui`` when the retired Gradio UI is not installed.
+
+    The marker documents that a journey exercises Gradio handlers (ADR-0004);
+    gating here keeps the marker reusable instead of repeating importorskip.
+    """
+    if request.node.get_closest_marker("legacy_ui") is not None:
+        pytest.importorskip(
+            "gradio", reason="legacy Gradio UI journey needs the [ui] extra (ADR-0004)"
+        )

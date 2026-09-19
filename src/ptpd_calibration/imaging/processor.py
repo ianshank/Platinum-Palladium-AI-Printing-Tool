@@ -5,7 +5,11 @@ Applies calibration curves to images, creates inverted negatives,
 and exports in various formats while preserving resolution.
 """
 
+import hashlib
 import io
+import logging
+import threading
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -21,7 +25,100 @@ try:
 except ImportError:
     HAS_TIFFFILE = False
 
+from ptpd_calibration.config import ImagingSettings, get_settings
 from ptpd_calibration.core.models import CurveData
+from ptpd_calibration.imaging.safe_image import (
+    HIGH_DEPTH_GRAY_MODES,
+    ImageDecodeSettings,
+    image_from_array,
+    open_image_safely,
+    resize_to_fit,
+)
+
+logger = logging.getLogger(__name__)
+
+# Bit depths are fixed by the file formats, not by taste, so they are constants
+# here rather than settings. The scale factor is exact: 255 * 257 == 65535, so
+# an 8-bit value maps onto the 16-bit range without rounding drift.
+EIGHT_BIT_LEVELS = 256
+SIXTEEN_BIT_LEVELS = 65536
+EIGHT_BIT_MAX = EIGHT_BIT_LEVELS - 1
+SIXTEEN_BIT_MAX = SIXTEEN_BIT_LEVELS - 1
+EIGHT_TO_SIXTEEN = SIXTEEN_BIT_MAX // EIGHT_BIT_MAX
+
+
+def is_high_depth_gray(image: Image.Image) -> bool:
+    """Report whether ``image`` is single-channel with more than eight bits."""
+    return image.mode in HIGH_DEPTH_GRAY_MODES
+
+
+def to_uint16(array: np.ndarray) -> np.ndarray:
+    """Return ``array`` as ``uint16`` without rescaling its values.
+
+    Pillow decodes ``I;16`` to ``uint16`` and ``I`` to ``int32``. Both already
+    hold values on the 0-65535 scale, so the conversion clips rather than
+    scales; only a genuinely 8-bit array needs :data:`EIGHT_TO_SIXTEEN`.
+
+    ``I`` is 32 bits wide, so a source really carrying more than 16 bits would
+    lose its highlights here. That is logged rather than papered over, because
+    rescaling by the observed maximum would change the tone curve silently.
+    """
+    if array.dtype == np.uint16:
+        return array
+    over = int(np.count_nonzero(array > SIXTEEN_BIT_MAX))
+    under = int(np.count_nonzero(array < 0))
+    if over or under:
+        logger.warning(
+            "Clamped %d sample(s) above %d and %d below zero while narrowing %s to 16 bits",
+            over,
+            SIXTEEN_BIT_MAX,
+            under,
+            array.dtype,
+        )
+    return np.clip(array, 0, SIXTEEN_BIT_MAX).astype(np.uint16)
+
+
+def to_eight_bit_gray(image: Image.Image) -> Image.Image:
+    """Scale a high-depth grayscale image down to 8-bit "L".
+
+    Pillow's own ``convert("L")`` *clips* ``I;16`` instead of scaling it, so
+    every sample above 255 came out white. Divide by :data:`EIGHT_TO_SIXTEEN`
+    instead, which is exact at both ends of the range.
+    """
+    return Image.fromarray(to_eight_bit_array(to_uint16(np.asarray(image))))
+
+
+def as_eight_bit_gray(image: Image.Image) -> Image.Image:
+    """Return ``image`` as 8-bit "L", scaling high-depth input instead of clipping.
+
+    This is the safe replacement for a bare ``image.convert("L")``. Every module
+    that needs a grayscale array of an image it did not decode itself has the
+    same problem: ``open_image_safely`` deliberately preserves ``I;16`` and
+    ``I``, and Pillow's ``convert`` clips those at 255, so a 16-bit scan arrives
+    as very nearly solid white. Reading a 16-bit negative that way reported its
+    tones as 99% paper white, which is not a small error in a tool whose whole
+    job is measuring tone.
+
+    An image that is already "L" is returned unchanged rather than copied, so
+    this is cheap enough to call unconditionally.
+    """
+    if is_high_depth_gray(image):
+        logger.debug("Scaling %s image to 8-bit rather than clipping it", image.mode)
+        return to_eight_bit_gray(image)
+    if image.mode == "L":
+        return image
+    return image.convert("L")
+
+
+def to_eight_bit_array(array: np.ndarray) -> np.ndarray:
+    """Scale a 16-bit array down to ``uint8``, rounding rather than truncating.
+
+    ``Image.fromarray`` infers "L" from a 2-D ``uint8`` array, so no explicit
+    ``mode`` argument is needed; that argument is deprecated, and Pillow 13
+    restricts it so it can no longer change data types.
+    """
+    scaled = np.rint(np.asarray(array, dtype=np.float64) / EIGHT_TO_SIXTEEN)
+    return np.clip(scaled, 0, EIGHT_BIT_MAX).astype(np.uint8)
 
 
 class ImageFormat(str, Enum):
@@ -34,6 +131,19 @@ class ImageFormat(str, Enum):
     JPEG = "jpeg"
     JPEG_HIGH = "jpeg_high"
     ORIGINAL = "original"  # Same as input
+
+
+#: Export formats that carry sixteen bits per sample. Everything else in
+#: :class:`ImageFormat` is an 8-bit choice the caller made deliberately, and
+#: ORIGINAL means "whatever came in", so it keeps the source depth.
+#: Trailing-axis lengths this loader accepts for a colour array: three for RGB
+#: and four for RGBA. Two (LA) is deliberately absent, matching what this path
+#: accepted before the mode arguments were removed.
+_COLOUR_CHANNEL_COUNTS: frozenset[int] = frozenset({3, 4})
+
+SIXTEEN_BIT_FORMATS: frozenset[ImageFormat] = frozenset(
+    {ImageFormat.TIFF_16BIT, ImageFormat.PNG_16BIT}
+)
 
 
 class ColorMode(str, Enum):
@@ -94,9 +204,32 @@ class ImageProcessor:
     - Exporting in various formats while preserving quality
     """
 
-    def __init__(self) -> None:
-        """Initialize the image processor."""
-        self._lut_cache: dict[str, np.ndarray] = {}
+    def __init__(
+        self,
+        settings: ImagingSettings | None = None,
+        decode_settings: ImageDecodeSettings | None = None,
+    ) -> None:
+        """Initialize the image processor.
+
+        Args:
+            settings: Imaging settings; ``None`` reads them from the
+                environment. Injecting them keeps the processor testable
+                without mutating global configuration.
+            decode_settings: Limits applied when decoding an untrusted file;
+                ``None`` reads ``PTPD_IMAGE_*`` from the environment. An
+                export path passes its own, because the shared default
+                shrinks images to bound the analysis work downstream and a
+                negative is printed at full size.
+        """
+        self._settings = settings or get_settings().imaging
+        self._decode_settings = decode_settings
+        # An LRU rather than a plain dict: a 16-bit table is 128 KB and the
+        # cache had no bound, so a long-lived processor handed a new curve per
+        # request grew for the lifetime of the process.
+        self._lut_cache: OrderedDict[str, np.ndarray] = OrderedDict()
+        # BatchProcessor shares one ImageProcessor across a ThreadPoolExecutor,
+        # where an interleaved read and eviction raised KeyError on move_to_end.
+        self._lut_lock = threading.Lock()
 
     def load_image(
         self,
@@ -110,22 +243,38 @@ class ImageProcessor:
         Returns:
             ProcessingResult with loaded image and metadata
         """
-        if isinstance(source, str | Path):
-            img = Image.open(source)
-            original_format = img.format
-        elif isinstance(source, bytes):
-            img = Image.open(io.BytesIO(source))
+        if isinstance(source, str | Path | bytes):
+            # Paths and byte strings are the two untrusted sources: they arrive
+            # from an upload or a user-chosen file. open_image_safely applies
+            # the format, pixel-count, frame-count and mode guards from
+            # ImageDecodeSettings and fully decodes, so no file handle is left
+            # open for the garbage collector to close.
+            img = open_image_safely(source, self._decode_settings)
             original_format = img.format
         elif isinstance(source, Image.Image):
             img = source.copy()
             original_format = getattr(source, "format", None)
         elif isinstance(source, np.ndarray):
-            if source.ndim == 2:
-                img = Image.fromarray(source.astype(np.uint8), mode="L")
-            elif source.ndim == 3 and source.shape[2] == 3:
-                img = Image.fromarray(source.astype(np.uint8), mode="RGB")
-            elif source.ndim == 3 and source.shape[2] == 4:
-                img = Image.fromarray(source.astype(np.uint8), mode="RGBA")
+            if source.ndim == 2 and source.dtype == np.uint16:
+                # ``astype(np.uint8)`` truncates modulo 256, so level 256 became
+                # 0 and a 16-bit array arrived scrambled rather than merely
+                # coarsened. Keep the depth, or scale it down when the operator
+                # has asked for 8-bit output; never wrap. Copy for the same
+                # reason the PIL branch does: ``fromarray`` shares the buffer,
+                # so a later write to the caller's array would silently change
+                # the image already loaded from it.
+                if self._settings.preserve_bit_depth:
+                    img = Image.fromarray(source.copy())
+                else:
+                    img = Image.fromarray(to_eight_bit_array(source))
+            elif source.ndim == 2 or (
+                source.ndim == 3 and source.shape[2] in _COLOUR_CHANNEL_COUNTS
+            ):
+                # One branch per shape used to be necessary to pick the mode
+                # argument. Pillow infers the same mode from the shape, so the
+                # shapes now differ only in what they are allowed to be, and
+                # that check is all this condition is for.
+                img = Image.fromarray(source.astype(np.uint8))
             else:
                 raise ValueError(f"Unsupported array shape: {source.shape}")
             original_format = None
@@ -163,38 +312,48 @@ class ImageProcessor:
         """
         img = result.image
 
-        # Convert to appropriate mode for processing
-        if color_mode == ColorMode.GRAYSCALE and img.mode not in ("L", "LA"):
-            img = img.convert("L")
+        # Convert to appropriate mode for processing. A high-depth grayscale
+        # source is already grayscale, so ColorMode.GRAYSCALE must not push it
+        # through "L" and throw away eight bits; ColorMode.RGB is an explicit
+        # request for 8-bit colour and is honoured as such.
+        if (
+            color_mode == ColorMode.GRAYSCALE
+            and img.mode not in ("L", "LA")
+            and not self._keeps_high_depth(img)
+        ):
+            img = self._narrow(img, "L")
         elif color_mode == ColorMode.RGB and img.mode not in ("RGB", "RGBA"):
-            img = img.convert("RGB")
+            img = self._narrow(img, "RGB")
 
-        # Create lookup table from curve
-        lut = self._create_lut(curve)
-
-        # Apply LUT based on image mode
-        if img.mode == "L":
-            processed = self._apply_lut_grayscale(img, lut)
+        # Apply the LUT based on image mode. Each table is built inside the
+        # branch that uses it, so a 16-bit workload does not also fill the
+        # cache with 8-bit tables it never reads.
+        if self._keeps_high_depth(img):
+            processed = self._apply_lut_grayscale_16(img, self._create_lut_16(curve))
+        elif img.mode == "L":
+            processed = self._apply_lut_grayscale(img, self._create_lut(curve))
         elif img.mode == "LA":
             # Grayscale with alpha
             l_channel = img.split()[0]
             a_channel = img.split()[1]
-            processed_l = self._apply_lut_grayscale(l_channel, lut)
+            processed_l = self._apply_lut_grayscale(l_channel, self._create_lut(curve))
             processed = Image.merge("LA", (processed_l, a_channel))
         elif img.mode == "RGB":
-            processed = self._apply_lut_rgb(img, lut)
+            processed = self._apply_lut_rgb(img, self._create_lut(curve))
         elif img.mode == "RGBA":
             # RGB with alpha
             rgb = img.convert("RGB")
             a_channel = img.split()[3]
-            processed_rgb = self._apply_lut_rgb(rgb, lut)
+            processed_rgb = self._apply_lut_rgb(rgb, self._create_lut(curve))
             processed = processed_rgb.copy()
             processed.putalpha(a_channel)
         else:
-            # Try to convert to RGB first
+            # Anything else becomes RGB. This is where a high-depth image lands
+            # under ColorMode.PRESERVE once preserve_bit_depth is off, so it
+            # narrows by scaling rather than by Pillow's clipping convert().
             try:
-                rgb = img.convert("RGB")
-                processed = self._apply_lut_rgb(rgb, lut)
+                rgb = self._narrow(img, "RGB")
+                processed = self._apply_lut_rgb(rgb, self._create_lut(curve))
             except Exception as e:
                 raise ValueError(f"Unsupported image mode: {img.mode}") from e
 
@@ -267,7 +426,7 @@ class ImageProcessor:
             processed[:, :, idx] = luts[channel][arr[:, :, idx]]
 
         # Convert back to PIL Image
-        processed_img = Image.fromarray(processed, mode="RGB")
+        processed_img = Image.fromarray(processed)
 
         # Restore alpha if present
         if has_alpha:
@@ -410,33 +569,40 @@ class ImageProcessor:
         img = result.image
 
         # Handle different modes
-        if img.mode == "L":
+        if self._keeps_high_depth(img):
+            # Inverting against 255 here would have clamped every 16-bit sample
+            # to black; the mode was silently converted to RGB instead, which
+            # cost the depth. Invert against the 16-bit maximum in place.
+            high_depth_arr = to_uint16(np.asarray(img))
+            inverted = Image.fromarray((SIXTEEN_BIT_MAX - high_depth_arr).astype(np.uint16))
+        elif img.mode == "L":
             arr = np.array(img)
             inverted_arr = 255 - arr
-            inverted = Image.fromarray(inverted_arr.astype(np.uint8), mode="L")
+            inverted = Image.fromarray(inverted_arr.astype(np.uint8))
         elif img.mode == "LA":
             l_channel, a_channel = img.split()
             l_arr = np.array(l_channel)
-            inverted_l = Image.fromarray((255 - l_arr).astype(np.uint8), mode="L")
+            inverted_l = Image.fromarray((255 - l_arr).astype(np.uint8))
             inverted = Image.merge("LA", (inverted_l, a_channel))
         elif img.mode == "RGB":
             arr = np.array(img)
             inverted_arr = 255 - arr
-            inverted = Image.fromarray(inverted_arr.astype(np.uint8), mode="RGB")
+            inverted = Image.fromarray(inverted_arr.astype(np.uint8))
         elif img.mode == "RGBA":
             r, g, b, a = img.split()
             rgb = Image.merge("RGB", (r, g, b))
             rgb_arr = np.array(rgb)
-            inverted_rgb = Image.fromarray((255 - rgb_arr).astype(np.uint8), mode="RGB")
+            inverted_rgb = Image.fromarray((255 - rgb_arr).astype(np.uint8))
             inverted = inverted_rgb.copy()
             inverted.putalpha(a)
         else:
-            # Try to handle other modes
+            # Try to handle other modes. Narrow by scaling for the same reason
+            # as apply_curve's catch-all above.
             try:
-                rgb = img.convert("RGB")
+                rgb = self._narrow(img, "RGB")
                 arr = np.array(rgb)
                 inverted_arr = 255 - arr
-                inverted = Image.fromarray(inverted_arr.astype(np.uint8), mode="RGB")
+                inverted = Image.fromarray(inverted_arr.astype(np.uint8))
             except Exception as e:
                 raise ValueError(f"Cannot invert image mode: {img.mode}") from e
 
@@ -476,10 +642,15 @@ class ImageProcessor:
         """
         result = self.load_image(source)
 
-        # Convert to appropriate color mode
-        if color_mode == ColorMode.GRAYSCALE and result.image.mode not in ("L", "LA"):
+        # Convert to appropriate color mode. High-depth grayscale is grayscale
+        # already, so converting it here would defeat the 16-bit path below.
+        if (
+            color_mode == ColorMode.GRAYSCALE
+            and result.image.mode not in ("L", "LA")
+            and not self._keeps_high_depth(result.image)
+        ):
             result = ProcessingResult(
-                image=result.image.convert("L"),
+                image=self._narrow(result.image, "L"),
                 original_size=result.original_size,
                 original_mode=result.original_mode,
                 original_format=result.original_format,
@@ -521,7 +692,7 @@ class ImageProcessor:
 
         original = result.image.copy()
         if thumbnail_size:
-            original.thumbnail(thumbnail_size, Image.Resampling.LANCZOS)
+            original = resize_to_fit(original, max(thumbnail_size), "preview original")
             # Resize the processing image too
             result = ProcessingResult(
                 image=result.image.copy(),
@@ -532,11 +703,27 @@ class ImageProcessor:
                 curve_applied=False,
                 inverted=False,
             )
-            result.image.thumbnail(thumbnail_size, Image.Resampling.LANCZOS)
+            result.image = resize_to_fit(result.image, max(thumbnail_size), "preview source")
 
         processed_result = self.apply_curve(result, curve, color_mode)
 
         return original, processed_result.image
+
+    @staticmethod
+    def _match_depth_to_format(img: Image.Image, settings: ExportSettings) -> Image.Image:
+        """Reduce a high-depth image when an 8-bit output format was requested.
+
+        ``TIFF`` and ``PNG`` sit beside ``TIFF_16BIT`` and ``PNG_16BIT`` in the
+        format menu, so leaving sixteen bits on the plain entries made the two
+        choices indistinguishable; JPEG cannot carry them at all. ``ORIGINAL``
+        means "whatever came in" and keeps the depth.
+        """
+        if not is_high_depth_gray(img):
+            return img
+        if settings.format == ImageFormat.ORIGINAL or settings.format in SIXTEEN_BIT_FORMATS:
+            return img
+        logger.debug("Reducing %s to eight bits for format %s", img.mode, settings.format.value)
+        return to_eight_bit_gray(img)
 
     def export(
         self,
@@ -557,7 +744,7 @@ class ImageProcessor:
         settings = settings or ExportSettings()
         output_path = Path(output_path)
 
-        img = result.image
+        img = self._match_depth_to_format(result.image, settings)
 
         # Determine format
         if settings.format == ImageFormat.ORIGINAL:
@@ -573,7 +760,7 @@ class ImageProcessor:
                 fmt = "JPEG"
 
         # Handle 16-bit export
-        is_16bit = settings.format in (ImageFormat.TIFF_16BIT, ImageFormat.PNG_16BIT)
+        is_16bit = settings.format in SIXTEEN_BIT_FORMATS
 
         # Build save kwargs
         save_kwargs: dict[str, Any] = {}
@@ -589,7 +776,7 @@ class ImageProcessor:
             quality = 98 if settings.format == ImageFormat.JPEG_HIGH else settings.jpeg_quality
             save_kwargs["quality"] = quality
             save_kwargs["subsampling"] = 0  # Best quality
-            # JPEG doesn't support alpha
+            # JPEG does not carry alpha. Depth was matched to the format above.
             if img.mode in ("RGBA", "LA"):
                 img = img.convert("RGB" if img.mode == "RGBA" else "L")
 
@@ -604,18 +791,24 @@ class ImageProcessor:
 
         # Handle 16-bit conversion
         if is_16bit:
-            arr = np.array(img).astype(np.uint16) * 257  # Scale 8-bit to 16-bit
+            arr = self._as_16bit(np.asarray(img))
             if fmt == "TIFF":
                 # Save 16-bit TIFF
                 self._save_16bit_tiff(arr, output_path, save_kwargs)
                 return output_path
             elif fmt == "PNG":
-                # PIL can handle 16-bit PNG for grayscale
-                if img.mode == "L":
-                    img = Image.fromarray(arr, mode="I;16")
+                # PIL can handle 16-bit PNG for grayscale. The test is the array
+                # shape, not the mode: a curve applied at 16 bits leaves "I;16",
+                # which is just as single-channel as "L".
+                if arr.ndim == 2:
+                    # Pillow infers "I;16" from the uint16 dtype; the explicit
+                    # ``mode`` argument is deprecated and removed in Pillow 13.
+                    img = Image.fromarray(arr)
                 else:
-                    # For RGB, need to use array directly
-                    pass  # Fall through to standard save
+                    # Colour: this used to fall through and write an 8-bit file
+                    # for a 16-bit request, the same silent downgrade the bytes
+                    # writer made. Refuse instead, with the same message.
+                    raise ValueError(self._no_16bit_colour_message(fmt))
 
         # Standard save
         img.save(output_path, format=fmt, **save_kwargs)
@@ -637,7 +830,7 @@ class ImageProcessor:
             Tuple of (image_bytes, format_extension)
         """
         settings = settings or ExportSettings()
-        img = result.image
+        img = self._match_depth_to_format(result.image, settings)
 
         # Determine format
         if settings.format == ImageFormat.ORIGINAL:
@@ -669,6 +862,25 @@ class ImageProcessor:
         elif fmt == "TIFF":
             save_kwargs["compression"] = "tiff_lzw"
 
+        # Widen an 8-bit image when 16 bits were asked for. Only the file path
+        # did this, so a caller asking these bytes for a 16-bit negative --
+        # which is what an HTTP export endpoint does -- silently got 8 bits.
+        if settings.format in SIXTEEN_BIT_FORMATS:
+            arr = self._as_16bit(np.asarray(img))
+            if arr.ndim == 2:
+                img = Image.fromarray(arr)
+            elif self._writes_16bit_colour(fmt):
+                # Pillow cannot write 16-bit colour, so tifffile does. Returning
+                # an 8-bit file for a 16-bit request looked like success while
+                # being the wrong depth, which is the defect this module exists
+                # to remove.
+                colour_buffer = io.BytesIO()
+                tifffile.imwrite(colour_buffer, arr, photometric="rgb")
+                logger.debug("Wrote 16-bit %s colour to bytes via tifffile", fmt)
+                return colour_buffer.getvalue(), ext
+            else:
+                raise ValueError(self._no_16bit_colour_message(fmt))
+
         # Save to bytes
         buffer = io.BytesIO()
         img.save(buffer, format=fmt, **save_kwargs)
@@ -676,34 +888,162 @@ class ImageProcessor:
 
         return buffer.read(), ext
 
-    def _create_lut(self, curve: CurveData) -> np.ndarray:
-        """Create 256-entry lookup table from curve.
+    @staticmethod
+    def _lut_cache_key(curve: CurveData) -> str:
+        """Identify a curve by its contents, not by its label.
+
+        The key used to be the name and point count. Generated curves default
+        to the same name and always carry 256 points, so a second curve
+        silently reused the first one's table: the user exported a negative
+        with the previous calibration and had no way to tell. Hashing the
+        values makes two curves share an entry only when they are equal.
+        """
+        digest = hashlib.blake2b(digest_size=16)
+        for values in (curve.input_values, curve.output_values):
+            digest.update(np.ascontiguousarray(values, dtype=np.float64).tobytes())
+            digest.update(b"|")
+        return digest.hexdigest()
+
+    @classmethod
+    def _cache_key_for(cls, curve: CurveData, levels: int = EIGHT_BIT_LEVELS) -> str:
+        """Cache key for ``curve`` at ``levels`` entries.
+
+        The depth is part of the key: the 8-bit and 16-bit tables for one
+        curve are different arrays and must not evict each other's entry.
+        """
+        return f"{levels}:{cls._lut_cache_key(curve)}"
+
+    def _cached_lut(self, cache_key: str) -> np.ndarray | None:
+        """Return a cached table, marking it as most recently used."""
+        with self._lut_lock:
+            lut = self._lut_cache.get(cache_key)
+            if lut is not None:
+                self._lut_cache.move_to_end(cache_key)
+            return lut
+
+    def _store_lut(self, cache_key: str, lut: np.ndarray) -> None:
+        """Cache ``lut``, evicting the least recently used table when full."""
+        with self._lut_lock:
+            self._lut_cache[cache_key] = lut
+            self._lut_cache.move_to_end(cache_key)
+            while len(self._lut_cache) > self._settings.lut_cache_entries:
+                evicted, _ = self._lut_cache.popitem(last=False)
+                logger.debug(
+                    "Evicted LUT %s (cache limit %d)",
+                    evicted[:16],
+                    self._settings.lut_cache_entries,
+                )
+
+    def _build_lut(self, curve: CurveData, levels: int, dtype: np.dtype | type) -> np.ndarray:
+        """Interpolate ``curve`` onto a table of ``levels`` entries.
+
+        One builder serves both depths so the 8-bit and 16-bit tables cannot
+        drift apart in rounding or clipping behaviour.
 
         Args:
-            curve: CurveData with input/output values
+            curve: CurveData with input/output values in 0..1.
+            levels: Number of table entries (256 for 8-bit, 65536 for 16-bit).
+            dtype: Integer type of the table entries.
 
         Returns:
-            NumPy array of 256 output values
+            NumPy array of ``levels`` output values.
         """
-        # Check cache
-        cache_key = f"{curve.name}_{len(curve.input_values)}"
-        if cache_key in self._lut_cache:
-            return self._lut_cache[cache_key]
+        cache_key = self._cache_key_for(curve, levels)
+        cached = self._cached_lut(cache_key)
+        if cached is not None:
+            logger.debug("LUT cache hit for curve %s at %d levels", curve.name, levels)
+            return cached
 
-        # Interpolate curve to 256 points
-        input_vals = np.array(curve.input_values)
-        output_vals = np.array(curve.output_values)
+        input_vals = np.asarray(curve.input_values, dtype=np.float64)
+        output_vals = np.asarray(curve.output_values, dtype=np.float64)
 
-        # Create LUT for all 256 possible input values
-        x_lut = np.linspace(0, 1, 256)
+        x_lut = np.linspace(0.0, 1.0, levels)
         y_lut = np.interp(x_lut, input_vals, output_vals)
 
-        # Convert to 0-255 range
-        lut = (np.clip(y_lut, 0, 1) * 255).astype(np.uint8)
+        # Round rather than truncate: casting discards the fraction, which
+        # biases every entry by up to half a code value and maps 0.5 to 127
+        # instead of 128.
+        lut = np.rint(np.clip(y_lut, 0.0, 1.0) * (levels - 1)).astype(dtype)
 
-        # Cache and return
-        self._lut_cache[cache_key] = lut
+        self._store_lut(cache_key, lut)
+        logger.debug("Built %d-entry LUT for curve %s", levels, curve.name)
         return lut
+
+    def _create_lut(self, curve: CurveData) -> np.ndarray:
+        """Create the 256-entry 8-bit lookup table for ``curve``."""
+        return self._build_lut(curve, EIGHT_BIT_LEVELS, np.uint8)
+
+    def _create_lut_16(self, curve: CurveData) -> np.ndarray:
+        """Create the 65536-entry 16-bit lookup table for ``curve``.
+
+        A 16-bit scan carries 65536 levels. Passing it through the 256-entry
+        table quantises it to 8 bits, which the export then scaled back up, so
+        a "16-bit" negative held fewer distinct levels than the source did.
+        Highlight banding is precisely what a 16-bit negative exists to avoid.
+        """
+        return self._build_lut(curve, SIXTEEN_BIT_LEVELS, np.uint16)
+
+    def _keeps_high_depth(self, img: Image.Image) -> bool:
+        """Report whether ``img`` should be processed at more than eight bits."""
+        return self._settings.preserve_bit_depth and is_high_depth_gray(img)
+
+    @staticmethod
+    def _writes_16bit_colour(fmt: str) -> bool:
+        """Report whether a three-channel image can be written at 16 bits.
+
+        Only TIFF can, and only through tifffile: Pillow has no 16-bit colour
+        mode at all, which is why a 16-bit colour request used to come back as
+        an 8-bit file.
+        """
+        return fmt == "TIFF" and HAS_TIFFFILE
+
+    @staticmethod
+    def _no_16bit_colour_message(fmt: str) -> str:
+        """Explain why a 16-bit colour request cannot be served."""
+        remedy = "" if HAS_TIFFFILE else " Install tifffile for 16-bit TIFF colour."
+        return (
+            f"16-bit colour cannot be written as {fmt}.{remedy} "
+            "Request a grayscale color mode, an 8-bit format, or 16-bit TIFF."
+        )
+
+    @staticmethod
+    def _narrow(img: Image.Image, mode: str) -> Image.Image:
+        """Convert ``img`` to an 8-bit ``mode``, scaling a high-depth source.
+
+        Pillow's ``convert`` clips a high-depth image at 255 rather than
+        scaling it, so every narrowing has to scale first. Routing all of them
+        through one helper is the point: the first fix scaled only the array
+        branch of ``load_image`` and left the file branch clipping, which made
+        ``preserve_bit_depth=False`` produce a ruined negative from a real
+        scanner file while the array path looked correct.
+        """
+        if is_high_depth_gray(img):
+            img = to_eight_bit_gray(img)
+        return img if img.mode == mode else img.convert(mode)
+
+    @staticmethod
+    def _as_16bit(arr: np.ndarray) -> np.ndarray:
+        """Put ``arr`` on the 16-bit scale, scaling only genuinely 8-bit data.
+
+        An array that already holds 0-65535 values must pass through untouched:
+        multiplying it by :data:`EIGHT_TO_SIXTEEN` overflows and wraps, which
+        turned a full-scale float sample into a near-black one. The test is
+        the value range the dtype can hold, not its width: "F" (float32) and
+        "1" (bool) are both allowed decode modes and both wrapped.
+        """
+        if arr.dtype == np.uint8:
+            return arr.astype(np.uint16) * EIGHT_TO_SIXTEEN
+        if arr.dtype == np.bool_:
+            return arr.astype(np.uint16) * SIXTEEN_BIT_MAX
+        if np.issubdtype(arr.dtype, np.floating):
+            # Float modes carry no declared range. Values inside 0-255 are an
+            # 8-bit image in float clothing; anything wider is already on a
+            # 16-bit scale. Guessing a normalisation would change the tone
+            # curve, so only the unambiguous case is scaled.
+            if float(np.nanmax(arr, initial=0.0)) <= EIGHT_BIT_MAX:
+                return np.rint(arr).astype(np.uint16) * EIGHT_TO_SIXTEEN
+            return to_uint16(np.rint(arr))
+        return to_uint16(arr)
 
     def _apply_lut_grayscale(self, img: Image.Image, lut: np.ndarray) -> Image.Image:
         """Apply LUT to grayscale image.
@@ -717,7 +1057,20 @@ class ImageProcessor:
         """
         arr = np.array(img)
         processed = lut[arr]
-        return Image.fromarray(processed, mode="L")
+        return Image.fromarray(processed)
+
+    def _apply_lut_grayscale_16(self, img: Image.Image, lut: np.ndarray) -> Image.Image:
+        """Apply a 16-bit LUT to a high-depth grayscale image.
+
+        Args:
+            img: PIL Image in one of :data:`HIGH_DEPTH_GRAY_MODES`.
+            lut: 65536-entry lookup table.
+
+        Returns:
+            Processed image in "I;16", inferred by Pillow from the dtype.
+        """
+        arr = to_uint16(np.asarray(img))
+        return Image.fromarray(lut[arr])
 
     def _apply_lut_rgb(self, img: Image.Image, lut: np.ndarray) -> Image.Image:
         """Apply LUT to RGB image (same curve to all channels).
@@ -731,7 +1084,7 @@ class ImageProcessor:
         """
         arr = np.array(img)
         processed = lut[arr]
-        return Image.fromarray(processed, mode="RGB")
+        return Image.fromarray(processed)
 
     def _save_16bit_tiff(
         self,
@@ -747,8 +1100,9 @@ class ImageProcessor:
             kwargs: Additional save arguments (dpi, compression, etc.)
         """
         if arr.ndim == 2:
-            # Grayscale - PIL handles this fine
-            img = Image.fromarray(arr, mode="I;16")
+            # Grayscale - PIL handles this fine ("I;16" is inferred from uint16;
+            # the explicit ``mode`` argument is deprecated and removed in Pillow 13)
+            img = Image.fromarray(arr)
             img.save(path, format="TIFF", **kwargs)
         elif HAS_TIFFFILE:
             # RGB 16-bit - use tifffile for proper support
@@ -790,9 +1144,14 @@ class ImageProcessor:
                     resolutionunit=2 if resolution else None,
                 )
         else:
-            # Fallback: save as 8-bit if tifffile not available
-            arr_8bit = (arr / 257).astype(np.uint8)
-            img = Image.fromarray(arr_8bit, mode="RGB")
+            # Fallback: save as 8-bit if tifffile not available.
+            # The mode is inferred rather than declared "RGB": an RGBA export
+            # reaches here with a four-channel array, and ``mode="RGB"`` does
+            # not convert it, it reinterprets the buffer -- every pixel after
+            # the first shifts by a byte and alpha folds into the colour
+            # stream. ``image_from_array`` picks the mode from the shape.
+            arr_8bit = to_eight_bit_array(arr)
+            img = image_from_array(arr_8bit)
             img.save(path, format="TIFF", **kwargs)
 
     @staticmethod

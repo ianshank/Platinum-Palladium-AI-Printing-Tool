@@ -37,8 +37,8 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends
-  ButtonHTMLAttributes<HTMLButtonElement>,
-  VariantProps<typeof buttonVariants> {
+    ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
   /** Render as a different element (Slot pattern) */
   asChild?: boolean;
   /** Show loading spinner */

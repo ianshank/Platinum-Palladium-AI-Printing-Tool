@@ -4,6 +4,7 @@ Step wedge analysis module for PTPD Calibration System.
 Provides comprehensive step wedge scan analysis with automatic curve generation.
 """
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -18,6 +19,8 @@ from ptpd_calibration.core.models import CurveData, ExtractionResult
 from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.curves.generator import CurveGenerator, TargetCurve
 from ptpd_calibration.detection.reader import StepTabletReader
+
+logger = logging.getLogger(__name__)
 
 
 class AnalysisWarningLevel(str, Enum):
@@ -224,6 +227,17 @@ class WedgeAnalysisResult:
         return "\n".join(lines)
 
 
+def _even_spacing(count: int) -> list[float]:
+    """Return ``count`` evenly spaced inputs across 0-1.
+
+    A single patch has no spacing to divide by, so it maps to 0.0 rather than
+    raising, matching the guard the step-tablet reader already applies.
+    """
+    if count <= 1:
+        return [0.0] * count
+    return [index / (count - 1) for index in range(count)]
+
+
 class StepWedgeAnalyzer:
     """
     Comprehensive step wedge analyzer for Pt/Pd calibration.
@@ -331,7 +345,10 @@ class StepWedgeAnalyzer:
 
         result.raw_densities = raw_densities.copy()
         num_patches = len(raw_densities)
-        result.input_values = [i / (num_patches - 1) for i in range(num_patches)]
+        # A single detected patch made the denominator zero. The reader
+        # guards the same expression; this did not, so a one-patch wedge
+        # raised ZeroDivisionError instead of reporting an unusable read.
+        result.input_values = _even_spacing(num_patches)
 
         # Step 3: Process and correct densities
         processed_densities = self._process_densities(raw_densities, result)
@@ -632,9 +649,7 @@ class StepWedgeAnalyzer:
             return curve
 
         except Exception as e:
-            import logging
-
-            logging.error(f"Failed to generate curve: {e}")
+            logger.error("Failed to generate curve: %s", e)
             return None
 
     def analyze_from_densities(
@@ -692,7 +707,10 @@ class StepWedgeAnalyzer:
         result.raw_densities = densities.copy()
         num_patches = len(densities)
         if num_patches > 1:
-            result.input_values = [i / (num_patches - 1) for i in range(num_patches)]
+            # A single detected patch made the denominator zero. The reader
+            # guards the same expression; this did not, so a one-patch wedge
+            # raised ZeroDivisionError instead of reporting an unusable read.
+            result.input_values = _even_spacing(num_patches)
         else:
             result.input_values = [0.0]
 

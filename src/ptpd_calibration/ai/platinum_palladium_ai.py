@@ -41,6 +41,7 @@ from ptpd_calibration.imaging.processor import (
     ImageFormat,
     ImageProcessor,
     ProcessingResult,
+    is_high_depth_gray,
 )
 
 # ============================================================================
@@ -866,8 +867,13 @@ class PlatinumPalladiumAI:
         # Load image
         processing_result = self.image_processor.load_image(image)
 
-        # Convert to grayscale for negatives
-        if processing_result.image.mode not in ("L", "LA"):
+        # Convert to grayscale for negatives. A high-depth grayscale scan is
+        # grayscale already, and Pillow's convert("L") clips it at 255 rather
+        # than scaling, which blew almost the whole frame to white; leave it to
+        # ImageProcessor, which carries the depth through (ADR-0016).
+        if processing_result.image.mode not in ("L", "LA") and not is_high_depth_gray(
+            processing_result.image
+        ):
             gray_image = processing_result.image.convert("L")
             processing_result = ProcessingResult(
                 image=gray_image,
@@ -880,7 +886,9 @@ class PlatinumPalladiumAI:
                 processing_notes=processing_result.processing_notes + ["Converted to grayscale"],
             )
 
-        steps_applied = ["Loaded image", "Converted to grayscale"]
+        steps_applied = ["Loaded image"]
+        if processing_result.image.mode in ("L", "LA"):
+            steps_applied.append("Converted to grayscale")
 
         # Apply calibration curve if provided
         if curve is not None:
@@ -1189,19 +1197,24 @@ class PlatinumPalladiumAI:
             # Calculate average optimal parameters
             avg_exposure = np.mean([r.exposure_time for r in successful])
             avg_metal_ratio = np.mean([r.metal_ratio for r in successful])
-            avg_humidity = np.mean([r.humidity for r in successful if r.humidity])
-            avg_temp = np.mean([r.temperature for r in successful if r.temperature])
+            # Humidity/temperature are optional; np.mean([]) returns nan with a
+            # "Mean of empty slice" RuntimeWarning, so check emptiness explicitly
+            # (same result: None when no record carries the value).
+            humidities = [r.humidity for r in successful if r.humidity]
+            temperatures = [r.temperature for r in successful if r.temperature]
+            avg_humidity = float(np.mean(humidities)) if humidities else None
+            avg_temp = float(np.mean(temperatures)) if temperatures else None
 
             optimal_params = {
                 "avg_exposure_time": float(avg_exposure),
                 "avg_metal_ratio": float(avg_metal_ratio),
-                "avg_humidity": float(avg_humidity) if not np.isnan(avg_humidity) else None,
-                "avg_temperature": float(avg_temp) if not np.isnan(avg_temp) else None,
+                "avg_humidity": avg_humidity,
+                "avg_temperature": avg_temp,
             }
 
             # Identify trends
             # Group by paper type
-            paper_groups = {}
+            paper_groups: dict[str, list[CalibrationRecord]] = {}
             for record in successful:
                 if record.paper_type not in paper_groups:
                     paper_groups[record.paper_type] = []
@@ -1209,7 +1222,6 @@ class PlatinumPalladiumAI:
 
             # Analyze most successful paper
             if paper_groups:
-                paper_groups: dict[str, list[CalibrationRecord]] = paper_groups
                 best_paper = max(paper_groups.keys(), key=lambda k: len(paper_groups[k]))
                 trends["most_successful_paper"] = best_paper
                 insights.append(

@@ -18,6 +18,7 @@ from ptpd_calibration.agents.subagents.base import (
     SubagentResult,
     register_subagent,
 )
+from ptpd_calibration.core.logging import sanitize_log_text
 from ptpd_calibration.mcts.config import DEFAULT_PARAMETER_RANGES, MCTSSettings, PhysicsConstants
 from ptpd_calibration.mcts.quality import QualityScorer
 from ptpd_calibration.mcts.simulator import ExtendedProcessSimulator
@@ -330,7 +331,7 @@ class ExposureSubagent(BaseSubagent):
         logger.debug(
             "Exposure suggestion for coating_weight=%.2f, uv_source=%s -> %s",
             coating_weight,
-            uv_source,
+            sanitize_log_text(uv_source),
             suggested,
         )
 
@@ -384,7 +385,9 @@ class CalibrationCoordinatorSubagent(BaseSubagent):
                 result_data = await self._coordinate_search(context)
             elif task == "evaluate_parameters":
                 params = context.get("parameters", {})
-                result_data = self._evaluate_parameters(params)
+                result_data = self._evaluate_parameters(
+                    params, target_curve=context.get("target_curve")
+                )
             else:
                 raise ValueError(f"Unknown coordination task: {task}")
 
@@ -416,13 +419,22 @@ class CalibrationCoordinatorSubagent(BaseSubagent):
         """Coordinate a full calibration search.
 
         Args:
-            context: Search context with target_aesthetics, fixed_parameters, etc.
+            context: Search context with target_aesthetics, fixed_parameters,
+                uv_source and an optional target_curve that the evaluation
+                is scored against.
 
         Returns:
             Search results with best parameters and alternatives.
         """
         target_aesthetics = context.get("target_aesthetics", {})
         fixed_params = context.get("fixed_parameters", {})
+        target_curve = context.get("target_curve")
+        logger.debug(
+            "Coordinating search: aesthetics=%s fixed=%s target_curve=%s",
+            target_aesthetics,
+            sorted(fixed_params),
+            "none" if target_curve is None else f"{len(target_curve)} points",
+        )
 
         # Step 1: Get chemistry suggestions from chemistry agent
         chem_result = await self.chemistry_agent.run(
@@ -447,8 +459,8 @@ class CalibrationCoordinatorSubagent(BaseSubagent):
         # Step 3: Combine parameters
         full_params = {**chemistry_params, **exposure_params}
 
-        # Step 4: Evaluate combined parameters
-        evaluation = self._evaluate_parameters(full_params)
+        # Step 4: Evaluate combined parameters against the caller's target curve
+        evaluation = self._evaluate_parameters(full_params, target_curve=target_curve)
 
         return {
             "chemistry_suggestion": chemistry_params,
@@ -457,20 +469,44 @@ class CalibrationCoordinatorSubagent(BaseSubagent):
             "evaluation": evaluation,
         }
 
-    def _evaluate_parameters(self, params: dict[str, float]) -> dict[str, Any]:
+    def _evaluate_parameters(
+        self,
+        params: dict[str, float],
+        target_curve: list[float] | None = None,
+    ) -> dict[str, Any]:
         """Evaluate a parameter set using the simulator and scorer.
 
         Args:
             params: Full parameter set to evaluate.
+            target_curve: Optional target density curve. When given (and of the
+                same length as the simulated curve) the linearity term of the
+                quality score measures distance to it instead of to an ideal ramp.
 
         Returns:
             Evaluation results with quality score and predicted characteristics.
+            ``target_curve_used`` reports whether the scorer actually consumed
+            the target curve.
         """
         # Run simulation
         sim_result = self.simulator.simulate(params)
 
+        target_curve_used = target_curve is not None and len(target_curve) == len(
+            sim_result.density_curve
+        )
+        if target_curve is not None and not target_curve_used:
+            logger.warning(
+                "Target curve has %d points but simulator produced %d; scoring against ideal ramp",
+                len(target_curve),
+                len(sim_result.density_curve),
+            )
+
         # Compute quality score
-        quality_score = self.scorer.score(sim_result)
+        quality_score = self.scorer.score(sim_result, target_curve=target_curve)
+        logger.debug(
+            "Evaluated parameters: quality=%.4f target_curve_used=%s",
+            quality_score,
+            target_curve_used,
+        )
 
         return {
             "quality_score": quality_score,
@@ -479,4 +515,5 @@ class CalibrationCoordinatorSubagent(BaseSubagent):
             "dmax": sim_result.dmax,
             "density_range": sim_result.density_range,
             "gamma": sim_result.gamma,
+            "target_curve_used": target_curve_used,
         }

@@ -3,7 +3,6 @@
 Tests verify weather API integration, caching, parsing, and device protocols.
 """
 
-import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -30,7 +29,6 @@ from ptpd_calibration.integrations.weather import (
     WeatherCondition,
     WeatherProvider,
 )
-
 
 # ============================================================================
 # WEATHER MODULE TESTS
@@ -418,6 +416,7 @@ class TestWeatherProvider:
 
         # Wait for cache to expire
         import time
+
         time.sleep(0.2)
 
         assert provider._get_from_cache("test_key") is None
@@ -605,8 +604,10 @@ class TestWeatherProvider:
 
         estimate = provider.calculate_drying_time(conditions, PaperType.COLD_PRESS)
 
-        assert any("suboptimal" in rec.lower() or "waiting" in rec.lower()
-                  for rec in estimate.recommendations)
+        assert any(
+            "suboptimal" in rec.lower() or "waiting" in rec.lower()
+            for rec in estimate.recommendations
+        )
 
     @pytest.mark.asyncio
     async def test_recommend_coating_time(self) -> None:
@@ -614,8 +615,7 @@ class TestWeatherProvider:
         provider = self.ConcreteProvider()
 
         recommendation = await provider.recommend_coating_time(
-            location="Portland, OR",
-            forecast_hours=24
+            location="Portland, OR", forecast_hours=24
         )
 
         assert recommendation.best_time is not None
@@ -629,10 +629,7 @@ class TestWeatherProvider:
         provider = self.ConcreteProvider()
 
         recommendation = await provider.recommend_coating_time(
-            location="",
-            forecast_hours=48,
-            latitude=45.5,
-            longitude=-122.6
+            location="", forecast_hours=48, latitude=45.5, longitude=-122.6
         )
 
         assert recommendation.best_time is not None
@@ -644,8 +641,7 @@ class TestWeatherProvider:
         provider = self.ConcreteProvider()
 
         recommendation = await provider.recommend_coating_time(
-            location="Portland, OR",
-            forecast_hours=24
+            location="Portland, OR", forecast_hours=24
         )
 
         # Best time should have reasonable temperature and humidity
@@ -691,21 +687,10 @@ class TestOpenWeatherMapProvider:
         provider = OpenWeatherMapProvider(api_key="test_key")
 
         mock_response_data = {
-            "main": {
-                "temp": 20.5,
-                "humidity": 65,
-                "pressure": 1013
-            },
-            "weather": [
-                {
-                    "main": "Clear",
-                    "description": "clear sky"
-                }
-            ],
-            "wind": {
-                "speed": 3.5
-            },
-            "dt": int(datetime.now().timestamp())
+            "main": {"temp": 20.5, "humidity": 65, "pressure": 1013},
+            "weather": [{"main": "Clear", "description": "clear sky"}],
+            "wind": {"speed": 3.5},
+            "dt": int(datetime.now().timestamp()),
         }
 
         mock_response = MagicMock()
@@ -737,21 +722,10 @@ class TestOpenWeatherMapProvider:
         provider = OpenWeatherMapProvider(api_key="test_key")
 
         mock_response_data = {
-            "main": {
-                "temp": 18.0,
-                "humidity": 70,
-                "pressure": 1015
-            },
-            "weather": [
-                {
-                    "main": "Clouds",
-                    "description": "broken clouds"
-                }
-            ],
-            "wind": {
-                "speed": 5.0
-            },
-            "dt": int(datetime.now().timestamp())
+            "main": {"temp": 18.0, "humidity": 70, "pressure": 1015},
+            "weather": [{"main": "Clouds", "description": "broken clouds"}],
+            "wind": {"speed": 5.0},
+            "dt": int(datetime.now().timestamp()),
         }
 
         mock_response = MagicMock()
@@ -769,9 +743,7 @@ class TestOpenWeatherMapProvider:
             mock_client_class.return_value = mock_client
 
             conditions = await provider.get_current_conditions(
-                location="",
-                latitude=45.5,
-                longitude=-122.6
+                location="", latitude=45.5, longitude=-122.6
             )
 
             assert conditions.condition == WeatherCondition.CLOUDY
@@ -785,7 +757,7 @@ class TestOpenWeatherMapProvider:
             "main": {"temp": 20.0, "humidity": 50, "pressure": 1013},
             "weather": [{"main": "Clear", "description": "clear sky"}],
             "wind": {"speed": 2.0},
-            "dt": int(datetime.now().timestamp())
+            "dt": int(datetime.now().timestamp()),
         }
 
         call_count = 0
@@ -847,7 +819,7 @@ class TestOpenWeatherMapProvider:
                     "main": {"temp": 20.0 + i, "humidity": 50 + i, "pressure": 1013},
                     "weather": [{"main": "Clear", "description": "clear sky"}],
                     "pop": 0.1,
-                    "dt": int((datetime.now() + timedelta(hours=i * 3)).timestamp())
+                    "dt": int((datetime.now() + timedelta(hours=i * 3)).timestamp()),
                 }
                 for i in range(8)  # 24 hours / 3-hour intervals
             ]
@@ -884,7 +856,7 @@ class TestOpenWeatherMapProvider:
                     "main": {"temp": 20.0, "humidity": 50, "pressure": 1013},
                     "weather": [{"main": "Clear", "description": "clear sky"}],
                     "pop": 0.1,
-                    "dt": int(datetime.now().timestamp())
+                    "dt": int(datetime.now().timestamp()),
                 }
             ]
         }
@@ -945,7 +917,7 @@ class TestOpenWeatherMapProvider:
             "main": {"temp": 22.0, "humidity": 55, "pressure": 1015},
             "weather": [{"main": "Clear", "description": "clear sky"}],
             "wind": {"speed": 3.0},
-            "dt": int(datetime.now().timestamp())
+            "dt": int(datetime.now().timestamp()),
         }
 
         conditions = provider._parse_current_conditions(data)
@@ -961,7 +933,7 @@ class TestOpenWeatherMapProvider:
             "main": {"temp": 15.0, "humidity": 80, "pressure": 1005},
             "weather": [{"main": "Rain", "description": "light rain"}],
             "wind": {"speed": 5.0},
-            "dt": int(datetime.now().timestamp())
+            "dt": int(datetime.now().timestamp()),
         }
 
         conditions = provider._parse_current_conditions(data)
@@ -976,7 +948,7 @@ class TestOpenWeatherMapProvider:
             "main": {"temp": -2.0, "humidity": 90, "pressure": 1010},
             "weather": [{"main": "Snow", "description": "light snow"}],
             "wind": {"speed": 2.0},
-            "dt": int(datetime.now().timestamp())
+            "dt": int(datetime.now().timestamp()),
         }
 
         conditions = provider._parse_current_conditions(data)
@@ -991,7 +963,7 @@ class TestOpenWeatherMapProvider:
             "main": {"temp": 10.0, "humidity": 95, "pressure": 1013},
             "weather": [{"main": "Fog", "description": "fog"}],
             "wind": {"speed": 1.0},
-            "dt": int(datetime.now().timestamp())
+            "dt": int(datetime.now().timestamp()),
         }
 
         conditions = provider._parse_current_conditions(data)
@@ -1006,7 +978,7 @@ class TestOpenWeatherMapProvider:
             "main": {"temp": 18.0, "humidity": 60, "pressure": 1013},
             "weather": [{"main": "Tornado", "description": "tornado"}],
             "wind": {"speed": 50.0},
-            "dt": int(datetime.now().timestamp())
+            "dt": int(datetime.now().timestamp()),
         }
 
         conditions = provider._parse_current_conditions(data)
@@ -1021,7 +993,7 @@ class TestOpenWeatherMapProvider:
             "main": {"temp": 20.0, "humidity": 50, "pressure": 1013},
             "weather": [{"main": "Clear", "description": "clear sky"}],
             "wind": {},  # No speed
-            "dt": int(datetime.now().timestamp())
+            "dt": int(datetime.now().timestamp()),
         }
 
         conditions = provider._parse_current_conditions(data)
@@ -1038,7 +1010,7 @@ class TestOpenWeatherMapProvider:
                     "main": {"temp": 20.0 + i, "humidity": 50 + i, "pressure": 1013},
                     "weather": [{"main": "Clear", "description": "clear sky"}],
                     "pop": 0.1 * i,
-                    "dt": int((datetime.now() + timedelta(hours=i * 3)).timestamp())
+                    "dt": int((datetime.now() + timedelta(hours=i * 3)).timestamp()),
                 }
                 for i in range(5)
             ]
@@ -1061,7 +1033,7 @@ class TestOpenWeatherMapProvider:
                     "main": {"temp": 20.0, "humidity": 50, "pressure": 1013},
                     "weather": [{"main": "Clear", "description": "clear sky"}],
                     "pop": 0.1,
-                    "dt": int((datetime.now() + timedelta(hours=i * 3)).timestamp())
+                    "dt": int((datetime.now() + timedelta(hours=i * 3)).timestamp()),
                 }
                 for i in range(40)  # 5 days of data
             ]
@@ -1135,7 +1107,7 @@ class TestDeviceInfo:
             model="i1Pro 3",
             serial_number="SN123456",
             firmware_version="1.2.3",
-            capabilities=["reflectance", "transmission", "spectral"]
+            capabilities=["reflectance", "transmission", "spectral"],
         )
 
         assert info.vendor == "X-Rite"
@@ -1156,12 +1128,7 @@ class TestDensityMeasurement:
 
     def test_basic_creation(self) -> None:
         """Test creating basic density measurement."""
-        measurement = DensityMeasurement(
-            density=1.5,
-            lab_l=50.0,
-            lab_a=0.0,
-            lab_b=0.0
-        )
+        measurement = DensityMeasurement(density=1.5, lab_l=50.0, lab_a=0.0, lab_b=0.0)
 
         assert measurement.density == 1.5
         assert measurement.lab_l == 50.0
@@ -1180,7 +1147,7 @@ class TestDensityMeasurement:
             status_a_density=1.95,
             timestamp=timestamp,
             aperture_size="4mm",
-            measurement_mode="transmission"
+            measurement_mode="transmission",
         )
 
         assert measurement.status_a_density == 1.95
@@ -1191,9 +1158,7 @@ class TestDensityMeasurement:
     def test_validation_density_range(self) -> None:
         """Test density value validation."""
         # Valid density
-        measurement = DensityMeasurement(
-            density=2.5, lab_l=50.0, lab_a=0.0, lab_b=0.0
-        )
+        measurement = DensityMeasurement(density=2.5, lab_l=50.0, lab_a=0.0, lab_b=0.0)
         assert measurement.density == 2.5
 
         # Invalid density > 5.0
@@ -1207,9 +1172,7 @@ class TestDensityMeasurement:
     def test_validation_lab_l_range(self) -> None:
         """Test L* value validation."""
         # Valid L*
-        measurement = DensityMeasurement(
-            density=1.0, lab_l=75.0, lab_a=0.0, lab_b=0.0
-        )
+        measurement = DensityMeasurement(density=1.0, lab_l=75.0, lab_a=0.0, lab_b=0.0)
         assert measurement.lab_l == 75.0
 
         # Invalid L* > 100
@@ -1223,9 +1186,7 @@ class TestDensityMeasurement:
     def test_validation_lab_a_range(self) -> None:
         """Test a* value validation."""
         # Valid a* (positive and negative)
-        measurement = DensityMeasurement(
-            density=1.0, lab_l=50.0, lab_a=50.0, lab_b=0.0
-        )
+        measurement = DensityMeasurement(density=1.0, lab_l=50.0, lab_a=50.0, lab_b=0.0)
         assert measurement.lab_a == 50.0
 
         measurement.lab_a = -50.0
@@ -1234,9 +1195,7 @@ class TestDensityMeasurement:
     def test_validation_lab_b_range(self) -> None:
         """Test b* value validation."""
         # Valid b* (positive and negative)
-        measurement = DensityMeasurement(
-            density=1.0, lab_l=50.0, lab_a=0.0, lab_b=60.0
-        )
+        measurement = DensityMeasurement(density=1.0, lab_l=50.0, lab_a=0.0, lab_b=60.0)
         assert measurement.lab_b == 60.0
 
         measurement.lab_b = -60.0
@@ -1245,9 +1204,7 @@ class TestDensityMeasurement:
     def test_xyz_conversion_white(self) -> None:
         """Test Lab to XYZ conversion for white."""
         # L*=100, a*=0, b*=0 should be close to white point
-        measurement = DensityMeasurement(
-            density=0.0, lab_l=100.0, lab_a=0.0, lab_b=0.0
-        )
+        measurement = DensityMeasurement(density=0.0, lab_l=100.0, lab_a=0.0, lab_b=0.0)
 
         x, y, z = measurement.xyz
 
@@ -1259,9 +1216,7 @@ class TestDensityMeasurement:
     def test_xyz_conversion_black(self) -> None:
         """Test Lab to XYZ conversion for black."""
         # L*=0, a*=0, b*=0 should be close to black
-        measurement = DensityMeasurement(
-            density=5.0, lab_l=0.0, lab_a=0.0, lab_b=0.0
-        )
+        measurement = DensityMeasurement(density=5.0, lab_l=0.0, lab_a=0.0, lab_b=0.0)
 
         x, y, z = measurement.xyz
 
@@ -1273,9 +1228,7 @@ class TestDensityMeasurement:
     def test_xyz_conversion_gray(self) -> None:
         """Test Lab to XYZ conversion for neutral gray."""
         # L*=50, a*=0, b*=0 should be neutral gray
-        measurement = DensityMeasurement(
-            density=1.0, lab_l=50.0, lab_a=0.0, lab_b=0.0
-        )
+        measurement = DensityMeasurement(density=1.0, lab_l=50.0, lab_a=0.0, lab_b=0.0)
 
         x, y, z = measurement.xyz
 
@@ -1307,11 +1260,7 @@ class TestSpectralData:
         values = [0.3] * len(wavelengths)
 
         data = SpectralData(
-            wavelengths=wavelengths,
-            values=values,
-            start_nm=400.0,
-            end_nm=700.0,
-            interval_nm=5.0
+            wavelengths=wavelengths, values=values, start_nm=400.0, end_nm=700.0, interval_nm=5.0
         )
 
         assert data.start_nm == 400.0
@@ -1352,7 +1301,7 @@ class TestPrintJob:
             resolution_dpi=3600,
             copies=3,
             color_profile="Gray-Gamma-2.2.icc",
-            paper_type="Premium Glossy"
+            paper_type="Premium Glossy",
         )
 
         assert job.name == "Negative Print"
@@ -1363,9 +1312,7 @@ class TestPrintJob:
     def test_resolution_validation(self) -> None:
         """Test resolution DPI validation."""
         # Valid resolution
-        job = PrintJob(
-            name="Test", image_path="/path", resolution_dpi=1440
-        )
+        job = PrintJob(name="Test", image_path="/path", resolution_dpi=1440)
         assert job.resolution_dpi == 1440
 
         # Too low
@@ -1393,10 +1340,7 @@ class TestPrintResult:
     def test_success_result(self) -> None:
         """Test successful print result."""
         result = PrintResult(
-            success=True,
-            job_id="job_12345",
-            pages_printed=1,
-            duration_seconds=45.2
+            success=True, job_id="job_12345", pages_printed=1, duration_seconds=45.2
         )
 
         assert result.success is True
@@ -1407,10 +1351,7 @@ class TestPrintResult:
 
     def test_failure_result(self) -> None:
         """Test failed print result."""
-        result = PrintResult(
-            success=False,
-            error="Printer out of paper"
-        )
+        result = PrintResult(success=False, error="Printer out of paper")
 
         assert result.success is False
         assert result.error == "Printer out of paper"
@@ -1525,9 +1466,7 @@ class TestSpectrophotometerProtocol:
 
         def connect(self, port: str | None = None, timeout: float = 5.0) -> bool:
             self._status = DeviceStatus.CONNECTED
-            self._device_info = DeviceInfo(
-                vendor="Test", model="Spectro", capabilities=["density"]
-            )
+            self._device_info = DeviceInfo(vendor="Test", model="Spectro", capabilities=["density"])
             return True
 
         def disconnect(self) -> None:
@@ -1541,16 +1480,11 @@ class TestSpectrophotometerProtocol:
             return True
 
         def read_density(self) -> DensityMeasurement:
-            return DensityMeasurement(
-                density=1.5, lab_l=50.0, lab_a=0.0, lab_b=0.0
-            )
+            return DensityMeasurement(density=1.5, lab_l=50.0, lab_a=0.0, lab_b=0.0)
 
         def read_spectral(self) -> SpectralData:
             wavelengths = list(range(380, 731, 10))
-            return SpectralData(
-                wavelengths=wavelengths,
-                values=[0.5] * len(wavelengths)
-            )
+            return SpectralData(wavelengths=wavelengths, values=[0.5] * len(wavelengths))
 
     def test_protocol_implementation(self) -> None:
         """Test that mock implements protocol correctly."""
@@ -1601,9 +1535,7 @@ class TestPrinterProtocol:
 
         def connect(self, printer_name: str | None = None) -> bool:
             self._status = DeviceStatus.CONNECTED
-            self._device_info = DeviceInfo(
-                vendor="Test", model="Printer", capabilities=["color"]
-            )
+            self._device_info = DeviceInfo(vendor="Test", model="Printer", capabilities=["color"])
             return True
 
         def disconnect(self) -> None:
@@ -1612,10 +1544,7 @@ class TestPrinterProtocol:
 
         def print_image(self, job: PrintJob) -> PrintResult:
             return PrintResult(
-                success=True,
-                job_id="test_job_123",
-                pages_printed=1,
-                duration_seconds=30.0
+                success=True, job_id="test_job_123", pages_printed=1, duration_seconds=30.0
             )
 
         def get_paper_sizes(self) -> list[str]:

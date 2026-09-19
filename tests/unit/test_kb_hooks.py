@@ -237,9 +237,7 @@ class TestFreshKB:
         result = run_hook(hook_path, test_project_dir, fresh_kb_dir)
 
         assert result.returncode == 0, (
-            f"{hook_name} failed on fresh KB\n"
-            f"stdout: {result.stdout}\n"
-            f"stderr: {result.stderr}"
+            f"{hook_name} failed on fresh KB\nstdout: {result.stdout}\nstderr: {result.stderr}"
         )
 
     @pytest.mark.slow
@@ -252,9 +250,7 @@ class TestFreshKB:
         result = run_hook(hook_path, test_project_dir, fresh_kb_dir, env_overrides)
 
         assert result.returncode == 0, (
-            f"kb-start.sh failed on fresh KB\n"
-            f"stdout: {result.stdout}\n"
-            f"stderr: {result.stderr}"
+            f"kb-start.sh failed on fresh KB\nstdout: {result.stdout}\nstderr: {result.stderr}"
         )
 
 
@@ -283,9 +279,7 @@ class TestPopulatedKB:
         result = run_hook(hook_path, test_project_dir, populated_kb_dir)
 
         assert result.returncode == 0, (
-            f"{hook_name} failed on populated KB\n"
-            f"stdout: {result.stdout}\n"
-            f"stderr: {result.stderr}"
+            f"{hook_name} failed on populated KB\nstdout: {result.stdout}\nstderr: {result.stderr}"
         )
 
     @pytest.mark.slow
@@ -357,7 +351,7 @@ class TestHookOutput:
 
         for section in expected_sections:
             assert section in result.stdout, (
-                f"{hook_name} output missing section: {section}\n" f"Output: {result.stdout}"
+                f"{hook_name} output missing section: {section}\nOutput: {result.stdout}"
             )
 
     @pytest.mark.slow
@@ -370,9 +364,9 @@ class TestHookOutput:
             result = run_hook(hook_path, test_project_dir, populated_kb_dir)
 
             assert len(result.stdout) > 0, f"{hook_name} produced empty output"
-            assert (
-                len(result.stdout) > 50
-            ), f"{hook_name} produced suspiciously short output: {len(result.stdout)} bytes"
+            assert len(result.stdout) > 50, (
+                f"{hook_name} produced suspiciously short output: {len(result.stdout)} bytes"
+            )
 
     @pytest.mark.slow
     def test_hook_output_includes_kb_data(
@@ -406,7 +400,7 @@ class TestEnvironmentVariables:
         result = run_hook(hook_path, test_project_dir, populated_kb_dir, env_overrides)
 
         assert result.returncode == 0, (
-            f"Hook failed with MAX_SUMMARY_BYTES={max_bytes}\n" f"stderr: {result.stderr}"
+            f"Hook failed with MAX_SUMMARY_BYTES={max_bytes}\nstderr: {result.stderr}"
         )
 
         # Output should be constrained by MAX_SUMMARY_BYTES
@@ -415,8 +409,7 @@ class TestEnvironmentVariables:
         max_size = int(max_bytes) * 2  # Allow 2x for headers/formatting
 
         assert output_size < max_size, (
-            f"Output size {output_size} exceeds reasonable limit for "
-            f"MAX_SUMMARY_BYTES={max_bytes}"
+            f"Output size {output_size} exceeds reasonable limit for MAX_SUMMARY_BYTES={max_bytes}"
         )
 
     @pytest.mark.slow
@@ -468,7 +461,7 @@ class TestErrorHandling:
 
         # Should succeed even without summaries
         assert result.returncode == 0, (
-            f"Hook failed with missing summaries\n" f"stderr: {result.stderr}"
+            f"Hook failed with missing summaries\nstderr: {result.stderr}"
         )
 
     @pytest.mark.slow
@@ -480,9 +473,7 @@ class TestErrorHandling:
         result = run_hook(hook_path, test_project_dir, fresh_kb_dir)
 
         # Should succeed even without session files
-        assert result.returncode == 0, (
-            f"Hook failed with missing sessions\n" f"stderr: {result.stderr}"
-        )
+        assert result.returncode == 0, f"Hook failed with missing sessions\nstderr: {result.stderr}"
 
     @pytest.mark.slow
     def test_hook_handles_empty_ledger(
@@ -493,7 +484,7 @@ class TestErrorHandling:
         result = run_hook(hook_path, test_project_dir, fresh_kb_dir)
 
         # Should succeed with empty ledger
-        assert result.returncode == 0, f"Hook failed with empty ledger\n" f"stderr: {result.stderr}"
+        assert result.returncode == 0, f"Hook failed with empty ledger\nstderr: {result.stderr}"
 
     @pytest.mark.slow
     def test_hook_handles_corrupted_json(
@@ -552,9 +543,7 @@ class TestDispatcherRouting:
         env_overrides = {"CLAUDE_ROLE": role}
         result = run_hook(dispatcher_path, test_project_dir, populated_kb_dir, env_overrides)
 
-        assert result.returncode == 0, (
-            f"Dispatcher failed for role {role}\n" f"stderr: {result.stderr}"
-        )
+        assert result.returncode == 0, f"Dispatcher failed for role {role}\nstderr: {result.stderr}"
 
         # Output should be identical to calling the role-specific hook directly
         # (This is a conceptual test; actual verification would require comparing outputs)
@@ -625,9 +614,7 @@ class TestHookIntegration:
             hook_path = hooks_dir / f"{role}-start.sh"
             result = run_hook(hook_path, test_project_dir, fresh_kb_dir)
 
-            assert result.returncode == 0, (
-                f"Hook cycle failed at {role}\n" f"stderr: {result.stderr}"
-            )
+            assert result.returncode == 0, f"Hook cycle failed at {role}\nstderr: {result.stderr}"
 
     @pytest.mark.slow
     def test_hooks_maintain_kb_consistency(
@@ -640,9 +627,7 @@ class TestHookIntegration:
         for i in range(3):
             result = run_hook(hook_path, test_project_dir, fresh_kb_dir)
 
-            assert result.returncode == 0, (
-                f"Hook failed on iteration {i}\n" f"stderr: {result.stderr}"
-            )
+            assert result.returncode == 0, f"Hook failed on iteration {i}\nstderr: {result.stderr}"
 
         # KB should still be valid after multiple runs
         # Verify ledger is still valid JSONL

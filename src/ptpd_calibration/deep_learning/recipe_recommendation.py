@@ -18,6 +18,7 @@ from uuid import UUID
 
 import numpy as np
 
+from ptpd_calibration.core.artifacts import load_torch_checkpoint
 from ptpd_calibration.deep_learning.config import RecipeRecommendationSettings
 from ptpd_calibration.deep_learning.models import (
     RecipeRecommendation,
@@ -58,7 +59,6 @@ class RecipeEncoder:
             return
 
         try:
-            import torch
             import torch.nn as nn
 
             # Simple MLP encoder for recipe features
@@ -95,7 +95,7 @@ class RecipeEncoder:
             # Load pretrained weights if available
             if self.settings.model_path and self.settings.model_path.exists():
                 try:
-                    state_dict = torch.load(
+                    state_dict = load_torch_checkpoint(
                         self.settings.model_path, map_location=self.settings.device
                     )
                     self._encoder_model.load_state_dict(state_dict)

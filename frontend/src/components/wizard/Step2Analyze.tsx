@@ -234,12 +234,14 @@ export function Step2Analyze(): JSX.Element {
         <div>
           <h4>Quality Issues</h4>
           <IssuesList>
-            {qualityAssessment.issues.map((issue: QualityIssue, idx: number) => (
-              <IssueItem key={idx} $type={issue.type}>
-                <strong>{issue.type.toUpperCase()}:</strong> {issue.message}
-                {issue.suggestion && <span> — {issue.suggestion}</span>}
-              </IssueItem>
-            ))}
+            {qualityAssessment.issues.map(
+              (issue: QualityIssue, idx: number) => (
+                <IssueItem key={idx} $type={issue.type}>
+                  <strong>{issue.type.toUpperCase()}:</strong> {issue.message}
+                  {issue.suggestion && <span> — {issue.suggestion}</span>}
+                </IssueItem>
+              )
+            )}
           </IssuesList>
         </div>
       )}

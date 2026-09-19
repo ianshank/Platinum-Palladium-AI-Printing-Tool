@@ -4,6 +4,7 @@ Curve generation for Pt/Pd calibration.
 Generates linearization and correction curves from step tablet measurements.
 """
 
+import logging
 from dataclasses import dataclass
 
 import numpy as np
@@ -12,6 +13,8 @@ from scipy.interpolate import PchipInterpolator, interp1d
 from ptpd_calibration.config import CurveSettings, InterpolationMethod, get_settings
 from ptpd_calibration.core.models import CurveData, ExtractionResult
 from ptpd_calibration.core.types import CurveType
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -123,8 +126,8 @@ class CurveGenerator:
         if num_steps < 2:
             raise ValueError("At least 2 measurements required")
 
-        # Normalize densities
-        densities = np.array(measured_densities)
+        densities = self._validate_densities(measured_densities)
+
         dmin = np.min(densities)
         dmax = np.max(densities)
 
@@ -216,6 +219,86 @@ class CurveGenerator:
         curve.source_extraction_id = extraction.id
 
         return curve
+
+    def _validate_densities(self, measured_densities: list[float]) -> np.ndarray:
+        """Return the densities as an ascending array, or raise a domain error.
+
+        The correction is ``measured⁻¹ ∘ target``, and the inversion
+        (:meth:`_inverse_lookup`) uses ``np.searchsorted``, which is defined
+        only for an ascending series. Three inputs used to reach it and produce
+        a silently wrong curve rather than an error:
+
+        * a wedge read from the wrong end, which arrives descending and yields
+          a near-black curve;
+        * a non-finite patch, which defeats the range check and routes every
+          interior point to the end of the array;
+        * a series that rises and falls, for which the inverse is not a
+          function at all.
+
+        A descending series is a correct measurement read backwards, so it is
+        reversed and logged. The other two are refused, naming the offending
+        index so the operator can re-read that patch.
+        """
+        densities = np.asarray(measured_densities, dtype=float)
+
+        bad = np.flatnonzero(~np.isfinite(densities))
+        if bad.size:
+            raise ValueError(
+                "Measured densities must all be finite; "
+                f"patch {int(bad[0])} is {measured_densities[int(bad[0])]!r}"
+            )
+
+        steps = np.diff(densities)
+        tolerance = self.settings.density_monotonicity_tolerance
+        rises = float(steps[steps > 0].sum())
+        falls = float(-steps[steps < 0].sum())
+
+        if falls > rises and self.settings.auto_orient_densities:
+            logger.info(
+                "Measured densities are descending (rise %.3f, fall %.3f); "
+                "reversing them, the wedge was read from the opposite end",
+                rises,
+                falls,
+            )
+            densities = densities[::-1]
+            steps = np.diff(densities)
+
+        backwards = np.flatnonzero(steps < -tolerance)
+        if backwards.size:
+            index = int(backwards[0])
+            raise ValueError(
+                "Measured densities must increase monotonically within "
+                f"{tolerance} (PTPD_CURVE_DENSITY_MONOTONICITY_TOLERANCE); "
+                f"patch {index + 1} drops by {abs(float(steps[index])):.3f} "
+                f"from patch {index}. Re-read that patch or fix the scan."
+            )
+
+        # A step inside the tolerance is measurement noise, and it was accepted
+        # above but left in place. ``_inverse_lookup`` hands this array to
+        # ``np.searchsorted``, which is defined only for a sorted sequence: a
+        # dip of any size makes it return a bracket that skips the dipped patch
+        # and yields a silently wrong correction. Flatten the accepted noise so
+        # the series the inversion sees is genuinely non-decreasing. The running
+        # maximum only ever raises a dipped patch back to its predecessor, so a
+        # clean reading is unchanged.
+        repaired = np.maximum.accumulate(densities)
+        flattened = int(np.count_nonzero(repaired != densities))
+        if flattened:
+            logger.info(
+                "Flattened %d density step(s) within the %.3f tolerance so the "
+                "series is monotonic before inversion",
+                flattened,
+                tolerance,
+            )
+        densities = repaired
+
+        logger.debug(
+            "Validated %d densities: dmin=%.3f dmax=%.3f",
+            densities.size,
+            densities.min(),
+            densities.max(),
+        )
+        return densities
 
     def _calculate_correction(
         self,

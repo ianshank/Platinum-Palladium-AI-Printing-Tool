@@ -1,0 +1,55 @@
+{
+  "last_session_id": "1771779535-039824300",
+  "last_timestamp": "2026-02-22T16:58:54.000Z",
+  "active_branch": "claude/compassionate-pike",
+  "git_commit": "5ac3a6e",
+  "context_files": [
+    "src/ptpd_calibration/api/server.py",
+    "src/ptpd_calibration/core/types.py",
+    "src/ptpd_calibration/curves/parser.py",
+    "frontend/src/components/curves/CurveEditor.tsx",
+    "frontend/src/stores/slices/uiSlice.ts",
+    "frontend/e2e/app.spec.ts"
+  ],
+  "resume_pointers": {
+    "last_file_modified": "src/ptpd_calibration/api/server.py",
+    "last_test_file": "frontend/e2e/app.spec.ts",
+    "context_files": [
+      "src/ptpd_calibration/api/server.py",
+      "src/ptpd_calibration/core/types.py",
+      "src/ptpd_calibration/curves/parser.py",
+      "frontend/src/components/curves/CurveEditor.tsx",
+      "frontend/src/stores/slices/uiSlice.ts",
+      "frontend/e2e/app.spec.ts"
+    ]
+  },
+  "implementation_status": {
+    "completed": [
+      "Fix CurveEditor adjustment_type 'none' -> 'brightness' (P0 HTTP-400 bug)",
+      "Fix uiSlice sidebarOpen default true -> false",
+      "Fix e2e test selectors (duplicate h1 scoped to main, focus-visible)",
+      "Backend Fix 1: analyze_densities empty densities guard -> HTTP 422",
+      "Backend Fix 2: create_calibration pydantic.ValidationError -> HTTP 422",
+      "Backend Fix 3: get_calibration UUID ValueError -> HTTP 422",
+      "Backend Fix 4: smooth_curve preserve_endpoints moved to __init__",
+      "Backend Fix 5: parse_quad_content raw_sections + active_channels validation",
+      "Backend Fix 6: CurveType enum SPLINE + POLYNOMIAL values added"
+    ],
+    "in_progress": [],
+    "blocked": [],
+    "ready_for_pr": ["claude/compassionate-pike"]
+  },
+  "test_status": {
+    "playwright_e2e": "9/9 passed",
+    "backend_pytest": "104 passed, 13 skipped, 0 failed",
+    "frontend_vitest": "726 passed, 0 failed",
+    "typecheck_errors": 0,
+    "lint_errors": 0,
+    "last_test_run": "2026-02-22T16:58:54.000Z"
+  },
+  "quality_checks": {
+    "lint": "pass",
+    "typecheck": "pass",
+    "format": "pass"
+  }
+}

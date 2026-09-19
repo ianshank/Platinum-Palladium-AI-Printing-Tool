@@ -12,8 +12,25 @@ Provides REST API endpoints for:
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
+
+from ptpd_calibration.config import get_settings
+from ptpd_calibration.core.logging import sanitize_log_text
+
+if TYPE_CHECKING:
+    from ptpd_calibration.mcts.feedback import FeedbackStore
 
 logger = logging.getLogger(__name__)
+
+# Request bounds (SEC-03), resolved once from APISettings so they can be used
+# as literals in the module-level pydantic models below.
+_API_LIMITS = get_settings().api
+MAX_LIST_LENGTH: int = _API_LIMITS.max_list_length
+MAX_STRING_LENGTH: int = _API_LIMITS.max_string_length
+
+# Values reported in MCTSSearchResponse.search_backend
+SEARCH_BACKEND_ENGINE = "mcts_engine"
+SEARCH_BACKEND_HEURISTIC = "coordinator_heuristic"
 
 # Check essential dependencies
 try:
@@ -27,7 +44,8 @@ except ImportError:
 
 # Check API dependencies
 try:
-    from fastapi import APIRouter, BackgroundTasks, HTTPException
+    from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Query
+    from fastapi.concurrency import run_in_threadpool
     from pydantic import BaseModel, Field
 
     API_AVAILABLE = True
@@ -50,20 +68,33 @@ except ImportError:
 class MCTSSearchRequest(BaseModel):
     """Request to run MCTS calibration search."""
 
-    paper_type: str | None = Field(default=None, description="Paper type (optional)")
-    uv_source: str | None = Field(default=None, description="UV source type (optional)")
+    paper_type: str | None = Field(
+        default=None, max_length=MAX_STRING_LENGTH, description="Paper type (optional)"
+    )
+    uv_source: str | None = Field(
+        default=None, max_length=MAX_STRING_LENGTH, description="UV source type (optional)"
+    )
     target_curve: list[float] | None = Field(
-        default=None, description="Target density curve (optional)"
+        default=None,
+        max_length=MAX_LIST_LENGTH,
+        description="Target density curve (optional); scored against when its length "
+        "matches the simulated curve",
     )
     fixed_parameters: dict[str, float] = Field(
-        default_factory=dict, description="Fixed parameters to constrain search"
+        default_factory=dict,
+        max_length=MAX_LIST_LENGTH,
+        description="Fixed parameters to constrain search",
     )
     target_aesthetics: dict[str, float] = Field(
         default_factory=dict,
+        max_length=MAX_LIST_LENGTH,
         description="Target aesthetic preferences (contrast, warmth, tonal_range)",
     )
     num_simulations: int | None = Field(
-        default=None, ge=50, le=10000, description="Number of MCTS simulations"
+        default=None,
+        ge=50,
+        le=10000,
+        description="Number of MCTS simulations (clamped to MCTSSettings.max_simulations_per_request)",
     )
 
 
@@ -76,13 +107,26 @@ class MCTSSearchResponse(BaseModel):
     quality_score: float
     alternatives: list[dict[str, float]]
     search_time_seconds: float
-    num_simulations: int
+    num_simulations: int = Field(description="Simulations actually performed")
+    engine_used: bool = Field(
+        default=False, description="True when MCTSEngine.search produced this result"
+    )
+    search_backend: str = Field(
+        default=SEARCH_BACKEND_HEURISTIC,
+        description=f"'{SEARCH_BACKEND_ENGINE}' or '{SEARCH_BACKEND_HEURISTIC}'",
+    )
+    target_curve_used: bool = Field(
+        default=False,
+        description="True when quality_score was computed against the supplied target_curve",
+    )
 
 
 class MCTSEvaluateRequest(BaseModel):
     """Request to evaluate a parameter set."""
 
-    parameters: dict[str, float] = Field(..., description="Parameters to evaluate")
+    parameters: dict[str, float] = Field(
+        ..., max_length=MAX_LIST_LENGTH, description="Parameters to evaluate"
+    )
 
 
 class MCTSEvaluateResponse(BaseModel):
@@ -122,9 +166,19 @@ class MCTSStatusResponse(BaseModel):
 class MCTSFeedbackRequest(BaseModel):
     """Request to submit real measurement feedback."""
 
-    parameters: dict[str, float] = Field(..., description="Parameters used")
-    measured_curve: list[float] = Field(..., description="Measured density curve")
+    parameters: dict[str, float] = Field(
+        ..., max_length=MAX_LIST_LENGTH, description="Parameters used"
+    )
+    measured_curve: list[float] = Field(
+        ...,
+        min_length=1,
+        max_length=MAX_LIST_LENGTH,
+        description="Measured density curve",
+    )
     quality_rating: float = Field(..., ge=0.0, le=1.0, description="User quality rating")
+    notes: str | None = Field(
+        default=None, max_length=MAX_STRING_LENGTH, description="Free-text notes about the print"
+    )
 
 
 class MCTSRecommendation(BaseModel):
@@ -140,9 +194,42 @@ class MCTSRecommendation(BaseModel):
 # =============================================================================
 
 
-def create_mcts_router() -> APIRouter:
+def _engine_fixed_parameters(
+    request: MCTSSearchRequest, search_data: dict[str, object]
+) -> dict[str, float]:
+    """Parameters the engine must not search over.
+
+    The caller's ``fixed_parameters`` are always pinned. When the caller also
+    expressed ``target_aesthetics``, the chemistry the coordinator derived from
+    them (metal ratio, ferric oxalate, coating weight) is pinned as well so the
+    engine optimises the remaining exposure/development dimensions for that look.
+    """
+    from ptpd_calibration.mcts.config import DEFAULT_PARAMETER_RANGES
+
+    fixed: dict[str, float] = {}
+    if request.target_aesthetics:
+        suggestion = search_data.get("chemistry_suggestion") or {}
+        if isinstance(suggestion, dict):
+            fixed.update(
+                {
+                    name: float(value)
+                    for name, value in suggestion.items()
+                    if name in DEFAULT_PARAMETER_RANGES
+                }
+            )
+    fixed.update(request.fixed_parameters)
+    logger.debug("Engine fixed parameters: %s", sorted(fixed))
+    return fixed
+
+
+def create_mcts_router(feedback_store: FeedbackStore | None = None) -> APIRouter:
     """
     Create the MCTS API router.
+
+    Args:
+        feedback_store: Store for measured feedback. Defaults to a
+            :class:`~ptpd_calibration.mcts.feedback.FeedbackStore` at the path
+            configured in ``MCTSSettings``.
 
     Returns:
         FastAPI APIRouter with MCTS endpoints.
@@ -150,10 +237,18 @@ def create_mcts_router() -> APIRouter:
     if not API_AVAILABLE:
         raise ImportError("FastAPI is required. Install with: pip install ptpd-calibration[api]")
 
+    from ptpd_calibration.mcts.feedback import FeedbackRecord
+    from ptpd_calibration.mcts.feedback import FeedbackStore as _FeedbackStore
+
     router = APIRouter(prefix="/api/mcts", tags=["mcts"])
 
     # Training session storage
     training_sessions: dict[str, dict] = {}
+
+    # Measured feedback persistence (SCI-06). Explicit None check: an injected
+    # store must never be replaced just because it happens to be empty.
+    store = feedback_store if feedback_store is not None else _FeedbackStore()
+    logger.debug("MCTS feedback store: %s", store.path)
 
     @router.get("/status", response_model=MCTSStatusResponse)
     async def get_mcts_status() -> MCTSStatusResponse:
@@ -192,7 +287,13 @@ def create_mcts_router() -> APIRouter:
         """
         Run MCTS search for optimal calibration parameters.
 
-        Can run in background for large searches.
+        The coordinator subagent first resolves chemistry from the requested
+        aesthetics, then the real ``MCTSEngine`` searches the remaining
+        dimensions against ``target_curve`` in a worker thread so the event
+        loop stays responsive. If the engine fails for any reason the
+        coordinator's single heuristic evaluation is returned instead and the
+        response says so via ``engine_used`` / ``search_backend`` /
+        ``num_simulations`` (SCI-06).
         """
         try:
             import time
@@ -200,19 +301,26 @@ def create_mcts_router() -> APIRouter:
 
             from ptpd_calibration.mcts.agents import CalibrationCoordinatorSubagent
             from ptpd_calibration.mcts.config import MCTSSettings
+            from ptpd_calibration.mcts.engine import MCTSEngine
 
             start_time = time.time()
             search_id = str(uuid4())
 
-            # Configure settings
-            settings = MCTSSettings()
-            if request.num_simulations is not None:
-                settings.num_simulations = request.num_simulations
+            # Honour the requested budget within the configured per-request cap
+            base_settings = MCTSSettings()
+            requested = request.num_simulations or base_settings.num_simulations
+            num_simulations = min(requested, base_settings.max_simulations_per_request)
+            if num_simulations != requested:
+                logger.debug(
+                    "Clamped num_simulations %d -> %d (max_simulations_per_request)",
+                    requested,
+                    num_simulations,
+                )
+            settings = MCTSSettings(num_simulations=num_simulations)
 
-            # Create coordinator agent
+            # Step 1: coordinator resolves chemistry from aesthetics and scores
+            # one heuristic parameter set against the target curve.
             coordinator = CalibrationCoordinatorSubagent()
-
-            # Run coordinated search
             context = {
                 "target_aesthetics": request.target_aesthetics,
                 "fixed_parameters": request.fixed_parameters,
@@ -228,23 +336,66 @@ def create_mcts_router() -> APIRouter:
                     detail=f"Search failed: {result.error}",
                 )
 
-            search_time = time.time() - start_time
-
-            # Extract results
             search_data = result.result
             evaluation = search_data["evaluation"]
+            heuristic_params = search_data["full_parameters"]
 
-            # Generate alternatives (simplified - would use MCTS in full implementation)
-            alternatives = [search_data["full_parameters"]]
+            # Coordinator-only outcome: exactly one simulate + score was run.
+            payload: dict[str, object] = {
+                "best_parameters": heuristic_params,
+                "predicted_curve": evaluation["predicted_curve"],
+                "quality_score": evaluation["quality_score"],
+                "alternatives": [heuristic_params],
+                "num_simulations": 1,
+                "engine_used": False,
+                "search_backend": SEARCH_BACKEND_HEURISTIC,
+                "target_curve_used": bool(evaluation.get("target_curve_used", False)),
+            }
+
+            # Step 2: run the real tree search off the event loop.
+            engine_fixed = _engine_fixed_parameters(request, search_data)
+            try:
+                engine = MCTSEngine(settings=settings)
+                search_result = await run_in_threadpool(
+                    engine.search,
+                    target_curve=request.target_curve,
+                    fixed_parameters=engine_fixed,
+                    paper_type=request.paper_type,
+                    uv_source=request.uv_source,
+                )
+            except Exception as exc:
+                logger.exception(
+                    "MCTSEngine.search failed for %s; returning coordinator heuristic: %s",
+                    search_id,
+                    exc,
+                )
+            else:
+                payload = {
+                    "best_parameters": search_result.best_parameters,
+                    "predicted_curve": search_result.predicted_curve,
+                    "quality_score": search_result.quality_score,
+                    "alternatives": search_result.alternatives,
+                    "num_simulations": search_result.num_simulations,
+                    "engine_used": True,
+                    "search_backend": SEARCH_BACKEND_ENGINE,
+                    "target_curve_used": request.target_curve is not None
+                    and len(request.target_curve) == len(search_result.predicted_curve),
+                }
+
+            search_time = time.time() - start_time
+            logger.info(
+                "MCTS search %s: backend=%s simulations=%s quality=%.4f time=%.2fs",
+                search_id,
+                payload["search_backend"],
+                payload["num_simulations"],
+                float(payload["quality_score"]),  # type: ignore[arg-type]
+                search_time,
+            )
 
             return MCTSSearchResponse(
                 search_id=search_id,
-                best_parameters=search_data["full_parameters"],
-                predicted_curve=evaluation["predicted_curve"],
-                quality_score=evaluation["quality_score"],
-                alternatives=alternatives,
                 search_time_seconds=search_time,
-                num_simulations=settings.num_simulations,
+                **payload,  # type: ignore[arg-type]
             )
 
         except HTTPException:
@@ -326,11 +477,22 @@ def create_mcts_router() -> APIRouter:
 
             session_id = str(uuid4())
 
+            # Clamp to the deployment's own ceiling, as /search does with
+            # num_simulations: the request field's bound is the widest value the
+            # schema allows, not the most a given deployment wants to run.
+            from ptpd_calibration.mcts.config import MCTSSettings
+
+            num_episodes = min(request.num_episodes, MCTSSettings().max_episodes_per_request)
+            if num_episodes != request.num_episodes:
+                logger.debug(
+                    "Clamped requested episodes %d to %d", request.num_episodes, num_episodes
+                )
+
             # Initialize training session
             training_sessions[session_id] = {
                 "status": "starting",
                 "episodes_completed": 0,
-                "num_episodes": request.num_episodes,
+                "num_episodes": num_episodes,
                 "error": None,
             }
 
@@ -338,14 +500,14 @@ def create_mcts_router() -> APIRouter:
             background_tasks.add_task(
                 _train_model_task,
                 session_id,
-                request.num_episodes,
+                num_episodes,
                 training_sessions,
             )
 
             return MCTSTrainResponse(
                 session_id=session_id,
                 status="starting",
-                message=f"Training started with {request.num_episodes} episodes",
+                message=f"Training started with {num_episodes} episodes",
             )
 
         except Exception as e:
@@ -375,8 +537,8 @@ def create_mcts_router() -> APIRouter:
 
     @router.post("/export")
     async def export_result(
-        parameters: dict[str, float],
-        format: str = "json",
+        parameters: dict[str, float] = Body(..., max_length=MAX_LIST_LENGTH),
+        format: str = Query("json", max_length=MAX_STRING_LENGTH),
     ) -> dict[str, object]:
         """
         Export calibration result as curve or recipe.
@@ -423,10 +585,13 @@ def create_mcts_router() -> APIRouter:
                 }
                 return recipe
             else:
-                raise ValueError(f"Unknown format: {format}")
+                # Never interpolate the raw value into the message: it is a
+                # query parameter, and a newline in it forged a second log
+                # record at ERROR, which every default level emits.
+                raise ValueError(f"Unknown format: {sanitize_log_text(format)}")
 
         except Exception as e:
-            logger.exception("Export failed: %s", e)
+            logger.exception("Export failed: %s", sanitize_log_text(e))
             raise HTTPException(
                 status_code=500,
                 detail=f"Export failed: {str(e)}",
@@ -435,26 +600,39 @@ def create_mcts_router() -> APIRouter:
     @router.post("/feedback")
     async def submit_feedback(request: MCTSFeedbackRequest) -> dict[str, object]:
         """
-        Submit real measurement data for model improvement.
+        Persist real measurement data for model improvement.
+
+        Records are appended as JSON lines with ``provenance="measured"`` to the
+        file configured by ``MCTSSettings.feedback_path`` (SCI-06).
 
         Args:
             request: Feedback with parameters and measured curve.
 
         Returns:
-            Confirmation message.
+            Confirmation message with the stored record id.
         """
         try:
-            # Store feedback for future training
-            # In production, this would go to a database
+            record = store.append(
+                FeedbackRecord(
+                    parameters=request.parameters,
+                    measured_curve=request.measured_curve,
+                    quality_rating=request.quality_rating,
+                    notes=request.notes,
+                )
+            )
             logger.info(
-                "Received feedback: parameters=%s, quality=%.2f",
-                request.parameters,
-                request.quality_rating,
+                "Stored measured feedback %s: %d curve points, quality=%.2f",
+                record.id,
+                len(record.measured_curve),
+                record.quality_rating,
             )
 
             return {
                 "success": True,
                 "message": "Feedback recorded successfully",
+                "record_id": record.id,
+                "provenance": record.provenance,
+                "timestamp": record.timestamp.isoformat(),
             }
 
         except Exception as e:
@@ -466,8 +644,8 @@ def create_mcts_router() -> APIRouter:
 
     @router.get("/recommendations")
     async def get_recommendations(
-        paper_type: str | None = None,
-        limit: int = 5,
+        paper_type: str | None = Query(None, max_length=MAX_STRING_LENGTH),
+        limit: int = Query(5, ge=0, le=MAX_LIST_LENGTH),
     ) -> dict[str, list[MCTSRecommendation]]:
         """
         Get top-N parameter recommendations.
@@ -517,12 +695,22 @@ def create_mcts_router() -> APIRouter:
 # =============================================================================
 
 
-async def _train_model_task(
+def _train_model_task(
     session_id: str,
     num_episodes: int,
     training_sessions: dict,
 ) -> None:
-    """Background task to train MCTS models."""
+    """Background task to train MCTS models.
+
+    Deliberately ``def`` and not ``async def``. Starlette awaits an async
+    background task directly on the event loop (``BackgroundTask.__call__``
+    branches on ``is_async``), so the per-episode pause below -- and the real
+    training that will replace it -- ran *on* the loop: one request to this
+    endpoint stopped the whole API answering anything, health checks included,
+    for the length of the run. A synchronous task is handed to the threadpool
+    instead, which is also the right shape for the CPU-bound trainer that the
+    stub stands in for.
+    """
     import time
 
     try:
@@ -534,15 +722,24 @@ async def _train_model_task(
 
         settings = MCTSSettings(num_training_episodes=num_episodes)
         _trainer = MCTSTrainer(settings=settings)
+        delay = settings.training_episode_delay_seconds
+        logger.debug(
+            "Training session %s starting: %d episodes, %.3fs pause per episode",
+            session_id,
+            num_episodes,
+            delay,
+        )
 
         # Run training with progress updates
         for episode in range(num_episodes):
             # Simulate training episode
             # In production, this would call trainer.run_episode()
-            time.sleep(0.1)  # Simulate work
+            if delay:
+                time.sleep(delay)
 
             training_sessions[session_id]["episodes_completed"] = episode + 1
 
+        logger.debug("Training session %s completed %d episodes", session_id, num_episodes)
         training_sessions[session_id]["status"] = "completed"
 
     except Exception as e:

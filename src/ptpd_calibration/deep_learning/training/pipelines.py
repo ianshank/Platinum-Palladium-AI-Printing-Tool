@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Generic, TypeVar
 
@@ -44,6 +44,7 @@ except ImportError:
     DataLoader = None  # type: ignore
     TensorDataset = None  # type: ignore
 
+from ptpd_calibration.core.artifacts import load_torch_checkpoint, to_plain_python
 from ptpd_calibration.deep_learning.training.data_generators import (
     CurveDataGenerator,
     DefectDataGenerator,
@@ -346,8 +347,12 @@ class BaseTrainingPipeline(ABC, Generic[ModelT]):
             "epoch": epoch,
             "model_state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
-            "metrics": metrics,
-            "config": self.config.model_dump(),
+            # Plain values only: the checkpoint is read back with
+            # weights_only=True, which rejects numpy globals. asdict unwraps the
+            # dataclass but leaves its values as they are, so the conversion is
+            # applied here rather than assumed.
+            "metrics": to_plain_python(asdict(metrics)),
+            "config": self.config.model_dump(mode="json"),
         }
 
         if self.scheduler is not None:
@@ -388,7 +393,7 @@ class BaseTrainingPipeline(ABC, Generic[ModelT]):
         if self.model is None or self.optimizer is None:
             raise RuntimeError("Model and optimizer must be created before loading")
 
-        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
+        checkpoint = load_torch_checkpoint(path, map_location=self.device)
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
@@ -446,7 +451,11 @@ class BaseTrainingPipeline(ABC, Generic[ModelT]):
                 )
 
         avg_loss = total_loss / len(train_loader)
-        avg_metrics = {k: np.mean(v) for k, v in all_metrics.items()}
+        # float(), not bare np.mean: the field is annotated dict[str, float]
+        # and np.float64 satisfies isinstance(x, float), so nothing downstream
+        # noticed that the value was a numpy scalar until a checkpoint holding
+        # one could not be read back.
+        avg_metrics = {k: float(np.mean(v)) for k, v in all_metrics.items()}
 
         return avg_loss, avg_metrics
 
@@ -478,7 +487,11 @@ class BaseTrainingPipeline(ABC, Generic[ModelT]):
                 all_metrics[key].append(value)
 
         avg_loss = total_loss / len(val_loader)
-        avg_metrics = {k: np.mean(v) for k, v in all_metrics.items()}
+        # float(), not bare np.mean: the field is annotated dict[str, float]
+        # and np.float64 satisfies isinstance(x, float), so nothing downstream
+        # noticed that the value was a numpy scalar until a checkpoint holding
+        # one could not be read back.
+        avg_metrics = {k: float(np.mean(v)) for k, v in all_metrics.items()}
 
         return avg_loss, avg_metrics
 

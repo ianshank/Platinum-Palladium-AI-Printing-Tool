@@ -51,7 +51,7 @@ def sample_step_tablet(tmp_path) -> Path:
         x_end = (i + 1) * patch_width
         img_array[:, x_start:x_end] = density
 
-    img = Image.fromarray(img_array, mode="L").convert("RGB")
+    img = Image.fromarray(img_array).convert("RGB")
     file_path = tmp_path / "test_step_tablet_21.png"
     img.save(file_path, quality=95)
 
@@ -81,7 +81,7 @@ def sample_high_contrast_tablet(tmp_path) -> Path:
         x_end = (i + 1) * patch_width
         img_array[:, x_start:x_end] = density
 
-    img = Image.fromarray(img_array, mode="L").convert("RGB")
+    img = Image.fromarray(img_array).convert("RGB")
     file_path = tmp_path / "high_contrast_tablet.png"
     img.save(file_path, quality=95)
 

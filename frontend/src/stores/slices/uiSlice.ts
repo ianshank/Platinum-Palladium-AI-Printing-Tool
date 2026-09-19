@@ -50,6 +50,8 @@ export interface UISlice {
 
 const initialState = {
   activeTab: config.ui.defaultTab,
+  // Closed on first render so the mobile drawer/overlay never starts open
+  // (changed 2026-02-22); desktop shows the sidebar regardless via lg: classes.
   sidebarOpen: false,
   isProcessing: false,
   isInitialized: false,
@@ -65,7 +67,7 @@ export const createUISlice: StateCreator<
   [['zustand/immer', never]],
   [],
   UISlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...initialState,
 
   setActiveTab: (tab) => {

@@ -29,7 +29,7 @@ from ptpd_calibration.advanced.features import (
 def gray_test_image():
     """Create a test grayscale image with gradient."""
     arr = np.linspace(0, 255, 256).reshape(16, 16).astype(np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ def rgb_test_image():
     arr = np.zeros((100, 100, 3), dtype=np.uint8)
     arr[:50, :, 0] = 255  # Red half
     arr[50:, :, 2] = 255  # Blue half
-    return Image.fromarray(arr, mode="RGB")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
@@ -341,7 +341,7 @@ class TestNegativeBlender:
 
         # Create gradient mask
         mask_arr = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
-        mask = Image.fromarray(mask_arr, mode="L")
+        mask = Image.fromarray(mask_arr)
 
         result = blender.blend_negatives(
             [neg1, neg2], masks=[None, mask], blend_modes=[BlendMode.NORMAL, BlendMode.NORMAL]
@@ -780,15 +780,15 @@ class TestPrintComparison:
         # Use gradient images to avoid division by zero in range calculations
         arr1 = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
         arr2 = np.clip(arr1 + 5, 0, 255).astype(np.uint8)
-        img1 = Image.fromarray(arr1, mode="L")
-        img2 = Image.fromarray(arr2, mode="L")
+        img1 = Image.fromarray(arr1)
+        img2 = Image.fromarray(arr2)
         return img1, img2
 
     def test_compare_before_after_identical(self, comparison):
         """Identical images should have high similarity."""
         # Use gradient to avoid division by zero
         arr = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
 
         metrics = comparison.compare_before_after(img, img)
 
@@ -859,8 +859,8 @@ class TestPrintComparison:
     def test_calculate_similarity_mse(self, comparison):
         """MSE similarity should work correctly."""
         arr = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
-        img1 = Image.fromarray(arr, mode="L")
-        img2 = Image.fromarray(arr.copy(), mode="L")
+        img1 = Image.fromarray(arr)
+        img2 = Image.fromarray(arr.copy())
 
         score = comparison.calculate_similarity_score(img1, img2, method="mse")
 
@@ -871,8 +871,8 @@ class TestPrintComparison:
         """Correlation similarity should work correctly."""
         arr1 = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
         arr2 = np.clip(arr1 + 10, 0, 255).astype(np.uint8)
-        img1 = Image.fromarray(arr1, mode="L")
-        img2 = Image.fromarray(arr2, mode="L")
+        img1 = Image.fromarray(arr1)
+        img2 = Image.fromarray(arr2)
 
         score = comparison.calculate_similarity_score(img1, img2, method="correlation")
 
@@ -881,8 +881,8 @@ class TestPrintComparison:
     def test_calculate_similarity_ssim(self, comparison):
         """SSIM similarity should work correctly."""
         arr = np.linspace(0, 255, 10000).reshape(100, 100).astype(np.uint8)
-        img1 = Image.fromarray(arr, mode="L")
-        img2 = Image.fromarray(arr.copy(), mode="L")
+        img1 = Image.fromarray(arr)
+        img2 = Image.fromarray(arr.copy())
 
         score = comparison.calculate_similarity_score(img1, img2, method="ssim")
 
@@ -902,9 +902,9 @@ class TestPrintComparison:
         arr2 = np.clip(arr1 + 5, 0, 255).astype(np.uint8)
         arr3 = np.clip(arr1 - 5, 0, 255).astype(np.uint8)
         images = {
-            "original": Image.fromarray(arr1, mode="L"),
-            "print1": Image.fromarray(arr2, mode="L"),
-            "print2": Image.fromarray(arr3, mode="L"),
+            "original": Image.fromarray(arr1),
+            "print1": Image.fromarray(arr2),
+            "print2": Image.fromarray(arr3),
         }
 
         report = comparison.generate_comparison_report(images)
@@ -921,8 +921,8 @@ class TestPrintComparison:
         arr1 = np.linspace(0, 255, 2500).reshape(50, 50).astype(np.uint8)
         arr2 = np.clip(arr1 + 10, 0, 255).astype(np.uint8)
         images = {
-            "img1": Image.fromarray(arr1, mode="L"),
-            "img2": Image.fromarray(arr2, mode="L"),
+            "img1": Image.fromarray(arr1),
+            "img2": Image.fromarray(arr2),
         }
 
         report = comparison.generate_comparison_report(images, reference_key="img2")
@@ -1014,3 +1014,65 @@ class TestEdgeCases:
 
         result = blender.blend_negatives([img, img])
         assert result.size == (1, 1)
+
+
+class TestCustomStylesStayReachable:
+    """``HistoricStyle`` subclasses ``str``, which made the lookup wrong.
+
+    ``apply_style`` split on ``isinstance(style_name, str)`` and, in the branch
+    it always took, evaluated ``key.value`` for every key that did not match.
+    ``create_custom_style`` inserts plain strings, which have no ``.value``, so
+    registering two custom styles made the second impossible to apply and any
+    unknown name raised ``AttributeError`` instead of the documented
+    ``ValueError`` once a custom style existed.
+    """
+
+    @pytest.fixture
+    def image(self):
+        from PIL import Image
+
+        return Image.fromarray(np.full((8, 8), 128, np.uint8))
+
+    @pytest.fixture
+    def transfer(self):
+        from ptpd_calibration.advanced.features import StyleTransfer
+
+        instance = StyleTransfer()
+        instance.create_custom_style("mine_a", {"description": "first"})
+        instance.create_custom_style("mine_b", {"description": "second"})
+        return instance
+
+    @pytest.mark.parametrize("name", ["mine_a", "mine_b"], ids=["first", "second"])
+    def test_every_custom_style_can_be_applied(self, transfer, image, name: str) -> None:
+        assert transfer.apply_style(image, name) is not None
+
+    def test_a_built_in_style_still_works_by_member_and_by_value(self, transfer, image) -> None:
+        from ptpd_calibration.advanced.features import HistoricStyle
+
+        member = HistoricStyle.PAUL_STRAND
+
+        assert transfer.apply_style(image, member) is not None
+        assert transfer.apply_style(image, member.value) is not None
+
+    def test_an_unknown_name_raises_the_documented_error(self, transfer, image) -> None:
+        with pytest.raises(ValueError, match="Unknown style"):
+            transfer.apply_style(image, "no_such_style")
+
+
+class TestBlendMasksAcceptPerLayerNone:
+    """``None`` per element means "no mask for this layer"; the body handles it.
+
+    The annotation forbade it, so a type-checked caller could not use the
+    contract the blender implements and the existing test relies on.
+    """
+
+    def test_the_signature_admits_a_none_element(self) -> None:
+        import inspect
+
+        from ptpd_calibration.advanced.features import NegativeBlender
+
+        annotation = str(
+            inspect.signature(NegativeBlender.blend_negatives).parameters["masks"].annotation
+        )
+
+        assert "None]" in annotation.replace(" ", ""), annotation

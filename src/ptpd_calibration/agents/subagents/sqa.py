@@ -349,7 +349,7 @@ Start with the imports and fixtures, then the test functions.
         Returns:
             Validation results with pass/fail for each criterion.
         """
-        ac_text = "\n".join(f"{i+1}. {ac}" for i, ac in enumerate(acceptance_criteria))
+        ac_text = "\n".join(f"{i + 1}. {ac}" for i, ac in enumerate(acceptance_criteria))
 
         prompt = f"""Analyze this code and validate against the acceptance criteria:
 

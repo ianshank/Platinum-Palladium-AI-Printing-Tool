@@ -10,9 +10,8 @@ vi.mock('recharts', async (importOriginal) => {
   const actual = await importOriginal();
   // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return {
-     
     ...(actual as any),
-     
+
     ResponsiveContainer: ({ children }: { children: any }) => (
       <div style={{ width: 800, height: 600 }}>{children}</div>
     ),
@@ -81,9 +80,13 @@ describe('Step4Preview', () => {
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.any returns any for type matching
-        measurements: expect.any(Array),
+        densities: expect.any(Array),
         name: 'Test Curve',
-        curve_type: 'monotonic',
+        // The wizard's strategy names an interpolation; the backend's
+        // curve_type names a calibration target. Sending 'monotonic' straight
+        // through was rejected with HTTP 400, so it is mapped to a value the
+        // generate endpoint accepts.
+        curve_type: 'linear',
       }),
       expect.any(Object)
     );

@@ -498,3 +498,79 @@ class TestSessionLogger:
         stats = logger.get_paper_statistics()
         assert "" not in stats
         assert "Valid Paper" in stats
+
+    def test_get_paper_statistics_counts_and_averages_across_papers(self, logger):
+        """Regression for the ``paper_stats`` NameError: 3 records across 2 papers.
+
+        Every paper bucket must count prints and average only the non-zero
+        exposures of *that* paper.
+        """
+        session = PrintSession(name="Two Papers")
+        session.add_record(
+            PrintRecord(
+                paper_type="Arches Platine",
+                result=PrintResult.EXCELLENT,
+                exposure_time_minutes=8.0,
+            )
+        )
+        session.add_record(
+            PrintRecord(
+                paper_type="Arches Platine",
+                result=PrintResult.FAILED,
+                exposure_time_minutes=16.0,
+            )
+        )
+        session.add_record(
+            PrintRecord(
+                paper_type="COT 320",
+                result=PrintResult.GOOD,
+                exposure_time_minutes=5.0,
+            )
+        )
+        logger.save_session(session)
+
+        stats = logger.get_paper_statistics()
+
+        assert set(stats) == {"Arches Platine", "COT 320"}
+        assert stats["Arches Platine"] == {
+            "total_prints": 2,
+            "excellent": 1,
+            "good": 0,
+            "failed": 1,
+            "avg_exposure": 12.0,
+        }
+        assert stats["COT 320"] == {
+            "total_prints": 1,
+            "excellent": 0,
+            "good": 1,
+            "failed": 0,
+            "avg_exposure": 5.0,
+        }
+
+    def test_get_paper_statistics_skips_malformed_file_with_warning(self, logger, caplog):
+        """Unparseable session files are logged (with traceback) and skipped."""
+        session = PrintSession(name="Good")
+        session.add_record(PrintRecord(paper_type="Good Paper", exposure_time_minutes=3.0))
+        logger.save_session(session)
+        (logger.storage_dir / "session_broken.json").write_text("{not json")
+
+        with caplog.at_level("WARNING", logger="ptpd_calibration.session.logger"):
+            stats = logger.get_paper_statistics()
+
+        assert stats["Good Paper"]["total_prints"] == 1
+        assert any("session_broken.json" in rec.message for rec in caplog.records)
+        assert any(rec.exc_info for rec in caplog.records)
+
+    def test_get_paper_statistics_propagates_programming_errors(self, logger, monkeypatch):
+        """Programming errors must not be swallowed by the recoverable-error guard."""
+        session = PrintSession(name="Any")
+        session.add_record(PrintRecord(paper_type="Paper"))
+        logger.save_session(session)
+
+        def _broken_load(_path):
+            raise AttributeError("simulated programming error")
+
+        monkeypatch.setattr(logger, "load_session", _broken_load)
+
+        with pytest.raises(AttributeError, match="simulated programming error"):
+            logger.get_paper_statistics()

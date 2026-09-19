@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ptpd_calibration.agents.logging import EventType, get_agent_logger
+from ptpd_calibration.core.time import utc_now
 
 
 class HealthStatus(str, Enum):
@@ -98,7 +99,7 @@ class DependencyHealth(BaseModel):
     status: HealthStatus = Field(default=HealthStatus.UNKNOWN, description="Current status")
     latency_ms: float | None = Field(default=None, description="Check latency in milliseconds")
     message: str | None = Field(default=None, description="Status message or error")
-    last_check: datetime = Field(default_factory=datetime.utcnow, description="Last check time")
+    last_check: datetime = Field(default_factory=utc_now, description="Last check time")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
@@ -106,7 +107,7 @@ class AgentHealthReport(BaseModel):
     """Comprehensive health report for the agent system."""
 
     status: HealthStatus = Field(default=HealthStatus.UNKNOWN, description="Overall status")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Report timestamp")
+    timestamp: datetime = Field(default_factory=utc_now, description="Report timestamp")
 
     # Component health
     llm_connected: bool = Field(default=False, description="LLM service connectivity")
@@ -547,7 +548,7 @@ class HealthChecker:
         # Build report
         report = AgentHealthReport(
             status=status,
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
             llm_connected=any(r.healthy for r in check_results if r.name == "llm_service"),
             message_bus_active=any(r.healthy for r in check_results if r.name == "message_bus"),
             memory_system_active=any(r.healthy for r in check_results if r.name == "memory_system"),

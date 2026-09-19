@@ -5,6 +5,11 @@ Tests UI components for accessibility compliance and usability patterns.
 These are unit-level tests that can run without Selenium.
 """
 
+import pytest
+
+pytest.importorskip("gradio", reason="legacy Gradio UI tests need the [ui] extra (ADR-0004)")
+pytestmark = pytest.mark.legacy_ui
+
 
 class MockGradioBlock:
     """Mock Gradio block for testing."""

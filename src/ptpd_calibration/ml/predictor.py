@@ -2,6 +2,7 @@
 ML-based curve prediction from calibration parameters.
 """
 
+import logging
 import pickle
 from pathlib import Path
 from typing import Any
@@ -9,8 +10,17 @@ from typing import Any
 import numpy as np
 
 from ptpd_calibration.config import MLSettings, get_settings
+from ptpd_calibration.core.artifacts import (
+    ArtifactPolicy,
+    UnsafeArtifactError,
+    resolve_artifact_path,
+    verify_manifest,
+    write_manifest,
+)
 from ptpd_calibration.core.models import CalibrationRecord
-from ptpd_calibration.ml.database import CalibrationDatabase
+from ptpd_calibration.ml.database import CalibrationDatabase, filter_by_provenance
+
+logger = logging.getLogger(__name__)
 
 
 class CurvePredictor:
@@ -45,6 +55,7 @@ class CurvePredictor:
         self,
         database: CalibrationDatabase,
         validation_split: float | None = None,
+        include_simulated: bool = False,
     ) -> dict:
         """
         Train the predictor on calibration database.
@@ -52,11 +63,25 @@ class CurvePredictor:
         Args:
             database: CalibrationDatabase with training records.
             validation_split: Fraction of data for validation.
+            include_simulated: Train on simulator-generated records
+                (``provenance == "simulated"``) as well. Off by default so the
+                model only ever learns from real, measured prints (SCI-08).
 
         Returns:
             Dictionary with training statistics.
         """
-        records = database.get_all_records()
+        # Fetch everything, then apply the provenance guard here so the exclusion
+        # count is logged from the trainer's point of view.
+        all_records = database.get_all_records(include_simulated=True)
+        records = filter_by_provenance(
+            all_records, include_simulated, context="CurvePredictor.train"
+        )
+        logger.debug(
+            "CurvePredictor.train: %d candidate records (%d simulated %s)",
+            len(records),
+            len(all_records) - len(records) if not include_simulated else 0,
+            "excluded" if not include_simulated else "included",
+        )
 
         if len(records) < self.settings.min_training_samples:
             raise ValueError(
@@ -78,8 +103,14 @@ class CurvePredictor:
         split = validation_split or self.settings.validation_split
         split_idx = int(len(X) * (1 - split))
 
-        # Shuffle
-        indices = np.random.permutation(len(X))
+        # Shuffle with a seeded local generator. This drew from the global RNG
+        # unseeded, which made it the only nondeterminism left in training: the
+        # estimators already pin their own random_state, so the same records
+        # gave a different split, a different model and a different reported
+        # validation error on every call, and any unrelated caller that drew
+        # first moved it again.
+        rng = np.random.default_rng(self.settings.random_seed)
+        indices = rng.permutation(len(X))
         X = X[indices]
         y = y[indices]
 
@@ -193,8 +224,21 @@ class CurvePredictor:
             "suggestions": suggestions,
         }
 
-    def save(self, path: Path) -> None:
-        """Save trained model to file."""
+    def save(self, path: Path, *, policy: ArtifactPolicy | None = None) -> None:
+        """Save the trained model to ``path`` and write its SHA-256 manifest.
+
+        Persistence choice (SEC-13): the fitted estimator is a scikit-learn tree
+        ensemble whose state cannot be rebuilt from its hyper-parameters, so it
+        has to be pickled. To keep ``pickle.load`` off untrusted input,
+        :meth:`load` only accepts the file from an allowed artifact directory
+        (:class:`~ptpd_calibration.core.artifacts.ArtifactPolicy`) and only while
+        the ``<file>.sha256`` manifest written here still matches.
+
+        Args:
+            path: Destination file.
+            policy: Policy used for the manifest suffix and the allow-list
+                warning; ``None`` reads it from the environment.
+        """
         if not self.is_trained:
             raise RuntimeError("Model not trained")
 
@@ -206,15 +250,42 @@ class CurvePredictor:
             "chemistry_encoder": self._chemistry_encoder,
         }
 
+        path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as f:
             pickle.dump(data, f)
+        manifest = write_manifest(path, policy)
+        logger.debug("Saved predictor to %s with manifest %s", path, manifest.name)
+
+        try:
+            resolve_artifact_path(path, policy or ArtifactPolicy(), require_allowlist=True)
+        except UnsafeArtifactError:
+            logger.warning(
+                "Predictor saved to %s, which is outside the allowed artifact directories; "
+                "CurvePredictor.load() will refuse it unless PTPD_ARTIFACTS_ALLOWED_DIRS "
+                "includes that directory",
+                path,
+            )
 
     @classmethod
-    def load(cls, path: Path) -> "CurvePredictor":
-        """Load trained model from file."""
-        with open(path, "rb") as f:
-            data = pickle.load(f)
+    def load(cls, path: Path, *, policy: ArtifactPolicy | None = None) -> "CurvePredictor":
+        """Load a model written by :meth:`save`.
+
+        Args:
+            path: Pickle file produced by :meth:`save`.
+            policy: Allow-list/manifest policy; ``None`` reads it from the
+                environment (``PTPD_ARTIFACTS_ALLOWED_DIRS``).
+
+        Raises:
+            UnsafeArtifactError: ``path`` resolves outside the allowed artifact
+                directories, or its SHA-256 manifest is missing or does not match.
+        """
+        policy = policy or ArtifactPolicy()
+        resolved = resolve_artifact_path(path, policy, require_allowlist=True)
+        verify_manifest(resolved, policy, required=True)
+        logger.debug("Loading predictor from %s (allow-list and manifest verified)", resolved)
+        with open(resolved, "rb") as f:
+            data = pickle.load(f)  # noqa: S301 - location and digest verified above
 
         predictor = cls(model_type=data["model_type"])
         predictor.model = data["model"]
@@ -235,7 +306,7 @@ class CurvePredictor:
                 base = GradientBoostingRegressor(
                     n_estimators=self.settings.n_estimators,
                     max_depth=self.settings.max_depth,
-                    random_state=42,
+                    random_state=self.settings.random_seed,
                 )
                 return MultiOutputRegressor(base)
 
@@ -245,7 +316,7 @@ class CurvePredictor:
                 return RandomForestRegressor(
                     n_estimators=self.settings.n_estimators,
                     max_depth=self.settings.max_depth,
-                    random_state=42,
+                    random_state=self.settings.random_seed,
                 )
 
             else:
@@ -256,7 +327,7 @@ class CurvePredictor:
                 base = GradientBoostingRegressor(
                     n_estimators=self.settings.n_estimators,
                     max_depth=self.settings.max_depth,
-                    random_state=42,
+                    random_state=self.settings.random_seed,
                 )
                 return MultiOutputRegressor(base)
 

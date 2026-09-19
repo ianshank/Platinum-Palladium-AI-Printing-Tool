@@ -329,3 +329,59 @@ class TestCurveStorage:
         assert mono_response.status_code == 200
         data = mono_response.json()
         assert data["success"] is True
+
+
+@pytest.mark.api
+class TestCurveExportInjection:
+    """A name that crosses the API must not forge lines inside the exported file.
+
+    ``safe_export_name`` already bounds the ``Content-Disposition`` filename.
+    The file *body* is the other half: QTR and Piezography are line-oriented, so
+    a newline in the name used to write what looked like a further header
+    comment, and a curve stored by one client then decided what another client
+    read back after downloading and re-importing it.
+    """
+
+    INJECTED_NAME = "Innocent\n# Profile: Spoofed\n65535"
+
+    @pytest.mark.parametrize("export_format", ["qtr", "piezography"])
+    def test_exported_body_has_no_forged_line(self, client, sample_densities, export_format):
+        """Every line of the downloaded file is one the exporter meant to write."""
+        response = client.post(
+            "/api/curves/export",
+            data={
+                "densities": sample_densities,
+                "name": self.INJECTED_NAME,
+                "format": export_format,
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.text
+        assert "Spoofed" in body  # the name is still carried, just not as a line
+        assert sum(1 for line in body.splitlines() if line.startswith("# Profile:")) <= 1
+        assert not any(line.strip() == "65535" for line in body.splitlines()[:12])
+
+    def test_stored_curve_export_cannot_be_poisoned(self, client, sample_curve_data):
+        """The cross-client path: one client stores the curve, another downloads it."""
+        create_response = client.post(
+            "/api/curves/modify",
+            json={
+                **sample_curve_data,
+                "name": self.INJECTED_NAME,
+                "adjustment_type": "brightness",
+                "amount": 0.0,
+            },
+        )
+        assert create_response.status_code == 200
+        curve_id = create_response.json()["curve_id"]
+
+        response = client.post(f"/api/curves/{curve_id}/export?format=qtr")
+
+        assert response.status_code == 200
+        lines = response.text.splitlines()
+        # The header runs until the first line that is not a comment; a forged
+        # value line would end it early and hide the metadata behind it.
+        header_length = next(i for i, line in enumerate(lines) if not line.startswith("#"))
+        assert header_length == len([line for line in lines if line.startswith("#")])
+        assert lines[header_length].strip() != "65535"

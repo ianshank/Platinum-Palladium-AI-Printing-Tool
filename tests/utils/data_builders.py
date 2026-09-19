@@ -301,7 +301,7 @@ class ImageBuilder:
         else:
             raise ValueError(f"Unknown fill type: {self._fill}")
 
-        return Image.fromarray(arr, mode=self._mode)
+        return Image.fromarray(arr)
 
     def build_path(self, tmp_path, filename: str = "test_image.png"):
         """Build and save image, returning the path."""

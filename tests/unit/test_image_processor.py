@@ -128,7 +128,7 @@ class TestImageProcessor:
         # Create gradient
         for i in range(100):
             arr[i, :] = int(i * 2.55)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     @pytest.fixture
     def rgb_image(self):
@@ -139,7 +139,7 @@ class TestImageProcessor:
             arr[i, :, 0] = int(i * 2.55)  # Red
             arr[i, :, 1] = int((100 - i) * 2.55)  # Green
             arr[i, :, 2] = 128  # Blue
-        return Image.fromarray(arr, mode="RGB")
+        return Image.fromarray(arr)
 
     @pytest.fixture
     def linear_curve(self):
@@ -344,8 +344,8 @@ class TestImageProcessor:
 
         assert output_path.exists()
         # Verify it's a valid image
-        loaded = Image.open(output_path)
-        assert loaded.size == grayscale_image.size
+        with Image.open(output_path) as loaded:
+            assert loaded.size == grayscale_image.size
 
     def test_export_to_file_jpeg(self, processor, rgb_image, tmp_path):
         """Export to JPEG file."""
@@ -356,8 +356,8 @@ class TestImageProcessor:
         processor.export(result, output_path, settings)
 
         assert output_path.exists()
-        loaded = Image.open(output_path)
-        assert loaded.size == rgb_image.size
+        with Image.open(output_path) as loaded:
+            assert loaded.size == rgb_image.size
 
     def test_export_to_file_tiff(self, processor, grayscale_image, tmp_path):
         """Export to TIFF file."""
@@ -476,7 +476,7 @@ class TestEdgeCases:
         """Inverting RGBA should preserve alpha channel."""
         arr = np.ones((50, 50, 4), dtype=np.uint8) * 128
         arr[:, :, 3] = 200  # Set alpha
-        img = Image.fromarray(arr, mode="RGBA")
+        img = Image.fromarray(arr)
 
         result = processor.load_image(img)
         inverted = processor.invert(result)
@@ -496,7 +496,7 @@ class TestEdgeCases:
         )
 
         arr = np.ones((10, 10), dtype=np.uint8) * 128
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
 
         result = processor.load_image(img)
         processed = processor.apply_curve(result, curve)
@@ -506,7 +506,7 @@ class TestEdgeCases:
     def test_empty_processing_notes(self, processor):
         """New result should have empty notes."""
         arr = np.ones((10, 10), dtype=np.uint8) * 128
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
 
         result = processor.load_image(img)
         assert result.processing_notes == []
@@ -520,7 +520,7 @@ class TestEdgeCases:
         )
 
         arr = np.ones((10, 10), dtype=np.uint8) * 128
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
 
         result = processor.load_image(img)
         result = processor.apply_curve(result, curve)
@@ -543,7 +543,7 @@ class TestPerChannelCurves:
         arr[:, :, 0] = 100  # Red
         arr[:, :, 1] = 150  # Green
         arr[:, :, 2] = 200  # Blue
-        return Image.fromarray(arr, mode="RGB")
+        return Image.fromarray(arr)
 
     @pytest.fixture
     def rgba_image(self):
@@ -553,7 +553,7 @@ class TestPerChannelCurves:
         arr[:, :, 1] = 150  # Green
         arr[:, :, 2] = 200  # Blue
         arr[:, :, 3] = 255  # Alpha
-        return Image.fromarray(arr, mode="RGBA")
+        return Image.fromarray(arr)
 
     @pytest.fixture
     def red_boost_curve(self):
@@ -635,7 +635,7 @@ class TestPerChannelCurves:
     def test_per_channel_rejects_grayscale(self, processor, red_boost_curve):
         """Per-channel curves should reject grayscale images."""
         arr = np.ones((50, 50), dtype=np.uint8) * 128
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
         result = processor.load_image(img)
 
         with pytest.raises(ValueError, match="require RGB"):
@@ -661,7 +661,7 @@ class TestChannelValidation:
     def test_validate_grayscale_image(self, processor):
         """Validate grayscale image channels."""
         arr = np.random.randint(0, 256, (50, 50), dtype=np.uint8)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
         result = processor.load_image(img)
 
         stats = processor.validate_image_channels(result, require_uniform=False)
@@ -675,7 +675,7 @@ class TestChannelValidation:
     def test_validate_rgb_image(self, processor):
         """Validate RGB image channels."""
         arr = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
-        img = Image.fromarray(arr, mode="RGB")
+        img = Image.fromarray(arr)
         result = processor.load_image(img)
 
         stats = processor.validate_image_channels(result, require_uniform=False)
@@ -691,7 +691,7 @@ class TestChannelValidation:
         arr[:, :, 0] = np.random.randint(0, 256, (50, 50))  # Random red
         arr[:, :, 1] = 128  # Constant green
         arr[:, :, 2] = 128  # Constant blue
-        img = Image.fromarray(arr, mode="RGB")
+        img = Image.fromarray(arr)
         result = processor.load_image(img)
 
         stats = processor.validate_image_channels(result, require_uniform=False)
@@ -706,7 +706,7 @@ class TestChannelValidation:
         arr[:, :, 0] = np.random.randint(10, 240, (50, 50))  # Variable red
         arr[:, :, 1] = 128  # Constant green
         arr[:, :, 2] = 128  # Constant blue
-        img = Image.fromarray(arr, mode="RGB")
+        img = Image.fromarray(arr)
         result = processor.load_image(img)
 
         with pytest.raises(ValueError, match="appear unprocessed"):
@@ -715,7 +715,7 @@ class TestChannelValidation:
     def test_validate_returns_stats(self, processor):
         """Validation should return comprehensive stats."""
         arr = np.arange(100).reshape(10, 10).astype(np.uint8)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
         result = processor.load_image(img)
 
         stats = processor.validate_image_channels(result, require_uniform=False)
@@ -736,7 +736,7 @@ class Test16BitTiffExport:
     def test_export_16bit_grayscale_tiff(self, processor, tmp_path):
         """Export 16-bit grayscale TIFF."""
         arr = np.arange(100).reshape(10, 10).astype(np.uint8)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
         result = processor.load_image(img)
 
         output_path = tmp_path / "test_16bit.tiff"
@@ -745,13 +745,13 @@ class Test16BitTiffExport:
 
         assert output_path.exists()
         # Verify it can be loaded
-        loaded = Image.open(output_path)
-        assert loaded is not None
+        with Image.open(output_path) as loaded:
+            assert loaded is not None
 
     def test_export_16bit_rgb_tiff(self, processor, tmp_path):
         """Export 16-bit RGB TIFF (uses tifffile if available)."""
         arr = np.random.randint(0, 256, (50, 50, 3), dtype=np.uint8)
-        img = Image.fromarray(arr, mode="RGB")
+        img = Image.fromarray(arr)
         result = processor.load_image(img)
 
         output_path = tmp_path / "test_rgb_16bit.tiff"
@@ -765,7 +765,7 @@ class Test16BitTiffExport:
     def test_export_preserves_dpi_16bit(self, processor, tmp_path):
         """16-bit export should preserve DPI."""
         arr = np.ones((50, 50), dtype=np.uint8) * 128
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
         result = processor.load_image(img)
         # Manually set DPI
         result = ProcessingResult(
@@ -795,7 +795,7 @@ class TestImageLoadingEdgeCases:
     def test_load_from_file_path(self, processor, tmp_path):
         """Load image from file path."""
         arr = np.ones((50, 50), dtype=np.uint8) * 128
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
         img_path = tmp_path / "test_load.png"
         img.save(img_path)
 
@@ -806,7 +806,7 @@ class TestImageLoadingEdgeCases:
     def test_load_from_path_object(self, processor, tmp_path):
         """Load image from Path object."""
         arr = np.ones((50, 50), dtype=np.uint8) * 128
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
         img_path = tmp_path / "test_path.png"
         img.save(img_path)
 
@@ -845,7 +845,7 @@ class TestAlphaChannelHandling:
         arr = np.zeros((50, 50, 2), dtype=np.uint8)
         arr[:, :, 0] = 128  # Luminance
         arr[:, :, 1] = 200  # Alpha
-        return Image.fromarray(arr, mode="LA")
+        return Image.fromarray(arr)
 
     def test_apply_curve_la_preserves_alpha(self, processor, la_image):
         """Apply curve to LA image should preserve alpha."""
@@ -891,7 +891,7 @@ class TestCurveEdgeCases:
         )
 
         arr = np.ones((10, 10), dtype=np.uint8) * 128
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
         result = processor.load_image(img)
         processed = processor.apply_curve(result, curve)
 
@@ -907,7 +907,7 @@ class TestCurveEdgeCases:
         )
 
         arr = np.array([[0, 128, 255]], dtype=np.uint8).reshape(1, 3)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
         result = processor.load_image(img)
         processed = processor.apply_curve(result, curve)
 

@@ -157,7 +157,7 @@ class TestBatchProcessor:
         images = []
         for i in range(3):
             arr = np.ones((50, 50), dtype=np.uint8) * (50 + i * 50)
-            img = Image.fromarray(arr, mode="L")
+            img = Image.fromarray(arr)
             path = tmp_path / f"input_{i}.png"
             img.save(path)
             images.append(path)
@@ -300,7 +300,7 @@ class TestBatchOutputNaming:
     def sample_image(self, tmp_path):
         """Create single sample image."""
         arr = np.ones((50, 50), dtype=np.uint8) * 128
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
         path = tmp_path / "my_image.png"
         img.save(path)
         return [path]
@@ -345,7 +345,7 @@ class TestBatchColorModes:
         for i in range(2):
             arr = np.ones((50, 50, 3), dtype=np.uint8) * 128
             arr[:, :, 0] = 100 + i * 50  # Vary red
-            img = Image.fromarray(arr, mode="RGB")
+            img = Image.fromarray(arr)
             path = tmp_path / f"rgb_{i}.png"
             img.save(path)
             images.append(path)
@@ -376,3 +376,44 @@ class TestBatchColorModes:
         result = processor.process_batch(rgb_images, output_dir)
 
         assert result.completed == 2
+
+
+class TestMissingOutputPathIsNamed:
+    """A job reaching export without a destination must say so plainly.
+
+    ``BatchJob.output_path`` is optional so a caller can build a job and fill
+    the destination in later, and ``process_batch`` always sets it. A job
+    constructed directly and handed straight to the processor therefore reached
+    ``ImageProcessor.export`` with ``None``, where ``Path(None)`` raised a
+    ``TypeError`` whose message named neither the field nor the job -- and the
+    surrounding handler recorded that message as the job's failure reason.
+    """
+
+    @pytest.fixture
+    def sample_image(self, tmp_path):
+        """A single small grayscale image on disk."""
+        path = tmp_path / "input.png"
+        Image.fromarray(np.full((16, 16), 128, np.uint8)).save(path)
+        return path
+
+    def test_the_failure_reason_names_the_field(self, sample_image):
+        processor = BatchProcessor()
+        job = BatchJob(input_path=sample_image, output_path=None)
+
+        processor._process_single_job(job)
+
+        assert job.status == JobStatus.FAILED
+        assert job.error_message is not None
+        assert "output_path" in job.error_message
+        # The old message was Path()'s, which named only os.PathLike.
+        assert "os.PathLike" not in job.error_message
+
+    def test_a_job_with_a_destination_still_completes(self, sample_image, tmp_path):
+        """The guard must not disturb the path process_batch actually uses."""
+        processor = BatchProcessor()
+        job = BatchJob(input_path=sample_image, output_path=tmp_path / "out.png")
+
+        processor._process_single_job(job)
+
+        assert job.status == JobStatus.COMPLETED
+        assert job.output_path.exists()

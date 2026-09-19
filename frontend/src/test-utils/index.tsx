@@ -65,7 +65,7 @@ interface TestProviderProps {
  */
 export function TestProvider({
   children,
-   
+
   store: _store = createTestStore(),
   queryClient = createTestQueryClient(),
 }: TestProviderProps): ReactElement {

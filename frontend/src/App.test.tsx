@@ -7,7 +7,7 @@ vi.mock('@/stores', () => ({
 }));
 
 vi.mock('@/hooks', () => ({
-    useAppShortcuts: vi.fn(),
+  useAppShortcuts: vi.fn(),
 }));
 
 vi.mock('@/components/Layout', () => ({
@@ -80,7 +80,6 @@ describe('App', () => {
 
   describe('Loading state', () => {
     it('shows LoadingScreen when not initialized', () => {
-       
       mockUseStore.mockImplementation((selector: any) =>
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- calling mock selector
         selector({
@@ -99,7 +98,6 @@ describe('App', () => {
     });
 
     it('shows the Pt logo badge in loading screen', () => {
-       
       mockUseStore.mockImplementation((selector: any) =>
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- calling mock selector
         selector({
@@ -116,7 +114,6 @@ describe('App', () => {
     });
 
     it('calls initializeApp on mount', () => {
-       
       mockUseStore.mockImplementation((selector: any) =>
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- calling mock selector
         selector({
@@ -135,7 +132,6 @@ describe('App', () => {
 
   describe('Initialized state', () => {
     beforeEach(() => {
-       
       mockUseStore.mockImplementation((selector: any) =>
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- calling mock selector
         selector({

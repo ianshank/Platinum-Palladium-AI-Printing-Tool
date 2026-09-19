@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { useStore } from '@/stores';
 import { useGenerateCurve } from '@/api/hooks';
+import { toBackendCurveType } from '@/config/curves';
 
 const Container = styled.div`
   display: flex;
@@ -100,9 +101,9 @@ export function Step4Preview() {
       setHasTriedGeneration(true);
       generateCurve(
         {
-          measurements: densities.map((d) => d.measuredDensity),
+          densities: densities.map((d) => d.measuredDensity),
           name: curveName,
-          curve_type: curveStrategy,
+          curve_type: toBackendCurveType(curveStrategy),
         },
         {
           onSuccess: (data) => {
@@ -151,9 +152,9 @@ export function Step4Preview() {
     setHasTriedGeneration(true);
     generateCurve(
       {
-        measurements: densities.map((d) => d.measuredDensity),
+        densities: densities.map((d) => d.measuredDensity),
         name: curveName,
-        curve_type: curveStrategy,
+        curve_type: toBackendCurveType(curveStrategy),
       },
       {
         onSuccess: (data) => {

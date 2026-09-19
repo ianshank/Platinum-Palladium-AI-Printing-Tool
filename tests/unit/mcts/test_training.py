@@ -7,6 +7,7 @@ episode generation and loss reduction.
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 
 import numpy as np
@@ -18,12 +19,7 @@ from ptpd_calibration.mcts.types import TrainingExample
 logger = logging.getLogger(__name__)
 
 # Check if PyTorch is available
-try:
-    import torch
-
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
+TORCH_AVAILABLE = importlib.util.find_spec("torch") is not None
 
 
 @pytest.fixture
@@ -105,10 +101,7 @@ class TestReplayBuffer:
         from ptpd_calibration.mcts.training import ReplayBuffer
 
         buffer = ReplayBuffer(settings=settings)
-        examples = [
-            _make_example(num_features, settings.action_bins)
-            for _ in range(10)
-        ]
+        examples = [_make_example(num_features, settings.action_bins) for _ in range(10)]
         buffer.add_batch(examples)
         assert buffer.size == 10
 
@@ -218,9 +211,7 @@ class TestReplayBuffer:
 
         buffer = ReplayBuffer(settings=settings)
         for i in range(10):
-            buffer.add(
-                _make_example(num_features, settings.action_bins, value=i * 0.1)
-            )
+            buffer.add(_make_example(num_features, settings.action_bins, value=i * 0.1))
 
         stats = buffer.get_statistics()
         assert stats["size"] == 10.0

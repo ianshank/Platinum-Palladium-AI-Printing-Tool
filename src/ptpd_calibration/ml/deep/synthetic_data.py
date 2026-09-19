@@ -378,6 +378,12 @@ class SyntheticDataGenerator:
             humidity=humidity,
             temperature=temperature,
             measured_densities=list(densities),
+            # These densities come from the simulator, not from a print.
+            # Without this the record defaults to "measured" and passes the
+            # ADR-0006 filter, so a model trains on simulated data believing
+            # it measured (the /api/deep/generate-synthetic route writes
+            # straight into the shared calibration database).
+            provenance="simulated",
         )
 
     def generate_database(

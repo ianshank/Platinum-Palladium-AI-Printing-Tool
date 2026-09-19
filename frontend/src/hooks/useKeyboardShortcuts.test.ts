@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import {
+  isEditableTarget,
   type ShortcutConfig,
   useKeyboardShortcuts,
 } from './useKeyboardShortcuts';
@@ -353,5 +354,48 @@ describe('useKeyboardShortcuts', () => {
     document.dispatchEvent(event);
 
     expect(action).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('isEditableTarget', () => {
+  const editableCases: Array<[label: string, create: () => Element]> = [
+    ['input', () => document.createElement('input')],
+    ['textarea', () => document.createElement('textarea')],
+    ['select', () => document.createElement('select')],
+    [
+      'contentEditable element',
+      () => {
+        const div = document.createElement('div');
+        div.contentEditable = 'true';
+        // Not every DOM implementation derives isContentEditable, so define it
+        Object.defineProperty(div, 'isContentEditable', { value: true });
+        return div;
+      },
+    ],
+  ];
+
+  for (const [label, create] of editableCases) {
+    it(`returns true for a focused ${label}`, () => {
+      const element = create();
+      document.body.appendChild(element);
+      expect(isEditableTarget(element)).toBe(true);
+      document.body.removeChild(element);
+    });
+  }
+
+  it('returns false for null', () => {
+    expect(isEditableTarget(null)).toBe(false);
+  });
+
+  it('returns false for non-element targets such as document', () => {
+    expect(isEditableTarget(document)).toBe(false);
+  });
+
+  it('returns false for the body and plain elements', () => {
+    expect(isEditableTarget(document.body)).toBe(false);
+    const button = document.createElement('button');
+    expect(isEditableTarget(button)).toBe(false);
+    const div = document.createElement('div');
+    expect(isEditableTarget(div)).toBe(false);
   });
 });

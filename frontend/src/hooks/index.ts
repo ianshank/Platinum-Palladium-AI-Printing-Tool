@@ -15,6 +15,7 @@
  */
 
 export {
+  isEditableTarget,
   useKeyboardShortcuts,
   useAppShortcuts,
   type ShortcutConfig,

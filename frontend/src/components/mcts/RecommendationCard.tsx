@@ -65,13 +65,17 @@ export const RecommendationCard: FC<RecommendationCardProps> = ({
 
       {/* Parameters Table */}
       <div className="flex flex-col gap-1">
-        <h4 className="text-xs font-medium text-muted-foreground">Parameters</h4>
+        <h4 className="text-xs font-medium text-muted-foreground">
+          Parameters
+        </h4>
         <div className="space-y-1">
           {Object.entries(parameters)
             .slice(0, 5)
             .map(([name, value]) => (
               <div key={name} className="flex justify-between text-xs">
-                <span className="text-muted-foreground">{name.replace(/_/g, ' ')}</span>
+                <span className="text-muted-foreground">
+                  {name.replace(/_/g, ' ')}
+                </span>
                 <span className="font-mono text-foreground">
                   {typeof value === 'number' ? value.toFixed(3) : value}
                 </span>
@@ -86,7 +90,12 @@ export const RecommendationCard: FC<RecommendationCardProps> = ({
       </div>
 
       {/* Use Button */}
-      <Button onClick={handleUse} size="sm" variant="outline" className="w-full">
+      <Button
+        onClick={handleUse}
+        size="sm"
+        variant="outline"
+        className="w-full"
+      >
         Use These Parameters
       </Button>
     </div>

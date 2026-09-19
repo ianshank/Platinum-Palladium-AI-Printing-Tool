@@ -49,20 +49,22 @@ Calculate adjusted UV exposure times accounting for all environmental factors.
 calc = UVExposureCalculator()
 
 result = calc.calculate_uv_exposure(
-    base_time=10.0,              # Base exposure in minutes
-    negative_density=1.8,         # Negative Dmax - Dmin
-    humidity=55.0,                # Relative humidity %
-    temperature=70.0,             # Temperature in °F
-    uv_intensity=95.0,           # UV intensity % of reference
-    paper_factor=1.0,            # Paper speed multiplier
-    chemistry_factor=1.2,        # Chemistry multiplier (e.g., high Pt)
-    base_density=1.6,            # Reference density
+    base_time=10.0,  # Base exposure in minutes
+    negative_density=1.8,  # Negative Dmax - Dmin
+    humidity=55.0,  # Relative humidity %
+    temperature=70.0,  # Temperature in °F
+    uv_intensity=95.0,  # UV intensity % of reference
+    paper_factor=1.0,  # Paper speed multiplier
+    chemistry_factor=1.2,  # Chemistry multiplier (e.g., high Pt)
+    base_density=1.6,  # Reference density
     optimal_humidity=50.0,
     optimal_temperature=68.0,
 )
 
 print(f"Adjusted exposure: {result.adjusted_exposure_minutes:.2f} minutes")
-print(f"Confidence interval: {result.confidence_lower_minutes:.2f} - {result.confidence_upper_minutes:.2f} min")
+print(
+    f"Confidence interval: {result.confidence_lower_minutes:.2f} - {result.confidence_upper_minutes:.2f} min"
+)
 ```
 
 **Adjustment Factors:**
@@ -104,11 +106,11 @@ Determine optimal sensitizer volume based on paper type, coating method, and con
 calc = CoatingVolumeCalculator()
 
 result = calc.determine_coating_volume(
-    paper_area=80.0,              # 8x10 = 80 sq in
+    paper_area=80.0,  # 8x10 = 80 sq in
     paper_type="arches_platine",
     coating_method="glass_rod",
     humidity=50.0,
-    waste_factor=1.15,           # 15% extra
+    waste_factor=1.15,  # 15% extra
 )
 
 print(f"Recommended volume: {result.recommended_ml:.1f} ml")
@@ -139,10 +141,10 @@ calc = CostCalculator()
 
 # Single print cost
 chemistry = {
-    'ferric_oxalate_ml': 1.8,
-    'platinum_ml': 0.9,
-    'palladium_ml': 0.9,
-    'na2_ml': 0.45,
+    "ferric_oxalate_ml": 1.8,
+    "platinum_ml": 0.9,
+    "palladium_ml": 0.9,
+    "na2_ml": 0.45,
 }
 
 result = calc.calculate_print_cost(
@@ -204,8 +206,8 @@ calc = DilutionCalculator()
 # Developer dilution
 result = calc.calculate_developer_dilution(
     concentrate_strength=20.0,  # 20% EDTA stock
-    target_strength=3.0,         # 3% working solution
-    volume=500.0,                # 500 ml needed
+    target_strength=3.0,  # 3% working solution
+    volume=500.0,  # 500 ml needed
 )
 
 print(f"Mix {result.concentrate_ml:.1f} ml concentrate")
@@ -225,8 +227,8 @@ for bath_num in [1, 2, 3]:
 # Replenishment
 result = calc.suggest_replenishment(
     solution="developer",
-    usage=250.0,              # Used 250 ml
-    current_volume=1000.0,    # 1L working solution
+    usage=250.0,  # Used 250 ml
+    current_volume=1000.0,  # 1L working solution
     exhaustion_threshold=0.30,  # Replace at 30%
 )
 
@@ -259,8 +261,8 @@ calc = EnvironmentalCompensation()
 
 # Altitude adjustment
 result = calc.adjust_for_altitude(
-    base_value=15.0,        # 15 min base drying
-    altitude=5000.0,        # 5000 ft
+    base_value=15.0,  # 15 min base drying
+    altitude=5000.0,  # 5000 ft
     value_type="drying_time",
 )
 
@@ -268,8 +270,8 @@ print(f"Adjusted drying: {result.adjusted_value:.1f} minutes")
 
 # Seasonal adjustment
 result = calc.adjust_for_season(
-    base_value=10.0,        # 10 min base exposure
-    month=7,                # July (summer)
+    base_value=10.0,  # 10 min base exposure
+    month=7,  # July (summer)
     value_type="exposure_time",
     latitude=40.0,
 )
@@ -292,7 +294,9 @@ result = calc.calculate_drying_time(
 )
 
 print(f"Drying time: {result.drying_minutes:.1f} minutes")
-print(f"Range: {result.estimated_range_minutes[0]:.1f} - {result.estimated_range_minutes[1]:.1f} min")
+print(
+    f"Range: {result.estimated_range_minutes[0]:.1f} - {result.estimated_range_minutes[1]:.1f} min"
+)
 if result.forced_air_recommended:
     print("Forced air recommended")
 ```
@@ -337,10 +341,10 @@ from ptpd_calibration.config import get_settings
 settings = get_settings()
 
 # Access chemistry settings
-print(settings.chemistry.drops_per_ml)                    # 20.0
-print(settings.chemistry.platinum_cost_per_ml)             # 8.00
-print(settings.chemistry.ferric_oxalate_cost_per_ml)       # 0.50
-print(settings.chemistry.drops_per_square_inch)            # 0.465
+print(settings.chemistry.drops_per_ml)  # 20.0
+print(settings.chemistry.platinum_cost_per_ml)  # 8.00
+print(settings.chemistry.ferric_oxalate_cost_per_ml)  # 0.50
+print(settings.chemistry.drops_per_square_inch)  # 0.465
 ```
 
 **Key Settings:**
@@ -442,10 +446,10 @@ cost_calc = CostCalculator()
 cost = cost_calc.calculate_print_cost(
     paper_size="8x10",
     chemistry={
-        'ferric_oxalate_ml': recipe.ferric_oxalate_ml,
-        'platinum_ml': recipe.platinum_ml,
-        'palladium_ml': recipe.palladium_ml,
-        'na2_ml': recipe.na2_ml,
+        "ferric_oxalate_ml": recipe.ferric_oxalate_ml,
+        "platinum_ml": recipe.platinum_ml,
+        "palladium_ml": recipe.palladium_ml,
+        "na2_ml": recipe.na2_ml,
     },
 )
 ```

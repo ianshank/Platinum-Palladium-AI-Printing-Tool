@@ -30,28 +30,28 @@ def custom_mapper():
 def gray_image():
     """Create a middle gray image."""
     arr = np.full((100, 100), 128, dtype=np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
 def gradient_image():
     """Create a gradient image."""
     arr = np.linspace(0, 255, 100).reshape(1, 100).repeat(100, axis=0).astype(np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
 def dark_image():
     """Create a dark image."""
     arr = np.full((100, 100), 30, dtype=np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
 def bright_image():
     """Create a bright image."""
     arr = np.full((100, 100), 230, dtype=np.uint8)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 class TestZoneMapping:
@@ -231,7 +231,7 @@ class TestZoneMapper:
         arr[:, :, 0] = 200  # Red
         arr[:, :, 1] = 100  # Green
         arr[:, :, 2] = 50  # Blue
-        rgb_image = Image.fromarray(arr, mode="RGB")
+        rgb_image = Image.fromarray(arr)
 
         analysis = mapper.analyze_image(rgb_image)
 

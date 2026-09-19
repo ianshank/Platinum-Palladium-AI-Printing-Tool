@@ -9,6 +9,7 @@ Provides comprehensive histogram analysis including:
 - Contrast evaluation
 """
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -16,6 +17,15 @@ from typing import Any
 
 import numpy as np
 from PIL import Image
+
+from ptpd_calibration.imaging.processor import is_high_depth_gray, to_eight_bit_gray
+from ptpd_calibration.imaging.safe_image import (
+    image_from_array,
+    open_image_safely,
+    to_uint8_scale,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class HistogramScale(str, Enum):
@@ -148,18 +158,32 @@ class HistogramAnalyzer:
         """
         # Load image
         if isinstance(image, str | Path):
-            img = Image.open(image)
+            # Hardened decode (SEC-04): format allow-list, pixel/frame caps.
+            img = open_image_safely(image)
         elif isinstance(image, np.ndarray):
-            if image.ndim == 2:
-                img = Image.fromarray(image.astype(np.uint8), mode="L")
-            else:
-                img = Image.fromarray(image.astype(np.uint8))
+            # Scale rather than truncate: ``astype(np.uint8)`` wraps modulo 256,
+            # so a 16-bit or float array produced a histogram, a brightness and
+            # a set of printing recommendations computed from noise.
+            img = image_from_array(to_uint8_scale(image))
         else:
             img = image
 
+        # Reported before any depth conversion, so the result still names the
+        # mode the caller actually supplied.
         image_mode = img.mode
         image_size = img.size
         total_pixels = image_size[0] * image_size[1]
+
+        # A path or PIL image reaches this point at its original depth, and the
+        # ``convert("L")`` below clips ``I;16``/``I`` at 255 instead of scaling:
+        # a 16-bit scan read as almost pure white, so its statistics and the
+        # printing recommendations drawn from them were computed from a frame
+        # that had lost every tone above 255. The mode is known here, so the
+        # exact 16-to-8-bit divisor is used rather than the value inference
+        # ``to_uint8_scale`` needs when only an array is available.
+        if is_high_depth_gray(img):
+            logger.debug("Scaling %s image to 8-bit for histogram analysis", img.mode)
+            img = to_eight_bit_gray(img)
 
         # Get grayscale version for main analysis
         if img.mode == "L":

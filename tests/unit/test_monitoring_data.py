@@ -22,27 +22,21 @@ Repository Module (src/ptpd_calibration/data/repository.py):
 import concurrent.futures
 import json
 import sqlite3
-import tempfile
 import threading
 import time
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from unittest.mock import Mock, patch
+from datetime import datetime
 
-import numpy as np
 import pytest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from ptpd_calibration.data.repository import (
     InMemoryRepository,
-    Repository,
     SQLiteRepository,
 )
 from ptpd_calibration.monitoring.performance import (
     APIMetric,
     APIPerformanceTracker,
     CacheManager,
-    CacheStats,
     ImageProcessingProfiler,
     PerformanceMetric,
     PerformanceMonitor,
@@ -56,14 +50,13 @@ from ptpd_calibration.monitoring.performance import (
     get_resource_monitor,
 )
 
-
 # ============================================================================
 # Test Models for Repository Tests
 # ============================================================================
 
 
-class TestModel(BaseModel):
-    """Test model for repository tests."""
+class SampleModel(BaseModel):
+    """Sample pydantic model for repository tests (not a test class)."""
 
     id: str | None = None
     name: str
@@ -941,9 +934,7 @@ class TestResourceMonitor:
 
     def test_init(self):
         """Test ResourceMonitor initialization."""
-        monitor = ResourceMonitor(
-            cpu_threshold=80.0, memory_threshold=80.0, disk_threshold=90.0
-        )
+        monitor = ResourceMonitor(cpu_threshold=80.0, memory_threshold=80.0, disk_threshold=90.0)
         assert monitor.cpu_threshold == 80.0
         assert monitor.memory_threshold == 80.0
         assert monitor.disk_threshold == 90.0
@@ -1239,9 +1230,9 @@ class TestSQLiteRepository:
     def test_init(self, tmp_path):
         """Test SQLiteRepository initialization."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
-        assert repo.model_class == TestModel
+        assert repo.model_class == SampleModel
         assert repo.table_name == "test_table"
         assert repo.db_path == db_path
         assert db_path.exists()
@@ -1249,25 +1240,21 @@ class TestSQLiteRepository:
     def test_init_creates_schema(self, tmp_path):
         """Test that init creates database schema."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(
-            TestModel, "test_table", db_path=db_path, indexed_fields=["category"]
-        )
+        SQLiteRepository(SampleModel, "test_table", db_path=db_path, indexed_fields=["category"])
 
         # Check table exists
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='test_table'"
-        )
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test_table'")
         assert cursor.fetchone() is not None
         conn.close()
 
     def test_add(self, tmp_path):
         """Test adding entity."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
-        entity = TestModel(name="Test", value=123)
+        entity = SampleModel(name="Test", value=123)
         saved = repo.add(entity)
 
         assert saved.id is not None
@@ -1277,9 +1264,9 @@ class TestSQLiteRepository:
     def test_add_with_existing_id(self, tmp_path):
         """Test adding entity with existing ID."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
-        entity = TestModel(id="custom_id", name="Test", value=123)
+        entity = SampleModel(id="custom_id", name="Test", value=123)
         saved = repo.add(entity)
 
         assert saved.id == "custom_id"
@@ -1287,9 +1274,9 @@ class TestSQLiteRepository:
     def test_get(self, tmp_path):
         """Test getting entity by ID."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
-        entity = TestModel(name="Test", value=123)
+        entity = SampleModel(name="Test", value=123)
         saved = repo.add(entity)
 
         retrieved = repo.get(saved.id)
@@ -1300,7 +1287,7 @@ class TestSQLiteRepository:
     def test_get_nonexistent(self, tmp_path):
         """Test getting nonexistent entity."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
         result = repo.get("nonexistent")
         assert result is None
@@ -1308,10 +1295,10 @@ class TestSQLiteRepository:
     def test_get_all(self, tmp_path):
         """Test getting all entities."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
         for i in range(5):
-            repo.add(TestModel(name=f"Test{i}", value=i))
+            repo.add(SampleModel(name=f"Test{i}", value=i))
 
         all_entities = repo.get_all()
         assert len(all_entities) == 5
@@ -1319,10 +1306,10 @@ class TestSQLiteRepository:
     def test_get_all_with_pagination(self, tmp_path):
         """Test getting entities with pagination."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
         for i in range(10):
-            repo.add(TestModel(name=f"Test{i}", value=i))
+            repo.add(SampleModel(name=f"Test{i}", value=i))
 
         page1 = repo.get_all(limit=5, offset=0)
         page2 = repo.get_all(limit=5, offset=5)
@@ -1334,12 +1321,12 @@ class TestSQLiteRepository:
     def test_update(self, tmp_path):
         """Test updating entity."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
-        entity = TestModel(name="Original", value=100)
+        entity = SampleModel(name="Original", value=100)
         saved = repo.add(entity)
 
-        updated_entity = TestModel(name="Updated", value=200)
+        updated_entity = SampleModel(name="Updated", value=200)
         result = repo.update(saved.id, updated_entity)
 
         assert result is not None
@@ -1353,18 +1340,18 @@ class TestSQLiteRepository:
     def test_update_nonexistent(self, tmp_path):
         """Test updating nonexistent entity."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
-        entity = TestModel(name="Test", value=123)
+        entity = SampleModel(name="Test", value=123)
         result = repo.update("nonexistent", entity)
         assert result is None
 
     def test_delete(self, tmp_path):
         """Test deleting entity."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
-        entity = TestModel(name="Test", value=123)
+        entity = SampleModel(name="Test", value=123)
         saved = repo.add(entity)
 
         assert repo.delete(saved.id) is True
@@ -1373,7 +1360,7 @@ class TestSQLiteRepository:
     def test_delete_nonexistent(self, tmp_path):
         """Test deleting nonexistent entity."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
         assert repo.delete("nonexistent") is False
 
@@ -1381,12 +1368,12 @@ class TestSQLiteRepository:
         """Test finding entities with indexed field."""
         db_path = tmp_path / "test.db"
         repo = SQLiteRepository(
-            TestModel, "test_table", db_path=db_path, indexed_fields=["category"]
+            SampleModel, "test_table", db_path=db_path, indexed_fields=["category"]
         )
 
-        repo.add(TestModel(name="Test1", value=1, category="A"))
-        repo.add(TestModel(name="Test2", value=2, category="B"))
-        repo.add(TestModel(name="Test3", value=3, category="A"))
+        repo.add(SampleModel(name="Test1", value=1, category="A"))
+        repo.add(SampleModel(name="Test2", value=2, category="B"))
+        repo.add(SampleModel(name="Test3", value=3, category="A"))
 
         results = repo.find(category="A")
         assert len(results) == 2
@@ -1395,10 +1382,10 @@ class TestSQLiteRepository:
     def test_find_with_non_indexed_field(self, tmp_path):
         """Test finding entities with non-indexed field (string field)."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
-        repo.add(TestModel(name="Test1", value=100))
-        repo.add(TestModel(name="Test2", value=200))
+        repo.add(SampleModel(name="Test1", value=100))
+        repo.add(SampleModel(name="Test2", value=200))
 
         # Use string field (name) which is not indexed
         results = repo.find(name="Test1")
@@ -1408,7 +1395,7 @@ class TestSQLiteRepository:
     def test_find_no_results(self, tmp_path):
         """Test find with no matching results."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
         results = repo.find(category="nonexistent")
         assert len(results) == 0
@@ -1417,12 +1404,12 @@ class TestSQLiteRepository:
         """Test counting entities."""
         db_path = tmp_path / "test.db"
         repo = SQLiteRepository(
-            TestModel, "test_table", db_path=db_path, indexed_fields=["category"]
+            SampleModel, "test_table", db_path=db_path, indexed_fields=["category"]
         )
 
-        repo.add(TestModel(name="Test1", value=1, category="A"))
-        repo.add(TestModel(name="Test2", value=2, category="B"))
-        repo.add(TestModel(name="Test3", value=3, category="A"))
+        repo.add(SampleModel(name="Test1", value=1, category="A"))
+        repo.add(SampleModel(name="Test2", value=2, category="B"))
+        repo.add(SampleModel(name="Test3", value=3, category="A"))
 
         count = repo.count(category="A")
         assert count == 2
@@ -1430,10 +1417,10 @@ class TestSQLiteRepository:
     def test_count_all(self, tmp_path):
         """Test counting all entities."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
         for i in range(5):
-            repo.add(TestModel(name=f"Test{i}", value=i))
+            repo.add(SampleModel(name=f"Test{i}", value=i))
 
         count = repo.count()
         assert count == 5
@@ -1442,12 +1429,12 @@ class TestSQLiteRepository:
         """Test full-text search."""
         db_path = tmp_path / "test.db"
         repo = SQLiteRepository(
-            TestModel, "test_table", db_path=db_path, indexed_fields=["name", "category"]
+            SampleModel, "test_table", db_path=db_path, indexed_fields=["name", "category"]
         )
 
-        repo.add(TestModel(name="Apple", value=1, category="Fruit"))
-        repo.add(TestModel(name="Banana", value=2, category="Fruit"))
-        repo.add(TestModel(name="Carrot", value=3, category="Vegetable"))
+        repo.add(SampleModel(name="Apple", value=1, category="Fruit"))
+        repo.add(SampleModel(name="Banana", value=2, category="Fruit"))
+        repo.add(SampleModel(name="Carrot", value=3, category="Vegetable"))
 
         results = repo.search("Fruit")
         assert len(results) == 2
@@ -1460,11 +1447,11 @@ class TestSQLiteRepository:
         """Test search with limit."""
         db_path = tmp_path / "test.db"
         repo = SQLiteRepository(
-            TestModel, "test_table", db_path=db_path, indexed_fields=["category"]
+            SampleModel, "test_table", db_path=db_path, indexed_fields=["category"]
         )
 
         for i in range(10):
-            repo.add(TestModel(name=f"Test{i}", value=i, category="common"))
+            repo.add(SampleModel(name=f"Test{i}", value=i, category="common"))
 
         results = repo.search("common", limit=5)
         assert len(results) == 5
@@ -1473,18 +1460,16 @@ class TestSQLiteRepository:
         """Test that indexed fields are properly extracted and stored."""
         db_path = tmp_path / "test.db"
         repo = SQLiteRepository(
-            TestModel, "test_table", db_path=db_path, indexed_fields=["category", "name"]
+            SampleModel, "test_table", db_path=db_path, indexed_fields=["category", "name"]
         )
 
-        entity = TestModel(name="Test", value=123, category="TestCat")
+        entity = SampleModel(name="Test", value=123, category="TestCat")
         saved = repo.add(entity)
 
         # Verify indexed fields in database
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
-        cursor.execute(
-            f"SELECT category, name FROM {repo.table_name} WHERE id = ?", (saved.id,)
-        )
+        cursor.execute(f"SELECT category, name FROM {repo.table_name} WHERE id = ?", (saved.id,))
         row = cursor.fetchone()
         assert row[0] == "TestCat"
         assert row[1] == "Test"
@@ -1493,11 +1478,11 @@ class TestSQLiteRepository:
     def test_concurrent_access(self, tmp_path):
         """Test concurrent access to SQLite repository."""
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
         def worker(thread_id):
             for i in range(10):
-                repo.add(TestModel(name=f"Thread{thread_id}_Item{i}", value=i))
+                repo.add(SampleModel(name=f"Thread{thread_id}_Item{i}", value=i))
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             futures = [executor.submit(worker, i) for i in range(3)]
@@ -1517,16 +1502,16 @@ class TestInMemoryRepository:
 
     def test_init(self):
         """Test InMemoryRepository initialization."""
-        repo = InMemoryRepository(TestModel)
-        assert repo.model_class == TestModel
+        repo = InMemoryRepository(SampleModel)
+        assert repo.model_class == SampleModel
         assert len(repo._store) == 0
         assert repo._counter == 0
 
     def test_add(self):
         """Test adding entity."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
-        entity = TestModel(name="Test", value=123)
+        entity = SampleModel(name="Test", value=123)
         saved = repo.add(entity)
 
         assert saved.id is not None
@@ -1535,18 +1520,18 @@ class TestInMemoryRepository:
 
     def test_add_multiple(self):
         """Test adding multiple entities."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
-        entity1 = repo.add(TestModel(name="Test1", value=1))
-        entity2 = repo.add(TestModel(name="Test2", value=2))
+        entity1 = repo.add(SampleModel(name="Test1", value=1))
+        entity2 = repo.add(SampleModel(name="Test2", value=2))
 
         assert entity1.id != entity2.id
 
     def test_get(self):
         """Test getting entity by ID."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
-        entity = TestModel(name="Test", value=123)
+        entity = SampleModel(name="Test", value=123)
         saved = repo.add(entity)
 
         retrieved = repo.get(saved.id)
@@ -1555,26 +1540,26 @@ class TestInMemoryRepository:
 
     def test_get_nonexistent(self):
         """Test getting nonexistent entity."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
         result = repo.get("999")
         assert result is None
 
     def test_get_all(self):
         """Test getting all entities."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
         for i in range(5):
-            repo.add(TestModel(name=f"Test{i}", value=i))
+            repo.add(SampleModel(name=f"Test{i}", value=i))
 
         all_entities = repo.get_all()
         assert len(all_entities) == 5
 
     def test_get_all_with_pagination(self):
         """Test getting entities with pagination."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
         for i in range(10):
-            repo.add(TestModel(name=f"Test{i}", value=i))
+            repo.add(SampleModel(name=f"Test{i}", value=i))
 
         page1 = repo.get_all(limit=5, offset=0)
         page2 = repo.get_all(limit=5, offset=5)
@@ -1584,12 +1569,12 @@ class TestInMemoryRepository:
 
     def test_update(self):
         """Test updating entity."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
-        entity = TestModel(name="Original", value=100)
+        entity = SampleModel(name="Original", value=100)
         saved = repo.add(entity)
 
-        updated_entity = TestModel(name="Updated", value=200)
+        updated_entity = SampleModel(name="Updated", value=200)
         result = repo.update(saved.id, updated_entity)
 
         assert result is not None
@@ -1598,17 +1583,17 @@ class TestInMemoryRepository:
 
     def test_update_nonexistent(self):
         """Test updating nonexistent entity."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
-        entity = TestModel(name="Test", value=123)
+        entity = SampleModel(name="Test", value=123)
         result = repo.update("999", entity)
         assert result is None
 
     def test_delete(self):
         """Test deleting entity."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
-        entity = TestModel(name="Test", value=123)
+        entity = SampleModel(name="Test", value=123)
         saved = repo.add(entity)
 
         assert repo.delete(saved.id) is True
@@ -1616,16 +1601,16 @@ class TestInMemoryRepository:
 
     def test_delete_nonexistent(self):
         """Test deleting nonexistent entity."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
         assert repo.delete("999") is False
 
     def test_find(self):
         """Test finding entities."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
-        repo.add(TestModel(name="Test1", value=100, category="A"))
-        repo.add(TestModel(name="Test2", value=200, category="B"))
-        repo.add(TestModel(name="Test3", value=300, category="A"))
+        repo.add(SampleModel(name="Test1", value=100, category="A"))
+        repo.add(SampleModel(name="Test2", value=200, category="B"))
+        repo.add(SampleModel(name="Test3", value=300, category="A"))
 
         results = repo.find(category="A")
         assert len(results) == 2
@@ -1633,11 +1618,11 @@ class TestInMemoryRepository:
 
     def test_find_multiple_criteria(self):
         """Test finding with multiple criteria."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
-        repo.add(TestModel(name="Test1", value=100, category="A"))
-        repo.add(TestModel(name="Test2", value=100, category="B"))
-        repo.add(TestModel(name="Test3", value=200, category="A"))
+        repo.add(SampleModel(name="Test1", value=100, category="A"))
+        repo.add(SampleModel(name="Test2", value=100, category="B"))
+        repo.add(SampleModel(name="Test3", value=200, category="A"))
 
         results = repo.find(value=100, category="A")
         assert len(results) == 1
@@ -1645,37 +1630,37 @@ class TestInMemoryRepository:
 
     def test_find_no_results(self):
         """Test find with no matching results."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
         results = repo.find(category="nonexistent")
         assert len(results) == 0
 
     def test_count(self):
         """Test counting entities."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
-        repo.add(TestModel(name="Test1", value=1, category="A"))
-        repo.add(TestModel(name="Test2", value=2, category="B"))
-        repo.add(TestModel(name="Test3", value=3, category="A"))
+        repo.add(SampleModel(name="Test1", value=1, category="A"))
+        repo.add(SampleModel(name="Test2", value=2, category="B"))
+        repo.add(SampleModel(name="Test3", value=3, category="A"))
 
         count = repo.count(category="A")
         assert count == 2
 
     def test_count_all(self):
         """Test counting all entities."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
         for i in range(5):
-            repo.add(TestModel(name=f"Test{i}", value=i))
+            repo.add(SampleModel(name=f"Test{i}", value=i))
 
         count = repo.count()
         assert count == 5
 
     def test_clear(self):
         """Test clearing repository."""
-        repo = InMemoryRepository(TestModel)
+        repo = InMemoryRepository(SampleModel)
 
         for i in range(5):
-            repo.add(TestModel(name=f"Test{i}", value=i))
+            repo.add(SampleModel(name=f"Test{i}", value=i))
 
         repo.clear()
 
@@ -1695,12 +1680,12 @@ class TestRepositoryIntegration:
     def test_sqlite_and_inmemory_equivalence(self, tmp_path):
         """Test that SQLite and InMemory repos behave the same."""
         db_path = tmp_path / "test.db"
-        sqlite_repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
-        inmem_repo = InMemoryRepository(TestModel)
+        sqlite_repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
+        inmem_repo = InMemoryRepository(SampleModel)
 
         # Add same data to both
         for i in range(5):
-            entity = TestModel(name=f"Test{i}", value=i, category="A")
+            entity = SampleModel(name=f"Test{i}", value=i, category="A")
             sqlite_repo.add(entity)
             inmem_repo.add(entity)
 
@@ -1755,18 +1740,18 @@ class TestRepositoryIntegration:
         """Test using performance monitoring with repository operations."""
         monitor = PerformanceMonitor()
         db_path = tmp_path / "test.db"
-        repo = SQLiteRepository(TestModel, "test_table", db_path=db_path)
+        repo = SQLiteRepository(SampleModel, "test_table", db_path=db_path)
 
         # Time repository operations
         with monitor.timer("repo_add"):
             for i in range(10):
-                repo.add(TestModel(name=f"Test{i}", value=i))
+                repo.add(SampleModel(name=f"Test{i}", value=i))
 
         with monitor.timer("repo_get_all"):
-            all_entities = repo.get_all()
+            repo.get_all()
 
         with monitor.timer("repo_find"):
-            results = repo.find(value=5)
+            repo.find(value=5)
 
         # Verify metrics were recorded
         assert len(monitor.get_metrics("repo_add")) == 1
@@ -1777,3 +1762,42 @@ class TestRepositoryIntegration:
         stats = monitor.get_statistics("repo_add")
         assert stats["count"] == 1
         assert stats["mean"] > 0
+
+
+class TestTimestampSerialization:
+    """Every monitoring model serialises its timestamp as ISO 8601 in JSON.
+
+    The models moved from the pydantic v1 ``json_encoders`` config to
+    ``@field_serializer``; these tests pin the resulting wire format, which
+    dashboards and the metrics exporter parse.
+    """
+
+    FIXED = datetime(2026, 9, 18, 13, 45, 6, 123456)
+
+    @pytest.mark.parametrize(
+        "model",
+        [
+            PerformanceMetric(metric_name="decode", value=12.5, unit="ms", timestamp=FIXED),
+            ResourceUsage(
+                cpu_percent=3.0,
+                memory_percent=41.0,
+                memory_used_mb=820.0,
+                memory_available_mb=1180.0,
+                disk_percent=55.0,
+                disk_used_gb=11.0,
+                disk_free_gb=9.0,
+                timestamp=FIXED,
+            ),
+            APIMetric(endpoint="/api/health", duration_ms=4.0, status_code=200, timestamp=FIXED),
+        ],
+        ids=["performance_metric", "resource_usage", "api_metric"],
+    )
+    def test_timestamp_is_iso8601_in_json(self, model: BaseModel) -> None:
+        payload = json.loads(model.model_dump_json())
+        assert payload["timestamp"] == self.FIXED.isoformat()
+        assert datetime.fromisoformat(payload["timestamp"]) == self.FIXED
+
+    def test_python_dump_keeps_datetime(self) -> None:
+        """``when_used="json"`` must not change the Python representation."""
+        metric = PerformanceMetric(metric_name="decode", value=1.0, unit="ms", timestamp=self.FIXED)
+        assert metric.model_dump()["timestamp"] == self.FIXED

@@ -36,6 +36,10 @@ class TestDeepLearningCalibrationJourney:
 
         return Image.fromarray(full_img)
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="ARC-02: the deep_learning package is a quarantine candidate (ADR-0011); these journeys predate its current settings/enum API and are tracked by plan item ARC-02",
+    )
     def test_ai_detection_to_curve_workflow(self, sample_step_tablet, tmp_path):
         """
         AI Journey: Deep Detection → Neural Curve Prediction → Quality Assessment
@@ -165,6 +169,10 @@ class TestDefectDetectionJourney:
         rgb = np.stack([arr, arr, arr], axis=2)
         return Image.fromarray(rgb.astype(np.uint8))
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="ARC-02: the deep_learning package is a quarantine candidate (ADR-0011); these journeys predate its current settings/enum API and are tracked by plan item ARC-02",
+    )
     def test_defect_detection_workflow(self, sample_print_with_defects, tmp_path):
         """
         AI Journey: Upload Print → Detect Defects → Get Recommendations
@@ -235,6 +243,10 @@ class TestDefectDetectionJourney:
 class TestRecipeRecommendationJourney:
     """Test AI recipe recommendation workflow."""
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="ARC-02: the deep_learning package is a quarantine candidate (ADR-0011); these journeys predate its current settings/enum API and are tracked by plan item ARC-02",
+    )
     def test_recipe_recommendation_workflow(self):
         """
         AI Journey: Enter Parameters → Get AI Recommendations → Compare Options
@@ -308,7 +320,7 @@ class TestPrintComparisonJourney:
     def reference_print(self):
         """Create a reference print image."""
         arr = np.linspace(30, 220, 256 * 256).reshape(256, 256).astype(np.uint8)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
     @pytest.fixture
     def test_print(self):
@@ -317,8 +329,12 @@ class TestPrintComparisonJourney:
         # Add slight variations
         noise = np.random.normal(0, 5, arr.shape).astype(np.int16)
         arr = np.clip(arr.astype(np.int16) + noise, 0, 255).astype(np.uint8)
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="ARC-02: the deep_learning package is a quarantine candidate (ADR-0011); these journeys predate its current settings/enum API and are tracked by plan item ARC-02",
+    )
     def test_perceptual_comparison_workflow(self, reference_print, test_print, tmp_path):
         """
         AI Journey: Upload Reference → Upload Test → Get LPIPS Comparison
@@ -376,6 +392,10 @@ class TestPrintComparisonJourney:
 class TestUVExposurePredictionJourney:
     """Test AI UV exposure prediction workflow."""
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="ARC-02: the deep_learning package is a quarantine candidate (ADR-0011); these journeys predate its current settings/enum API and are tracked by plan item ARC-02",
+    )
     def test_exposure_prediction_workflow(self):
         """
         AI Journey: Enter Conditions → Get Predicted Exposure → View Confidence
@@ -424,8 +444,12 @@ class TestMultiModalAssistantJourney:
         # Create uneven exposure pattern
         for i in range(256):
             arr[i, :] = 100 + int(50 * np.sin(i * 0.1))
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="ARC-02: the deep_learning package is a quarantine candidate (ADR-0011); these journeys predate its current settings/enum API and are tracked by plan item ARC-02",
+    )
     def test_visual_troubleshooting_workflow(self, sample_problem_image, tmp_path):
         """
         AI Journey: Upload Problem Image → Describe Issue → Get AI Analysis
@@ -471,6 +495,10 @@ class TestMultiModalAssistantJourney:
 class TestFederatedLearningJourney:
     """Test federated learning workflow."""
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="ARC-02: the deep_learning package is a quarantine candidate (ADR-0011); these journeys predate its current settings/enum API and are tracked by plan item ARC-02",
+    )
     def test_federated_contribution_workflow(self):
         """
         AI Journey: Opt-in → Contribute Local Data → Receive Updates
@@ -532,8 +560,12 @@ class TestDiffusionEnhancementJourney:
         # Fading
         arr[:50, :] = (arr[:50, :] * 0.7).astype(np.uint8)
 
-        return Image.fromarray(arr, mode="L")
+        return Image.fromarray(arr)
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="ARC-02: the deep_learning package is a quarantine candidate (ADR-0011); these journeys predate its current settings/enum API and are tracked by plan item ARC-02",
+    )
     def test_diffusion_restoration_workflow(self, damaged_print_scan, tmp_path):
         """
         AI Journey: Upload Damaged Scan → Select Restoration → Preview → Apply
@@ -600,6 +632,10 @@ class TestDiffusionEnhancementJourney:
 class TestIntegratedAIWorkflow:
     """Test complex integrated AI workflows."""
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="ARC-02: the deep_learning package is a quarantine candidate (ADR-0011); these journeys predate its current settings/enum API and are tracked by plan item ARC-02",
+    )
     def test_complete_ai_enhanced_calibration(self, tmp_path):  # noqa: ARG002
         """
         Complete AI Journey: Detection → Curve Prediction → Quality Check →

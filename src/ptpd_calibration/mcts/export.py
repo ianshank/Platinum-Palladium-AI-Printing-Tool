@@ -91,8 +91,7 @@ class MCTSResultExporter:
         )
 
         logger.info(
-            f"Created CurveData: {name}, {num_points} points, "
-            f"quality={result.quality_score:.3f}"
+            f"Created CurveData: {name}, {num_points} points, quality={result.quality_score:.3f}"
         )
 
         return curve_data
@@ -150,8 +149,11 @@ class MCTSResultExporter:
         else:
             chemistry_type = ChemistryType.PLATINUM_PALLADIUM
 
-        # Generate measured densities from predicted curve
-        measured_densities = self._generate_density_measurements(result.predicted_curve)
+        # Sample the *simulated* curve into a step-wedge-shaped density list. These
+        # values never came from a densitometer, so the record is tagged
+        # provenance="simulated" (SCI-08) and is excluded from ML training and
+        # database queries unless a caller opts in with include_simulated=True.
+        simulated_densities = self._generate_density_measurements(result.predicted_curve)
 
         record = CalibrationRecord(
             id=result.id,
@@ -168,8 +170,12 @@ class MCTSResultExporter:
             exposure_time=exposure_time,
             uv_source=result.uv_source,
             humidity=humidity,
-            temperature=developer_temp,
-            measured_densities=measured_densities,
+            # The search decides the developer bath temperature, not the ambient
+            # temperature; ``temperature`` (ambient °C) is unknown and left unset.
+            temperature=None,
+            developer_temp_c=developer_temp,
+            measured_densities=simulated_densities,
+            provenance="simulated",
             extraction_id=None,
             curve_id=result.id,
             notes=self._generate_notes(result),
@@ -179,7 +185,12 @@ class MCTSResultExporter:
         logger.info(
             f"Created CalibrationRecord: {record.name}, "
             f"chemistry={chemistry_type.value}, "
-            f"metal_ratio={metal_ratio:.2f}"
+            f"metal_ratio={metal_ratio:.2f}, "
+            f"provenance={record.provenance}"
+        )
+        logger.debug(
+            f"Simulated record {record.id}: developer_temp_c={developer_temp:.1f}, "
+            f"{len(simulated_densities)} simulated density samples"
         )
 
         return record

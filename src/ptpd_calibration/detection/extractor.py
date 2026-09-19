@@ -4,6 +4,7 @@ Density and color extraction from step tablet patches.
 Implements robust measurement with outlier rejection for Pt/Pd prints.
 """
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,6 +14,13 @@ from PIL import Image
 from ptpd_calibration.config import ExtractionSettings, get_settings
 from ptpd_calibration.core.models import ExtractionResult, PatchData
 from ptpd_calibration.detection.detector import DetectionResult
+from ptpd_calibration.imaging.safe_image import load_image_array, to_uint8_scale
+
+#: Largest value an 8-bit code can hold; the sRGB transfer function is
+#: defined on that scale.
+_EIGHT_BIT_MAX = 255.0
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -106,14 +114,9 @@ class DensityExtractor:
 
     def _load_image(self, image: np.ndarray | Image.Image | Path | str) -> np.ndarray:
         """Load image from various sources."""
-        if isinstance(image, np.ndarray):
-            return image
-        if isinstance(image, Image.Image):
-            return np.array(image)
-        if isinstance(image, Path | str):
-            pil_img = Image.open(image)
-            return np.array(pil_img)
-        raise TypeError(f"Unsupported image type: {type(image)}")
+        # Files are decoded through the hardened path (SEC-04); arrays and
+        # in-memory PIL images pass through unchanged.
+        return load_image_array(image)
 
     def _detect_paper_base(
         self, image: np.ndarray, detection: DetectionResult
@@ -126,7 +129,7 @@ class DensityExtractor:
         margin = self.settings.paper_margin_ratio
         sample_size = self.settings.paper_sample_size
 
-        samples = []
+        samples: list[np.ndarray] = []
 
         # Top margin
         if y > sample_size:
@@ -134,7 +137,7 @@ class DensityExtractor:
                 max(0, y - sample_size) : y,
                 x : x + w,
             ]
-            samples.extend(self._sample_region(top_region))
+            samples.append(self._sample_region(top_region))
 
         # Bottom margin
         if y + h + sample_size < height:
@@ -142,7 +145,7 @@ class DensityExtractor:
                 y + h : min(height, y + h + sample_size),
                 x : x + w,
             ]
-            samples.extend(self._sample_region(bottom_region))
+            samples.append(self._sample_region(bottom_region))
 
         # Left margin
         if x > sample_size:
@@ -150,7 +153,7 @@ class DensityExtractor:
                 y : y + h,
                 max(0, x - sample_size) : x,
             ]
-            samples.extend(self._sample_region(left_region))
+            samples.append(self._sample_region(left_region))
 
         # Right margin
         if x + w + sample_size < width:
@@ -158,9 +161,10 @@ class DensityExtractor:
                 y : y + h,
                 x + w : min(width, x + w + sample_size),
             ]
-            samples.extend(self._sample_region(right_region))
+            samples.append(self._sample_region(right_region))
 
-        if not samples:
+        if not any(len(block) for block in samples):
+            samples = []
             # Fallback: use image corners
             corner_size = int(min(height, width) * margin)
             corners = [
@@ -170,14 +174,14 @@ class DensityExtractor:
                 image[-corner_size:, -corner_size:],
             ]
             for corner in corners:
-                samples.extend(self._sample_region(corner))
+                samples.append(self._sample_region(corner))
 
-        if not samples:
+        if not any(len(block) for block in samples):
             # Ultimate fallback
             return (255.0, 255.0, 255.0), 0.05
 
         # Robust mean using MAD
-        samples_array = np.array(samples)
+        samples_array = np.concatenate([block for block in samples if len(block)])
         rgb_mean = self._robust_mean(samples_array)
 
         # Calculate paper base density
@@ -185,23 +189,38 @@ class DensityExtractor:
 
         return tuple(rgb_mean), paper_density
 
-    def _sample_region(self, region: np.ndarray) -> list[np.ndarray]:
-        """Sample random pixels from a region."""
-        if region.size == 0:
-            return []
+    def _sample_region(self, region: np.ndarray) -> np.ndarray:
+        """Return the region's pixels as RGB rows, bounded but deterministic.
 
-        # Flatten to list of RGB values
-        if len(region.shape) == 3:
+        This drew a random hundred pixels off the process-global RNG. The paper
+        base it feeds is the reference every patch density is measured against,
+        so the same scan read twice gave different densities -- and an unrelated
+        caller drawing from the global RNG first shifted them too. On a margin
+        with the lighting gradient and dust a flatbed produces, the estimate
+        moved by more than a code value between runs.
+
+        A hundred pixels was also a poor estimator of a margin holding tens of
+        thousands. Everything within the bound is used now, and a larger margin
+        is strided evenly: bounded work, no RNG, and the same answer every time.
+        ``_robust_mean`` still rejects outliers by MAD, which is what makes dust
+        and specks harmless without discarding most of the data to avoid them.
+        """
+        if region.size == 0:
+            return np.empty((0, 3), dtype=region.dtype)
+
+        if region.ndim == 3:
             pixels = region.reshape(-1, region.shape[-1])
         else:
-            pixels = region.flatten()
-            pixels = np.column_stack([pixels, pixels, pixels])
+            flat = region.reshape(-1)
+            pixels = np.column_stack([flat, flat, flat])
 
-        # Random sample
-        n_samples = min(100, len(pixels))
-        indices = np.random.choice(len(pixels), n_samples, replace=False)
+        limit = self.settings.paper_sample_pixels
+        if len(pixels) > limit:
+            step = len(pixels) // limit
+            pixels = pixels[::step][:limit]
+            logger.debug("Strided %d margin pixels to %d (step %d)", region.size, len(pixels), step)
 
-        return [pixels[i] for i in indices]
+        return pixels
 
     def _extract_patch(
         self,
@@ -306,48 +325,82 @@ class DensityExtractor:
         # Convert MAD to standard deviation estimate
         return mad * 1.4826
 
+    @staticmethod
+    def _srgb_to_linear(values: np.ndarray) -> np.ndarray:
+        """Undo the sRGB transfer function, mapping code values to reflectance.
+
+        Scanner files store gamma-encoded values. Density is
+        ``-log10(reflectance)``, and reflectance is a *linear* quantity, so the
+        encoding has to be undone first. Skipping it compresses the scale by
+        roughly a factor of two: a print whose true maximum density is 1.95
+        reads as 0.97, and the quality gates, which are set from published
+        figures for this process, then become unreachable.
+        """
+        normalised = np.asarray(values, dtype=float) / _EIGHT_BIT_MAX
+        return np.where(
+            normalised <= 0.04045,
+            normalised / 12.92,
+            ((normalised + 0.055) / 1.055) ** 2.4,
+        )
+
+    def _to_reflectance(self, rgb: np.ndarray) -> np.ndarray:
+        """Return linear reflectance for ``rgb``, honouring the settings flag.
+
+        The scale is normalised first. Both branches divide by 255, so a 16-bit
+        scan, which ``load_image_array`` deliberately hands over at its full
+        depth, produced reflectance far above 1 and a density of 0 for every
+        patch: a scan the rest of this toolkit treats as first class read as
+        blank paper.
+        """
+        codes = to_uint8_scale(np.asarray(rgb))
+        if self.settings.linearize_srgb:
+            return self._srgb_to_linear(codes)
+        return np.asarray(codes, dtype=float) / _EIGHT_BIT_MAX
+
     def _rgb_to_density(
         self,
         rgb: np.ndarray,
         reference: tuple[float, float, float] | None = None,
     ) -> float:
-        """
-        Convert RGB to visual density using Status A weighting.
+        """Convert RGB to visual density.
 
-        Density = -log10(reflectance)
-        where reflectance = sample / reference
+        ``density = -log10(sample / reference)``, with both terms converted to
+        linear reflectance first and combined with the configured channel
+        weights. The weights are Rec. 709 luminance, which is a reasonable
+        visual proxy; the field is named for what it is rather than for Status
+        A, which it does not implement.
         """
-        # Status A weights (appropriate for warm-toned prints)
-        weights = np.array(self.settings.status_a_weights)
+        weights = np.array(self.settings.visual_density_weights)
 
-        # Normalize to 0-1
-        rgb_norm = np.array(rgb) / 255.0
+        sample = self._to_reflectance(rgb)
 
         if reference is not None:
-            ref_norm = np.array(reference) / 255.0
-            # Ensure minimum reflectance
-            ref_norm = np.maximum(ref_norm, 0.01)
+            ref = np.maximum(self._to_reflectance(np.asarray(reference)), 0.01)
         else:
-            ref_norm = np.array([self.settings.reference_white_reflectance] * 3)
+            ref = np.array([self.settings.reference_white_reflectance] * 3)
 
-        # Calculate reflectance
-        reflectance = np.clip(rgb_norm / ref_norm, 0.001, 1.0)
-
-        # Weighted reflectance (Status A)
-        weighted_reflectance = np.sum(reflectance * weights)
-
-        # Convert to density
+        reflectance = np.clip(sample / ref, 0.001, 1.0)
+        weighted_reflectance = float(np.sum(reflectance * weights))
         density = -np.log10(weighted_reflectance)
 
+        logger.debug(
+            "rgb=%s -> reflectance=%.5f density=%.3f (linearised=%s)",
+            np.asarray(rgb).tolist(),
+            weighted_reflectance,
+            density,
+            self.settings.linearize_srgb,
+        )
         return float(max(0.0, density))
 
     def _rgb_to_lab(self, rgb: np.ndarray) -> np.ndarray:
         """Convert RGB to CIE L*a*b* color space."""
         # sRGB to XYZ
+        # Normalise the depth first, for the same reason as _to_reflectance.
+        codes = np.asarray(to_uint8_scale(np.asarray(rgb)), dtype=float) / _EIGHT_BIT_MAX
         rgb_linear = np.where(
-            rgb / 255.0 <= 0.04045,
-            rgb / 255.0 / 12.92,
-            ((rgb / 255.0 + 0.055) / 1.055) ** 2.4,
+            codes <= 0.04045,
+            codes / 12.92,
+            ((codes + 0.055) / 1.055) ** 2.4,
         )
 
         # sRGB to XYZ matrix (D65 illuminant)

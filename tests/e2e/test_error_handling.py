@@ -53,7 +53,7 @@ def oversized_image(tmp_path) -> Path:
 
     # Create a 5000x5000 image (large but not unreasonably so)
     img_array = np.random.randint(0, 255, (1000, 1000), dtype=np.uint8)
-    img = Image.fromarray(img_array, mode="L")
+    img = Image.fromarray(img_array)
     file_path = tmp_path / "oversized.png"
     img.save(file_path)
     return file_path
@@ -525,7 +525,7 @@ class TestConcurrentOperations:
         files = []
         for i in range(3):
             img_array = np.random.randint(0, 255, (100, 100), dtype=np.uint8)
-            img = Image.fromarray(img_array, mode="L")
+            img = Image.fromarray(img_array)
             file_path = tmp_path / f"test_{i}.png"
             img.save(file_path)
             files.append(file_path)

@@ -93,7 +93,7 @@ export const createSessionSlice: StateCreator<
   [['zustand/immer', never]],
   [],
   SessionSlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...initialState,
 
   addRecord: (record) => {

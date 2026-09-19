@@ -735,6 +735,7 @@ class TestMessageBusProcessMessages:
     @pytest.mark.asyncio
     async def test_process_messages_starts_and_stops(self, message_bus):
         """Test process_messages can be started and stopped."""
+
         async def stop_after_delay():
             await asyncio.sleep(0.1)
             message_bus.stop()

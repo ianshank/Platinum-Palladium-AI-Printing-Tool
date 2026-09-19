@@ -365,7 +365,12 @@ class ExtendedProcessSimulator:
 
         # Apply toe expansion (low values)
         # Same pattern: sigmoid(logit(toe_position)) * 0.3
-        toe_raw = np.log(toe / (1.0 - toe + 1e-6))
+        # When toe clips to 0.0 the logit is log(0) = -inf, which numpy flags as a
+        # divide-by-zero RuntimeWarning even though the downstream sigmoid is well
+        # defined (1 / (1 + exp(inf)) == 0.0). Suppress only that warning so the
+        # numeric result stays bit-identical to the torch path.
+        with np.errstate(divide="ignore"):
+            toe_raw = np.log(toe / (1.0 - toe + 1e-6))
         toe_strength = 1.0 / (1.0 + np.exp(-toe_raw)) * 0.3
         response = response + toe_strength * np.power(np.clip(0.3 - response, 0, 0.3), 2)
 

@@ -95,7 +95,7 @@ export const createCalibrationSlice: StateCreator<
   [['zustand/immer', never]],
   [],
   CalibrationSlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...initialState,
 
   startCalibration: (tabletType) => {

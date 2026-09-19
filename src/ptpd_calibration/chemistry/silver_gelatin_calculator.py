@@ -496,7 +496,7 @@ class SilverGelatinCalculator:
         dilution: DilutionRatio,
         volume_ml: float,
         temperature_c: float,
-        num_prints: int,
+        num_prints: int,  # noqa: ARG002 - reserved: per-print exhaustion model (ADR pending)
     ) -> DeveloperRecipe:
         """Calculate developer working solution recipe."""
         # Get dilution factor
@@ -621,7 +621,7 @@ class SilverGelatinCalculator:
         developer: DeveloperType,
         paper_base: PaperBase,
         temperature: float,
-        num_prints: int,
+        num_prints: int,  # noqa: ARG002 - reserved: per-print exhaustion model (ADR pending)
     ) -> list[str]:
         """Generate helpful notes for the processing session."""
         notes = []

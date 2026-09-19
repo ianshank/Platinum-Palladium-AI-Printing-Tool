@@ -1,135 +1,91 @@
 # DEV-SQE Summary
 
-## 2026-02-22 | Bug-Fix Sprint: Frontend + Backend Test Failures
+Entries before 2026-09-18 were archived to `kb/archive/2026-02/dev-sqe.md` because they
+described a February 2026 state that no longer held (ADR-0015). New entries are prepended
+here by the `dev-sqe-handoff` skill and must carry the commit and a CI run URL for any
+numeric claim.
 
-### What was done
-- **P0 frontend fix**: `CurveEditor` — `adjustment_type: 'none'` → `'brightness'`; caused HTTP 400 on every curve modify call
-- **UI fix**: `uiSlice` — `sidebarOpen` default `true` → `false`; sidebar was open on first render
-- **E2E test fixes**: Dashboard `h1` scoped to `main` (avoid Layout header duplicate); focus ring test gets `body.click()` anchor before Tab + uses `:focus-visible`
-- **Backend: 6 root-cause fixes covering 10 failing pytest tests**:
-  - Empty `densities` guard → HTTP 422 (was unhandled `ValueError` in numpy)
-  - `pydantic.ValidationError` in `create_calibration` → HTTP 422 (was 500)
-  - `UUID()` `ValueError` in `get_calibration` → HTTP 422 (was 500)
-  - `CurveModifier.smooth()` `preserve_endpoints` moved to `__init__` (was incorrectly passed as kwarg → `TypeError` → 400)
-  - `parse_quad_content` validation: `not raw_sections and not active_channels` (parser always injects 7 default disabled channels, making `not channels` check wrong)
-  - `CurveType` enum: added `SPLINE` and `POLYNOMIAL` values
+## [2026-09-18 16:30:00] Session e274d4ad
 
-### Verification
-- **Playwright e2e**: 9/9 passed ✅
-- **Backend pytest (tests/api/)**: 104 passed, 13 skipped, 0 failed ✅
-- **Frontend vitest**: 726 passed, 0 failed ✅
-- **TypeScript**: 0 errors
+**Branch**: claude/ptpd-validation-sdlc-plan-j2a2gc
+**Commit**: 843566e
+**PR**: https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/pull/37
+**CI**: https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/actions/runs/35368643634
 
-### Files Changed (6 files)
-- `frontend/e2e/app.spec.ts` — h1 scope fix, focus test fix
-- `frontend/src/components/Layout/Layout.tsx` — `lg:translate-x-0` sidebar class
-- `frontend/src/components/curves/CurveEditor.tsx` — `adjustment_type: 'brightness'`
-- `frontend/src/stores/slices/uiSlice.ts` — `sidebarOpen: false`
-- `src/ptpd_calibration/api/server.py` — 5 backend fixes
-- `src/ptpd_calibration/core/types.py` — SPLINE/POLYNOMIAL in CurveType
+### Summary
+Phase 1 defect work, then the first Phase 1 feature. With Phase 0's gates in
+place, reading the science paths against the physics surfaced defects a green
+CI had been hiding, each fixed at its cause with a test that fails on the old
+code.
 
----
+Density was under-reported by roughly a factor of two because the extractor
+took the log of gamma-encoded scanner values; a print already at full black was
+told to expose longer. A lookup table was shared between different curves
+because the cache was keyed on a name that every generated curve carries.
+Curve generation accepted input that silently produces a ruined negative. The
+frontend and the API disagreed on four field names, fixed at the mechanism by
+generating the client's types from the schema and failing CI on drift. Logging
+was installed by accident at whatever import order happened, and the health
+endpoint reported a hard-coded string.
 
-## 2026-02-09 | Code Review Hardening
+The imaging pipeline did not survive a 16-bit scan at all. The decode guard
+refused it outright, three stages clipped or converted it, export widened an
+8-bit result and called it 16-bit, and the AI entry point carried its own copy
+of the clipping conversion. Depth is now carried through decode, load, curve,
+inversion, preview and export, reduced only where the requested output format
+demands it and then by scaling. ADR-0016 records the decision.
 
-### What was done
-- **Bug fix**: Fixed `ctrlMatch` false-positive in `useKeyboardShortcuts` (Ctrl held incorrectly matching `ctrl:false` shortcuts)
-- **useUndoRedo hardened**: Removed dead `initialRef`, added `logger.debug` tracing, capped redo stack via `capStack()`, config-driven `maxHistory` default from `config.ui.undoHistoryLimit`, validated with `Math.max(1, Math.floor())`
-- **CurveEditor hardened**: Added logging to all handlers, `role="alert"` on errors, `role="img"` with aria-label on chart, typed `AdjustmentType` union, `config.calibration.maxCurvePoints` instead of hard-coded 256, extracted helpers
-- **Keyboard shortcuts**: Added `<select>` exclusion, memoized shortcuts array with `useMemo`
-- **Equivalence tests**: Removed dead `callCurveModifyEndpoint`, `readonly number[]` signatures, NaN handling, removed 5 vacuous tests, fixed misleading fixture labels
-- **New tests**: 12 edge-case tests (ctrl/meta false-positive, select exclusion, contentEditable, Mac Cmd support, case-insensitive keys, null initial value, maxHistory boundary/clamp, reset tracking, stable callback refs)
+An adversarial subagent review of that change found fifteen further findings,
+six of them real defects the first pass missed, including that the whole
+feature was unreachable for any scan above the decode limit. All are addressed
+in a follow-up commit with tests; several of the original tests asserted the
+image mode rather than its pixels and passed on a frame that had been clipped
+to white.
 
-### Verification
-- **TypeScript**: 0 errors
-- **Tests**: 726 passed, 0 failed (~80% coverage) — 6 net new tests (12 added, 5 vacuous removed, 1 fixture deduplicated)
-- **Build**: Success (bundle ~280KB gzipped)
+`POST /api/export/negative` closes the largest product gap ADR-0004 lists as
+blocking Gradio retirement: until now only the frozen UI could make a negative.
+The endpoint reuses the existing upload guards, carries its own decode limits
+because a negative is printed at full size, and deletes both temporary files.
+The client call is typed from the generated schema.
 
-### Files Changed (10 files, +382 -218)
-- `frontend/src/hooks/useUndoRedo.ts` - Dead code removal, logging, capStack, config-driven default
-- `frontend/src/hooks/useUndoRedo.test.ts` - 5 new edge-case tests
-- `frontend/src/hooks/useKeyboardShortcuts.ts` - ctrlMatch fix, select exclusion, useMemo
-- `frontend/src/hooks/useKeyboardShortcuts.test.ts` - 7 new tests for bugs and exclusions
-- `frontend/src/hooks/index.ts` - Export UseUndoRedoReturn type
-- `frontend/src/components/curves/CurveEditor.tsx` - Logging, a11y, types, config-driven values
-- `frontend/src/__tests__/equivalence/setup.ts` - Dead code removal, readonly sigs, NaN handling
-- `frontend/src/__tests__/equivalence/CurveEditor.equiv.test.ts` - Remove vacuous tests, fix casts
-- `frontend/src/__tests__/equivalence/ScanAnalysis.equiv.test.ts` - Fix misleading labels
-- `frontend/src/config/index.ts` - Added `ui.undoHistoryLimit` config entry
+### Tasks
+Phase 1 defect items and the negative export endpoint are complete. Wiring the
+React export panel to the new endpoint is the remaining half of that plan item.
+TASK-001 and TASK-011 remain blocked on the owner actions in plan section 9.
 
----
-
-## 2026-02-09 | Hardening: All 5 Gaps Closed
-
-### What was done
-- **gap-3 closed**: Undo/redo for CurveEditor via new `useUndoRedo` generic hook with Undo/Redo UI buttons
-- **gap-1 closed**: Equivalence test framework with `CurveEditor.equiv.test.ts` and `ScanAnalysis.equiv.test.ts`, shared fixtures/tolerance utilities in `setup.ts`
-- **Keyboard shortcuts**: Wired `useAppShortcuts()` into Layout (Ctrl+1-5 tab navigation, Ctrl+Z/Ctrl+Shift+Z/Ctrl+Y undo/redo)
-- **Mobile responsive**: Added `px-4 sm:px-6 lg:px-8` responsive padding to all 7 page containers
-
-### Verification
-- **TypeScript**: 0 errors
-- **Tests**: 720 passed, 0 failed (~80% coverage) — 40 new tests
-- **Build**: Success (bundle ~280KB gzipped, under 500KB target)
-
-### Gaps Status: ALL CLOSED
-- gap-1: Equivalence test framework (CLOSED)
-- gap-2: CurveEditor save via API (CLOSED)
-- gap-3: Undo/redo stack for curve editing (CLOSED)
-- gap-4: ImageUpload/ImagePreview standalone (CLOSED)
-- gap-5: ExportPanel standalone (CLOSED)
-
-### Files Changed
-- `frontend/src/hooks/useUndoRedo.ts` - New generic undo/redo hook
-- `frontend/src/hooks/useUndoRedo.test.ts` - 12 tests for undo/redo hook
-- `frontend/src/hooks/index.ts` - Export new hook
-- `frontend/src/components/curves/CurveEditor.tsx` - Integrated undo/redo buttons
-- `frontend/src/components/Layout/Layout.tsx` - Wired useAppShortcuts
-- `frontend/src/components/Layout/Layout.test.tsx` - Mock for useAppShortcuts
-- `frontend/src/__tests__/equivalence/setup.ts` - Equivalence test framework
-- `frontend/src/__tests__/equivalence/CurveEditor.equiv.test.ts` - Curve equivalence tests
-- `frontend/src/__tests__/equivalence/ScanAnalysis.equiv.test.ts` - Scan analysis equivalence tests
-- `frontend/src/pages/*.tsx` - All 7 pages updated with responsive padding
-- `docs/migration/progress.json` - All gaps closed
-- `kb/ledger/ledger.jsonl` - Event logged
-- `kb/sessions/dev-sqe.state.json` - State updated
+### Quality
+Lint, format, typecheck and the schema-drift checks are clean; `all-green`
+passed on this head (see the CI link above). `dependency review` is red for a
+repository setting the owner must enable and has been reported on the PR.
 
 ---
 
-## 2026-02-09 | Sprint 0+2: Migration Completion (15/15)
+## [2026-09-18 13:11:57] Session e274d4ad
 
-### What was done
-- **CurveEditor save** wired to `useSaveCurve` API mutation hook (Sprint 0, gap-2 closed)
-- **ImageUpload** standalone component extracted with react-dropzone, progress tracking, preview, validation (26 tests)
-- **ImagePreview** standalone component with react-zoom-pan-pinch, side-by-side comparison, metadata overlay (29 tests)
-- **ExportPanel** standalone component with configurable formats, file download, retry (28 tests)
-- Fixed pre-existing ChemistryCalculator test type assertion (lint hook conflict)
-- Made `addToast` calls defensive with optional chaining for test robustness
-- Replaced `userEvent` with `fireEvent` in new tests to avoid jsdom/react-dropzone timeouts
+**Branch**: claude/ptpd-validation-sdlc-plan-j2a2gc
+**Commit**: d60bc24
+**PR**: https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/pull/37
+**CI**: https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/actions/runs/35348644644
 
-### Verification
-- **TypeScript**: 0 errors
-- **Tests**: 680 passed, 0 failed (~80% coverage)
-- **Build**: Success (bundle under 500KB gzipped)
-- **Lint**: 0 errors in modified files (warnings only: `explicit-function-return-type`)
+### Summary
+Implemented Phase 0 of the validation-first SDLC plan. One SHA-pinned CI
+workflow with a single required check replaces three red ones; uv lockfile and
+declared dependencies make the package importable from its own metadata; pytest
+runs strict with warnings-as-errors; ruff, mypy and the documentation-placement
+rule are at zero; immediate security fixes land with settings-backed limits;
+three curve defects (spline knots, endpoint pinning, .quad round trip) are
+fixed with regression tests; Hypothesis property suites are added; the
+documentation is reduced to the canonical set with fifteen ADRs.
 
-### Gaps Closed
-- gap-2: CurveEditor save via API
-- gap-4: ImageUpload/ImagePreview standalone
-- gap-5: ExportPanel standalone
+Warnings-as-errors exposed and this branch fixed: pyplot figure retention,
+a deprecated Pillow argument, an unclosed log handle, correlation of constant
+input, the mean of an empty list, and environment leakage between test modules.
 
-### Gaps Remaining
-- gap-1: No equivalence tests between Gradio and React (medium)
-- gap-3: No undo/redo stack for curve editing (medium)
+### Tasks
+Completed TASK-002..010 and TASK-012. TASK-001 and TASK-011 remain blocked on
+owner actions (default branch, rulesets, stale PRs, deploy secret).
 
-### Files Changed
-- `frontend/src/api/hooks.ts` - Added `useSaveCurve` hook
-- `frontend/src/components/curves/CurveEditor.tsx` - Wired save, added accessibility labels
-- `frontend/src/components/curves/CurveEditor.test.tsx` - Updated tests for API save
-- `frontend/src/components/upload/ImageUpload.tsx` - New component
-- `frontend/src/components/upload/ImageUpload.test.tsx` - New tests (26)
-- `frontend/src/components/preview/ImagePreview.tsx` - New component
-- `frontend/src/components/preview/ImagePreview.test.tsx` - New tests (29)
-- `frontend/src/components/export/ExportPanel.tsx` - New component
-- `frontend/src/components/export/ExportPanel.test.tsx` - New tests (28)
-- `docs/migration/progress.json` - Updated to 15/15
+### Handoff
+kb/handoffs/20260918-131157_dev-sqe_to_pre-pr.md
+
+---

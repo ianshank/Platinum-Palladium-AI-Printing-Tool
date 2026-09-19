@@ -12,8 +12,12 @@ vi.mock('@/components/curves/CurveEditor', () => ({
     onSave?: (data: { id: string; name: string }) => void;
   }) => (
     <div data-testid="curve-editor" className={props.className}>
-      {props.initialCurve ? `Editor: ${props.initialCurve.name}` : 'Editor: no curve'}
-      <button onClick={() => props.onSave?.({ id: 'saved-id', name: 'Saved Curve' })}>
+      {props.initialCurve
+        ? `Editor: ${props.initialCurve.name}`
+        : 'Editor: no curve'}
+      <button
+        onClick={() => props.onSave?.({ id: 'saved-id', name: 'Saved Curve' })}
+      >
         Save
       </button>
     </div>
@@ -42,14 +46,19 @@ vi.mock('@/components/curves/CurveUpload', () => ({
 
 vi.mock('@/components/export/ExportPanel', () => ({
   ExportPanel: (props: { disabled?: boolean; fileName?: string }) => (
-    <div data-testid="export-panel" data-disabled={String(props.disabled ?? false)}>
+    <div
+      data-testid="export-panel"
+      data-disabled={String(props.disabled ?? false)}
+    >
       Export: {props.fileName}
     </div>
   ),
 }));
 
 vi.mock('@/api/hooks', () => ({
-  useExportCurve: () => ({ mutateAsync: vi.fn().mockResolvedValue(new Blob()) }),
+  useExportCurve: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(new Blob()),
+  }),
 }));
 
 describe('CurvesPage', () => {
@@ -67,8 +76,12 @@ describe('CurvesPage', () => {
   it('renders three tab triggers', () => {
     renderWithProviders(<CurvesPage />);
 
-    expect(screen.getByRole('tab', { name: /upload .quad/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /edit curve/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('tab', { name: /upload .quad/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('tab', { name: /edit curve/i })
+    ).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /export/i })).toBeInTheDocument();
   });
 
@@ -101,7 +114,9 @@ describe('CurvesPage', () => {
       'active'
     );
     // CurveEditor should render with the loaded curve name
-    expect(screen.getByTestId('curve-editor')).toHaveTextContent('Editor: My Profile');
+    expect(screen.getByTestId('curve-editor')).toHaveTextContent(
+      'Editor: My Profile'
+    );
 
     // Export tab should be enabled
     expect(screen.getByRole('tab', { name: /export/i })).not.toBeDisabled();

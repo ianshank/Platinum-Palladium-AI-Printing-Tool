@@ -12,9 +12,7 @@ Tests modules:
 import json
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -40,8 +38,8 @@ from ptpd_calibration.integrations.hardware.debug import (
 )
 from ptpd_calibration.integrations.hardware.exceptions import (
     CalibrationError,
-    DeviceConnectionError,
     DeviceCommunicationError,
+    DeviceConnectionError,
     DeviceNotFoundError,
     DeviceReconnectionError,
     DeviceTimeoutError,
@@ -283,9 +281,7 @@ class TestPermissionDeniedError:
 
     def test_with_device_path(self):
         """Test with device path."""
-        error = PermissionDeniedError(
-            device_path="/dev/ttyUSB0", required_permission="dialout"
-        )
+        error = PermissionDeniedError(device_path="/dev/ttyUSB0", required_permission="dialout")
         assert error.details["device_path"] == "/dev/ttyUSB0"
         assert error.details["required_permission"] == "dialout"
 
@@ -861,7 +857,7 @@ class TestHardwareDebugger:
         debugger.enable()
 
         with pytest.raises(ValueError):
-            with debugger.track_operation("test_op") as metrics:
+            with debugger.track_operation("test_op"):
                 raise ValueError("Test error")
 
         # Metrics should still be recorded
@@ -1319,8 +1315,8 @@ class TestPrintComparison:
         comp = PrintComparison()
         # Use gradient images to avoid NaN from zero-variance in correlation
         arr1 = np.tile(np.arange(100, dtype=np.uint8), (100, 1))
-        img1 = Image.fromarray(arr1, mode="L")
-        img2 = Image.fromarray(arr1, mode="L")
+        img1 = Image.fromarray(arr1)
+        img2 = Image.fromarray(arr1)
 
         # Identical images should have high similarity
         score_mse = comp.calculate_similarity_score(img1, img2, method="mse")

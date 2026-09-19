@@ -152,6 +152,7 @@ UPDATE_BASELINES=true pytest tests/visual/
 import pytest
 from ptpd_calibration.curves import CurveGenerator
 
+
 class TestCurveGenerator:
     def test_generate_linear_curve(self, sample_densities):
         generator = CurveGenerator()
@@ -170,23 +171,13 @@ from tests.utils.data_builders import (
     CalibrationRecordBuilder,
 )
 
+
 def test_with_builders():
     # Create custom density measurements
-    densities = (
-        DensityBuilder()
-        .with_steps(31)
-        .with_range(0.1, 2.5)
-        .with_noise(0.01)
-        .build()
-    )
+    densities = DensityBuilder().with_steps(31).with_range(0.1, 2.5).with_noise(0.01).build()
 
     # Create custom curve
-    curve = (
-        CurveBuilder()
-        .with_gamma(0.8)
-        .with_contrast(0.2)
-        .build_model()
-    )
+    curve = CurveBuilder().with_gamma(0.8).with_contrast(0.2).build_model()
 
     # Create calibration record
     record = (
@@ -207,6 +198,7 @@ from tests.utils.assertions import (
     assert_approximately_equal,
 )
 
+
 def test_with_assertions():
     densities = [0.1, 0.3, 0.5, 0.7, 1.0]
 
@@ -223,6 +215,7 @@ from tests.utils.mock_factories import (
     patch_llm_client,
 )
 
+
 def test_with_mocks():
     # Create mock database
     mock_db = MockDatabaseFactory.populated_database(10)
@@ -237,6 +230,7 @@ def test_with_mocks():
 
 ```python
 from tests.e2e.selenium.pages.calibration_wizard_page import CalibrationWizardPage
+
 
 class TestCalibration:
     def test_complete_workflow(self, driver, sample_image):

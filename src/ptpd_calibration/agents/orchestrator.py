@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ptpd_calibration.agents.communication import (
     AgentMessage,
@@ -66,10 +66,7 @@ class WorkflowTask(BaseModel):
     retries: int = 0
     max_retries: int = 3
 
-    class Config:
-        """Pydantic config."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class Workflow(BaseModel):
@@ -86,10 +83,7 @@ class Workflow(BaseModel):
     context: dict = Field(default_factory=dict)  # Shared context for tasks
     results: dict = Field(default_factory=dict)  # Task ID -> result
 
-    class Config:
-        """Pydantic config."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def get_ready_tasks(self) -> list[WorkflowTask]:
         """Get tasks that are ready to execute (dependencies satisfied)."""

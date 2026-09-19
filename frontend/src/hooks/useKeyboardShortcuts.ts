@@ -18,38 +18,76 @@ interface ShortcutConfig {
 }
 
 /**
+ * Tag names of form controls that own keyboard input. Shortcuts are
+ * suppressed while one of these has focus so typing (or e.g. Ctrl+Z inside a
+ * field) is never hijacked. Add new element types here, one line each.
+ */
+const EDITABLE_TAG_NAMES: ReadonlySet<string> = new Set([
+  'INPUT',
+  'TEXTAREA',
+  'SELECT',
+]);
+
+/**
+ * Whether a keyboard event target is an editable control (input, textarea,
+ * select or a contentEditable region) that must keep its keystrokes.
+ */
+export function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+  if (EDITABLE_TAG_NAMES.has(target.tagName.toUpperCase())) {
+    return true;
+  }
+  return target instanceof HTMLElement && target.isContentEditable === true;
+}
+
+/**
+ * Whether a keydown event matches a shortcut's key and modifier combination.
+ * Ctrl and Meta (Cmd) are treated as the same modifier.
+ */
+function matchesShortcut(
+  event: KeyboardEvent,
+  shortcut: ShortcutConfig
+): boolean {
+  const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase();
+  const ctrlPressed = event.ctrlKey || event.metaKey;
+  const requiresCtrl = shortcut.ctrl ?? false;
+  const ctrlMatch = requiresCtrl ? ctrlPressed : !ctrlPressed;
+  const altMatch = event.altKey === !!shortcut.alt;
+  const shiftMatch = event.shiftKey === !!shortcut.shift;
+  return keyMatch && ctrlMatch && altMatch && shiftMatch;
+}
+
+/**
  * Register keyboard shortcuts
  */
 export function useKeyboardShortcuts(shortcuts: ShortcutConfig[]): void {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in inputs
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement ||
-        (event.target as HTMLElement).isContentEditable
-      ) {
+      const shortcut = shortcuts.find((candidate) =>
+        matchesShortcut(event, candidate)
+      );
+      if (!shortcut) {
         return;
       }
 
-      for (const shortcut of shortcuts) {
-        const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase();
-        const ctrlPressed = event.ctrlKey || event.metaKey;
-        const requiresCtrl = shortcut.ctrl ?? false;
-        const ctrlMatch = requiresCtrl ? ctrlPressed : !ctrlPressed;
-        const altMatch = event.altKey === !!shortcut.alt;
-        const shiftMatch = event.shiftKey === !!shortcut.shift;
-
-        if (keyMatch && ctrlMatch && altMatch && shiftMatch) {
-          event.preventDefault();
-          logger.debug('Keyboard shortcut triggered', {
-            key: shortcut.key,
-            description: shortcut.description,
-          });
-          shortcut.action();
-          return;
-        }
+      // Don't trigger shortcuts when typing in inputs, selects or editable regions
+      if (isEditableTarget(event.target)) {
+        logger.debug('Keyboard shortcut suppressed: editable target focused', {
+          key: shortcut.key,
+          description: shortcut.description,
+          target: (event.target as Element).tagName,
+        });
+        return;
       }
+
+      event.preventDefault();
+      logger.debug('Keyboard shortcut triggered', {
+        key: shortcut.key,
+        description: shortcut.description,
+      });
+      shortcut.action();
     },
     [shortcuts]
   );

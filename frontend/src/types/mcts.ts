@@ -66,7 +66,10 @@ export interface MCTSStatusResponse {
   engineReady: boolean;
   networksLoaded: boolean;
   torchAvailable: boolean;
-  parameterRanges: Record<string, { min: number; max: number; default: number; unit: string }>;
+  parameterRanges: Record<
+    string,
+    { min: number; max: number; default: number; unit: string }
+  >;
 }
 
 /**

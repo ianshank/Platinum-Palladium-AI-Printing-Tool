@@ -267,12 +267,18 @@ class TestErrorHandlingAndRecovery:
         device.disconnect()
 
     def test_calibration_without_connection(self):
-        """Test calibration returns False when not connected."""
+        """Calibrating a disconnected device raises, and works after connecting.
+
+        The simulated driver raises ``RuntimeError`` for white calibration when
+        not connected (the contract asserted by the unit tests in
+        ``tests/unit/test_hardware_integrations.py`` and
+        ``tests/unit/integrations/test_simulated_hardware.py``); this journey
+        previously asserted the opposite and had never passed in CI.
+        """
         device = get_spectrophotometer_driver(simulate=True)
 
-        # Simulated device returns False instead of raising
-        result = device.calibrate_white()
-        assert result is False
+        with pytest.raises(RuntimeError, match="not connected"):
+            device.calibrate_white()
 
         # Should be able to connect and proceed
         device.connect()

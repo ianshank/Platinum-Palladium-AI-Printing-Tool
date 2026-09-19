@@ -5,10 +5,13 @@ Contains profiles for common papers with recommended settings and characteristic
 """
 
 import json
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from uuid import UUID, uuid4
+
+logger = logging.getLogger(__name__)
 
 
 class CoatingBehavior(str, Enum):
@@ -776,10 +779,7 @@ class PaperDatabase:
             for key, paper_data in data.items():
                 self._custom_papers[key] = PaperProfile.from_dict(paper_data)
         except Exception as e:
-            import logging
-
-            logging.warning(f"Failed to load custom papers: {e}")
-            pass
+            logger.warning("Failed to load custom papers: %s", e)
 
     def _save_custom_papers(self) -> None:
         """Save custom papers to file."""

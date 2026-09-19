@@ -10,7 +10,6 @@ from collections import defaultdict
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -18,6 +17,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ptpd_calibration.agents.logging import get_agent_logger
+from ptpd_calibration.core.time import utc_timestamp
 
 
 class MetricType(str, Enum):
@@ -496,7 +496,7 @@ class MetricsRegistry:
             Dictionary with all metrics.
         """
         return {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": utc_timestamp(),
             "counters": {
                 name: [{"value": s.value, "labels": s.labels} for s in counter.collect()]
                 for name, counter in self._counters.items()

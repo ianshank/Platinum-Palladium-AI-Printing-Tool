@@ -30,7 +30,7 @@ from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ptpd_calibration.config import NeuroSymbolicSettings, get_settings
 
@@ -173,9 +173,13 @@ class ExpressionNode:
             # Safe division
             return args[0] / (args[1] + np.sign(args[1]) * epsilon + (args[1] == 0) * epsilon)
         elif op == OperatorType.POW:
-            # Safe power (handle negative bases)
+            # Safe power (handle negative bases). Randomly generated candidate
+            # formulas routinely overflow float64 here; numpy yields inf/nan which
+            # the fitness evaluation already discards, so silence only this
+            # expression instead of filtering RuntimeWarning globally.
             base = np.abs(args[0]) + epsilon
-            return np.power(base, args[1])
+            with np.errstate(over="ignore", invalid="ignore"):
+                return np.power(base, args[1])
         elif op == OperatorType.NEG:
             return -args[0]
         elif op == OperatorType.ABS:
@@ -304,8 +308,7 @@ class ExpressionNode:
 class SymbolicExpression(BaseModel):
     """A complete symbolic expression with metadata."""
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     root: ExpressionNode
     fitness: float = Field(default=float("inf"))
@@ -683,7 +686,11 @@ class DifferentiableSymbolicRegressor:
             expr.mse = float("inf")
             expr.r_squared = 0.0
 
-    def _evolve_population(self, x: NDArray[np.float64], y: NDArray[np.float64]) -> None:
+    def _evolve_population(
+        self,
+        x: NDArray[np.float64],  # noqa: ARG002 - fitness is cached on each expression by _evaluate_population
+        y: NDArray[np.float64],  # noqa: ARG002 - see above; kept so evolve/evaluate share one signature
+    ) -> None:
         """Evolve population through selection and genetic operators."""
         new_population: list[SymbolicExpression] = []
 
@@ -816,12 +823,12 @@ class DifferentiableSymbolicRegressor:
             (node, None, None)
         ]
 
-        def _collect(n: ExpressionNode, parent: ExpressionNode | None, idx: int | None) -> None:
+        def _collect(n: ExpressionNode) -> None:
             for i, child in enumerate(n.children):
                 result.append((child, n, i))
-                _collect(child, n, i)
+                _collect(child)
 
-        _collect(node, None, None)
+        _collect(node)
         return result
 
     def _collect_constants(self, node: ExpressionNode) -> list[ExpressionNode]:

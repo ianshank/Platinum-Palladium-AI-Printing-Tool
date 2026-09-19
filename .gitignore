@@ -82,8 +82,7 @@ target/
 profile_default/
 ipython_config.py
 
-# pyenv
-.python-version
+# pyenv (the project pins .python-version on purpose)
 
 # pipenv
 Pipfile.lock
@@ -160,6 +159,7 @@ nul
 
 # Gradio artifacts
 flagged/
+.gradio/
 
 # HuggingFace artifacts
 hf_check/
@@ -175,6 +175,10 @@ frontend/package-lock.json
 # Tooling
 node_modules/
 .npm/
+.venv-uv/
+reports/
+*.sarif
+requirements-audit.txt
 
 # MCTS / ML artifacts
 data/mcts_checkpoints/
@@ -185,6 +189,7 @@ data/replay_buffer/
 # Vite cache
 node_modules/.vite/
 
-# Claude Code backup files
+# Claude Code local/backup files (never committed)
+.claude/settings.local.json
 .claude/settings.local.json.bak
 .claude/launch.json

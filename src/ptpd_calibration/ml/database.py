@@ -3,6 +3,8 @@ Calibration database for storing and querying historical records.
 """
 
 import json
+import logging
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID
@@ -11,6 +13,47 @@ import numpy as np
 
 from ptpd_calibration.core.models import CalibrationRecord
 from ptpd_calibration.gcp.storage import StorageBackend
+
+logger = logging.getLogger(__name__)
+
+
+def filter_by_provenance(
+    records: Iterable[CalibrationRecord],
+    include_simulated: bool = False,
+    *,
+    context: str = "records",
+) -> list[CalibrationRecord]:
+    """Drop simulator-generated records unless the caller explicitly opts in.
+
+    This is the SCI-08 provenance guard shared by ``CalibrationDatabase`` query
+    helpers and ``CurvePredictor.train``: densities produced by a process
+    simulator must never silently train or inform models meant to learn from
+    real prints.
+
+    Args:
+        records: Records to filter.
+        include_simulated: When True, return every record unchanged.
+        context: Label used in the debug log line.
+
+    Returns:
+        Records whose ``provenance`` is not ``"simulated"`` (or all records when
+        ``include_simulated`` is True).
+    """
+    records = list(records)
+    if include_simulated:
+        return records
+
+    kept = [r for r in records if not r.is_simulated]
+    excluded = len(records) - len(kept)
+    if excluded:
+        logger.debug(
+            "Excluded %d simulated record(s) from %s (kept %d); pass include_simulated=True to "
+            "include them",
+            excluded,
+            context,
+            len(kept),
+        )
+    return kept
 
 
 class CalibrationDatabase:
@@ -58,25 +101,49 @@ class CalibrationDatabase:
         """Get a record by ID."""
         return self.records.get(record_id)
 
-    def get_all_records(self) -> list[CalibrationRecord]:
-        """Get all records."""
-        return list(self.records.values())
+    def get_all_records(self, include_simulated: bool = False) -> list[CalibrationRecord]:
+        """Get all records.
 
-    def get_records_for_paper(self, paper_type: str) -> list[CalibrationRecord]:
-        """Get all records for a specific paper type."""
+        Args:
+            include_simulated: Include records whose densities came from a
+                simulator (``provenance == "simulated"``). Excluded by default.
+        """
+        return filter_by_provenance(
+            self.records.values(), include_simulated, context="get_all_records"
+        )
+
+    def get_records_for_paper(
+        self, paper_type: str, include_simulated: bool = False
+    ) -> list[CalibrationRecord]:
+        """Get all records for a specific paper type.
+
+        Args:
+            paper_type: Paper type to look up (exact match).
+            include_simulated: Include simulator-generated records. Excluded by default.
+        """
         ids = self._paper_index.get(paper_type, [])
-        return [self.records[rid] for rid in ids if rid in self.records]
+        records = [self.records[rid] for rid in ids if rid in self.records]
+        return filter_by_provenance(records, include_simulated, context="get_records_for_paper")
 
-    def get_records_for_chemistry(self, chemistry_type: str) -> list[CalibrationRecord]:
-        """Get all records for a specific chemistry type."""
+    def get_records_for_chemistry(
+        self, chemistry_type: str, include_simulated: bool = False
+    ) -> list[CalibrationRecord]:
+        """Get all records for a specific chemistry type.
+
+        Args:
+            chemistry_type: Chemistry type value to look up.
+            include_simulated: Include simulator-generated records. Excluded by default.
+        """
         ids = self._chemistry_index.get(chemistry_type, [])
-        return [self.records[rid] for rid in ids if rid in self.records]
+        records = [self.records[rid] for rid in ids if rid in self.records]
+        return filter_by_provenance(records, include_simulated, context="get_records_for_chemistry")
 
     def get_similar_records(
         self,
         reference: CalibrationRecord,
         max_records: int = 10,
         min_similarity: float = 0.5,
+        include_simulated: bool = False,
     ) -> list[tuple[CalibrationRecord, float]]:
         """
         Find records similar to a reference record.
@@ -85,13 +152,17 @@ class CalibrationDatabase:
             reference: Reference record to compare against.
             max_records: Maximum number of records to return.
             min_similarity: Minimum similarity threshold (0-1).
+            include_simulated: Include simulator-generated records. Excluded by default.
 
         Returns:
             List of (record, similarity) tuples, sorted by similarity.
         """
         similarities = []
 
-        for record in self.records.values():
+        candidates = filter_by_provenance(
+            self.records.values(), include_simulated, context="get_similar_records"
+        )
+        for record in candidates:
             if record.id == reference.id:
                 continue
 
@@ -163,6 +234,7 @@ class CalibrationDatabase:
         min_metal_ratio: float | None = None,
         max_metal_ratio: float | None = None,
         tags: list[str] | None = None,
+        include_simulated: bool = False,
     ) -> list[CalibrationRecord]:
         """
         Query records with filters.
@@ -175,11 +247,12 @@ class CalibrationDatabase:
             min_metal_ratio: Minimum Pt ratio.
             max_metal_ratio: Maximum Pt ratio.
             tags: Required tags (all must match).
+            include_simulated: Include simulator-generated records. Excluded by default.
 
         Returns:
             List of matching records.
         """
-        results = list(self.records.values())
+        results = filter_by_provenance(self.records.values(), include_simulated, context="query")
 
         if paper_type:
             results = [r for r in results if r.paper_type.lower() == paper_type.lower()]

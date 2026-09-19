@@ -76,7 +76,6 @@ function createMockRecipe(): {
 }
 
 vi.mock('@/stores', () => ({
-   
   useStore: (selector: (state: any) => any) =>
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     selector({ chemistry: mockChemistryState }),

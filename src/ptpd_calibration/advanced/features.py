@@ -17,6 +17,34 @@ from typing import Any, cast
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+from ptpd_calibration.imaging.processor import as_eight_bit_gray
+from ptpd_calibration.imaging.safe_image import image_from_array, to_uint8_scale
+
+#: Bounds for a gamma inferred from a reference print. The value comes from a
+#: log ratio that runs away as the reference approaches pure white, so it is
+#: clamped to the same kind of range CurveModifier.apply_gamma uses.
+MIN_STYLE_GAMMA = 0.1
+MAX_STYLE_GAMMA = 10.0
+
+
+def _safe_correlation(a: np.ndarray, b: np.ndarray) -> float:
+    """Pearson correlation clipped to [-1, 1]; 0.0 when either input has zero variance.
+
+    ``np.corrcoef`` emits ``RuntimeWarning: invalid value`` and returns NaN for a
+    constant input (e.g. a single-bin histogram); callers treat that as "no
+    correlation" rather than a warning.
+    """
+    a = np.asarray(a, dtype=float).ravel()
+    b = np.asarray(b, dtype=float).ravel()
+    if a.size < 2 or b.size < 2 or np.std(a) == 0.0 or np.std(b) == 0.0:
+        return 0.0
+    with np.errstate(invalid="ignore", divide="ignore"):
+        corr = np.corrcoef(a, b)[0, 1]
+    if not np.isfinite(corr):
+        return 0.0
+    return float(np.clip(corr, -1.0, 1.0))
+
+
 try:
     import qrcode
 
@@ -68,6 +96,12 @@ def _get_truetype_font(
 
     # Fall back to default font if nothing works
     return ImageFont.load_default()
+
+
+#: Fixed so the simulated grain is repeatable between runs. It is a constant,
+#: not a setting: a caller wanting different grain varies texture_strength, and
+#: a varying seed would make two renders of one image disagree.
+TEXTURE_SEED = 42
 
 
 class BlendMode(str, Enum):
@@ -442,15 +476,17 @@ class AlternativeProcessSimulator:
         """
         # Convert to PIL Image if needed
         if isinstance(image, np.ndarray):
-            if image.ndim == 2:
-                pil_img = Image.fromarray(image.astype(np.uint8), mode="L")
-            else:
-                pil_img = Image.fromarray(image.astype(np.uint8), mode="RGB")
+            # Letting Pillow infer the mode is the point: declaring "RGB" for a
+            # four-channel array reinterprets the raw buffer as a continuous RGB
+            # stream, so every pixel after the first was shifted by a byte.
+            # astype truncates modulo 256, so a 16-bit array arrived scrambled
+            # rather than merely flattened; to_uint8_scale keeps the tone order.
+            pil_img = image_from_array(to_uint8_scale(image))
         else:
             pil_img = image
 
         # Convert to grayscale for processing
-        gray = pil_img.convert("L") if pil_img.mode != "L" else pil_img
+        gray = as_eight_bit_gray(pil_img)
 
         # Convert to normalized array
         arr = np.array(gray, dtype=np.float32) / 255.0
@@ -498,7 +534,7 @@ class AlternativeProcessSimulator:
 
         # Convert to 8-bit
         rgb_output = np.clip(rgb_output * 255, 0, 255).astype(np.uint8)
-        result = Image.fromarray(rgb_output, mode="RGB")
+        result = Image.fromarray(rgb_output)
 
         # Store process info in image metadata
         result.info["process"] = process_name
@@ -537,7 +573,10 @@ class NegativeBlender:
     def blend_negatives(
         self,
         negatives: list[Image.Image | np.ndarray],
-        masks: list[Image.Image | np.ndarray] | None = None,
+        # None per element is the documented way to say "no mask for this
+        # layer", and the body handles it; the annotation forbade it, so a
+        # type-checked caller could not use the contract the tests rely on.
+        masks: list[Image.Image | np.ndarray | None] | None = None,
         blend_modes: list[BlendMode] | None = None,
     ) -> Image.Image:
         """Blend multiple negatives with optional masks and blend modes.
@@ -557,8 +596,7 @@ class NegativeBlender:
         neg_arrays = []
         for neg in negatives:
             if isinstance(neg, Image.Image):
-                if neg.mode != "L":
-                    neg = neg.convert("L")
+                neg = as_eight_bit_gray(neg)
                 arr = np.array(neg, dtype=np.float32) / 255.0
             else:
                 arr = neg.astype(np.float32)
@@ -580,8 +618,7 @@ class NegativeBlender:
                     mask_arrays.append(np.ones(target_size, dtype=np.float32))
                     continue
                 if isinstance(mask, Image.Image):
-                    if mask.mode != "L":
-                        mask = mask.convert("L")
+                    mask = as_eight_bit_gray(mask)
                     m_arr = np.array(mask, dtype=np.float32) / 255.0
                 else:
                     m_arr = mask.astype(np.float32)
@@ -610,7 +647,7 @@ class NegativeBlender:
 
         # Convert back to image
         result = np.clip(result * 255, 0, 255).astype(np.uint8)
-        return Image.fromarray(result, mode="L")
+        return Image.fromarray(result)
 
     def create_contrast_mask(
         self,
@@ -630,8 +667,7 @@ class NegativeBlender:
         """
         # Convert to array
         if isinstance(image, Image.Image):
-            if image.mode != "L":
-                image = image.convert("L")
+            image = as_eight_bit_gray(image)
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -653,7 +689,7 @@ class NegativeBlender:
         mask = np.clip(gradient_magnitude / threshold, 0, 1)
 
         # Smooth the mask
-        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+        mask_img = Image.fromarray((mask * 255).astype(np.uint8))
         mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=5))
 
         return mask_img
@@ -674,8 +710,7 @@ class NegativeBlender:
         """
         # Convert to array
         if isinstance(image, Image.Image):
-            if image.mode != "L":
-                image = image.convert("L")
+            image = as_eight_bit_gray(image)
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -686,7 +721,7 @@ class NegativeBlender:
         mask = np.clip((arr - threshold) / (1 - threshold), 0, 1)
 
         # Smooth transitions
-        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+        mask_img = Image.fromarray((mask * 255).astype(np.uint8))
         mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=3))
 
         return mask_img
@@ -707,8 +742,7 @@ class NegativeBlender:
         """
         # Convert to array
         if isinstance(image, Image.Image):
-            if image.mode != "L":
-                image = image.convert("L")
+            image = as_eight_bit_gray(image)
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -719,7 +753,7 @@ class NegativeBlender:
         mask = 1.0 - np.clip((arr - 0) / threshold, 0, 1)
 
         # Smooth transitions
-        mask_img = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+        mask_img = Image.fromarray((mask * 255).astype(np.uint8))
         mask_img = mask_img.filter(ImageFilter.GaussianBlur(radius=3))
 
         return mask_img
@@ -746,8 +780,7 @@ class NegativeBlender:
         """
         # Convert image to array
         if isinstance(image, Image.Image):
-            if image.mode != "L":
-                image = image.convert("L")
+            image = as_eight_bit_gray(image)
             arr = np.array(image, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)
@@ -759,7 +792,7 @@ class NegativeBlender:
         # Apply dodging (lighten)
         if dodge_mask is not None:
             if isinstance(dodge_mask, Image.Image):
-                dodge_arr = np.array(dodge_mask.convert("L"), dtype=np.float32) / 255.0
+                dodge_arr = np.array(as_eight_bit_gray(dodge_mask), dtype=np.float32) / 255.0
             else:
                 dodge_arr = dodge_mask.astype(np.float32)
                 if dodge_arr.max() > 1.0:
@@ -772,7 +805,7 @@ class NegativeBlender:
         # Apply burning (darken)
         if burn_mask is not None:
             if isinstance(burn_mask, Image.Image):
-                burn_arr = np.array(burn_mask.convert("L"), dtype=np.float32) / 255.0
+                burn_arr = np.array(as_eight_bit_gray(burn_mask), dtype=np.float32) / 255.0
             else:
                 burn_arr = burn_mask.astype(np.float32)
                 if burn_arr.max() > 1.0:
@@ -784,7 +817,7 @@ class NegativeBlender:
 
         # Convert back to image
         result = np.clip(result * 255, 0, 255).astype(np.uint8)
-        return Image.fromarray(result, mode="L")
+        return Image.fromarray(result)
 
     def create_multi_layer_mask(
         self,
@@ -808,7 +841,7 @@ class NegativeBlender:
 
         # Convert first layer
         if isinstance(layers[0], Image.Image):
-            result = np.array(layers[0].convert("L"), dtype=np.float32) / 255.0
+            result = np.array(as_eight_bit_gray(layers[0]), dtype=np.float32) / 255.0
         else:
             result = layers[0].astype(np.float32)
             if result.max() > 1.0:
@@ -817,7 +850,7 @@ class NegativeBlender:
         # Blend remaining layers
         for i in range(1, len(layers)):
             if isinstance(layers[i], Image.Image):
-                layer = np.array(layers[i].convert("L"), dtype=np.float32) / 255.0
+                layer = np.array(as_eight_bit_gray(layers[i]), dtype=np.float32) / 255.0
             else:
                 layer = layers[i].astype(np.float32)
                 if layer.max() > 1.0:
@@ -838,7 +871,7 @@ class NegativeBlender:
 
         # Convert to image
         result = np.clip(result * 255, 0, 255).astype(np.uint8)
-        return Image.fromarray(result, mode="L")
+        return Image.fromarray(result)
 
     def _apply_blend_mode(
         self,
@@ -1229,7 +1262,7 @@ class StyleTransfer:
         """
         # Convert to grayscale array
         if isinstance(reference_image, Image.Image):
-            gray = reference_image.convert("L") if reference_image.mode != "L" else reference_image
+            gray = as_eight_bit_gray(reference_image)
             arr = np.array(gray, dtype=np.float32) / 255.0
         else:
             arr = reference_image.astype(np.float32)
@@ -1248,7 +1281,18 @@ class StyleTransfer:
 
         # Estimate gamma from median
         median_val = bins[np.searchsorted(cumsum, total * 0.5)]
-        gamma = np.log(0.5) / np.log(median_val + 0.001)
+        # A high-key reference drives median_val towards 1.0, so the log in the
+        # denominator approaches zero and gamma runs away: a uniform L=254
+        # reference produced gamma 101, and apply_style then raised the image to
+        # the power 1/101, flattening it to near-white. Clamp it the way
+        # CurveModifier.apply_gamma already clamps its own.
+        gamma = float(
+            np.clip(
+                np.log(0.5) / np.log(median_val + 0.001),
+                MIN_STYLE_GAMMA,
+                MAX_STYLE_GAMMA,
+            )
+        )
 
         # Estimate contrast from histogram spread
         std_dev = np.std(arr)
@@ -1318,20 +1362,20 @@ class StyleTransfer:
         Returns:
             Styled image
         """
-        # Get style parameters
-        if isinstance(style_name, str):
-            # Try to find matching style
-            style_params = None
-            for key, params in self.styles.items():
-                if key == style_name or key.value == style_name:
-                    style_params = params
-                    break
-            if style_params is None:
-                raise ValueError(f"Unknown style: {style_name}")
-        else:
-            style_params = self.styles.get(style_name)
-            if style_params is None:
-                raise ValueError(f"Unknown style: {style_name}")
+        # Get style parameters. HistoricStyle subclasses str, so the branch that
+        # used to split enum from name was dead and the loop ran for both. Inside
+        # it, key.value was evaluated for every key that did not match -- and
+        # create_custom_style inserts plain strings, which have no .value. So
+        # registering two custom styles made the second impossible to apply, and
+        # once any custom style existed an unknown name raised AttributeError
+        # instead of the ValueError documented above.
+        style_params = None
+        for key, params in self.styles.items():
+            if key == style_name or (isinstance(key, HistoricStyle) and key.value == style_name):
+                style_params = params
+                break
+        if style_params is None:
+            raise ValueError(f"Unknown style: {style_name}")
 
         return self._apply_style_params(image, style_params)
 
@@ -1386,14 +1430,16 @@ class StyleTransfer:
         """
         # Convert to PIL and grayscale
         if isinstance(image, np.ndarray):
-            if image.ndim == 2:
-                pil_img = Image.fromarray((image * 255).astype(np.uint8), mode="L")
-            else:
-                pil_img = Image.fromarray((image * 255).astype(np.uint8), mode="RGB")
+            # As above: infer rather than declare, so a four-channel array is
+            # not read as misaligned RGB.
+            # Scaling handles both shapes this receives: a float image on 0-1
+            # and an integer one already on a code scale. Multiplying by 255
+            # first overflowed the latter instead of converting it.
+            pil_img = image_from_array(to_uint8_scale(image))
         else:
             pil_img = image
 
-        gray = pil_img.convert("L") if pil_img.mode != "L" else pil_img
+        gray = as_eight_bit_gray(pil_img)
 
         # Convert to array
         arr = np.array(gray, dtype=np.float32) / 255.0
@@ -1433,14 +1479,17 @@ class StyleTransfer:
 
         # Add texture if requested
         if params.texture_strength > 0:
-            np.random.seed(42)
-            noise = np.random.normal(0, params.texture_strength * 0.02, (h, w))
+            # A local generator, not np.random.seed: seeding globally reset the
+            # RNG of whatever called this, so an unrelated draw elsewhere in the
+            # process silently became deterministic too.
+            rng = np.random.default_rng(TEXTURE_SEED)
+            noise = rng.normal(0, params.texture_strength * 0.02, (h, w))
             for c in range(3):
                 rgb_output[:, :, c] = np.clip(rgb_output[:, :, c] + noise, 0, 1)
 
         # Convert to image
         rgb_output = (rgb_output * 255).astype(np.uint8)
-        result = Image.fromarray(rgb_output, mode="RGB")
+        result = Image.fromarray(rgb_output)
 
         # Store style info
         result.info["style"] = params.name
@@ -1499,7 +1548,7 @@ class PrintComparison:
         # Histogram comparison
         orig_hist = np.histogram(orig_arr, bins=50, range=(0, 1))[0]
         scan_hist = np.histogram(scan_arr, bins=50, range=(0, 1))[0]
-        hist_correlation = float(np.clip(np.corrcoef(orig_hist, scan_hist)[0, 1], -1.0, 1.0))
+        hist_correlation = _safe_correlation(orig_hist, scan_hist)
 
         # Tonal range comparison
         orig_range = float(orig_arr.max() - orig_arr.min())
@@ -1544,8 +1593,11 @@ class PrintComparison:
         if arr1.shape != arr2.shape:
             from scipy.ndimage import zoom
 
-            scale_y = arr2.shape[0] / arr1.shape[0]
-            scale_x = arr2.shape[1] / arr1.shape[1]
+            # Resizing arr2 *to* arr1 needs arr1 / arr2. Inverted, a 200x200
+            # second image became 400x400 and every caller raised on the
+            # broadcast. compare_before_after three methods away had it right.
+            scale_y = arr1.shape[0] / arr2.shape[0]
+            scale_x = arr1.shape[1] / arr2.shape[1]
             arr2 = zoom(arr2, (scale_y, scale_x), order=1)
 
         # Calculate difference
@@ -1579,11 +1631,11 @@ class PrintComparison:
             rgb_diff[neg_mask, 2] = 0.5 + np.abs(diff[neg_mask]) * 0.5
 
             rgb_diff = np.clip(rgb_diff * 255, 0, 255).astype(np.uint8)
-            return Image.fromarray(rgb_diff, mode="RGB")
+            return Image.fromarray(rgb_diff)
         else:
             # Grayscale difference
             diff_normalized = (np.abs(diff) * 255).astype(np.uint8)
-            return Image.fromarray(diff_normalized, mode="L")
+            return Image.fromarray(diff_normalized)
 
     def calculate_similarity_score(
         self,
@@ -1609,8 +1661,11 @@ class PrintComparison:
         if arr1.shape != arr2.shape:
             from scipy.ndimage import zoom
 
-            scale_y = arr2.shape[0] / arr1.shape[0]
-            scale_x = arr2.shape[1] / arr1.shape[1]
+            # Resizing arr2 *to* arr1 needs arr1 / arr2. Inverted, a 200x200
+            # second image became 400x400 and every caller raised on the
+            # broadcast. compare_before_after three methods away had it right.
+            scale_y = arr1.shape[0] / arr2.shape[0]
+            scale_x = arr1.shape[1] / arr2.shape[1]
             arr2 = zoom(arr2, (scale_y, scale_x), order=1)
 
         if method == "mse":
@@ -1618,7 +1673,7 @@ class PrintComparison:
             return float(np.clip(1.0 - np.sqrt(mse), 0.0, 1.0))
 
         elif method == "correlation":
-            corr = np.corrcoef(arr1.flatten(), arr2.flatten())[0, 1]
+            corr = _safe_correlation(arr1.flatten(), arr2.flatten())
             return float(np.clip((corr + 1) / 2, 0.0, 1.0))  # Map from [-1, 1] to [0, 1]
 
         elif method == "ssim":
@@ -1719,7 +1774,7 @@ class PrintComparison:
             Normalized grayscale array (0-1)
         """
         if isinstance(image, Image.Image):
-            gray = image.convert("L") if image.mode != "L" else image
+            gray = as_eight_bit_gray(image)
             arr = np.array(gray, dtype=np.float32) / 255.0
         else:
             arr = image.astype(np.float32)

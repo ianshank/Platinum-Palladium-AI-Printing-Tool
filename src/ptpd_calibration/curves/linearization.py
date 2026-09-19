@@ -5,6 +5,7 @@ Provides algorithms for creating linearization curves from step wedge measuremen
 with various target curve options and optimization methods.
 """
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -13,6 +14,8 @@ from scipy import interpolate
 
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
+
+logger = logging.getLogger(__name__)
 
 
 class LinearizationMethod(str, Enum):
@@ -47,6 +50,10 @@ class LinearizationConfig:
     iterations: int = 3  # For iterative method
     polynomial_degree: int = 5  # For polynomial method
     preserve_endpoints: bool = True  # Keep 0->0 and 1->1
+    # How much of the measured error a single refinement pass applies. Damping
+    # below 1.0 avoids overcorrecting on a noisy reading; it was a literal in
+    # the middle of refine_curve.
+    refinement_damping: float = 0.5
 
 
 @dataclass
@@ -179,8 +186,19 @@ class AutoLinearizer:
         input_positions = np.linspace(0, 1, num_steps)
         target_densities = self._compute_target(self.config.target, num_steps)
 
-        # Compute correction needed
+        # Compute correction needed. The target is normalised 0-1, so the
+        # measurement has to be too: every sibling method here normalises and
+        # this one did not, so the error was in density units and the refined
+        # curve lost the top of its range. A perfectly linear wedge, whose
+        # correct refinement is a no-op, came back topping out at 0.625.
         measured = np.array(new_measurements)
+        span = float(measured.max() - measured.min())
+        if span <= 0.0:
+            raise ValueError(
+                "Refinement needs a measurable density range; every patch read "
+                f"{float(measured.min()):.3f}"
+            )
+        measured = (measured - measured.min()) / span
         error = target_densities - measured
 
         # Get current curve as interpolator
@@ -191,7 +209,7 @@ class AutoLinearizer:
         )
 
         # Apply correction
-        correction_factor = 0.5  # Dampening to avoid overcorrection
+        correction_factor = self.config.refinement_damping
         corrected_outputs = current_interp(input_positions) + error * correction_factor
 
         # Ensure monotonicity and bounds
@@ -345,9 +363,7 @@ class AutoLinearizer:
         except Exception as e:
             # Fall back to linear interpolation
             # Log the exception for debugging
-            import logging
-
-            logging.warning(f"Spline fit failed, falling back to linear: {e}")
+            logger.warning("Spline fit failed, falling back to linear: %s", e)
             spline = interpolate.interp1d(
                 measured_norm, input_positions, kind="linear", fill_value="extrapolate"
             )

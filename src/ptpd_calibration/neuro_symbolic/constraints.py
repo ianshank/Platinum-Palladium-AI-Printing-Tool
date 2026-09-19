@@ -848,7 +848,9 @@ class ConstrainedCurveOptimizer:
         }
 
     def project_to_constraints(
-        self, values: NDArray[np.float64], max_iterations: int = 100
+        self,
+        values: NDArray[np.float64],
+        max_iterations: int = 100,  # noqa: ARG002 - kept for API compatibility; projection is closed-form
     ) -> NDArray[np.float64]:
         """Project curve values to satisfy constraints.
 

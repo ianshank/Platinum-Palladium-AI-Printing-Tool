@@ -8,7 +8,9 @@ version = "1.0.0"
 description = "AI-powered calibration system for platinum/palladium printing"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+# 3.10 is kept until ADR-0003's Python-floor decision (plan §9 Q7); CI and the
+# lockfile target the version pinned in .python-version (3.12).
+requires-python = ">=3.10,<3.14"
 authors = [
     { name = "Ian Shank", email = "ianshank@users.noreply.github.com" }
 ]
@@ -37,12 +39,22 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Image Processing",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
+
+# Every top-level import that the package performs unconditionally must be
+# declared here, otherwise `pip install ptpd-calibration` yields a package that
+# cannot be imported (this was the state before 2026-09: matplotlib and
+# tifffile lived only in requirements.txt).
 dependencies = [
-    "numpy>=1.24.0",
+    "numpy>=1.24.0,<3",
     "scipy>=1.11.0",
     "pillow>=10.0.0",
-    "pydantic>=2.5.0",
-    "pydantic-settings>=2.1.0",
+    "pydantic>=2.5.0,<3",
+    "pydantic-settings>=2.1.0,<3",
+    "python-dotenv>=1.0",       # config.py imports it directly
+    "psutil>=5.9",              # monitoring/performance.py, agents/health.py, core/debug.py
+    "pyyaml>=6.0",              # workflow/recipe_manager.py, data/export_import.py
+    "tifffile>=2024.1.0",       # imaging/processor.py (16-bit TIFF negatives)
+    "matplotlib>=3.7.0",        # curves/visualization.py is imported by curves/__init__.py
 ]
 
 [project.optional-dependencies]
@@ -65,23 +77,88 @@ gcp = [
     "google-auth>=2.27.0",
 ]
 ui = [
-    "gradio>=4.0.0",
+    # Legacy Gradio UI; retired by ADR-0004 once the API-first gaps close.
+    "gradio>=4.44.0,<5",
+    "gradio_client",
     "huggingface_hub>=0.25,<1.0",
+    "typer>=0.12",
+    "rich>=13",
+]
+hardware = [
+    "pyserial>=3.5",
+    "zeroconf>=0.130",
+    "pycups>=2.0; sys_platform == 'linux'",
+    "pywin32>=306; sys_platform == 'win32'",
+]
+qr = [
+    "qrcode[pil]>=7.4",
+    "pyzbar>=0.1.9",
+]
+dl = [
+    # Optional deep-learning stack. Only packages with import sites in src/ are
+    # listed; the former requirements-dl.txt carried eleven unused packages.
+    "torch>=2.1.0",
+    "torchvision>=0.16.0",
+    "timm>=0.9.0",
+    "ultralytics>=8.0.0",
+    "segment-anything>=1.0",
+    "diffusers>=0.35.2",
+    "safetensors>=0.4.0",
+    "lpips>=0.1.4",
+    "opencv-python-headless>=4.8.0",
+    "scikit-image>=0.22",
+    "controlnet-aux>=0.0.7",
+]
+server = [
+    # Exactly what the Docker Space installs: API + ML + LLM, no Gradio, no torch.
+    "ptpd-calibration[api,ml,llm]",
 ]
 all = [
-    "ptpd-calibration[ml,llm,api,ui,gcp]",
+    "ptpd-calibration[ml,llm,api,ui,gcp,qr,hardware]",
 ]
+# Kept for one release for backwards compatibility with `pip install -e ".[dev]"`;
+# the canonical developer setup is `uv sync` (dependency-groups below).
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
-    "ruff>=0.1.0",
+    "pytest-timeout>=2.3.0",
+    "pytest-benchmark>=4.0.0",
+    "hypothesis>=6.100",
+    "ruff==0.15.8",
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
+    "diff-cover>=9.0",
+    "pip-audit>=2.7",
+    "import-linter>=2.0",
+    "types-PyYAML",
+    "types-psutil",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.3.0",
+    "pytest-benchmark>=4.0.0",
+    "hypothesis>=6.100",
+    "ruff==0.15.8",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+    "diff-cover>=9.0",
+    "pip-audit>=2.7",
+    "import-linter>=2.0",
+    "types-PyYAML",
+    "types-psutil",
+]
+e2e = [
+    "selenium>=4.20",
+    "playwright>=1.45",
 ]
 
 [project.scripts]
-ptpd = "ptpd_calibration.cli:main"
+# `ptpd = "ptpd_calibration.cli:main"` was removed: the module never existed (OPS-18).
 ptpd-server = "ptpd_calibration.api.server:main"
 
 [project.urls]
@@ -89,6 +166,15 @@ Homepage = "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool"
 Documentation = "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool#readme"
 Repository = "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool"
 Issues = "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/issues"
+
+[tool.uv]
+required-version = ">=0.8,<0.9"
+default-groups = ["dev"]
+
+# Torch resolves from PyPI in the universal lock. CI jobs and the Docker image
+# that need the smaller CPU-only wheels pass the index at sync time, e.g.
+#   UV_INDEX="pytorch-cpu=https://download.pytorch.org/whl/cpu" uv sync --extra dl
+# (an explicit index in [tool.uv] would make `uv lock` depend on that host).
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ptpd_calibration"]
@@ -101,15 +187,84 @@ include = [
     "/LICENSE",
 ]
 
+# ---------------------------------------------------------------------------
+# pytest: strict by default. Coverage flags live in CI (see .github/workflows),
+# not here, so local runs stay fast and quiet.
+# ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
+minversion = "8.0"
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-v --cov=src/ptpd_calibration --cov-report=term-missing"
+addopts = "-ra --strict-markers --strict-config"
+xfail_strict = true
+timeout = 120
+timeout_method = "thread"
+markers = [
+    "unit: fast, isolated unit test",
+    "integration: multi-module integration test",
+    "api: FastAPI endpoint test",
+    "e2e: end-to-end test without a browser",
+    "functional: functional end-to-end test without a browser",
+    "selenium: requires Selenium WebDriver (not run in PR CI)",
+    "browser: requires Playwright (not run in PR CI)",
+    "user_journey: multi-step user scenario",
+    "visual: visual regression test (not run in PR CI)",
+    "performance: performance test (not run in PR CI)",
+    "benchmark: benchmark test (not run in PR CI)",
+    "slow: takes more than 5 seconds",
+    "deep: requires torch",
+    "property: property-based (Hypothesis) test",
+    "realdata: requires the real-print holdout dataset",
+    "legacy_ui: exercises the retired Gradio UI (requires gradio)",
+]
+filterwarnings = [
+    "error",
+    # starlette.testclient imports a deprecated anyio alias; third-party, re-check on each starlette/anyio bump
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
 
+# ---------------------------------------------------------------------------
+# coverage: branch coverage on; per-package floors are enforced as separate
+# `coverage report --include=... --fail-under=N` steps in CI because coverage.py
+# has a single global fail_under.
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+branch = true
+source = ["src/ptpd_calibration"]
+relative_files = true
+omit = [
+    "*/ui/*",           # legacy Gradio UI, retired by ADR-0004
+]
+
+[tool.coverage.report]
+skip_covered = true
+show_missing = true
+exclude_also = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@overload",
+]
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.diff_cover]
+compare_branch = "origin/main"
+fail_under = 90
+include_untracked = true
+
+# ---------------------------------------------------------------------------
+# ruff
+# ---------------------------------------------------------------------------
 [tool.ruff]
 target-version = "py310"
 line-length = 100
 src = ["src", "tests"]
+# The legacy Gradio UI is frozen until its retirement (ADR-0004); it is not
+# linted or formatted so that no session modifies it by accident.
+extend-exclude = ["src/ptpd_calibration/ui"]
 
 [tool.ruff.lint]
 select = [
@@ -122,6 +277,12 @@ select = [
     "UP",   # pyupgrade
     "ARG",  # flake8-unused-arguments
     "SIM",  # flake8-simplify
+    # LOG015 catches a call on the real root logger. setup_logging attaches the
+    # SafeFormatter to the "ptpd_calibration" logger, so a root-logger call does
+    # not traverse it: the line-break escaping that stops one log record forging
+    # another is skipped, and the record never reaches the JSON log file either.
+    # This also enforces the getLogger(__name__) rule in CLAUDE.md.
+    "LOG",  # flake8-logging
 ]
 ignore = [
     "E501",   # line too long (handled by formatter)
@@ -135,13 +296,12 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Tests: unused arguments are common in fixtures/mocks; B017 is valid for asserting any exception
 "tests/**/*.py" = ["ARG001", "ARG002", "ARG005", "B007", "B017", "E402", "E701", "E741", "SIM102", "SIM105", "SIM117"]
-# Gradio UI: event handlers must accept arguments dictated by Gradio's callback signatures
-"src/ptpd_calibration/ui/**/*.py" = ["ARG001", "ARG002", "ARG005", "B007", "E402"]
 # Education module: tutorial/example code uses simplified patterns
 "src/ptpd_calibration/education/**/*.py" = ["ARG001", "ARG002"]
 # Curves/ML/Detection: abstract interface stubs have params for future implementation
 "src/ptpd_calibration/curves/**/*.py" = ["ARG002", "ARG004"]
 "src/ptpd_calibration/ml/**/*.py" = ["ARG002"]
+"src/ptpd_calibration/deep_learning/**/*.py" = ["ARG002"]  # quarantine candidate (ADR-0011); interface stubs
 "src/ptpd_calibration/detection/**/*.py" = ["ARG002"]
 "src/ptpd_calibration/imaging/split_grade.py" = ["ARG002"]
 "src/ptpd_calibration/monitoring/**/*.py" = ["ARG002"]
@@ -149,31 +309,39 @@ ignore = [
 "src/ptpd_calibration/agents/**/*.py" = ["ARG002", "SIM102"]
 "src/ptpd_calibration/ai/**/*.py" = ["ARG002"]
 "src/ptpd_calibration/analysis/**/*.py" = ["ARG002"]
-"src/ptpd_calibration/ui/tabs/**/*.py" = ["E701", "ARG005"]
-
 
 [tool.ruff.lint.isort]
 known-first-party = ["ptpd_calibration"]
 
-[tool.coverage.run]
-branch = true
-source = ["src/ptpd_calibration"]
-omit = [
-    "*/ui/*",           # UI modules require integration tests
-    "*/api/server.py",  # API server requires integration tests
-]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "if TYPE_CHECKING:",
-    "raise NotImplementedError",
-]
-
+# ---------------------------------------------------------------------------
+# mypy: blocking on the allowlist below (packages with zero errors on
+# 2026-09-18); the expansion order is documented in CONTRIBUTING.md.
+# ---------------------------------------------------------------------------
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
+files = [
+    "src/ptpd_calibration/__init__.py",
+    "src/ptpd_calibration/config.py",
+    "src/ptpd_calibration/core",
+    "src/ptpd_calibration/chemistry",
+    "src/ptpd_calibration/calculations",
+    "src/ptpd_calibration/exposure",
+    "src/ptpd_calibration/proofing",
+    "src/ptpd_calibration/papers",
+    "src/ptpd_calibration/workflow",
+    "src/ptpd_calibration/vertex",
+    "src/ptpd_calibration/batch",
+    "src/ptpd_calibration/session",
+    "src/ptpd_calibration/ai",
+    "src/ptpd_calibration/zones",
+]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
+ignore_missing_imports = true
+# A branch that can never run is usually a stale assumption about the types
+# around it. Turning this on while the checked set is clean is far cheaper than
+# adopting it later.
+warn_unreachable = true
 exclude = ["tests"]

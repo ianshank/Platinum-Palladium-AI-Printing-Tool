@@ -5,9 +5,16 @@ These tests quickly verify that core functionality works after deployment.
 Run these after deploying to Huggingface Spaces or other environments.
 """
 
+import importlib.util
 from pathlib import Path
 
 import pytest
+
+# The Gradio guard belongs on the two classes that import the frozen UI, not
+# on the module. At module scope it skipped the whole file: the backend job
+# installs no [ui] extra, so every core deployment check here -- imports, curve
+# generation, the entry point, the requirements file -- ran nowhere at all,
+# despite needing no Gradio.
 
 
 class TestCoreImports:
@@ -136,7 +143,7 @@ class TestCoreFunctionality:
 
         # Create test image
         arr = np.linspace(0, 255, 100).reshape(10, 10).astype(np.uint8)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
 
         analyzer = HistogramAnalyzer()
         result = analyzer.analyze(img)
@@ -152,7 +159,7 @@ class TestCoreFunctionality:
 
         # Create test image
         arr = np.linspace(0, 255, 100).reshape(10, 10).astype(np.uint8)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
 
         mapper = ZoneMapper()
         result = mapper.analyze_image(img)
@@ -168,7 +175,7 @@ class TestCoreFunctionality:
 
         # Create test image
         arr = np.linspace(50, 200, 100).reshape(10, 10).astype(np.uint8)
-        img = Image.fromarray(arr, mode="L")
+        img = Image.fromarray(arr)
 
         proofer = SoftProofer()
         result = proofer.proof(img)
@@ -194,6 +201,11 @@ class TestCoreFunctionality:
         assert len(papers) >= 4
 
 
+@pytest.mark.legacy_ui
+@pytest.mark.skipif(
+    importlib.util.find_spec("gradio") is None,
+    reason="legacy Gradio UI tests need the [ui] extra (ADR-0004)",
+)
 class TestGradioAppImport:
     """Test Gradio app can be imported."""
 
@@ -254,6 +266,11 @@ class TestRequirementsFile:
         assert "gradio" in content
 
 
+@pytest.mark.legacy_ui
+@pytest.mark.skipif(
+    importlib.util.find_spec("gradio") is None,
+    reason="legacy Gradio UI tests need the [ui] extra (ADR-0004)",
+)
 class TestWizardStep3Linearization:
     """Sanity tests for Calibration Wizard Step 3 linearization functionality."""
 

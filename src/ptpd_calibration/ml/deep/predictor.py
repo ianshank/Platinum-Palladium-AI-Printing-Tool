@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ptpd_calibration.core.artifacts import load_torch_checkpoint
 from ptpd_calibration.ml.deep.exceptions import (
     CheckpointError,
     ModelNotTrainedError,
@@ -107,6 +108,7 @@ class DeepCurvePredictor:
         val_ratio: float = 0.2,
         num_epochs: int | None = None,
         callbacks: list | None = None,
+        include_simulated: bool = False,
     ) -> dict:
         """
         Train the model on calibration data.
@@ -114,6 +116,9 @@ class DeepCurvePredictor:
         Args:
             database: CalibrationDatabase with training records.
             val_ratio: Fraction of data for validation.
+            include_simulated: Train on records whose densities came from a
+                simulator. Excluded by default (ADR-0006); a caller that
+                generated the data on purpose opts in explicitly.
             num_epochs: Number of training epochs.
             callbacks: Optional training callbacks.
 
@@ -142,6 +147,7 @@ class DeepCurvePredictor:
             val_ratio=val_ratio,
             target_length=self.settings.lut_size,
             augmentation=augmentation,
+            include_simulated=include_simulated,
         )
 
         self.encoder = encoder
@@ -184,7 +190,7 @@ class DeepCurvePredictor:
 
         # Train ensemble if enabled
         if self.settings.use_ensemble:
-            self._train_ensemble(database, val_ratio, num_epochs)
+            self._train_ensemble(database, val_ratio, num_epochs, include_simulated)
 
         return {
             "num_samples": len(train_loader.dataset) + len(val_loader.dataset),
@@ -200,8 +206,14 @@ class DeepCurvePredictor:
         database: CalibrationDatabase,
         val_ratio: float,
         num_epochs: int | None,
+        include_simulated: bool = False,
     ) -> None:
-        """Train ensemble of models for uncertainty estimation."""
+        """Train ensemble of models for uncertainty estimation.
+
+        ``include_simulated`` is carried through rather than defaulted here, so
+        the ensemble trains on the same records as the primary model instead of
+        finding none.
+        """
         from ptpd_calibration.ml.deep.dataset import DataAugmentation, create_dataloaders
         from ptpd_calibration.ml.deep.models import CurveMLP
         from ptpd_calibration.ml.deep.training import CurveTrainer
@@ -225,6 +237,7 @@ class DeepCurvePredictor:
                 target_length=self.settings.lut_size,
                 augmentation=augmentation,
                 seed=i * 42,  # Different seed for each model
+                include_simulated=include_simulated,
             )
 
             # Create model
@@ -528,7 +541,7 @@ class DeepCurvePredictor:
                 hidden_dims=metadata["hidden_dims"],
             )
             predictor.model.load_state_dict(
-                torch.load(path / "model.pt", map_location=predictor.device)
+                load_torch_checkpoint(path / "model.pt", map_location=predictor.device)
             )
             predictor.model.to(predictor.device)
             predictor.model.eval()
@@ -545,7 +558,9 @@ class DeepCurvePredictor:
                         hidden_dims=metadata["hidden_dims"],
                     )
                     model.load_state_dict(
-                        torch.load(ensemble_dir / f"model_{i}.pt", map_location=predictor.device)
+                        load_torch_checkpoint(
+                            ensemble_dir / f"model_{i}.pt", map_location=predictor.device
+                        )
                     )
                     model.to(predictor.device)
                     model.eval()

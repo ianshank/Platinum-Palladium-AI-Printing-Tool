@@ -3,28 +3,69 @@ FastAPI server for PTPD Calibration System.
 """
 
 import logging
+import re
 import tempfile
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from uuid import UUID
 
-from ptpd_calibration.config import get_settings
+from ptpd_calibration.api.observability import RequestContextMiddleware
+from ptpd_calibration.config import Settings, get_settings
+from ptpd_calibration.core.logging import setup_logging
 
 _log = logging.getLogger(__name__)
 
+# Extension of the JSON records written for stored curves.
+_CURVE_SUFFIX = ".json"
 
-def create_app():
-    """Create the FastAPI application."""
+# Stored curve ids are UUIDs (CurveData.id), so the id taken from the URL is
+# matched against that shape before it is ever joined to a path.
+_CURVE_ID_PATTERN = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
+
+
+def _api_version() -> str:
+    """Return the installed package version, or a marker when run from a tree.
+
+    The API reported a hard-coded "1.0.0" whatever was deployed, so an operator
+    could not tell which build answered a request.
+    """
+    try:
+        return version("ptpd-calibration")
+    except PackageNotFoundError:  # pragma: no cover - only outside an install
+        return "0.0.0+unknown"
+
+
+def create_app(settings: Settings | None = None):
+    """Create the FastAPI application.
+
+    Args:
+        settings: Optional settings override. Defaults to the process-wide
+            ``get_settings()`` instance; tests pass an explicit ``Settings``
+            to exercise limits without touching global state.
+    """
     try:
         from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
         from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import FileResponse
-        from pydantic import BaseModel
+        from pydantic import BaseModel, Field
+        from starlette.background import BackgroundTask
     except ImportError as err:
         raise ImportError(
             "FastAPI is required. Install with: pip install ptpd-calibration[api]"
         ) from err
 
-    from ptpd_calibration.config import TabletType
+    from ptpd_calibration.api.security import (
+        RequestBodyLimitMiddleware,
+        kb_to_bytes,
+        mb_to_bytes,
+        safe_export_name,
+        safe_suffix,
+        server_upload_path,
+        stored_record_path,
+        stream_upload_to_path,
+        unlink_quietly,
+    )
+    from ptpd_calibration.config import ExportFormat, TabletType
     from ptpd_calibration.core.models import CalibrationRecord, CurveData
     from ptpd_calibration.core.types import ChemistryType, ContrastAgent, CurveType, DeveloperType
     from ptpd_calibration.curves import (
@@ -38,18 +79,74 @@ def create_app():
         load_quad_string,
         save_curve,
     )
+    from ptpd_calibration.curves.parser import QuadParserLimits
     from ptpd_calibration.detection import StepTabletReader
+    from ptpd_calibration.imaging import (
+        ColorMode,
+        ExportSettings,
+        ImageFormat,
+        ImageProcessor,
+    )
+    from ptpd_calibration.imaging.safe_image import (
+        ImageDecodeError,
+        ImageDecodeSettings,
+        ImageTooLargeError,
+    )
     from ptpd_calibration.ml import CalibrationDatabase
 
     # Initialize app
-    settings = get_settings()
+    settings = settings or get_settings()
+
+    # Configure logging deliberately, here, rather than leaving it to whichever
+    # module happens to call get_logger() first: that made the level, format
+    # and destination depend on import order, so a deployment could not choose
+    # them and the debug logging on guarded paths was invisible.
+    setup_logging(
+        level=settings.log_level,
+        log_file=settings.log_file,
+        json_format=settings.log_json,
+    )
+    _log.info(
+        "Starting %s version %s (log level %s, json=%s)",
+        settings.app_name,
+        _api_version(),
+        settings.log_level,
+        settings.log_json,
+    )
+
     app = FastAPI(
         title="PTPD Calibration API",
         description="AI-powered calibration system for platinum/palladium printing",
-        version="1.0.0",
+        version=_api_version(),
     )
 
-    # CORS
+    # Request bounds shared by every endpoint (SEC-03). Values come from
+    # APISettings so deployments can tune them via PTPD_API_* variables.
+    max_list = settings.api.max_list_length
+    max_str = settings.api.max_string_length
+    max_upload_bytes = mb_to_bytes(settings.api.max_upload_size_mb)
+    upload_chunk_bytes = kb_to_bytes(settings.api.upload_chunk_size_kb)
+    # A pasted .quad profile is legitimately far longer than the general string
+    # cap: 256 values per channel across eight channels runs to thousands of
+    # lines, so max_str would reject valid content. The parser's own limit is
+    # the right bound, and it measures a string the same way (PTPD_QUAD_*), so
+    # an oversize paste is refused by the framework instead of being buffered
+    # and parsed before the parser rejects it.
+    max_quad_content = QuadParserLimits().max_bytes
+
+    # Body-size cap is added before CORS so that CORS wraps it and a 413 still
+    # carries the CORS headers a browser needs to surface the error.
+    app.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_bytes=mb_to_bytes(settings.api.max_request_body_mb),
+    )
+
+    # Added last so it runs first: every request, including one rejected by the
+    # body cap above, is logged with its identifier.
+    app.add_middleware(RequestContextMiddleware)
+
+    # CORS (SEC-07): allow_credentials is read from settings and defaults to
+    # False; APISettings refuses the wildcard-origin + credentials combination.
     cors_origins_set = set(settings.api.cors_origins)
     # Allow localhost:3000 only in reload (development) mode
     if settings.api.reload:
@@ -63,71 +160,87 @@ def create_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    _log.debug(
+        "API limits: body=%dMB upload=%dMB list=%d str=%d cors_credentials=%s",
+        settings.api.max_request_body_mb,
+        settings.api.max_upload_size_mb,
+        max_list,
+        max_str,
+        settings.api.cors_allow_credentials,
+    )
 
     # State
     database = CalibrationDatabase()
     upload_dir = settings.api.upload_dir or Path(tempfile.mkdtemp())
+    upload_dir.mkdir(parents=True, exist_ok=True)
     deep_learning_model_storage: dict = {}  # Storage for trained DL models
 
-    # Include deep learning router
+    # Optional routers. Which of these mounted is reported by /api/health, so a
+    # caller can tell a missing extra from a broken deployment.
+    optional_routers: dict[str, bool] = {}
+
     try:
         from ptpd_calibration.api.deep_learning import create_deep_learning_router
 
         deep_router = create_deep_learning_router(database, deep_learning_model_storage)
         app.include_router(deep_router)
-    except ImportError:
-        # Deep learning dependencies not available
-        pass
+        optional_routers["deep_learning"] = True
+    except ImportError as exc:
+        _log.info("Deep-learning routes unavailable: %s", exc)
+        optional_routers["deep_learning"] = False
 
-    # Include MCTS router
     try:
         from ptpd_calibration.api.mcts_router import create_mcts_router
 
         mcts_router = create_mcts_router()
         app.include_router(mcts_router)
-    except ImportError:
-        # MCTS dependencies not available
-        pass
+        optional_routers["mcts"] = True
+    except ImportError as exc:
+        _log.info("Search routes unavailable: %s", exc)
+        optional_routers["mcts"] = False
 
-    # Pydantic models
+    # Pydantic models. Every list and string field is bounded (SEC-03) using
+    # the limits above so an oversized payload fails validation with 422
+    # before any processing happens.
     class AnalyzeRequest(BaseModel):
-        densities: list[float]
+        densities: list[float] = Field(max_length=max_list)
 
     class CurveRequest(BaseModel):
-        densities: list[float]
-        name: str = "Calibration Curve"
-        curve_type: str = "linear"
-        paper_type: str | None = None
-        chemistry: str | None = None
+        densities: list[float] = Field(max_length=max_list)
+        name: str = Field(default="Calibration Curve", max_length=max_str)
+        curve_type: str = Field(default="linear", max_length=max_str)
+        paper_type: str | None = Field(default=None, max_length=max_str)
+        chemistry: str | None = Field(default=None, max_length=max_str)
 
     class CalibrationRequest(BaseModel):
-        paper_type: str
+        paper_type: str = Field(max_length=max_str)
         exposure_time: float
         metal_ratio: float = 0.5
-        contrast_agent: str = "none"
+        contrast_agent: str = Field(default="none", max_length=max_str)
         contrast_amount: float = 0.0
-        developer: str = "potassium_oxalate"
-        chemistry_type: str = "platinum_palladium"
-        densities: list[float] = []
-        notes: str | None = None
+        developer: str = Field(default="potassium_oxalate", max_length=max_str)
+        chemistry_type: str = Field(default="platinum_palladium", max_length=max_str)
+        densities: list[float] = Field(default_factory=list, max_length=max_list)
+        notes: str | None = Field(default=None, max_length=max_str)
 
     class ChatRequest(BaseModel):
-        message: str
+        message: str = Field(max_length=max_str)
         include_history: bool = True
 
     class RecipeRequest(BaseModel):
-        paper_type: str
-        characteristics: str
+        paper_type: str = Field(max_length=max_str)
+        characteristics: str = Field(max_length=max_str)
 
     class TroubleshootRequest(BaseModel):
-        problem: str
+        problem: str = Field(max_length=max_str)
 
     class CurveModifyRequest(BaseModel):
-        input_values: list[float]
-        output_values: list[float]
-        name: str = "Modified Curve"
-        adjustment_type: str = (
-            "brightness"  # brightness, contrast, gamma, levels, highlights, shadows, midtones
+        input_values: list[float] = Field(max_length=max_list)
+        output_values: list[float] = Field(max_length=max_list)
+        name: str = Field(default="Modified Curve", max_length=max_str)
+        adjustment_type: str = Field(
+            default="brightness",  # brightness, contrast, gamma, levels, highlights, shadows, midtones
+            max_length=max_str,
         )
         amount: float = 0.0
         # Additional parameters for specific adjustments
@@ -136,42 +249,59 @@ def create_app():
         white_point: float = 1.0  # For levels
 
     class CurveSmoothRequest(BaseModel):
-        input_values: list[float]
-        output_values: list[float]
-        name: str = "Smoothed Curve"
-        method: str = "gaussian"  # gaussian, savgol, moving_average, spline
+        input_values: list[float] = Field(max_length=max_list)
+        output_values: list[float] = Field(max_length=max_list)
+        name: str = Field(default="Smoothed Curve", max_length=max_str)
+        method: str = Field(
+            default="gaussian", max_length=max_str
+        )  # gaussian, savgol, moving_average, spline
         strength: float = 0.5
         preserve_endpoints: bool = True
 
     class CurveBlendRequest(BaseModel):
-        curve1_inputs: list[float]
-        curve1_outputs: list[float]
-        curve2_inputs: list[float]
-        curve2_outputs: list[float]
-        name: str = "Blended Curve"
-        mode: str = "weighted"  # average, weighted, multiply, screen, overlay, min, max
+        curve1_inputs: list[float] = Field(max_length=max_list)
+        curve1_outputs: list[float] = Field(max_length=max_list)
+        curve2_inputs: list[float] = Field(max_length=max_list)
+        curve2_outputs: list[float] = Field(max_length=max_list)
+        name: str = Field(default="Blended Curve", max_length=max_str)
+        mode: str = Field(
+            default="weighted", max_length=max_str
+        )  # average, weighted, multiply, screen, overlay, min, max
         weight: float = 0.5
 
     class CurveEnhanceRequest(BaseModel):
-        input_values: list[float]
-        output_values: list[float]
-        name: str = "Enhanced Curve"
-        goal: str = "linearization"  # linearization, maximize_range, smooth_gradation, highlight_detail, shadow_detail, neutral_midtones, print_stability
-        paper_type: str | None = None
-        additional_context: str | None = None
+        input_values: list[float] = Field(max_length=max_list)
+        output_values: list[float] = Field(max_length=max_list)
+        name: str = Field(default="Enhanced Curve", max_length=max_str)
+        goal: str = Field(
+            default="linearization", max_length=max_str
+        )  # linearization, maximize_range, smooth_gradation, highlight_detail, shadow_detail, neutral_midtones, print_stability
+        paper_type: str | None = Field(default=None, max_length=max_str)
+        additional_context: str | None = Field(default=None, max_length=max_str)
 
     # Curve storage — write-through cache backed by JSON files on disk
     curves_dir = upload_dir.parent / "curves"
     curves_dir.mkdir(parents=True, exist_ok=True)
     curve_storage: dict[str, CurveData] = {}
 
+    def _curve_path(curve_id: str) -> Path | None:
+        """Path of a stored curve, or None when the id is not a safe component.
+
+        The id reaches this from a URL path parameter, so it goes through
+        ``stored_record_path``, which rejects separators and traversal and
+        re-checks that the resolved path is still under ``curves_dir``.
+        """
+        return stored_record_path(curves_dir, curve_id, _CURVE_SUFFIX, pattern=_CURVE_ID_PATTERN)
+
     def _store_curve(curve: CurveData) -> None:
         """Cache curve in memory and persist to disk."""
         curve_storage[str(curve.id)] = curve
+        path = _curve_path(str(curve.id))
+        if path is None:  # pragma: no cover - ids are server-generated UUIDs
+            _log.error("Refusing to persist curve with unsafe id %r", curve.id)
+            return
         try:
-            (curves_dir / f"{curve.id}.json").write_text(
-                curve.model_dump_json(), encoding="utf-8"
-            )
+            path.write_text(curve.model_dump_json(), encoding="utf-8")
         except Exception:
             _log.warning("Failed to persist curve %s to disk", curve.id, exc_info=True)
 
@@ -179,7 +309,9 @@ def create_app():
         """Return curve from memory cache, falling back to disk."""
         if curve_id in curve_storage:
             return curve_storage[curve_id]
-        path = curves_dir / f"{curve_id}.json"
+        path = _curve_path(curve_id)
+        if path is None:
+            return None
         if path.exists():
             try:
                 loaded = CurveData.model_validate_json(path.read_text(encoding="utf-8"))
@@ -197,7 +329,20 @@ def create_app():
 
     @app.get("/api/health")
     async def health():
-        return {"status": "healthy"}
+        """Report what is actually running and which optional parts are usable.
+
+        A static "healthy" cannot distinguish a working deployment from one
+        whose language-model provider is unconfigured or whose optional
+        machine-learning extra is missing, which are the two states an operator
+        most often needs to tell apart.
+        """
+        return {
+            "status": "healthy",
+            "version": _api_version(),
+            "log_level": settings.log_level,
+            "llm_provider_configured": bool(settings.llm.get_active_api_key()),
+            "features": dict(optional_routers),
+        }
 
     @app.post("/api/analyze")
     async def analyze_densities(request: AnalyzeRequest):
@@ -220,69 +365,22 @@ def create_app():
             "suggestions": suggestions,
         }
 
-    # Allowlisted scan file extensions (case-insensitive)
-    _ALLOWED_SCAN_EXTENSIONS = frozenset({".tif", ".tiff", ".png", ".jpg", ".jpeg", ".bmp"})
-
     @app.post("/api/scan/upload")
     async def upload_scan(
         file: UploadFile = File(...),
-        tablet_type: str = Form("stouffer_21"),
+        tablet_type: str = Form("stouffer_21", max_length=max_str),
     ):
-        """Upload and process a step tablet scan."""
-        import logging
-        from uuid import uuid4
+        """Upload and process a step tablet scan.
 
-        logger = logging.getLogger(__name__)
-
-        # ── Sanitise client-supplied filename ──────────────────────────
+        The client filename is only used to pick an allowlisted extension; the
+        file is streamed to a server-generated path under a size cap (SEC-01/02).
+        """
         original_filename = file.filename or "unknown"
-        # Extract extension safely (only basename, no path separators)
-        safe_basename = Path(original_filename).name  # strips ../ segments
-        suffix = Path(safe_basename).suffix.lower()
+        suffix = safe_suffix(file.filename, settings.api.allowed_scan_extensions)
+        file_path = server_upload_path(upload_dir, suffix)
+        _log.debug("Scan upload: original=%r server_path=%s", original_filename, file_path.name)
 
-        if suffix not in _ALLOWED_SCAN_EXTENSIONS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported file type '{suffix}'. "
-                f"Allowed: {', '.join(sorted(_ALLOWED_SCAN_EXTENSIONS))}",
-            )
-
-        # Server-generated unique key — never trust client filename for paths
-        scan_id = uuid4().hex
-        safe_name = f"{scan_id}{suffix}"
-        file_path = upload_dir / safe_name
-
-        logger.debug("Scan upload: original=%s safe=%s", original_filename, safe_name)
-
-        # ── Stream upload to disk with size enforcement ─────────────
-        max_bytes = settings.api.max_upload_size_mb * 1024 * 1024
-        bytes_written = 0
-        _CHUNK_SIZE = 64 * 1024  # 64 KB chunks
-
-        try:
-            with open(file_path, "wb") as f:
-                while True:
-                    chunk = await file.read(_CHUNK_SIZE)
-                    if not chunk:
-                        break
-                    bytes_written += len(chunk)
-                    if bytes_written > max_bytes:
-                        # Clean up partial file before rejecting
-                        f.close()
-                        if file_path.exists():
-                            file_path.unlink()
-                        raise HTTPException(
-                            status_code=413,
-                            detail=f"Upload exceeds maximum size of "
-                            f"{settings.api.max_upload_size_mb} MB",
-                        )
-                    f.write(chunk)
-        except HTTPException:
-            raise  # Re-raise 413 without catching it below
-        except OSError as exc:
-            if file_path.exists():
-                file_path.unlink()
-            raise HTTPException(status_code=500, detail=f"Failed to save upload: {exc}")
+        await stream_upload_to_path(file, file_path, max_upload_bytes, upload_chunk_bytes)
 
         try:
             # Process scan
@@ -301,12 +399,16 @@ def create_app():
                 "quality": result.extraction.overall_quality,
                 "warnings": result.extraction.warnings,
             }
+        except ImageTooLargeError as e:
+            # Decode guard tripped on the header (pixel or frame cap, SEC-04):
+            # the request is well-formed but exceeds configured limits.
+            _log.warning("Scan upload rejected before decode: %s", e)
+            raise HTTPException(status_code=413, detail=str(e)) from None
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e)) from None
         finally:
-            # Cleanup temp file
-            if file_path.exists():
-                file_path.unlink()
+            # Only the server-generated path is ever removed
+            unlink_quietly(file_path)
 
     @app.post("/api/curves/generate")
     async def generate_curve(request: CurveRequest):
@@ -322,75 +424,242 @@ def create_app():
                 chemistry=request.chemistry,
             )
 
+            # Every other curve route stores its result, and this one returned
+            # a curve_id regardless, so fetching or exporting a generated curve
+            # answered 404 for the one endpoint a calibration actually starts
+            # from.
+            _store_curve(curve)
+
             return {
                 "success": True,
                 "curve_id": str(curve.id),
                 "name": curve.name,
                 "num_points": len(curve.input_values),
-                "input_values": curve.input_values[:10],  # Sample
-                "output_values": curve.output_values[:10],
+                "input_values": curve.input_values,
+                "output_values": curve.output_values,
             }
+        except ValueError as e:
+            # The generator refuses input it cannot invert (a reversed wedge, a
+            # non-finite patch, a series that rises and falls) and names the
+            # offending patch; that message is the useful part of the response.
+            _log.debug("Curve generation refused: %s", e)
+            raise HTTPException(status_code=422, detail=str(e)) from None
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e)) from None
 
+    # Download extension per supported export format (the exporter's declared set)
+    _export_extensions: dict[str, str] = {
+        ExportFormat.QTR.value: ".txt",
+        ExportFormat.PIEZOGRAPHY.value: ".ppt",
+        ExportFormat.CSV.value: ".csv",
+        ExportFormat.JSON.value: ".json",
+    }
+
+    def _export_curve_response(curve: CurveData, name: str, format: str) -> FileResponse:
+        """Write ``curve`` to a server-named temp file and return it as a download.
+
+        The client-supplied ``name`` only reaches the ``Content-Disposition``
+        header after sanitisation; the on-disk path is a uuid so no request can
+        choose where the server writes. The temp file is removed once the
+        response has been sent.
+        """
+        normalized = format.lower()
+        ext = _export_extensions.get(normalized)
+        if ext is None:
+            _log.debug("Rejected export format %r", format)
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unsupported export format '{format}'. "
+                f"Supported: {', '.join(sorted(_export_extensions))}",
+            )
+        download_stem = safe_export_name(name, max_length=settings.api.max_export_name_length)
+        output_path = server_upload_path(upload_dir, ext)
+        save_curve(curve, output_path, format=normalized)
+        _log.debug(
+            "Exported curve %s as %s -> %s (download name %s%s)",
+            curve.id,
+            normalized,
+            output_path.name,
+            download_stem,
+            ext,
+        )
+        return FileResponse(
+            output_path,
+            media_type="application/octet-stream",
+            filename=f"{download_stem}{ext}",
+            background=BackgroundTask(unlink_quietly, output_path),
+        )
+
     @app.post("/api/curves/export")
     async def export_curve(
-        densities: list[float] = Form(...),
-        name: str = Form("curve"),
-        format: str = Form("qtr"),
+        densities: list[float] = Form(..., max_length=max_list),
+        name: str = Form("curve", max_length=max_str),
+        format: str = Form("qtr", max_length=max_str),
     ):
         """Export a curve to file."""
         generator = CurveGenerator()
         curve = generator.generate(densities, name=name)
-
-        # Create temp file
-        ext_map = {"qtr": ".txt", "piezography": ".ppt", "csv": ".csv", "json": ".json"}
-        ext = ext_map.get(format, ".txt")
-        output_path = upload_dir / f"{name}{ext}"
-
-        save_curve(curve, output_path, format=format)
-
-        return FileResponse(
-            output_path,
-            media_type="application/octet-stream",
-            filename=f"{name}{ext}",
-        )
+        return _export_curve_response(curve, name, format)
 
     @app.post("/api/curves/{curve_id}/export")
     async def export_stored_curve(
         curve_id: str,
-        format: str = Query("qtr"),
+        format: str = Query("qtr", max_length=max_str),
     ):
         """Export a previously stored curve by ID."""
         curve = _get_curve(curve_id)
         if not curve:
             raise HTTPException(status_code=404, detail="Curve not found")
-        ext_map = {"qtr": ".txt", "piezography": ".ppt", "csv": ".csv", "json": ".json"}
-        ext = ext_map.get(format, ".txt")
-        safe_name = "".join(c if c.isalnum() or c in "-_." else "_" for c in curve.name)
-        output_path = upload_dir / f"{safe_name}{ext}"
-        save_curve(curve, output_path, format=format)
+        return _export_curve_response(curve, curve.name, format)
+
+    # Download extension and media type per negative export format. ORIGINAL is
+    # absent on purpose: a negative is a new artefact, so the caller states the
+    # format it wants rather than inheriting the scan's.
+    _negative_formats: dict[str, tuple[str, str]] = {
+        ImageFormat.TIFF.value: (".tiff", "image/tiff"),
+        ImageFormat.TIFF_16BIT.value: (".tiff", "image/tiff"),
+        ImageFormat.PNG.value: (".png", "image/png"),
+        ImageFormat.PNG_16BIT.value: (".png", "image/png"),
+        ImageFormat.JPEG.value: (".jpg", "image/jpeg"),
+        ImageFormat.JPEG_HIGH.value: (".jpg", "image/jpeg"),
+    }
+
+    # A negative is printed at full size, so this path does not inherit the
+    # shared decode limits, which shrink an image to bound analysis work.
+    _negative_decode_settings = ImageDecodeSettings(
+        max_pixels=settings.api.negative_export_max_pixels,
+        downsample_max_side=settings.api.negative_export_max_side,
+    )
+
+    def _negative_curve(curve_id: str | None, densities: list[float] | None) -> CurveData | None:
+        """Resolve the curve to apply, by stored id or from measured densities.
+
+        Neither is required: inverting an already linearised file is a real
+        request, and refusing it would make the endpoint less useful than the
+        Gradio tab it replaces.
+        """
+        if curve_id:
+            stored = _get_curve(curve_id)
+            if stored is None:
+                raise HTTPException(status_code=404, detail="Curve not found")
+            return stored
+        if densities:
+            try:
+                return CurveGenerator().generate(densities, name="negative")
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from None
+        return None
+
+    @app.post("/api/export/negative")
+    async def export_negative(
+        file: UploadFile = File(...),
+        curve_id: str | None = Form(None, max_length=max_str),
+        densities: list[float] | None = Form(None, max_length=max_list),
+        name: str = Form("negative", max_length=max_str),
+        format: str = Form(ImageFormat.TIFF_16BIT.value, max_length=max_str),
+        invert: bool = Form(True),
+        color_mode: str = Form(ColorMode.GRAYSCALE.value, max_length=max_str),
+    ):
+        """Turn an uploaded image into a digital negative and return the file.
+
+        The curve comes from ``curve_id`` (a previously stored curve) or from
+        ``densities`` (generated on the spot); with neither, the image is only
+        inverted. The upload is streamed to a server-generated path under the
+        same size cap as every other upload and removed as soon as it is
+        decoded; the rendered negative is removed once the response is sent.
+        """
+        target = format.lower()
+        if target not in _negative_formats:
+            _log.debug("Rejected negative export format %r", format)
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unsupported negative format '{format}'. "
+                f"Supported: {', '.join(sorted(_negative_formats))}",
+            )
+        extension, media_type = _negative_formats[target]
+
+        try:
+            mode = ColorMode(color_mode.lower())
+        except ValueError:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unsupported color mode '{color_mode}'. "
+                f"Supported: {', '.join(sorted(m.value for m in ColorMode))}",
+            ) from None
+
+        curve = _negative_curve(curve_id, densities)
+        download_stem = safe_export_name(
+            name, default="negative", max_length=settings.api.max_export_name_length
+        )
+
+        suffix = safe_suffix(file.filename, settings.api.allowed_scan_extensions)
+        source_path = server_upload_path(upload_dir, suffix)
+        await stream_upload_to_path(file, source_path, max_upload_bytes, upload_chunk_bytes)
+
+        processor = ImageProcessor(decode_settings=_negative_decode_settings)
+        try:
+            negative = processor.create_digital_negative(
+                source_path, curve=curve, invert=invert, color_mode=mode
+            )
+        except ImageTooLargeError as exc:
+            # Decode guard tripped on the header, before any pixel was read.
+            _log.warning("Negative source rejected before decode: %s", exc)
+            raise HTTPException(status_code=413, detail=str(exc)) from None
+        except ImageDecodeError as exc:
+            _log.debug("Negative source refused: %s", exc)
+            raise HTTPException(status_code=415, detail=str(exc)) from None
+        except Exception as exc:
+            _log.warning("Negative rendering failed", exc_info=True)
+            raise HTTPException(status_code=400, detail=str(exc)) from None
+        finally:
+            # The source is fully decoded by now; only the server path is removed.
+            unlink_quietly(source_path)
+
+        output_path = server_upload_path(upload_dir, extension)
+        try:
+            processor.export(negative, output_path, ExportSettings(format=ImageFormat(target)))
+        except ValueError as exc:
+            # A combination the writers refuse, such as 16-bit colour as PNG.
+            # Left unhandled this escaped as a 500 and stranded the file.
+            unlink_quietly(output_path)
+            _log.debug("Negative export refused: %s", exc)
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except Exception as exc:
+            unlink_quietly(output_path)
+            _log.warning("Negative export failed", exc_info=True)
+            raise HTTPException(status_code=400, detail=str(exc)) from None
+        _log.debug(
+            "Exported negative: curve=%s format=%s mode=%s inverted=%s -> %s",
+            curve.id if curve else None,
+            target,
+            negative.image.mode,
+            invert,
+            output_path.name,
+        )
         return FileResponse(
             output_path,
-            media_type="application/octet-stream",
-            filename=f"{safe_name}{ext}",
+            media_type=media_type,
+            filename=f"{download_stem}{extension}",
+            background=BackgroundTask(unlink_quietly, output_path),
         )
 
     @app.post("/api/curves/upload-quad")
     async def upload_quad_file(
         file: UploadFile = File(...),
-        channel: str = Form("K"),
+        channel: str = Form("K", max_length=max_str),
     ):
         """
         Upload and parse a QTR .quad file.
 
-        Returns the parsed profile with all channels and metadata.
+        Returns the parsed profile with all channels and metadata. The upload is
+        streamed to a server-generated path under the configured size cap; the
+        client filename only selects an allowlisted extension (SEC-01/02).
         """
-        # Save uploaded file
-        file_path = upload_dir / file.filename
-        with open(file_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
+        suffix = safe_suffix(file.filename, settings.api.allowed_quad_extensions)
+        file_path = server_upload_path(upload_dir, suffix)
+        _log.debug("Quad upload: original=%r server_path=%s", file.filename, file_path.name)
+
+        await stream_upload_to_path(file, file_path, max_upload_bytes, upload_chunk_bytes)
 
         try:
             # Parse the .quad file
@@ -423,15 +692,14 @@ def create_app():
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e)) from None
         finally:
-            # Cleanup
-            if file_path.exists():
-                file_path.unlink()
+            # Only the server-generated path is ever removed
+            unlink_quietly(file_path)
 
     @app.post("/api/curves/parse-quad")
     async def parse_quad_content(
-        content: str = Form(...),
-        name: str = Form("Uploaded Profile"),
-        channel: str = Form("K"),
+        content: str = Form(..., max_length=max_quad_content),
+        name: str = Form("Uploaded Profile", max_length=max_str),
+        channel: str = Form("K", max_length=max_str),
     ):
         """
         Parse .quad content from a string (for pasting quad data directly).
@@ -626,16 +894,21 @@ def create_app():
             enhancer = CurveAIEnhancer()
             goal = EnhancementGoal(request.goal.lower())
 
-            # Try LLM enhancement first, fall back to algorithmic
+            # Try LLM enhancement first, fall back to algorithmic. The keyword
+            # was `additional_context`, which is not this method's parameter, so
+            # every call raised TypeError and the fallback below swallowed it:
+            # the LLM path was unreachable and nothing said so. Log the fallback
+            # at warning so a future mismatch is visible rather than silent.
             try:
                 result = await enhancer.enhance_with_llm(
                     curve,
                     goal=goal,
-                    additional_context=request.additional_context,
+                    user_requirements=request.additional_context,
                 )
             except Exception:
-                _log.info("LLM enhancement unavailable, falling back to algorithmic", exc_info=True)
-                # Fall back to algorithmic enhancement
+                _log.warning(
+                    "LLM enhancement unavailable, falling back to algorithmic", exc_info=True
+                )
                 result = await enhancer.analyze_and_enhance(
                     curve,
                     goal=goal,
@@ -644,14 +917,19 @@ def create_app():
             # Store the enhanced curve
             _store_curve(result.enhanced_curve)
 
+            # `goal` and `changes_made` are not fields of EnhancementResult, so
+            # reading them raised AttributeError and the handler answered 400 to
+            # every well-formed request. The goal is the validated request
+            # value; the adjustments are `adjustments_applied`.
             return {
                 "success": True,
                 "curve_id": str(result.enhanced_curve.id),
                 "name": result.enhanced_curve.name,
-                "goal": result.goal.value,
+                "goal": goal.value,
                 "confidence": result.confidence,
                 "analysis": result.analysis,
-                "changes_made": result.changes_made,
+                "changes_made": result.adjustments_applied,
+                "suggestions": result.suggestions,
                 "input_values": result.enhanced_curve.input_values,
                 "output_values": result.enhanced_curve.output_values,
             }

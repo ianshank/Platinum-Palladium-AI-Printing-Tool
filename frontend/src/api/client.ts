@@ -10,6 +10,12 @@ import axios, {
   type AxiosResponse,
 } from 'axios';
 import { config, isDev } from '@/config';
+import {
+  DEFAULT_NEGATIVE_COLOR_MODE,
+  DEFAULT_NEGATIVE_FORMAT,
+  DEFAULT_NEGATIVE_NAME,
+} from '@/config/curves';
+import type { CurveRequestBody, NegativeExportBody } from '@/api/generated';
 import { logger } from '@/lib/logger';
 import type {
   AnalysisResponse,
@@ -30,6 +36,50 @@ import type {
   ScanUploadResponse,
   StatisticsResponse,
 } from '@/types/models';
+
+/** Formats `POST /api/export/negative` offers, mirroring the server's map. */
+export type NegativeFormat =
+  | 'tiff'
+  | 'tiff_16bit'
+  | 'png'
+  | 'png_16bit'
+  | 'jpeg'
+  | 'jpeg_high';
+
+/** Colour handling for the negative, mirroring the server's `ColorMode`. */
+export type NegativeColorMode = 'grayscale' | 'rgb' | 'preserve';
+
+/** Arguments for {@link api.negative.export}. */
+export interface NegativeExportOptions {
+  file: File;
+  /** A stored curve to linearise with. Takes precedence over `densities`. */
+  curveId?: NonNullable<NegativeExportBody['curve_id']>;
+  /** Measured densities to generate a curve from, when no curve is stored. */
+  densities?: NonNullable<NegativeExportBody['densities']>;
+  format?: NegativeFormat;
+  colorMode?: NegativeColorMode;
+  invert?: NegativeExportBody['invert'];
+  /** Download filename stem; the server sanitises it. */
+  name?: NegativeExportBody['name'];
+  onProgress?: (progress: number) => void;
+}
+
+/**
+ * Append a multipart field the negative export endpoint actually reads.
+ *
+ * The field names are taken from the generated schema rather than written out
+ * as free strings. `generated/index.ts` records four contract mismatches that
+ * reached the default branch while these types went ungenerated; a bare
+ * `form.append('color_mode', ...)` is the same mistake, because a server-side
+ * rename leaves it compiling and fails at runtime instead.
+ */
+function appendNegativeField(
+  form: FormData,
+  field: keyof NegativeExportBody,
+  value: string | Blob
+): void {
+  form.append(field, value);
+}
 
 /**
  * API Error response structure
@@ -134,13 +184,9 @@ export const api = {
 
   // Curves
   curves: {
-    generate: (data: {
-      measurements: number[];
-      type?: string;
-      name?: string;
-      paper_type?: string;
-      chemistry?: string;
-    }) =>
+    // The body type comes from the generated schema, so a field the server
+    // does not read is a compile error rather than a silently ignored value.
+    generate: (data: CurveRequestBody) =>
       apiRequest<CurveGenerationResponse>({
         method: 'POST',
         url: '/api/curves/generate',
@@ -209,12 +255,66 @@ export const api = {
       });
     },
 
-    parseQuad: (content: string, name: string, channel: string) =>
-      apiRequest<QuadParseResponse>({
+    // The endpoint declares Form fields, not a JSON body. Sending JSON made
+    // every call fail validation with "Field required: content".
+    parseQuad: (content: string, name: string, channel: string) => {
+      const form = new FormData();
+      form.append('content', content);
+      form.append('name', name);
+      form.append('channel', channel);
+      return apiRequest<QuadParseResponse>({
         method: 'POST',
         url: '/api/curves/parse-quad',
-        data: { content, name, channel },
-      }),
+        data: form,
+      });
+    },
+  },
+
+  // Digital negative export
+  negative: {
+    /**
+     * Render an uploaded image as a digital negative and download the file.
+     *
+     * The endpoint declares Form fields and streams a file back, so the body
+     * is multipart and the response is a Blob. Supplying neither `curveId`
+     * nor `densities` inverts the image without linearising it, which is what
+     * you want for a file that is already linearised.
+     */
+    export: (options: NegativeExportOptions) => {
+      const form = new FormData();
+      appendNegativeField(form, 'file', options.file);
+      appendNegativeField(
+        form,
+        'format',
+        options.format ?? DEFAULT_NEGATIVE_FORMAT
+      );
+      appendNegativeField(form, 'invert', String(options.invert ?? true));
+      appendNegativeField(
+        form,
+        'color_mode',
+        options.colorMode ?? DEFAULT_NEGATIVE_COLOR_MODE
+      );
+      appendNegativeField(form, 'name', options.name ?? DEFAULT_NEGATIVE_NAME);
+      if (options.curveId) {
+        appendNegativeField(form, 'curve_id', options.curveId);
+      }
+      options.densities?.forEach((density) =>
+        appendNegativeField(form, 'densities', String(density))
+      );
+
+      return apiRequest<Blob>({
+        method: 'POST',
+        url: '/api/export/negative',
+        data: form,
+        responseType: 'blob',
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (options.onProgress && e.total) {
+            options.onProgress(Math.round((e.loaded * 100) / e.total));
+          }
+        },
+      });
+    },
   },
 
   // Scan / Step Tablet

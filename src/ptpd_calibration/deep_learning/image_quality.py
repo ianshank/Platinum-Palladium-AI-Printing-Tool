@@ -21,6 +21,7 @@ import time
 import numpy as np
 from scipy import ndimage
 
+from ptpd_calibration.core.artifacts import load_torch_checkpoint
 from ptpd_calibration.deep_learning.config import ImageQualitySettings
 from ptpd_calibration.deep_learning.models import (
     ImageQualityResult,
@@ -309,7 +310,9 @@ class VisionTransformerIQA:
                     pretrained=False,
                     num_classes=1,  # Regression task
                 )
-                checkpoint = torch.load(self.settings.custom_weights_path, map_location=self.device)
+                checkpoint = load_torch_checkpoint(
+                    self.settings.custom_weights_path, map_location=self.device
+                )
                 self._vit_model.load_state_dict(checkpoint)
             else:
                 logger.info(f"Loading pretrained {self.settings.vit_model_name}")

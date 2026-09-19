@@ -1,6 +1,9 @@
 import numpy as np
 import pytest
 
+pytest.importorskip("torch", reason="neural curve prediction requires torch (extra: dl)")
+pytestmark = pytest.mark.deep
+
 from ptpd_calibration.deep_learning.config import NeuralCurveSettings
 from ptpd_calibration.deep_learning.neural_curve import NeuralCurvePredictor
 

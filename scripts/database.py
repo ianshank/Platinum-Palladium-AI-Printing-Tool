@@ -11,7 +11,9 @@ try:
     import chromadb
     from chromadb.utils import embedding_functions
 except ImportError:
-    raise ImportError("RAG dependencies are required. Install with: pip install ptpd-calibration[rag]")
+    raise ImportError(
+        "RAG dependencies are required. Install with: pip install ptpd-calibration[rag]"
+    )
 
 from ptpd_calibration.config import get_settings
 
@@ -23,7 +25,9 @@ class RAGDatabase:
     Manages the Retrieval-Augmented Generation database.
     """
 
-    def __init__(self, persist_directory: Path | None = None, embedding_model: str = "all-MiniLM-L6-v2"):
+    def __init__(
+        self, persist_directory: Path | None = None, embedding_model: str = "all-MiniLM-L6-v2"
+    ):
         """
         Initialize the RAG database.
 
@@ -51,7 +55,7 @@ class RAGDatabase:
         self._collection = self._client.get_or_create_collection(
             name="ptpd_documents",
             embedding_function=self._embedding_function,
-            metadata={"hnsw:space": "cosine"}  # Use cosine distance for similarity
+            metadata={"hnsw:space": "cosine"},  # Use cosine distance for similarity
         )
         logger.info(f"RAG database initialized at: {self._persist_directory}")
 
@@ -72,11 +76,7 @@ class RAGDatabase:
         ids = [f"doc_{start_id + i}" for i in range(len(documents))]
 
         logger.info(f"Adding {len(documents)} documents to the RAG collection.")
-        self._collection.add(
-            documents=documents,
-            metadatas=metadatas,
-            ids=ids
-        )
+        self._collection.add(documents=documents, metadatas=metadatas, ids=ids)
 
     def search(self, query: str, n_results: int = 3) -> list[str]:
         """
@@ -93,10 +93,7 @@ class RAGDatabase:
             return []
 
         logger.info(f"Searching RAG DB for query: '{query}'")
-        results = self._collection.query(
-            query_texts=[query],
-            n_results=n_results
-        )
+        results = self._collection.query(query_texts=[query], n_results=n_results)
 
         return results.get("documents", [[]])[0]
 
@@ -107,6 +104,7 @@ class RAGDatabase:
 
 # Singleton instance
 _rag_db_instance: RAGDatabase | None = None
+
 
 def get_rag_db() -> RAGDatabase:
     """Get the singleton RAGDatabase instance."""

@@ -229,7 +229,7 @@ All tutorial content, glossary terms, and tips are stored as structured data (Py
                 "tips": [...],
                 "warnings": [...],
             }
-        ]
+        ],
     }
 }
 ```
@@ -274,6 +274,7 @@ def show_coating_help():
     for tip in tips:
         print(f"  • {tip.content}")
 
+
 # Start tutorial from UI
 def begin_tutorial(tutorial_name):
     tm = TutorialManager()
@@ -298,7 +299,7 @@ def get_term_definition(term):
             "term": term_obj.term,
             "definition": term_obj.definition,
             "examples": term_obj.examples,
-            "related": [glossary.lookup(t).term for t in term_obj.related_terms]
+            "related": [glossary.lookup(t).term for t in term_obj.related_terms],
         }
 ```
 
@@ -346,13 +347,15 @@ GLOSSARY_DATA["new_term"] = {
 Edit `tips.py` and add to `TIPS_DATA` list:
 
 ```python
-TIPS_DATA.append({
-    "content": "New tip content...",
-    "category": TipCategory.COATING,
-    "difficulty": TipDifficulty.ALL,
-    "priority": 3,
-    "conditions": ["coating"],
-})
+TIPS_DATA.append(
+    {
+        "content": "New tip content...",
+        "category": TipCategory.COATING,
+        "difficulty": TipDifficulty.ALL,
+        "priority": 3,
+        "conditions": ["coating"],
+    }
+)
 ```
 
 ## License

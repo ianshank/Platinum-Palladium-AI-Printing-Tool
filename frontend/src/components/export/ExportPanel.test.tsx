@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { type ExportFormat, ExportPanel } from './ExportPanel';
 
 // Mock utilities
@@ -71,7 +77,9 @@ describe('ExportPanel', () => {
       );
 
       expect(screen.getByText('Export Your Data')).toBeInTheDocument();
-      expect(screen.getByText('Choose a format to download')).toBeInTheDocument();
+      expect(
+        screen.getByText('Choose a format to download')
+      ).toBeInTheDocument();
     });
 
     it('renders without description when not provided', () => {
@@ -344,7 +352,10 @@ describe('ExportPanel', () => {
       });
 
       await waitFor(() => {
-        expect(downloadFile).toHaveBeenCalledWith(mockBlob, 'my_calibration.qtr');
+        expect(downloadFile).toHaveBeenCalledWith(
+          mockBlob,
+          'my_calibration.qtr'
+        );
       });
     });
 
@@ -367,7 +378,10 @@ describe('ExportPanel', () => {
       });
 
       await waitFor(() => {
-        expect(downloadFile).toHaveBeenCalledWith(mockBlob, 'my_curve_name.csv');
+        expect(downloadFile).toHaveBeenCalledWith(
+          mockBlob,
+          'my_curve_name.csv'
+        );
       });
     });
 

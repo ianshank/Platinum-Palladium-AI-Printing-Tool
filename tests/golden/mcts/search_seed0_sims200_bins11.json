@@ -1,0 +1,154 @@
+{
+  "alternatives": [
+    {
+      "coating_weight": 1.0,
+      "developer_temp": 35.0,
+      "exposure_time": 600.0,
+      "ferric_oxalate_pct": 25.8,
+      "humidity": 75.0,
+      "metal_ratio": 0.4
+    },
+    {
+      "coating_weight": 2.789986201,
+      "developer_temp": 41.307602709,
+      "exposure_time": 508.851993437,
+      "ferric_oxalate_pct": 16.119262372,
+      "humidity": 69.252387981,
+      "metal_ratio": 0.918464896
+    },
+    {
+      "coating_weight": 2.029742712,
+      "developer_temp": 41.908357291,
+      "exposure_time": 219.887028255,
+      "ferric_oxalate_pct": 24.936759341,
+      "humidity": 65.182127308,
+      "metal_ratio": 0.625265829
+    },
+    {
+      "coating_weight": 2.792547423,
+      "developer_temp": 24.274831817,
+      "exposure_time": 487.906680863,
+      "ferric_oxalate_pct": 17.660446755,
+      "humidity": 57.149497885,
+      "metal_ratio": 0.062984274
+    }
+  ],
+  "best_parameters": {
+    "coating_weight": 1.0,
+    "developer_temp": 35.0,
+    "exposure_time": 600.0,
+    "ferric_oxalate_pct": 25.8,
+    "humidity": 75.0,
+    "metal_ratio": 0.4
+  },
+  "quality_score": 0.444610023,
+  "root_visit_count": 200,
+  "seed": 0,
+  "settings": {
+    "action_bins": 11,
+    "c_puct": 1.4,
+    "cost_metal_weight": 0.6,
+    "cost_weight": 0.1,
+    "decision_order": [
+      "metal_ratio",
+      "coating_weight",
+      "ferric_oxalate_pct",
+      "exposure_time",
+      "developer_temp",
+      "humidity"
+    ],
+    "dmax_scoring_sigma": 0.5,
+    "dmax_weight": 0.3,
+    "linearity_decay_rate": 5.0,
+    "linearity_weight": 0.4,
+    "max_actions_per_node": 20,
+    "num_simulations": 200,
+    "progressive_widening_alpha": 0.5,
+    "progressive_widening_c": 1.0,
+    "smoothness_decay_rate": 20.0,
+    "smoothness_weight": 0.2,
+    "target_dmax": 2.0,
+    "target_dmin": 0.05
+  },
+  "total_nodes": 7,
+  "visit_counts": {
+    "coating_weight": [
+      0,
+      0,
+      198,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "developer_temp": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      195,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "exposure_time": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      196
+    ],
+    "ferric_oxalate_pct": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      197,
+      0
+    ],
+    "humidity": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      194,
+      0
+    ],
+    "metal_ratio": [
+      0,
+      0,
+      0,
+      0,
+      199,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+}

@@ -6,6 +6,8 @@ Supports QuadTone RIP, Piezography, CSV, and JSON formats.
 
 import csv
 import json
+import logging
+import unicodedata
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +16,83 @@ import numpy as np
 
 from ptpd_calibration.config import get_settings
 from ptpd_calibration.core.models import CurveData
+
+logger = logging.getLogger(__name__)
+
+# Header that identifies the QuadToneRIP list format written by QTRExporter.
+QTR_HEADER = "## QuadToneRIP"
+
+# Metadata comment prefixes written by QTRExporter that are restored on load.
+_QTR_NAME_KEYS = ("Name:", "Profile:")
+_QTR_PAPER_KEY = "Paper:"
+_QTR_CHEMISTRY_KEY = "Chemistry:"
+_QTR_UNKNOWN = "Unknown"
+
+# Unicode general categories that must not survive into a one-line comment.
+# ``Cc``/``Cf`` cover the C0 and C1 controls plus the bidirectional-override
+# formatters that let one name render as another; ``Zl``/``Zp`` cover U+2028 and
+# U+2029, which several readers treat as line breaks. Naming categories rather
+# than characters keeps the rule complete as Unicode grows.
+_UNSAFE_COMMENT_CATEGORIES: frozenset[str] = frozenset({"Cc", "Cf", "Zl", "Zp"})
+
+
+def safe_comment_value(
+    value: object,
+    *,
+    default: str = _QTR_UNKNOWN,
+    max_length: int | None = None,
+) -> str:
+    """Reduce curve metadata to something safe to write as one ``# Key: value`` line.
+
+    QuadToneRIP and Piezography files are line-oriented: a comment ends at the
+    newline, and the loader decides what a line means from its first characters.
+    Interpolating a curve name, paper type or chemistry verbatim therefore let
+    the value forge sibling lines. A ``paper_type`` of ``"Arches\\n# Profile: X"``
+    exported and re-imported came back named ``X``, so a name chosen by whoever
+    uploaded a curve decided what a different reader saw; a newline in the name
+    injected a bare integer that ended the header block early and silently
+    dropped the paper and chemistry behind it.
+
+    Collapsing the value onto a single line removes the mechanism. A value may
+    still contain ``#`` or another field's key -- the loader only inspects the
+    start of a comment, so those stay inert and round trip unchanged.
+
+    Args:
+        value: The metadata value; anything not a string is passed to ``str``.
+        default: Returned when nothing printable survives.
+        max_length: Truncation limit; ``None`` reads it from settings.
+
+    Returns:
+        A single-line value with runs of whitespace collapsed to one space.
+    """
+    text = "" if value is None else str(value)
+    stripped = "".join(
+        " " if unicodedata.category(char) in _UNSAFE_COMMENT_CATEGORIES else char for char in text
+    )
+    # ``split`` with no argument splits on every whitespace character, so this
+    # also normalises tabs and the non-breaking spaces left by the pass above.
+    cleaned = " ".join(stripped.split())[: _comment_limit(max_length)].strip()
+    if not cleaned:
+        logger.debug("Export comment value %r sanitised to default %r", text, default)
+        return default
+    if cleaned != text:
+        logger.debug("Export comment value %r sanitised to %r", text, cleaned)
+    return cleaned
+
+
+def _comment_limit(max_length: int | None) -> int:
+    """Resolve the comment truncation limit, tolerating an unloadable config."""
+    if max_length is not None:
+        return max_length
+    try:
+        return int(get_settings().curves.max_export_comment_length)
+    except Exception:  # pragma: no cover - configuration is broken, still export
+        logger.debug("Falling back to the built-in export comment limit", exc_info=True)
+        return _FALLBACK_COMMENT_LIMIT
+
+
+#: Used only when settings cannot be loaded; the real value is a settings field.
+_FALLBACK_COMMENT_LIMIT = 256
 
 
 class CurveExporter(ABC):
@@ -79,9 +158,9 @@ class QTRExporter(CurveExporter):
             f"## QuadToneRIP {self.primary_channel}",
             "# QTR Curve File",
             f"# Generated: {datetime.now().isoformat()}",
-            f"# Name: {curve.name}",
-            f"# Paper: {curve.paper_type or 'Unknown'}",
-            f"# Chemistry: {curve.chemistry or 'Unknown'}",
+            f"# Name: {safe_comment_value(curve.name)}",
+            f"# Paper: {safe_comment_value(curve.paper_type)}",
+            f"# Chemistry: {safe_comment_value(curve.chemistry)}",
             f"# Ink Limit: {self.ink_limit}%",
             f"# {self.primary_channel} Curve",
         ]
@@ -116,10 +195,10 @@ class QTRExporter(CurveExporter):
 
         lines = [
             f"## QuadToneRIP {','.join(all_channels)}",
-            f"# Profile: {curve.name}",
+            f"# Profile: {safe_comment_value(curve.name)}",
             f"# Generated: {datetime.now().isoformat()}",
-            f"# Paper: {curve.paper_type or 'Unknown'}",
-            f"# Chemistry: {curve.chemistry or 'Unknown'}",
+            f"# Paper: {safe_comment_value(curve.paper_type)}",
+            f"# Chemistry: {safe_comment_value(curve.chemistry)}",
             f"# Resolution: {self.resolution}",
             f"# Ink Limit: {self.ink_limit}%",
         ]
@@ -191,9 +270,9 @@ class PiezographyExporter(CurveExporter):
         """Export as Piezography Print Tool format."""
         lines = [
             "# Piezography Linearization",
-            f"# Name: {curve.name}",
+            f"# Name: {safe_comment_value(curve.name)}",
             f"# Ink Set: {self.ink_set}",
-            f"# Paper: {curve.paper_type or 'Unknown'}",
+            f"# Paper: {safe_comment_value(curve.paper_type)}",
             f"# Generated: {datetime.now().isoformat()}",
             "",
             "[Linearization]",
@@ -309,6 +388,13 @@ def load_curve(path: Path) -> CurveData:
 
     Returns:
         CurveData loaded from file.
+
+    Notes:
+        ``.quad``/``.txt`` files written by :class:`QTRExporter` (QuadToneRIP
+        list format, ``## QuadToneRIP`` header) are read back through
+        :class:`~ptpd_calibration.curves.parser.QuadFileParser`. The parser
+        stores channel values as 8-bit, so a ``save_curve``/``load_curve``
+        round trip of a QTR file reproduces the curve only to within 2/255.
     """
     ext = path.suffix.lower()
 
@@ -353,7 +439,26 @@ def _load_csv_curve(path: Path) -> CurveData:
 
 
 def _load_text_curve(path: Path) -> CurveData:
-    """Load curve from text format (QTR/Piezography)."""
+    """Load curve from text format (QTR/Piezography).
+
+    Two layouts are understood:
+
+    * ``key=value`` lines (Piezography ``.ppt``, bracketed ``[K]`` sections):
+      parsed here directly as 0-255 index/value pairs.
+    * QuadToneRIP list format (``## QuadToneRIP`` header, one integer per line
+      under ``# <channel> Curve``), i.e. what :class:`QTRExporter` writes:
+      delegated to :func:`_load_qtr_list_curve`.
+
+    Before the delegation existed, ``save_curve(curve, "x.quad")`` followed by
+    ``load_curve("x.quad")`` always raised ``ValueError("No curve data found")``
+    because only the ``key=value`` layout was recognised (probe finding F3).
+    That was a defect in the public round-trip contract and is fixed here.
+    """
+    with open(path) as f:
+        header = f.readline()
+    if header.lstrip().startswith(QTR_HEADER):
+        return _load_qtr_list_curve(path)
+
     input_values = []
     output_values = []
     name = path.stem
@@ -389,3 +494,81 @@ def _load_text_curve(path: Path) -> CurveData:
         input_values=input_values,
         output_values=output_values,
     )
+
+
+def _load_qtr_list_curve(path: Path) -> CurveData:
+    """Load a QuadToneRIP list-format file via :class:`QuadFileParser`.
+
+    The first channel carrying non-zero data is used (``K`` when every channel
+    is empty). Name, paper type and chemistry are restored from the header
+    comments that :class:`QTRExporter` writes (read directly from the file:
+    the parser treats any comment ending in " Curve" as a channel header, so
+    its ``comments`` list is not reliable for this); the name falls back to
+    the file stem. Values are quantised to 8-bit by the parser, so the loaded
+    curve matches the exported one only to within 2/255 (16-bit -> 8-bit
+    truncation plus ``int()`` truncation on export).
+    """
+    from ptpd_calibration.curves.parser import QuadFileParser
+
+    profile = QuadFileParser().parse(path)
+    active = profile.active_channels
+    channel = active[0] if active else "K"
+
+    header_name, paper_type, chemistry = _read_qtr_header_metadata(path)
+    name = header_name or path.stem
+
+    parsed = profile.to_curve_data(channel)
+    logger.debug(
+        "Loaded QTR list-format curve from %s (channel %s, %d points)",
+        path,
+        channel,
+        len(parsed.output_values),
+    )
+
+    return CurveData(
+        name=name,
+        input_values=parsed.input_values,
+        output_values=parsed.output_values,
+        paper_type=paper_type,
+        chemistry=chemistry,
+        notes=parsed.notes,
+    )
+
+
+def _clean_qtr_value(comment: str, key: str) -> str | None:
+    """Value after ``key`` in a header comment; ``None`` for empty or 'Unknown'.
+
+    The value is run through :func:`safe_comment_value` as well, because a file
+    written by another tool -- or uploaded by another user -- is not bound by
+    what this exporter writes, and the result flows on into API responses.
+    """
+    value = safe_comment_value(comment[len(key) :], default=_QTR_UNKNOWN)
+    return value if value != _QTR_UNKNOWN else None
+
+
+def _read_qtr_header_metadata(path: Path) -> tuple[str | None, str | None, str | None]:
+    """Return ``(name, paper_type, chemistry)`` from the QTR header comments.
+
+    Only the comment block preceding the first curve value is scanned.
+    """
+    name: str | None = None
+    paper_type: str | None = None
+    chemistry: str | None = None
+
+    with open(path) as f:
+        for raw in f:
+            line = raw.strip()
+            if not line:
+                continue
+            if not line.startswith("#"):
+                break
+            comment = line.lstrip("#").strip()
+            for key in _QTR_NAME_KEYS:
+                if comment.startswith(key):
+                    name = _clean_qtr_value(comment, key) or name
+            if comment.startswith(_QTR_PAPER_KEY):
+                paper_type = _clean_qtr_value(comment, _QTR_PAPER_KEY)
+            elif comment.startswith(_QTR_CHEMISTRY_KEY):
+                chemistry = _clean_qtr_value(comment, _QTR_CHEMISTRY_KEY)
+
+    return name, paper_type, chemistry

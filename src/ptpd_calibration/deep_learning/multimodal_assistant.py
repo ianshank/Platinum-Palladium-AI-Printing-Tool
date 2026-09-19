@@ -11,7 +11,6 @@ import base64
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
-from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -19,6 +18,7 @@ from uuid import uuid4
 
 import numpy as np
 
+from ptpd_calibration.core.time import utc_now
 from ptpd_calibration.deep_learning.config import MultiModalSettings
 from ptpd_calibration.deep_learning.models import (
     ImageAnalysis,
@@ -29,6 +29,7 @@ from ptpd_calibration.deep_learning.types import (
     AssistantMode,
     VisionLanguageModel,
 )
+from ptpd_calibration.imaging.safe_image import image_from_array, to_uint8_scale
 
 logger = logging.getLogger(__name__)
 
@@ -573,7 +574,7 @@ class MultiModalAssistant:
         Returns:
             MultiModalResponse: Assistant response
         """
-        start_time = datetime.utcnow()
+        start_time = utc_now()
         stream_enabled = stream if stream is not None else self.settings.stream_response
 
         # Add message to history
@@ -616,7 +617,7 @@ class MultiModalAssistant:
             ]
 
         # Build response
-        inference_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        inference_time = (utc_now() - start_time).total_seconds() * 1000
 
         return MultiModalResponse(
             response_text=response_text,
@@ -687,7 +688,7 @@ class MultiModalAssistant:
         Returns:
             ToolCall: Tool execution result
         """
-        start_time = datetime.utcnow()
+        start_time = utc_now()
 
         if tool_name not in self.tools:
             return ToolCall(
@@ -719,7 +720,7 @@ class MultiModalAssistant:
             error = str(e)
             logger.error(f"Error executing tool {tool_name}: {e}")
 
-        execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        execution_time = (utc_now() - start_time).total_seconds() * 1000
 
         return ToolCall(
             tool_name=tool_name,
@@ -952,15 +953,14 @@ class MultiModalAssistant:
                 scale = self.settings.max_image_size / max_dim
                 new_size = (int(image.shape[1] * scale), int(image.shape[0] * scale))
 
-                img = Image.fromarray(image)
+                img = image_from_array(to_uint8_scale(image))
                 img = img.resize(new_size, Image.Resampling.LANCZOS)
                 image = np.array(img)
 
-            # Convert to PIL Image
-            if len(image.shape) == 2:
-                img = Image.fromarray(image, mode="L")
-            else:
-                img = Image.fromarray(image, mode="RGB")
+            # Convert to PIL Image. Without the normalisation a float array was
+            # reinterpreted as bytes rather than converted, so the base64 blob
+            # sent to the model was noise and still saved without error.
+            img = image_from_array(to_uint8_scale(image))
 
             # Encode to base64
             buffer = BytesIO()

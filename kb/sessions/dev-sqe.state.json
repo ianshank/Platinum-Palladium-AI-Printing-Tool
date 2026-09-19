@@ -1,55 +1,64 @@
 {
-  "last_session_id": "1771779535-039824300",
-  "last_timestamp": "2026-02-22T16:58:54.000Z",
-  "active_branch": "claude/compassionate-pike",
-  "git_commit": "5ac3a6e",
+  "last_session_id": "e274d4ad-70e6-5d62-ba38-6b277fa971b0",
+  "last_timestamp": "2026-09-18T16:30:00.000Z",
+  "active_branch": "claude/ptpd-validation-sdlc-plan-j2a2gc",
+  "git_commit": "843566e",
+  "pull_request": "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/pull/37",
+  "ci_run": "https://github.com/ianshank/Platinum-Palladium-AI-Printing-Tool/actions/runs/35368643634",
   "context_files": [
-    "src/ptpd_calibration/api/server.py",
-    "src/ptpd_calibration/core/types.py",
-    "src/ptpd_calibration/curves/parser.py",
-    "frontend/src/components/curves/CurveEditor.tsx",
-    "frontend/src/stores/slices/uiSlice.ts",
-    "frontend/e2e/app.spec.ts"
+    "docs/plans/2026-09-validation-sdlc-plan.md",
+    "docs/adr/0016-bit-depth-is-preserved-end-to-end.md",
+    "docs/adr/README.md",
+    "AGENTS.md",
+    "src/ptpd_calibration/imaging/processor.py",
+    "src/ptpd_calibration/api/server.py"
   ],
   "resume_pointers": {
+    "current_task": "Wire the React export panel to POST /api/export/negative",
     "last_file_modified": "src/ptpd_calibration/api/server.py",
-    "last_test_file": "frontend/e2e/app.spec.ts",
+    "last_test_file": "tests/api/test_negative_export.py",
+    "next_steps": [
+      "Wire ExportPanel and ImagePreview to the negative export client call (plan ARC-07, second half)",
+      "Close the remaining Gradio gaps before retiring ui/ (ADR-0004): image preview, chemistry API, session persistence, auto-linearisation, exposure, papers, wedge analysis",
+      "Pillow 13 removes the Image.fromarray mode= argument on 2026-10-15; the repo still has calls that pass it and filterwarnings is error, so a version bump breaks everything at once",
+      "Dismantle the root __init__ facade and break the config/mcts cycle before landing import-linter contracts (ADR-0012)",
+      "Owner performs plan section 9 actions (default branch, rulesets, stale PRs, deploy secret, dependency graph)",
+      "Phase 2: MCTS ablation before any further MCTS investment (ADR-0005)"
+    ],
     "context_files": [
-      "src/ptpd_calibration/api/server.py",
-      "src/ptpd_calibration/core/types.py",
-      "src/ptpd_calibration/curves/parser.py",
-      "frontend/src/components/curves/CurveEditor.tsx",
-      "frontend/src/stores/slices/uiSlice.ts",
-      "frontend/e2e/app.spec.ts"
+      "docs/plans/2026-09-validation-sdlc-plan.md",
+      "docs/adr/README.md",
+      "AGENTS.md"
     ]
   },
   "implementation_status": {
     "completed": [
-      "Fix CurveEditor adjustment_type 'none' -> 'brightness' (P0 HTTP-400 bug)",
-      "Fix uiSlice sidebarOpen default true -> false",
-      "Fix e2e test selectors (duplicate h1 scoped to main, focus-visible)",
-      "Backend Fix 1: analyze_densities empty densities guard -> HTTP 422",
-      "Backend Fix 2: create_calibration pydantic.ValidationError -> HTTP 422",
-      "Backend Fix 3: get_calibration UUID ValueError -> HTTP 422",
-      "Backend Fix 4: smooth_curve preserve_endpoints moved to __init__",
-      "Backend Fix 5: parse_quad_content raw_sections + active_channels validation",
-      "Backend Fix 6: CurveType enum SPLINE + POLYNOMIAL values added"
+      "Phase 0 (TASK-002..010, TASK-012)",
+      "sRGB linearisation and provenance labelling",
+      "LUT cache keyed on curve values",
+      "curve input validation",
+      "OpenAPI codegen and the frontend contract",
+      "deliberate logging, request ids, truthful health",
+      "bit depth preserved end to end (ADR-0016)",
+      "POST /api/export/negative and its client call"
     ],
     "in_progress": [],
-    "blocked": [],
-    "ready_for_pr": ["claude/compassionate-pike"]
-  },
-  "test_status": {
-    "playwright_e2e": "9/9 passed",
-    "backend_pytest": "104 passed, 13 skipped, 0 failed",
-    "frontend_vitest": "726 passed, 0 failed",
-    "typecheck_errors": 0,
-    "lint_errors": 0,
-    "last_test_run": "2026-02-22T16:58:54.000Z"
+    "blocked": [
+      "TASK-001 and TASK-011: owner actions in plan section 9",
+      "dependency review check: owner must enable the repository dependency graph"
+    ],
+    "ready_for_pr": ["PR #37 is a draft with all-green passing on the current head"]
   },
   "quality_checks": {
     "lint": "pass",
+    "format": "pass",
     "typecheck": "pass",
-    "format": "pass"
+    "schema_drift": "none",
+    "note": "Test and coverage figures are not recorded here; read them from the CI run linked above (ADR-0007)."
+  },
+  "review": {
+    "kind": "adversarial subagent review of the 16-bit imaging change",
+    "findings": 15,
+    "outcome": "all addressed in c2bb5c9; six were defects the first pass missed, one of which made the feature unreachable for any scan above the decode limit"
   }
 }

@@ -3,14 +3,73 @@ Comprehensive parser for QTR .quad files.
 
 Parses QuadTone RIP profile files with full metadata extraction
 and multi-channel curve support.
+
+Input hardening (plan item SEC-14): a ``.quad`` file is untrusted input, so
+the parser enforces the caps on :class:`QuadParserLimits` (file size, number
+of channels, sections and keys, name lengths), decodes the file exactly once,
+strips a UTF-8 BOM before header detection and rejects non-finite numeric
+values with ``ValueError`` instead of leaking ``OverflowError``.
 """
 
+from __future__ import annotations
+
+import codecs
+import logging
+import math
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from annotated_types import MaxLen
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from ptpd_calibration.core.logging import sanitize_log_text
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
+
+logger = logging.getLogger(__name__)
+
+
+def _curve_name_limit() -> int:
+    """Maximum ``CurveData.name`` length, read from the model so the two never drift."""
+    for constraint in CurveData.model_fields["name"].metadata:
+        if isinstance(constraint, MaxLen):
+            return int(constraint.max_length)
+    return 256  # pragma: no cover - CurveData.name always carries a max_length
+
+
+_CURVE_NAME_MAX = _curve_name_limit()
+
+
+class QuadParserLimits(BaseSettings):
+    """Size caps applied while parsing ``.quad`` files.
+
+    Every field can be overridden with a ``PTPD_QUAD_`` environment variable,
+    e.g. ``PTPD_QUAD_MAX_BYTES=4194304``.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="PTPD_QUAD_")
+
+    max_bytes: int = Field(
+        default=2 * 1024 * 1024,
+        ge=1,
+        description="Maximum file size (or string length) accepted",
+    )
+    max_channels: int = Field(
+        default=16, ge=1, description="Maximum number of ink channels a profile may declare"
+    )
+    max_sections: int = Field(
+        default=64, ge=1, description="Maximum number of [Section] headers in INI-style files"
+    )
+    max_keys_per_section: int = Field(
+        default=1024, ge=1, description="Maximum key=value pairs stored per section"
+    )
+    max_name_length: int = Field(
+        default=200,
+        ge=1,
+        description="Names and metadata strings longer than this are truncated",
+    )
 
 
 @dataclass
@@ -34,8 +93,12 @@ class ChannelCurve:
     def to_curve_data(self, name_suffix: str = "") -> CurveData:
         """Convert to CurveData model."""
         inputs, outputs = self.as_normalized
+        name = f"{self.name}{name_suffix}"
+        if len(name) > _CURVE_NAME_MAX:
+            logger.debug("Truncating curve name from %d to %d chars", len(name), _CURVE_NAME_MAX)
+            name = name[:_CURVE_NAME_MAX]
         return CurveData(
-            name=f"{self.name}{name_suffix}",
+            name=name,
             input_values=inputs,
             output_values=outputs,
             curve_type=CurveType.CUSTOM,
@@ -141,8 +204,14 @@ class QuadFileParser:
     GENERAL_SECTION = "General"
     CHANNEL_SECTIONS = ["K", "C", "M", "Y", "LC", "LM", "LK", "LLK", "PK", "MK"]
 
-    def __init__(self) -> None:
-        """Initialize the parser."""
+    def __init__(self, limits: QuadParserLimits | None = None) -> None:
+        """Initialize the parser.
+
+        Args:
+            limits: Size caps to enforce; ``None`` reads :class:`QuadParserLimits`
+                from the environment.
+        """
+        self.limits = limits or QuadParserLimits()
         self._current_section: str | None = None
         self._profile: QuadProfile | None = None
 
@@ -155,34 +224,30 @@ class QuadFileParser:
 
         Returns:
             QuadProfile with all parsed data.
+
+        Raises:
+            FileNotFoundError: The file does not exist.
+            ValueError: The file exceeds a :class:`QuadParserLimits` cap or
+                contains a non-finite numeric value.
         """
+        path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"File not found: {path}")
+
+        size = path.stat().st_size
+        if size > self.limits.max_bytes:
+            logger.debug(
+                "Rejected %s: %d bytes exceeds max_bytes=%d", path, size, self.limits.max_bytes
+            )
+            raise ValueError(
+                f".quad file {path.name} is {size} bytes, which exceeds the limit of "
+                f"{self.limits.max_bytes} bytes"
+            )
 
         self._profile = QuadProfile(source_path=path)
         self._current_section = None
 
-        content = None
-        candidate_markers = ("[", "]")
-        # Try different encodings
-        for encoding in ["utf-8", "utf-16", "latin-1", "cp1252"]:
-            try:
-                with open(path, encoding=encoding) as f:
-                    candidate = f.read()
-            except UnicodeError:
-                continue
-
-            has_bracket_sections = all(marker in candidate for marker in candidate_markers)
-            has_qtr_header = candidate.lstrip().startswith("## QuadToneRIP")
-
-            if has_bracket_sections or has_qtr_header:
-                content = candidate
-                break
-
-        if content is None:
-            # Fallback to replace
-            with open(path, encoding="utf-8", errors="replace") as f:
-                content = f.read()
+        content = self._decode(path.read_bytes(), str(path))
 
         # Parse the content
         self._parse_content(content)
@@ -202,8 +267,23 @@ class QuadFileParser:
 
         Returns:
             QuadProfile with all parsed data.
+
+        Raises:
+            ValueError: The content exceeds a :class:`QuadParserLimits` cap or
+                contains a non-finite numeric value.
         """
-        self._profile = QuadProfile(profile_name=name)
+        if len(content) > self.limits.max_bytes:
+            logger.debug(
+                "Rejected string input: %d chars exceeds max_bytes=%d",
+                len(content),
+                self.limits.max_bytes,
+            )
+            raise ValueError(
+                f".quad content is {len(content)} characters, which exceeds the limit of "
+                f"{self.limits.max_bytes}"
+            )
+
+        self._profile = QuadProfile(profile_name=self._clip(name, "profile name"))
         self._current_section = None
 
         self._parse_content(content)
@@ -211,9 +291,89 @@ class QuadFileParser:
 
         return self._profile
 
+    # ------------------------------------------------------------------
+    # Guards
+    # ------------------------------------------------------------------
+
+    def _decode(self, raw: bytes, label: str) -> str:
+        """Decode file bytes exactly once.
+
+        UTF-16 is recognised by its BOM; everything else is tried as UTF-8
+        (a UTF-8 BOM is consumed) and falls back to Latin-1, which cannot fail
+        and matches the behaviour of the previous multi-encoding probe for
+        Windows/Mac authored profiles.
+        """
+        if raw.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+            logger.debug("Decoding %s as UTF-16 (BOM present)", label)
+            return raw.decode("utf-16")
+        try:
+            return raw.decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            logger.debug("Decoding %s as Latin-1 after UTF-8 failure at byte %d", label, exc.start)
+            return raw.decode("latin-1")
+
+    def _clip(self, value: str, what: str) -> str:
+        """Truncate ``value`` to ``max_name_length`` so downstream models validate."""
+        limit = self.limits.max_name_length
+        if len(value) > limit:
+            logger.debug("Truncating %s from %d to %d chars", what, len(value), limit)
+            return value[:limit]
+        return value
+
+    def _ensure_channel(self, name: str) -> ChannelCurve:
+        """Return the channel called ``name``, creating it under the channel cap."""
+        assert self._profile is not None
+        channel = self._profile.channels.get(name)
+        if channel is None:
+            if len(self._profile.channels) >= self.limits.max_channels:
+                logger.debug(
+                    "Rejected channel %r: max_channels=%d reached", name, self.limits.max_channels
+                )
+                raise ValueError(
+                    f".quad profile declares more than {self.limits.max_channels} channels"
+                )
+            channel = ChannelCurve(name=name, values=[0] * 256)
+            self._profile.channels[name] = channel
+        return channel
+
+    def _ensure_section(self, name: str) -> dict[str, str]:
+        """Return raw storage for section ``name``, creating it under the section cap."""
+        assert self._profile is not None
+        section = self._profile.raw_sections.get(name)
+        if section is None:
+            if len(self._profile.raw_sections) >= self.limits.max_sections:
+                logger.debug(
+                    "Rejected section %r: max_sections=%d reached", name, self.limits.max_sections
+                )
+                raise ValueError(
+                    f".quad profile declares more than {self.limits.max_sections} sections"
+                )
+            section = {}
+            self._profile.raw_sections[name] = section
+        return section
+
+    @staticmethod
+    def _finite_float(value: str, where: str) -> float | None:
+        """Parse ``value`` as a float; ``None`` if non-numeric, ``ValueError`` if non-finite."""
+        try:
+            number = float(value)
+        except ValueError:
+            return None
+        if not math.isfinite(number):
+            logger.debug("Rejected non-finite value %r at %s", value, where)
+            raise ValueError(f"Non-finite value {value!r} at {where} in .quad profile")
+        return number
+
+    # ------------------------------------------------------------------
+    # Parsing
+    # ------------------------------------------------------------------
+
     def _parse_content(self, content: str) -> None:
         """Parse the file content."""
         assert self._profile is not None
+        if content.startswith("﻿"):
+            logger.debug("Stripping UTF-8 BOM before header detection")
+            content = content[1:]
         lines = content.split("\n")
 
         # Check for simple format (starts with ## QuadToneRIP)
@@ -239,18 +399,11 @@ class QuadFileParser:
                 self._current_section = section_name
 
                 # Initialize section storage
-                if section_name not in self._profile.raw_sections:
-                    self._profile.raw_sections[section_name] = {}
+                self._ensure_section(section_name)
 
                 # Initialize channel if it's a known channel section
-                if (
-                    section_name.upper() in self.CHANNEL_SECTIONS
-                    and section_name.upper() not in self._profile.channels
-                ):
-                    self._profile.channels[section_name.upper()] = ChannelCurve(
-                        name=section_name.upper(),
-                        values=[0] * 256,
-                    )
+                if section_name.upper() in self.CHANNEL_SECTIONS:
+                    self._ensure_channel(section_name.upper())
                 continue
 
             # Parse key=value pairs
@@ -275,13 +428,9 @@ class QuadFileParser:
                     # Usually "# K Curve" -> parts=["K", "Curve"]
                     if len(parts) >= 2 and parts[-1] == "Curve":
                         # Handle "K Curve", "LC Curve" etc.
-                        channel_name = parts[0].upper()
+                        channel_name = self._clip(parts[0].upper(), "channel name")
                         current_channel = channel_name
-
-                        if current_channel not in self._profile.channels:
-                            self._profile.channels[current_channel] = ChannelCurve(
-                                name=current_channel, values=[0] * 256
-                            )
+                        self._ensure_channel(current_channel)
                         value_index = 0
                 elif line.startswith("## QuadToneRIP"):
                     pass  # Header
@@ -302,8 +451,8 @@ class QuadFileParser:
                             0, min(255, norm_val)
                         )
                         value_index += 1
-                except ValueError:
-                    pass
+                except (ValueError, OverflowError):
+                    logger.debug("Skipping unparsable curve value %r", line)
 
     def _parse_key_value(self, line: str) -> None:
         """Parse a key=value line."""
@@ -318,7 +467,19 @@ class QuadFileParser:
 
         # Store in raw sections
         if self._current_section:
-            self._profile.raw_sections[self._current_section][key] = value
+            section = self._ensure_section(self._current_section)
+            if key not in section and len(section) >= self.limits.max_keys_per_section:
+                logger.debug(
+                    "Rejected key %r in [%s]: max_keys_per_section=%d reached",
+                    key,
+                    sanitize_log_text(self._current_section),
+                    self.limits.max_keys_per_section,
+                )
+                raise ValueError(
+                    f"Section [{self._current_section}] has more than "
+                    f"{self.limits.max_keys_per_section} keys"
+                )
+            section[key] = value
 
         # Process based on current section
         if self._current_section == self.GENERAL_SECTION:
@@ -332,38 +493,43 @@ class QuadFileParser:
         key_lower = key.lower()
 
         if key_lower == "profilename":
-            self._profile.profile_name = value
+            self._profile.profile_name = self._clip(value, "profile name")
         elif key_lower == "resolution":
             with suppress(ValueError):
                 self._profile.resolution = int(value)
         elif key_lower == "inklimit":
-            with suppress(ValueError):
-                self._profile.ink_limit = float(value)
+            number = self._finite_float(value, "InkLimit")
+            if number is not None:
+                self._profile.ink_limit = number
         elif key_lower == "grayinklimit":
-            with suppress(ValueError):
-                self._profile.gray_ink_limit = float(value)
+            number = self._finite_float(value, "GrayInkLimit")
+            if number is not None:
+                self._profile.gray_ink_limit = number
         elif key_lower == "linearizationtype":
-            self._profile.linearization_type = value
+            self._profile.linearization_type = self._clip(value, "linearization type")
         elif key_lower == "blackgeneration":
-            self._profile.black_generation = value
+            self._profile.black_generation = self._clip(value, "black generation")
         elif key_lower == "mediatype":
-            self._profile.media_type = value
+            self._profile.media_type = self._clip(value, "media type")
         elif key_lower == "mediasetting":
-            self._profile.media_setting = value
+            self._profile.media_setting = self._clip(value, "media setting")
 
     def _parse_channel_value(self, channel: str, key: str, value: str) -> None:
         """Parse a channel curve value."""
         assert self._profile is not None
         # Check if key is a numeric index
         if key.isdigit():
+            number = self._finite_float(value, f"[{channel}] {key}")
+            if number is None:
+                return
             try:
                 index = int(key)
-                output = int(float(value))
+                output = int(number)
 
                 if 0 <= index < 256:
                     self._profile.channels[channel].values[index] = max(0, min(255, output))
-            except (ValueError, IndexError):
-                pass
+            except (ValueError, IndexError, OverflowError):
+                logger.debug("Skipping unparsable indexed value %r=%r", key, number)
 
     def _post_process(self) -> None:
         """Post-process the parsed profile."""

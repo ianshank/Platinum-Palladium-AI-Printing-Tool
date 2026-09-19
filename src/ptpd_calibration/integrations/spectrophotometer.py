@@ -5,6 +5,7 @@ Provides abstract interface and concrete implementations for spectrophotometer d
 Currently includes simulated X-Rite device support for testing and development.
 """
 
+import hashlib
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -14,9 +15,35 @@ from enum import Enum
 from pathlib import Path
 
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
+
+
+#: Bounds for the simulated reading. Densities are a physical scale, so these
+#: are constants rather than settings: a caller wanting different numbers wants
+#: a different patch id, not a different ceiling.
+_SIMULATED_DENSITY_CEILING = 2.0
+_SIMULATED_DENSITY_NOISE = 0.02
+_DENSITY_LIMIT = 3.0
+
+#: Width of the seed drawn from a patch id; numpy accepts a 32-bit seed.
+_PATCH_SEED_BYTES = 4
+
+
+def _patch_rng(patch_id: str) -> np.random.Generator:
+    """Return a generator seeded reproducibly from ``patch_id``.
+
+    Two things were wrong with seeding the global RNG from ``hash(patch_id)``.
+    ``hash`` on a string is salted per process by ``PYTHONHASHSEED``, so the
+    simulated readings this promises are "consistent" for differed between runs
+    of the same program; a stable digest fixes that. And seeding the *global*
+    RNG made every other unseeded draw in the process depend on whether a patch
+    had been read first, so the noise added in ``read_density`` changed with
+    call order. A local generator has neither problem.
+    """
+    digest = hashlib.blake2b(patch_id.encode("utf-8"), digest_size=_PATCH_SEED_BYTES).digest()
+    return np.random.default_rng(int.from_bytes(digest, "big"))
 
 
 class MeasurementMode(str, Enum):
@@ -85,8 +112,7 @@ class PatchMeasurement(BaseModel):
     spectral: SpectralData | None = Field(default=None, description="Spectral data")
     timestamp: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class CalibrationResult(BaseModel):
@@ -98,8 +124,7 @@ class CalibrationResult(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     message: str = Field(default="", description="Status message")
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class SpectrophotometerInterface(ABC):
@@ -356,11 +381,15 @@ class XRiteIntegration(SpectrophotometerInterface):
             logger.warning("Device not calibrated, results may be inaccurate")
 
         if self.simulate:
-            # Simulate density reading with some noise
-            # Base density varies by patch, add small random variation
-            base_density = hash(patch_id) % 100 / 50.0  # 0.0 to 2.0 range
-            noise = np.random.normal(0, 0.02)
-            density = max(0.0, min(3.0, base_density + noise))
+            # Simulate a density reading that varies by patch. Both halves used
+            # to be unstable: hash() on a string is salted per process, so the
+            # "base" moved between runs, and the noise came off the global RNG,
+            # so it moved with call order. _patch_rng fixes both -- the same
+            # patch id now reads the same way in any process.
+            rng = _patch_rng(patch_id)
+            base_density = rng.uniform(0.0, _SIMULATED_DENSITY_CEILING)
+            noise = rng.normal(0, _SIMULATED_DENSITY_NOISE)
+            density = max(0.0, min(_DENSITY_LIMIT, base_density + noise))
 
             logger.debug(f"Read density for {patch_id}: {density:.3f}")
             return density
@@ -385,15 +414,14 @@ class XRiteIntegration(SpectrophotometerInterface):
             logger.warning("Device not calibrated, results may be inaccurate")
 
         if self.simulate:
-            # Simulate L*a*b* values based on patch_id hash
-            seed = hash(patch_id)
-            np.random.seed(seed % 2**32)
+            # Simulate L*a*b* values derived from the patch id.
+            rng = _patch_rng(patch_id)
 
             # L* varies more (0-100)
-            L = np.random.uniform(20, 90)
+            L = rng.uniform(20, 90)
             # a* and b* centered around 0 with smaller range
-            a = np.random.uniform(-20, 20)
-            b = np.random.uniform(-20, 20)
+            a = rng.uniform(-20, 20)
+            b = rng.uniform(-20, 20)
 
             lab = LABValue(L=L, a=a, b=b)
             logger.debug(f"Read L*a*b* for {patch_id}: L={L:.1f}, a={a:.1f}, b={b:.1f}")
@@ -408,11 +436,10 @@ class XRiteIntegration(SpectrophotometerInterface):
         wavelengths = list(range(400, 710, 10))
 
         # Generate pseudo-random but consistent spectral curve
-        seed = hash(patch_id)
-        np.random.seed(seed % 2**32)
+        rng = _patch_rng(patch_id)
 
         # Create a smooth spectral curve
-        base_curve = np.random.uniform(0.1, 0.9, len(wavelengths))
+        base_curve = rng.uniform(0.1, 0.9, len(wavelengths))
         # Smooth it
         kernel = np.array([0.25, 0.5, 0.25])
         values = np.convolve(base_curve, kernel, mode="same")
@@ -589,7 +616,7 @@ class XRiteIntegration(SpectrophotometerInterface):
         # Serialize calibration data if present
         calibration_data = None
         if self.last_calibration:
-            cal_dict = self.last_calibration.dict()
+            cal_dict = self.last_calibration.model_dump()
             # Convert datetime to ISO format string
             if "timestamp" in cal_dict and isinstance(cal_dict["timestamp"], datetime):
                 cal_dict["timestamp"] = cal_dict["timestamp"].isoformat()

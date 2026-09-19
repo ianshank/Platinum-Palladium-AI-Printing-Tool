@@ -3,20 +3,16 @@ AI and Chat Endpoint Tests.
 
 Tests for AI assistant, recipe suggestions, and troubleshooting endpoints.
 
-NOTE: These tests are currently skipped due to async/TestClient compatibility issues.
-The async chat endpoints cause deadlocks when tested with synchronous TestClient.
-Need to refactor to use httpx AsyncClient properly.
+These were skipped module-wide for a synchronous-TestClient deadlock. The
+refactor the skip asked for had already happened: ``tests/api/conftest.py``
+provides an ``async_client`` fixture built on httpx ``AsyncClient`` plus
+``ASGITransport``, and every test below already uses it. The skip outlived its
+reason and silently removed the only API-level coverage of the chat routes.
 """
 
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-# Skip all tests in this module due to async/sync TestClient deadlock issues
-# TODO: Refactor to use AsyncClient with proper event loop management
-pytestmark = pytest.mark.skip(
-    reason="Async chat endpoints cause TestClient deadlocks - needs AsyncClient refactor"
-)
 
 
 @pytest.mark.api
@@ -248,7 +244,12 @@ class TestAIEnhancementEndpoints:
 
             response = await async_client.post("/api/curves/enhance", json=request_data)
 
-            assert response.status_code in [200, 400, 500]
+            # This used to accept 400 and 500, so it passed for months while the
+            # endpoint answered 400 to every well-formed request.
+            assert response.status_code == 200, response.text
+            body = response.json()
+            assert body["goal"] == goal
+            assert isinstance(body["changes_made"], list)
 
     @pytest.mark.asyncio
     async def test_enhance_curve_with_context(self, async_client, sample_curve_data):
@@ -263,4 +264,7 @@ class TestAIEnhancementEndpoints:
 
         response = await async_client.post("/api/curves/enhance", json=request_data)
 
-        assert response.status_code in [200, 400, 500]
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["goal"] == "linearization"
+        assert len(body["output_values"]) == len(request_data["output_values"])

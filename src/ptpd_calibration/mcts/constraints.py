@@ -932,7 +932,7 @@ class ActionPruner:
 
     def prune_actions(
         self,
-        state: CalibrationState,
+        state: CalibrationState,  # noqa: ARG002 - interface: state-dependent pruning is a planned extension
         actions: list[CalibrationAction],
     ) -> list[CalibrationAction]:
         """Remove actions that violate hard constraints.
@@ -975,15 +975,14 @@ class ActionPruner:
                 valid_actions.append(action)
 
         logger.debug(
-            f"Pruned {pruned_count}/{len(actions)} actions, "
-            f"kept {len(valid_actions)} valid actions"
+            f"Pruned {pruned_count}/{len(actions)} actions, kept {len(valid_actions)} valid actions"
         )
 
         return valid_actions
 
     def score_action(
         self,
-        state: CalibrationState,
+        state: CalibrationState,  # noqa: ARG002 - interface: state-dependent scoring is a planned extension
         action: CalibrationAction,
     ) -> float:
         """Compute constraint satisfaction score for an action.

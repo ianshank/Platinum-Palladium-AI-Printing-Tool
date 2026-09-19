@@ -1,0 +1,5 @@
+# Generated from the backend's OpenAPI schema by `pnpm generate:types`.
+# Formatting it would make CI's drift check fail against the generator's output.
+src/api/generated/
+coverage/
+dist/

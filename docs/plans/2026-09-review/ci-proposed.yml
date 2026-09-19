@@ -1,0 +1,647 @@
+# .github/workflows/ci.yml  (PROPOSED - replaces ci.yml, ci-cd.yml and tests.yml)
+#
+# Design goals
+#   * one workflow, one required status check ("all-green")
+#   * least privilege: `permissions: {}` at the top, each job opts in
+#   * every third-party action pinned to a full commit SHA (+ version comment)
+#   * no duplicate runs: PRs run once (pull_request), main runs once (push),
+#     feature branches (claude/*, feature/**) are NOT built on push
+#   * deploys only from tags, only after the gate, only behind a GitHub Environment
+#   * ratchet plan: PHASE-1 markers = advisory today, flip to blocking in PHASE-2
+#
+# SHA pins below were resolved with `git ls-remote --tags` on 2026-09-18.
+# TODO(before merge): re-verify every SHA with `pinact run` or `frizbee actions`
+# and keep them fresh with the Dependabot config in .github/dependabot.yml.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+  pull_request:
+    branches: [main]
+  merge_group:
+  schedule:
+    - cron: "17 6 * * 1"          # Monday 06:17 UTC: Scorecard + vulnerability re-scan
+  workflow_dispatch:
+    inputs:
+      deploy_ref:
+        description: "Git ref (tag or SHA) to (re)deploy to the Hugging Face Space - used for rollback"
+        required: false
+        default: ""
+
+permissions: {}                    # default-deny; jobs request what they need
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  UV_VERSION: "0.8.17"             # keep in sync with [tool.uv] required-version
+  PYTHON_VERSION_FILE: ".python-version"   # TODO: create with "3.12" (and un-ignore it in .gitignore:86)
+  NODE_VERSION_FILE: "frontend/.nvmrc"     # TODO: create with "22"
+  FORCE_COLOR: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # 0. Path filter (PRs only). On push/tag/schedule everything runs.
+  # ───────────────────────────────────────────────────────────────────────────
+  changes:
+    name: detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ github.event_name != 'pull_request' || steps.filter.outputs.backend == 'true' }}
+      frontend: ${{ github.event_name != 'pull_request' || steps.filter.outputs.frontend == 'true' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        if: github.event_name == 'pull_request'
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'src/**'
+              - 'tests/**'
+              - 'app.py'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.python-version'
+              - 'Dockerfile'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 1. Backend: ruff (lint + format), mypy allowlist, pytest + coverage floors
+  # ───────────────────────────────────────────────────────────────────────────
+  backend:
+    name: backend (ruff · mypy · pytest)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit          # PHASE-2: switch to `block` with an allowed-endpoints list
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0                # diff-cover needs the merge-base with the target branch
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install Python from .python-version
+        run: uv python install
+
+      - name: Lockfile is up to date with pyproject.toml
+        run: uv lock --check
+
+      - name: Sync environment (frozen, no torch)
+        run: uv sync --frozen --group dev --extra api --extra ml --extra llm --extra plot --extra ui
+
+      - name: ruff check
+        run: uv run ruff check --output-format=github src/ tests/ app.py scripts/
+
+      - name: ruff format --check
+        run: uv run ruff format --check src/ tests/ app.py scripts/
+
+      - name: mypy (allowlisted packages - see [tool.mypy] files=)
+        run: uv run mypy
+
+      - name: pytest (unit + integration + api; no browser/perf/visual)
+        run: >
+          uv run pytest
+          --strict-markers --strict-config
+          -p no:cacheprovider
+          -m "not selenium and not visual and not performance and not browser"
+          --ignore=tests/e2e/selenium --ignore=tests/visual --ignore=tests/performance
+          --cov --cov-branch
+          --cov-report=xml:coverage.xml
+          --cov-report=html:htmlcov
+          --cov-report=term-missing:skip-covered
+          --junitxml=reports/junit.xml
+          -q
+
+      # Risk-tiered floors: coverage.py's fail_under is global, so each package
+      # gets its own `coverage report --include` pass over the same .coverage file.
+      # Percentages are branch-inclusive (branch = true in [tool.coverage.run]).
+      # Measured 2026-09-18, full unit suite, torch absent:
+      #   chemistry 92.6 %, curves 85.6 %, mcts ~78 % line (networks.py 0 % w/o torch,
+      #   training.py 29 %), whole package 64 %.  Floors = baseline - ~5 pts; PHASE-2
+      #   targets in report §6.  Raise only, never lower.
+      - name: Coverage floor - mcts (tier 1)
+        run: uv run coverage report --include='src/ptpd_calibration/mcts/*' --fail-under=70
+      - name: Coverage floor - chemistry (tier 1)
+        run: uv run coverage report --include='src/ptpd_calibration/chemistry/*' --fail-under=85
+      - name: Coverage floor - curves (tier 1)
+        run: uv run coverage report --include='src/ptpd_calibration/curves/*' --fail-under=80
+      - name: Coverage floor - whole package
+        run: uv run coverage report --fail-under=60     # PHASE-2: 70 (ci.yml:79 asks 70 today and fails on 64)
+
+      - name: Diff coverage >= 90% on changed lines (PRs)
+        if: github.event_name == 'pull_request'
+        run: >
+          uv run diff-cover coverage.xml
+          --compare-branch=origin/${{ github.base_ref }}
+          --fail-under=90
+          --markdown-report reports/diff-cover.md
+        # PHASE-1: add `continue-on-error: true` on this step for the first 2 weeks
+        # if the team wants a warm-up; PHASE-2: blocking (as written).
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: backend-reports
+          path: |
+            coverage.xml
+            htmlcov/
+            reports/
+          retention-days: 14
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 2. Frontend: pnpm (frozen), tsc, eslint, prettier, vitest coverage, build
+  # ───────────────────────────────────────────────────────────────────────────
+  frontend:
+    name: frontend (tsc · eslint · vitest · build)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # ORDER MATTERS: pnpm must exist before setup-node can use `cache: pnpm`
+      # (this is the bug that fails ci.yml:25-33 in ~10 s today).
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: frontend/package.json   # TODO: add "packageManager": "pnpm@10.x.y" to frontend/package.json
+          run_install: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint                     # PHASE-2: change package.json to --max-warnings 0
+      - run: pnpm format:check
+      - run: pnpm test:coverage            # vitest run --coverage (5 tests fail today -> fix in the same PR, see OPS-06)
+      - name: "Build (same-origin API, VITE_API_URL=/)"
+        run: pnpm build
+        env:
+          VITE_API_URL: "/"                # getEnv() treats "" as unset (config/index.ts:53-57); "/" keeps requests same-origin
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 14
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 3. E2E: Playwright against a real FastAPI backend (chromium only in CI)
+  # ───────────────────────────────────────────────────────────────────────────
+  e2e:
+    name: e2e (playwright + fastapi)
+    needs: [changes, backend, frontend]
+    if: >-
+      always() && needs.changes.result == 'success' &&
+      (needs.backend.result == 'success'  || needs.backend.result == 'skipped') &&
+      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped') &&
+      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    continue-on-error: true            # PHASE-1: advisory. PHASE-2: delete this line.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - run: uv python install
+      - run: uv sync --frozen --no-dev --extra api --extra ml --extra plot
+
+      - name: Start backend
+        run: |
+          uv run uvicorn ptpd_calibration.api.server:create_app --factory \
+            --host 127.0.0.1 --port 8000 > backend.log 2>&1 &
+          echo $! > backend.pid
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          echo "::error::backend did not become healthy"; cat backend.log; exit 1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: frontend/package.json
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Playwright (chromium)     # playwright.config.ts webServer starts `pnpm dev` on :3000 which proxies /api -> :8000
+        run: pnpm exec playwright test --project=chromium
+        working-directory: frontend
+        env:
+          CI: "1"
+          VITE_API_URL: http://127.0.0.1:8000
+
+      - name: Stop backend
+        if: always()
+        run: kill "$(cat backend.pid)" 2>/dev/null || true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+            backend.log
+          retention-days: 7
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 4. Security: secrets, bandit-style rules, vulnerable dependencies
+  # ───────────────────────────────────────────────────────────────────────────
+  security:
+    name: security (gitleaks · ruff S · pip-audit · pnpm audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0                # gitleaks scans history
+          persist-credentials: false
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}   # only required for org-owned repos
+          GITLEAKS_ENABLE_COMMENTS: "false"
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: ruff security rules (flake8-bandit)
+        # PHASE-1: --exit-zero (65 findings today: 34×S311, 10×S608, 7×S101 ...).
+        # PHASE-2: drop --exit-zero, add `S` to [tool.ruff.lint] select with per-file-ignores.
+        run: uvx ruff@0.15.8 check --select S --output-format=github --exit-zero src/ app.py
+
+      - name: Export locked runtime requirements for audit
+        run: uv export --frozen --no-dev --no-emit-project --all-extras --format requirements.txt -o requirements-audit.txt
+
+      - name: pip-audit (locked Python deps)
+        uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266 # v1.1.0
+        with:
+          inputs: requirements-audit.txt
+          no-deps: true                 # audit the lock, do not resolve/install
+          summary: true
+          # ignore-vulns: |             # PHASE-2: allowlist with expiry comments only
+          #   GHSA-xxxx-xxxx-xxxx
+        continue-on-error: true         # PHASE-1: advisory. PHASE-2: delete this line.
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: frontend/package.json
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+      - name: pnpm audit (prod deps, high+)
+        run: pnpm audit --prod --audit-level=high
+        working-directory: frontend
+        continue-on-error: true         # PHASE-1: advisory. PHASE-2: delete this line.
+
+  dependency-review:
+    name: dependency review (PR)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write              # comment-summary-in-pr
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+          # deny-licenses: GPL-3.0, AGPL-3.0   # PHASE-2: agree a licence policy first
+
+  codeql:
+    name: codeql (${{ matrix.language }})
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  scorecard:
+    name: openssf scorecard
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+      id-token: write                   # publish_results
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scorecard-sarif
+          path: results.sarif
+          retention-days: 5
+      - uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          sarif_file: results.sarif
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 5. Gate: the ONE required status check for branch protection
+  # ───────────────────────────────────────────────────────────────────────────
+  gate:
+    name: all-green
+    needs: [changes, backend, frontend, e2e, security, dependency-review, codeql]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Evaluate required jobs
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          # PHASE-1 required set. PHASE-2: add e2e, dependency-review and codeql here.
+          required="changes backend frontend security"
+          fail=0
+          for job in $required; do
+            result=$(jq -r --arg j "$job" '.[$j].result' <<<"$NEEDS")
+            case "$result" in
+              success) echo "ok       $job";;
+              skipped) echo "skipped  $job (path filter)";;
+              *)       echo "::error::required job '$job' finished with '$result'"; fail=1;;
+            esac
+          done
+          for job in e2e dependency-review codeql; do
+            echo "advisory $job -> $(jq -r --arg j "$job" '.[$j].result' <<<"$NEEDS")"
+          done
+          exit $fail
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 6. Supply chain: SBOM + attestations (main and tags only)
+  # ───────────────────────────────────────────────────────────────────────────
+  sbom:
+    name: sbom + provenance
+    needs: gate
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write                   # sigstore signing
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv python install
+      - name: Build sdist + wheel
+        run: uv build
+      - name: Export PEP 751 lock (pylock.toml)
+        run: uv export --frozen --all-extras --no-dev --format pylock.toml -o pylock.toml
+      - name: SBOM (SPDX JSON, covers uv.lock + pnpm-lock.yaml)
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom.spdx.json
+          artifact-name: sbom.spdx.json
+          upload-artifact: true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-dist
+          path: |
+            dist/
+            pylock.toml
+          retention-days: 30
+      - name: Attest build provenance (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+      - name: Attest SBOM (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: dist/*.whl
+          sbom-path: sbom.spdx.json
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 7. Release: container image for the Hugging Face Docker Space (tags only)
+  # ───────────────────────────────────────────────────────────────────────────
+  release:
+    name: release (ghcr image + github release)
+    needs: [gate, sbom]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: release               # TODO: create in repo settings; optionally add required reviewers
+    permissions:
+      contents: write                   # gh release create
+      packages: write                   # ghcr.io push
+      id-token: write
+      attestations: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/ptpd-calibration   # must be lowercase
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: python-dist
+          path: release-assets
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sbom.spdx.json
+          path: release-assets
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --generate-notes --verify-tag \
+            release-assets/dist/* release-assets/pylock.toml release-assets/sbom.spdx.json
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 8. Deploy to Hugging Face Docker Space: tags (after release) or manual rollback
+  # ───────────────────────────────────────────────────────────────────────────
+  deploy-hf:
+    name: deploy hugging face space
+    needs: [release]
+    if: >-
+      always() &&
+      ( (startsWith(github.ref, 'refs/tags/v') && needs.release.result == 'success') ||
+        (github.event_name == 'workflow_dispatch' && inputs.deploy_ref != '') )
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: huggingface               # TODO: create; add yourself as required reviewer = manual approval gate
+      url: https://huggingface.co/spaces/${{ vars.HF_USERNAME }}/${{ vars.HF_SPACE_NAME || 'ptpd-calibration-studio' }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.deploy_ref || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Push tree to the Space (token via HTTP header, never in the URL)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USERNAME: ${{ vars.HF_USERNAME }}
+          HF_SPACE_NAME: ${{ vars.HF_SPACE_NAME || 'ptpd-calibration-studio' }}
+        run: |
+          set -euo pipefail
+          : "${HF_TOKEN:?HF_TOKEN secret is not configured}"      # fail loudly - the old workflow exited 0 here
+          : "${HF_USERNAME:?HF_USERNAME variable is not configured}"
+          remote="https://huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE_NAME}"
+          auth="AUTHORIZATION: basic $(printf '%s:%s' "$HF_USERNAME" "$HF_TOKEN" | base64 -w0)"
+          git -c "http.${remote}.extraheader=${auth}" fetch "$remote" main:refs/remotes/hf/main || true
+          git -c "http.${remote}.extraheader=${auth}" push --force-with-lease=main:refs/remotes/hf/main \
+              "$remote" "HEAD:refs/heads/main"
+          echo "deployed $(git rev-parse --short HEAD) -> ${remote}"
+
+      - name: Wait for the Space to be RUNNING (advisory)
+        continue-on-error: true
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USERNAME: ${{ vars.HF_USERNAME }}
+          HF_SPACE_NAME: ${{ vars.HF_SPACE_NAME || 'ptpd-calibration-studio' }}
+        run: |
+          for i in $(seq 1 60); do
+            stage=$(curl -fsS -H "Authorization: Bearer $HF_TOKEN" \
+              "https://huggingface.co/api/spaces/${HF_USERNAME}/${HF_SPACE_NAME}" | jq -r '.runtime.stage // "unknown"')
+            echo "stage=$stage"; [ "$stage" = "RUNNING" ] && exit 0
+            [ "$stage" = "BUILD_ERROR" ] || [ "$stage" = "RUNTIME_ERROR" ] && exit 1
+            sleep 20
+          done
+          exit 1

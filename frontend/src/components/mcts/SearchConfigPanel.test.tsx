@@ -31,7 +31,9 @@ describe('SearchConfigPanel', () => {
   };
 
   beforeEach(() => {
-    vi.mocked(useMCTSCalibration).mockReturnValue(mockUseMCTSCalibration as any);
+    vi.mocked(useMCTSCalibration).mockReturnValue(
+      mockUseMCTSCalibration as any
+    );
   });
 
   it('should render panel with title', () => {

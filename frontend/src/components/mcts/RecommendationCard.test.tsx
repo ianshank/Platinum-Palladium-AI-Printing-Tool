@@ -82,7 +82,9 @@ describe('RecommendationCard', () => {
       predictedQuality: 0.7,
     };
 
-    const { container } = render(<RecommendationCard recommendation={mediumQuality} />);
+    const { container } = render(
+      <RecommendationCard recommendation={mediumQuality} />
+    );
 
     const indicator = container.querySelector('.bg-warning');
     expect(indicator).toBeInTheDocument();
@@ -92,9 +94,13 @@ describe('RecommendationCard', () => {
     const onUse = vi.fn();
     const user = userEvent.setup();
 
-    render(<RecommendationCard recommendation={mockRecommendation} onUse={onUse} />);
+    render(
+      <RecommendationCard recommendation={mockRecommendation} onUse={onUse} />
+    );
 
-    const button = screen.getByRole('button', { name: /Use These Parameters/i });
+    const button = screen.getByRole('button', {
+      name: /Use These Parameters/i,
+    });
     await user.click(button);
 
     expect(onUse).toHaveBeenCalledWith(mockRecommendation.parameters);
@@ -105,13 +111,18 @@ describe('RecommendationCard', () => {
 
     render(<RecommendationCard recommendation={mockRecommendation} />);
 
-    const button = screen.getByRole('button', { name: /Use These Parameters/i });
+    const button = screen.getByRole('button', {
+      name: /Use These Parameters/i,
+    });
     await expect(user.click(button)).resolves.not.toThrow();
   });
 
   it('should apply custom className', () => {
     const { container } = render(
-      <RecommendationCard recommendation={mockRecommendation} className="custom-class" />
+      <RecommendationCard
+        recommendation={mockRecommendation}
+        className="custom-class"
+      />
     );
 
     expect(container.firstChild).toHaveClass('custom-class');

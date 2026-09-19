@@ -142,9 +142,7 @@ class TestFOConcentrationConstraint:
         assert result.loss_value == 0.0
         assert len(result.violations) == 0
 
-    def test_below_sweet_spot_soft_penalty(
-        self, fo_constraint: FOConcentrationConstraint
-    ) -> None:
+    def test_below_sweet_spot_soft_penalty(self, fo_constraint: FOConcentrationConstraint) -> None:
         """Test soft penalty for values below sweet spot."""
         values = np.array([16.0])  # Below sweet spot, above hard minimum
         result = fo_constraint.evaluate(values)
@@ -153,9 +151,7 @@ class TestFOConcentrationConstraint:
         assert result.loss_value > 0.0
         assert "low sensitivity" in result.violations[0].description
 
-    def test_above_sweet_spot_soft_penalty(
-        self, fo_constraint: FOConcentrationConstraint
-    ) -> None:
+    def test_above_sweet_spot_soft_penalty(self, fo_constraint: FOConcentrationConstraint) -> None:
         """Test soft penalty for values above sweet spot."""
         values = np.array([26.0])  # Above sweet spot, below hard maximum
         result = fo_constraint.evaluate(values)
@@ -266,9 +262,7 @@ class TestExposureTimeConstraint:
         assert result.loss_value > 0.0
         assert "diminishing returns" in result.violations[0].description
 
-    def test_penalty_relative_to_range(
-        self, exposure_constraint: ExposureTimeConstraint
-    ) -> None:
+    def test_penalty_relative_to_range(self, exposure_constraint: ExposureTimeConstraint) -> None:
         """Test that penalty is relative to practical range."""
         # 10% below minimum
         loss_below = exposure_constraint.compute_loss(np.array([54.0]))
@@ -373,9 +367,7 @@ class TestCoatingWeightConstraint:
         assert result.loss_value > 0.0
         assert "insufficient" in result.violations[0].description
 
-    def test_excessive_weight_violated(
-        self, coating_constraint: CoatingWeightConstraint
-    ) -> None:
+    def test_excessive_weight_violated(self, coating_constraint: CoatingWeightConstraint) -> None:
         """Test that excessive coating weight violates constraint."""
         values = np.array([4.0])  # Above maximum
         result = coating_constraint.evaluate(values)
@@ -480,19 +472,23 @@ class TestActionPruner:
         """Test that invalid actions are pruned."""
         actions = [
             CalibrationAction(dimension="coating_weight", value=1.5, bin_index=10),  # Valid
-            CalibrationAction(dimension="coating_weight", value=5.0, bin_index=20),  # Invalid (too high)
-            CalibrationAction(dimension="coating_weight", value=0.2, bin_index=2),  # Invalid (too low)
+            CalibrationAction(
+                dimension="coating_weight", value=5.0, bin_index=20
+            ),  # Invalid (too high)
+            CalibrationAction(
+                dimension="coating_weight", value=0.2, bin_index=2
+            ),  # Invalid (too low)
             CalibrationAction(dimension="ferric_oxalate_pct", value=20.0, bin_index=10),  # Valid
         ]
 
         pruned = pruner.prune_actions(sample_state, actions)
 
         assert len(pruned) == 2
-        assert all(a.value >= 0.5 and a.value <= 3.0 for a in pruned if a.dimension == "coating_weight")
+        assert all(
+            a.value >= 0.5 and a.value <= 3.0 for a in pruned if a.dimension == "coating_weight"
+        )
 
-    def test_keep_valid_actions(
-        self, pruner: ActionPruner, sample_state: CalibrationState
-    ) -> None:
+    def test_keep_valid_actions(self, pruner: ActionPruner, sample_state: CalibrationState) -> None:
         """Test that all valid actions are kept."""
         actions = [
             CalibrationAction(dimension="coating_weight", value=0.8, bin_index=5),
@@ -507,9 +503,7 @@ class TestActionPruner:
         assert len(pruned) == len(actions)
         assert pruned == actions
 
-    def test_empty_action_list(
-        self, pruner: ActionPruner, sample_state: CalibrationState
-    ) -> None:
+    def test_empty_action_list(self, pruner: ActionPruner, sample_state: CalibrationState) -> None:
         """Test handling of empty action list."""
         pruned = pruner.prune_actions(sample_state, [])
 
@@ -531,7 +525,9 @@ class TestActionPruner:
     ) -> None:
         """Test that soft violations get lower scores than ideal values."""
         # FO outside sweet spot but within hard bounds
-        action_soft_violation = CalibrationAction(dimension="ferric_oxalate_pct", value=16.0, bin_index=2)
+        action_soft_violation = CalibrationAction(
+            dimension="ferric_oxalate_pct", value=16.0, bin_index=2
+        )
         action_ideal = CalibrationAction(dimension="ferric_oxalate_pct", value=20.0, bin_index=10)
 
         score_soft = pruner.score_action(sample_state, action_soft_violation)

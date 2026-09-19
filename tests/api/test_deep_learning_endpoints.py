@@ -123,7 +123,7 @@ def sample_print_base64() -> str:
 def reference_image_base64() -> str:
     """Create a base64 encoded reference image."""
     arr = np.linspace(30, 220, 256 * 256).reshape(256, 256).astype(np.uint8)
-    img = Image.fromarray(arr, mode="L").convert("RGB")
+    img = Image.fromarray(arr).convert("RGB")
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
     return base64.b64encode(buffer.getvalue()).decode()
@@ -135,7 +135,7 @@ def test_image_base64() -> str:
     arr = np.linspace(35, 215, 256 * 256).reshape(256, 256).astype(np.uint8)
     noise = np.random.normal(0, 3, arr.shape).astype(np.int16)
     arr = np.clip(arr.astype(np.int16) + noise, 0, 255).astype(np.uint8)
-    img = Image.fromarray(arr, mode="L").convert("RGB")
+    img = Image.fromarray(arr).convert("RGB")
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
     return base64.b64encode(buffer.getvalue()).decode()
@@ -174,7 +174,7 @@ def problem_image_base64() -> str:
     # Create banding pattern
     for i in range(256):
         arr[i, :] = 100 + int(30 * np.sin(i * 0.15))
-    img = Image.fromarray(arr, mode="L")
+    img = Image.fromarray(arr)
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
     return base64.b64encode(buffer.getvalue()).decode()

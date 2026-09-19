@@ -36,7 +36,7 @@ def gray_image():
     """Create a grayscale test image."""
     arr = np.linspace(0, 255, 100).reshape(10, 10).astype(np.uint8)
     arr = np.repeat(np.repeat(arr, 10, axis=0), 10, axis=1)
-    return Image.fromarray(arr, mode="L")
+    return Image.fromarray(arr)
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ def rgb_image():
     arr[:, :, 0] = 150  # Red
     arr[:, :, 1] = 120  # Green
     arr[:, :, 2] = 100  # Blue
-    return Image.fromarray(arr, mode="RGB")
+    return Image.fromarray(arr)
 
 
 class TestProofSettings:

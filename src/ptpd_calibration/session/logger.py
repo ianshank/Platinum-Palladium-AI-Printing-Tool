@@ -6,12 +6,31 @@ Enables learning from past prints to improve future outcomes.
 """
 
 import json
+import logging
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, cast
 from uuid import UUID, uuid4
+
+from pydantic import ValidationError
+
+logger = logging.getLogger(__name__)
+
+# Errors that indicate an unreadable or malformed session file. These are logged and
+# the file is skipped. Programming errors (NameError, AttributeError, TypeError,
+# KeyError) deliberately propagate so they surface in tests instead of being
+# swallowed. ``json.JSONDecodeError`` and pydantic's ``ValidationError`` are both
+# ``ValueError`` subclasses; ``ValueError`` also covers enum/UUID/ISO-date parse
+# failures raised by ``PrintRecord.from_dict``.
+_RECOVERABLE_SESSION_ERRORS: tuple[type[Exception], ...] = (
+    OSError,
+    json.JSONDecodeError,
+    ValidationError,
+    ValueError,
+)
 
 
 class PrintResult(str, Enum):
@@ -305,9 +324,10 @@ class SessionLogger:
         Args:
             record: Print record to log
         """
-        if not self._current_session:
-            self.start_session()
-        self._current_session.add_record(record)
+        # start_session returns the session it assigns, so binding it here is
+        # the same call in one step and leaves no optional to re-check.
+        session = self._current_session or self.start_session()
+        session.add_record(record)
         self._auto_save()
 
     def end_session(self) -> PrintSession | None:
@@ -383,13 +403,26 @@ class SessionLogger:
                         "total_prints": len(data.get("records", [])),
                     }
                 )
-            except Exception as e:
-                import logging
-
-                logging.warning(f"Failed to list session {filepath}: {e}")
+            except _RECOVERABLE_SESSION_ERRORS:
+                logger.warning("Failed to list session %s", filepath, exc_info=True)
                 continue
 
         return sessions
+
+    def _iter_sessions(self) -> Iterator[tuple[Path, PrintSession]]:
+        """Yield ``(filepath, session)`` for every loadable session file.
+
+        Unreadable or malformed files (see ``_RECOVERABLE_SESSION_ERRORS``) are
+        logged with a traceback and skipped; any other exception propagates.
+        """
+        for filepath in self.storage_dir.glob("session_*.json"):
+            try:
+                session = self.load_session(filepath)
+            except _RECOVERABLE_SESSION_ERRORS:
+                logger.warning("Failed to load session %s", filepath, exc_info=True)
+                continue
+            logger.debug("Loaded session %s with %d records", filepath, len(session.records))
+            yield filepath, session
 
     def search_records(
         self,
@@ -411,26 +444,19 @@ class SessionLogger:
         """
         records = []
 
-        for filepath in self.storage_dir.glob("session_*.json"):
-            try:
-                session = self.load_session(filepath)
-                for record in session.records:
-                    if paper_type and record.paper_type != paper_type:
-                        continue
-                    if result and record.result != result:
-                        continue
-                    if tags and not any(t in record.tags for t in tags):
-                        continue
+        for _filepath, session in self._iter_sessions():
+            for record in session.records:
+                if paper_type and record.paper_type != paper_type:
+                    continue
+                if result and record.result != result:
+                    continue
+                if tags and not any(t in record.tags for t in tags):
+                    continue
 
-                    records.append(record)
+                records.append(record)
 
-                    if len(records) >= limit:
-                        return records
-            except Exception as e:
-                import logging
-
-                logging.warning(f"Failed to search session {filepath}: {e}")
-                continue
+                if len(records) >= limit:
+                    return records
 
         return records
 
@@ -442,37 +468,31 @@ class SessionLogger:
         """
         stats: dict[str, dict[str, Any]] = {}
 
-        for filepath in self.storage_dir.glob("session_*.json"):
-            try:
-                session = self.load_session(filepath)
-                for record in session.records:
-                    if not record.paper_type:
-                        continue
+        for _filepath, session in self._iter_sessions():
+            for record in session.records:
+                if not record.paper_type:
+                    continue
 
-                    if record.paper_type not in stats:
-                        stats[record.paper_type] = {
-                            "total_prints": 0,
-                            "excellent": 0,
-                            "good": 0,
-                            "failed": 0,
-                            "avg_exposure": [],
-                        }
+                if record.paper_type not in stats:
+                    stats[record.paper_type] = {
+                        "total_prints": 0,
+                        "excellent": 0,
+                        "good": 0,
+                        "failed": 0,
+                        "avg_exposure": [],
+                    }
 
-                    stats[record.paper_type]["total_prints"] += 1
-                    if record.result == PrintResult.EXCELLENT:
-                        stats[record.paper_type]["excellent"] += 1
-                    elif record.result == PrintResult.GOOD:
-                        stats[record.paper_type]["good"] += 1
-                    elif record.result == PrintResult.FAILED:
-                        stats[record.paper_type]["failed"] += 1
+                paper_stats = stats[record.paper_type]
+                paper_stats["total_prints"] += 1
+                if record.result == PrintResult.EXCELLENT:
+                    paper_stats["excellent"] += 1
+                elif record.result == PrintResult.GOOD:
+                    paper_stats["good"] += 1
+                elif record.result == PrintResult.FAILED:
+                    paper_stats["failed"] += 1
 
-                    if record.exposure_time_minutes > 0:
-                        paper_stats["avg_exposure"].append(record.exposure_time_minutes)
-            except Exception as e:
-                import logging
-
-                logging.warning(f"Failed to get stats for session {filepath}: {e}")
-                continue
+                if record.exposure_time_minutes > 0:
+                    paper_stats["avg_exposure"].append(record.exposure_time_minutes)
 
         # Calculate averages
         for paper in stats:

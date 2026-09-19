@@ -53,7 +53,7 @@ class TestNeuroSymbolicJourney:
             x_end = (i + 1) * patch_width
             img_array[:, x_start:x_end] = value
 
-        img = Image.fromarray(img_array, mode="L").convert("RGB")
+        img = Image.fromarray(img_array).convert("RGB")
         file_path = tmp_path / "test_step_tablet.png"
         img.save(file_path)
 
@@ -458,7 +458,7 @@ class TestNeuroSymbolicIntegration:
             value = 255 - int(255 * (i / (num_patches - 1)) ** 0.8)
             img_array[:, i * patch_width : (i + 1) * patch_width] = value
 
-        img = Image.fromarray(img_array, mode="L").convert("RGB")
+        img = Image.fromarray(img_array).convert("RGB")
         file_path = tmp_path / "test_step_tablet.png"
         img.save(file_path)
         return file_path

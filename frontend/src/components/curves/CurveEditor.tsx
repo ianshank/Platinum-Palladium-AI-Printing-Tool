@@ -19,6 +19,7 @@ import * as SliderPrimitive from '@radix-ui/react-slider';
 import { logger } from '@/lib/logger';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { config } from '@/config';
+import { CURVE_SAVE_NOOP_ADJUSTMENT } from '@/config/curves';
 
 import { cn } from '@/lib/utils';
 
@@ -41,15 +42,16 @@ type EnhancementGoal =
   | 'neutral_midtones'
   | 'print_stability';
 
-const ENHANCEMENT_GOALS: readonly { value: EnhancementGoal; label: string }[] = [
-  { value: 'linearization',    label: 'Linearization' },
-  { value: 'maximize_range',   label: 'Maximize Range' },
-  { value: 'smooth_gradation', label: 'Smooth Gradation' },
-  { value: 'highlight_detail', label: 'Highlight Detail' },
-  { value: 'shadow_detail',    label: 'Shadow Detail' },
-  { value: 'neutral_midtones', label: 'Neutral Midtones' },
-  { value: 'print_stability',  label: 'Print Stability' },
-] as const;
+const ENHANCEMENT_GOALS: readonly { value: EnhancementGoal; label: string }[] =
+  [
+    { value: 'linearization', label: 'Linearization' },
+    { value: 'maximize_range', label: 'Maximize Range' },
+    { value: 'smooth_gradation', label: 'Smooth Gradation' },
+    { value: 'highlight_detail', label: 'Highlight Detail' },
+    { value: 'shadow_detail', label: 'Shadow Detail' },
+    { value: 'neutral_midtones', label: 'Neutral Midtones' },
+    { value: 'print_stability', label: 'Print Stability' },
+  ] as const;
 
 // --- UI Components (Inline for speed, move to ui/ later) ---
 
@@ -81,7 +83,7 @@ const AdjustmentSelect = ({
   value: AdjustmentType;
   onChange: (val: AdjustmentType) => void;
   id?: string;
-}) => (
+}): React.JSX.Element => (
   <select
     id={id}
     value={value}
@@ -141,8 +143,10 @@ export function CurveEditor({
   const [error, setError] = useState<string | null>(null);
 
   // AI Enhancement state
-  const [enhancementGoal, setEnhancementGoal] = useState<EnhancementGoal>('linearization');
-  const [enhanceResult, setEnhanceResult] = useState<CurveEnhanceResponse | null>(null);
+  const [enhancementGoal, setEnhancementGoal] =
+    useState<EnhancementGoal>('linearization');
+  const [enhanceResult, setEnhanceResult] =
+    useState<CurveEnhanceResponse | null>(null);
   const [showEnhancePanel, setShowEnhancePanel] = useState(false);
 
   // Save mutation
@@ -285,6 +289,7 @@ export function CurveEditor({
     logger.info('CurveEditor: saving curve', {
       name,
       pointCount: inputValues.length,
+      adjustment: CURVE_SAVE_NOOP_ADJUSTMENT.adjustment_type,
     });
 
     saveCurve(
@@ -292,8 +297,9 @@ export function CurveEditor({
         name,
         input_values: inputValues,
         output_values: outputValues,
-        adjustment_type: 'brightness',
-        amount: 0,
+        // Persist the curve as-is. The modify endpoint has no "none" type, so
+        // send the backend's identity adjustment (see CURVE_SAVE_NOOP_ADJUSTMENT).
+        ...CURVE_SAVE_NOOP_ADJUSTMENT,
       },
       {
         onSuccess: (response) => {

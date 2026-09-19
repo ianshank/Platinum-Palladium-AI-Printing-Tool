@@ -8,44 +8,45 @@ Tests coverage:
 4. Curve Generator (curve_generator.py)
 """
 
-import numpy as np
-import pytest
+import random
 from uuid import uuid4
 
+import numpy as np
+import pytest
+
+from ptpd_calibration.core.types import CurveType
 from ptpd_calibration.neuro_symbolic.constraints import (
-    ConstraintType,
+    ConstrainedCurveOptimizer,
     ConstraintResult,
+    ConstraintSet,
+    ConstraintType,
     ConstraintViolation,
-    MonotonicityConstraint,
     DensityBoundsConstraint,
+    DifferentiableLoss,
+    MonotonicityConstraint,
     PhysicsConstraint,
     SmoothnessConstraint,
-    ConstraintSet,
-    DifferentiableLoss,
-    ConstrainedCurveOptimizer,
+)
+from ptpd_calibration.neuro_symbolic.curve_generator import (
+    CurveGenerationResult,
+    NeuroSymbolicCurveGenerator,
 )
 from ptpd_calibration.neuro_symbolic.knowledge_graph import (
     Entity,
     EntityType,
-    Relationship,
-    RelationType,
     KnowledgeGraph,
     PaperChemistryKnowledgeGraph,
+    Relationship,
+    RelationType,
 )
 from ptpd_calibration.neuro_symbolic.symbolic_regression import (
-    OperatorType,
-    ExpressionNode,
-    SymbolicExpression,
-    ExpressionLibrary,
-    DifferentiableSymbolicRegressor,
     CurveFormulaDiscovery,
+    DifferentiableSymbolicRegressor,
+    ExpressionLibrary,
+    ExpressionNode,
+    OperatorType,
+    SymbolicExpression,
 )
-from ptpd_calibration.neuro_symbolic.curve_generator import (
-    NeuroSymbolicCurveGenerator,
-    CurveGenerationResult,
-)
-from ptpd_calibration.core.types import CurveType
-
 
 # ============================================================================
 # Test Constraints (neuro_symbolic/constraints.py)
@@ -1040,8 +1041,55 @@ class TestKnowledgeGraphIntegration:
         assert all(0.0 <= s.similarity_score <= 1.0 for s in similar)
 
 
+# Seed for the genetic-programming search below. ``symbolic_regression`` draws
+# exclusively from the stdlib ``random`` module (no ``random_state`` parameter
+# exists), so the only way to make the search reproducible is to seed the global
+# generators; the fixture restores their state afterwards so no other test is
+# affected.
+_SYMBOLIC_REGRESSION_SEED = 20260918
+
+
 class TestSymbolicRegressionIntegration:
     """Integration tests for symbolic regression."""
+
+    @pytest.fixture(autouse=True)
+    def _seed_global_rngs(self):
+        """Make the stochastic search deterministic and restore RNG state afterwards."""
+        py_state = random.getstate()
+        np_state = np.random.get_state()
+        random.seed(_SYMBOLIC_REGRESSION_SEED)
+        np.random.seed(_SYMBOLIC_REGRESSION_SEED)
+        yield
+        random.setstate(py_state)
+        np.random.set_state(np_state)
+
+    @staticmethod
+    def _run_discovery() -> dict:
+        """Run a small, seeded discovery on an H&D-like curve."""
+        discovery = CurveFormulaDiscovery()
+
+        x = np.linspace(0, 1, 21)
+        y = 2.0 * (1 - np.exp(-3.0 * x**0.8)) + 0.1
+
+        # Reduce generations for test
+        discovery._regressor.settings.sr_generations = 5
+        discovery._regressor.settings.sr_population_size = 20
+
+        return discovery.discover_formula(
+            measured_densities=y.tolist(),
+            paper_type="Test Paper",
+        )
+
+    def test_discover_formula_is_deterministic_under_seed(self):
+        """Two seeded runs must produce the identical formula and fit statistics."""
+        first = self._run_discovery()
+        random.seed(_SYMBOLIC_REGRESSION_SEED)
+        np.random.seed(_SYMBOLIC_REGRESSION_SEED)
+        second = self._run_discovery()
+
+        assert first["formula"] == second["formula"]
+        assert first["r_squared"] == second["r_squared"]
+        assert first["predictions"] == second["predictions"]
 
     def test_discover_and_evaluate_formula(self):
         """Test end-to-end formula discovery and evaluation."""

@@ -89,7 +89,9 @@ describe('mctsSlice', () => {
       store.getState().mcts.removeFixedParameter('exposure_time');
 
       const state = store.getState().mcts;
-      expect(state.searchConfig.fixedParameters?.['exposure_time']).toBeUndefined();
+      expect(
+        state.searchConfig.fixedParameters?.['exposure_time']
+      ).toBeUndefined();
     });
   });
 
@@ -103,11 +105,17 @@ describe('mctsSlice', () => {
     });
 
     it('should reset progress when stopping search', () => {
-      store.getState().mcts.setSearchProgress({ iteration: 50, total: 100, bestScore: 0.8 });
+      store
+        .getState()
+        .mcts.setSearchProgress({ iteration: 50, total: 100, bestScore: 0.8 });
       store.getState().mcts.setSearching(false);
 
       const state = store.getState().mcts;
-      expect(state.searchProgress).toEqual({ iteration: 0, total: 0, bestScore: 0 });
+      expect(state.searchProgress).toEqual({
+        iteration: 0,
+        total: 0,
+        bestScore: 0,
+      });
     });
   });
 
@@ -152,7 +160,7 @@ describe('mctsSlice', () => {
         densityCurve: [0, 0.5, 1.0],
         dmin: 0.05,
         dmax: 1.85,
-        densityRange: 1.80,
+        densityRange: 1.8,
         gamma: 2.2,
         qualityScore: 0.9,
       };
@@ -225,7 +233,9 @@ describe('mctsSlice', () => {
   describe('resetSearch', () => {
     it('should reset all search state to initial values', () => {
       // Set some state
-      store.getState().mcts.setSearchConfig({ paperType: 'test', numSimulations: 1000 });
+      store
+        .getState()
+        .mcts.setSearchConfig({ paperType: 'test', numSimulations: 1000 });
       store.getState().mcts.setSearching(true);
       store.getState().mcts.setCurrentResult({
         searchId: 'test',
@@ -251,7 +261,11 @@ describe('mctsSlice', () => {
       expect(state.evaluateResult).toBeNull();
       expect(state.isSearching).toBe(false);
       expect(state.isEvaluating).toBe(false);
-      expect(state.searchProgress).toEqual({ iteration: 0, total: 0, bestScore: 0 });
+      expect(state.searchProgress).toEqual({
+        iteration: 0,
+        total: 0,
+        bestScore: 0,
+      });
       expect(state.error).toBeNull();
     });
   });

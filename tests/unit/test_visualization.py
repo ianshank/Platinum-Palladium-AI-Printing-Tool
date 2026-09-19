@@ -4,6 +4,7 @@ Tests for curve visualization module.
 
 import numpy as np
 import pytest
+from matplotlib.figure import Figure
 
 from ptpd_calibration.core.models import CurveData
 from ptpd_calibration.core.types import CurveType
@@ -359,6 +360,48 @@ class TestPlotStyles:
         """Test all plot styles work without error."""
         fig = visualizer.plot_single_curve(sample_curve, style=style)
         assert fig is not None
+
+
+class TestFigureLifecycle:
+    """The visualizer must not register figures with the pyplot state machine.
+
+    pyplot retains every figure it creates until it is closed explicitly, which
+    leaks one figure per plot in a long-running process and makes matplotlib
+    raise ``RuntimeWarning: More than 20 figures have been opened``.
+    """
+
+    @pytest.fixture
+    def sample_curve(self):
+        inputs = list(np.linspace(0, 1, 32))
+        return CurveData(
+            name="Lifecycle",
+            input_values=inputs,
+            output_values=list(np.array(inputs) ** 0.8),
+        )
+
+    def test_plots_do_not_register_figures_with_pyplot(self, sample_curve) -> None:
+        import matplotlib.pyplot as plt
+
+        visualizer = CurveVisualizer()
+        before = set(plt.get_fignums())
+
+        figures = [
+            visualizer.plot_single_curve(sample_curve),
+            visualizer.plot_multiple_curves([sample_curve, sample_curve]),
+            visualizer.plot_with_statistics([sample_curve]),
+            visualizer.plot_histogram(sample_curve),
+            visualizer.plot_slope_analysis(sample_curve),
+        ]
+
+        assert all(isinstance(fig, Figure) for fig in figures)
+        assert set(plt.get_fignums()) == before
+
+    def test_figure_still_renders_without_pyplot(self, sample_curve, tmp_path) -> None:
+        visualizer = CurveVisualizer()
+        fig = visualizer.plot_single_curve(sample_curve)
+
+        assert visualizer.figure_to_bytes(fig, format="png")[:8] == b"\x89PNG\r\n\x1a\n"
+        assert visualizer.save_figure(fig, tmp_path / "curve.png").stat().st_size > 0
 
 
 class TestColorSchemes:
