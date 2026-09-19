@@ -189,7 +189,7 @@ pydantic==2.13.5
     #   openai
     #   ptpd-calibration
     #   pydantic-settings
-pydantic-core==2.46.5
+pydantic-core==2.49.0
     # via pydantic
 pydantic-settings==2.15.0
     # via ptpd-calibration
@@ -264,7 +264,7 @@ tifffile==2026.3.3 ; python_full_version == '3.11.*'
     # via ptpd-calibration
 tifffile==2026.9.15 ; python_full_version >= '3.12'
     # via ptpd-calibration
-tomlkit==0.12.0
+tomlkit==0.15.1
     # via gradio
 tqdm==4.70.1
     # via huggingface-hub
@@ -303,7 +303,7 @@ urllib3==2.8.0
     # via
     #   gradio
     #   requests
-uvicorn==0.50.1
+uvicorn==0.53.0
     # via
     #   gradio
     #   ptpd-calibration
