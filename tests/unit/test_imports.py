@@ -425,3 +425,51 @@ class TestPackageAdvertisesItsTypes:
                 assert any("py.typed" in str(entry) for entry in wheel[key]), (
                     f"wheel target sets {key!r} but does not keep py.typed"
                 )
+
+
+class TestTheTestHelperPackageImports:
+    """``tests.utils`` re-exported names its modules do not define.
+
+    Thirteen of the fifteen were wrong, so ``import tests.utils`` raised
+    ``ImportError`` and every helper in the package was unreachable. No test
+    failed over it because no test imported it -- which is exactly how it stayed
+    broken. The list is now derived from the modules rather than retyped, and
+    this pins that the package imports and that a representative name from each
+    module resolves.
+    """
+
+    def test_the_package_imports(self) -> None:
+        import tests.utils
+
+        assert tests.utils.__all__
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "assert_densities_valid",
+            "assert_curve_monotonic",
+            "CalibrationRecordBuilder",
+            "ImageBuilder",
+            "MockLLMResponse",
+            "patch_llm_client",
+        ],
+    )
+    def test_a_helper_from_each_module_resolves(self, name: str) -> None:
+        import tests.utils
+
+        assert name in tests.utils.__all__
+        assert getattr(tests.utils, name) is not None
+
+    def test_every_exported_name_actually_exists(self) -> None:
+        """The failure mode was a name in the list with nothing behind it."""
+        import tests.utils
+
+        missing = [name for name in tests.utils.__all__ if not hasattr(tests.utils, name)]
+
+        assert missing == []
+
+    def test_imports_the_modules_made_are_not_re_exported(self) -> None:
+        """Deriving the list must not turn `numpy as np` into a public helper."""
+        import tests.utils
+
+        assert not {"np", "Path", "Any", "pytest"} & set(tests.utils.__all__)

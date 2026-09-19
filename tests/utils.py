@@ -418,33 +418,22 @@ def generate_curve_data(
 # =============================================================================
 
 
-def save_test_image(
-    array: np.ndarray,
-    path: Path,
-    mode: str | None = None,
-) -> Path:
+def save_test_image(array: np.ndarray, path: Path) -> Path:
     """Save numpy array as image file.
+
+    The mode was worked out here and handed to ``Image.fromarray``, using the
+    same rules Pillow applies itself. Since that argument went, deriving it
+    computed a value nothing read, and the shape check it carried duplicated
+    the one Pillow already makes, so both are gone with it.
 
     Args:
         array: Image data as numpy array.
         path: Path to save to.
-        mode: PIL image mode (auto-detected if None).
 
     Returns:
         Path to saved file.
     """
-    if mode is None:
-        if array.ndim == 2:
-            mode = "L"
-        elif array.ndim == 3 and array.shape[2] == 3:
-            mode = "RGB"
-        elif array.ndim == 3 and array.shape[2] == 4:
-            mode = "RGBA"
-        else:
-            raise ValueError(f"Cannot auto-detect mode for shape {array.shape}")
-
-    img = Image.fromarray(array)
-    img.save(path)
+    Image.fromarray(array).save(path)
     return path
 
 

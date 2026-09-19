@@ -114,8 +114,8 @@ def to_eight_bit_array(array: np.ndarray) -> np.ndarray:
     """Scale a 16-bit array down to ``uint8``, rounding rather than truncating.
 
     ``Image.fromarray`` infers "L" from a 2-D ``uint8`` array, so no explicit
-    ``mode`` argument is needed; that argument is deprecated and removed in
-    Pillow 13.
+    ``mode`` argument is needed; that argument is deprecated, and Pillow 13
+    restricts it so it can no longer change data types.
     """
     scaled = np.rint(np.asarray(array, dtype=np.float64) / EIGHT_TO_SIXTEEN)
     return np.clip(scaled, 0, EIGHT_BIT_MAX).astype(np.uint8)
