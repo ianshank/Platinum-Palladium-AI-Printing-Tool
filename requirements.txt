@@ -311,7 +311,7 @@ uvloop==0.22.1 ; platform_python_implementation != 'PyPy' and sys_platform != 'c
     # via uvicorn
 watchfiles==1.2.0
     # via uvicorn
-websockets==12.0
+websockets==16.1.1
     # via
     #   gradio-client
     #   uvicorn
