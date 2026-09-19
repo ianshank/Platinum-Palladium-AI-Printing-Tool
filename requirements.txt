@@ -116,7 +116,7 @@ kiwisolver==1.5.1
     # via matplotlib
 markdown-it-py==4.2.0
     # via rich
-markupsafe==2.1.5
+markupsafe==3.0.3
     # via
     #   gradio
     #   jinja2
